@@ -1,0 +1,6 @@
+[submodule "thirdparty/quiche"]
+	path = thirdparty/quiche
+	url = https://github.com/google/quiche.git
+[submodule "thirdparty/abseil-cpp"]
+	path = thirdparty/abseil-cpp
+	url = https://github.com/abseil/abseil-cpp.git

@@ -1,0 +1,35 @@
+{
+  "name": "@fails-components/avsrouter",
+  "version": "0.0.1",
+  "description": "A router for audio, video and screensharing data using webtransport and websocket",
+  "main": "src/server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install": "cmake-js compile"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fails-components/avsrouter.git"
+  },
+  "keywords": [
+    "webtransport",
+    "audio",
+    "video",
+    "screensharing",
+    "router"
+  ],
+  "author": "Marten Richter",
+  "license": "AGPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/fails-components/avsrouter/issues"
+  },
+  "homepage": "https://github.com/fails-components/avsrouter#readme",
+  "dependencies": {
+    "bindings": "^1.5.0",
+    "nan": "^2.15.0",
+    "node-addon-api": "^4.2.0"
+  },
+  "devDependencies": {
+    "cmake-js": "^6.3.0"
+  }
+}
