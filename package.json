@@ -1,35 +1,51 @@
 {
-  "name": "@fails-components/avsrouter",
-  "version": "0.0.1",
+  "name": "@fails-components/webtransport",
+  "version": "0.0.0",
   "description": "A router for audio, video and screensharing data using webtransport and websocket",
-  "main": "src/server.js",
+  "main": "test/echoserver.js",
+  "module": "src/webtransport.js",
+  "engines": {
+    "node": ">=16"
+  },
+  "type": "module",
   "scripts": {
+    "start": "node test/echoserver.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "install": "cmake-js compile"
+    "install": "cmake-js build",
+    "rebuild": "cmake-js rebuild",
+    "rebuild-debug": "cmake-js rebuild -D",
+    "build-debug": "cmake-js build -D",
+    "preinstall": "git submodule update -i -r"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fails-components/avsrouter.git"
+    "url": "git+https://github.com/fails-components/webtransport.git"
   },
   "keywords": [
-    "webtransport",
-    "audio",
-    "video",
-    "screensharing",
-    "router"
+    "webtransport"
   ],
   "author": "Marten Richter",
-  "license": "AGPL-3.0-or-later",
+  "license": "BSD-3-Clause",
   "bugs": {
-    "url": "https://github.com/fails-components/avsrouter/issues"
+    "url": "https://github.com/fails-components/webtransport/issues"
   },
-  "homepage": "https://github.com/fails-components/avsrouter#readme",
+  "homepage": "https://github.com/fails-components/webtransport#readme",
   "dependencies": {
     "bindings": "^1.5.0",
     "nan": "^2.15.0",
     "node-addon-api": "^4.2.0"
   },
   "devDependencies": {
-    "cmake-js": "^6.3.0"
+    "@babel/eslint-parser": "^7.17.0",
+    "cmake-js": "^6.3.0",
+    "eslint": "^7.32.0",
+    "eslint-config-prettier": "^7.2.0",
+    "eslint-config-standard": "^16.0.2",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^3.4.1",
+    "eslint-plugin-promise": "^4.3.1",
+    "eslint-plugin-standard": "^4.1.0",
+    "prettier": "^2.4.1"
   }
 }

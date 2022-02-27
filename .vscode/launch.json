@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [{
+       "type": "lldb",
+       "request": "launch",
+       "name": "Launch Program",
+       "preLaunchTask": "npm: build-debug",
+       "program": "/usr/local/bin/node",
+       "args": [
+          "/workspaces/webtransport/test/echoserver.js"
+       ]
+    }]
+  }
