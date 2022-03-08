@@ -20,7 +20,7 @@ The package should be considered as a ducttape style solution, until a bullet pr
 You can install the package directly via npm from github via:
 
 ```bash
-npm install --save @fails-components/webtransport
+npm install --save git+https://github.com/fails-components/webtransport
 ```
 but before you have to add to your `.npmrc` file
 ```
