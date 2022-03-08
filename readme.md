@@ -35,8 +35,7 @@ npm install --save https://github.com/fails-components/webtransport
 
 If you are running the install as root, you need to use `--unsafe-perm` as flag.
 Installing the package requires a full building environment including clang-9, perl6, golang,  ninja-build and protobuf-compiler. See the `Dockerfile` or `Dockerfile.development` for required debian packages. 
-In principle, compiling under windows should be possible but it is not tested. 
-The same applies for MacOSX, PR for instructions or necessary changes are welcome for all possible environments.
+This should work for linux. In principle, compiling under windows should be possible, but lacks a replacement for the epoll server used in linux. The same applies for MacOSX. PR for an epoll server replacement on these platforms and for compiling instructions and necessary changes are welcome for all possible environments. 
 
 In the directory `test` you find a simple echo server code. That answers to a series of WebTransport echos.
 
