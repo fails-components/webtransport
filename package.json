@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node test/echoserver.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "install": "git submodule update -i -r && cmake-js build",
+    "install": "cmake-js build",
     "rebuild": "cmake-js rebuild",
     "rebuild-debug": "cmake-js rebuild -D",
     "build-debug": "cmake-js build -D"
