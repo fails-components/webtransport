@@ -14,7 +14,8 @@
     "install": "cmake-js build",
     "rebuild": "cmake-js rebuild",
     "rebuild-debug": "cmake-js rebuild -D",
-    "build-debug": "cmake-js build -D"
+    "build-debug": "cmake-js build -D",
+    "preinstall": "git submodule update -i -r"
   },
   "repository": {
     "type": "git",
