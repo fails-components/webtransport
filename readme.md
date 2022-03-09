@@ -17,7 +17,7 @@ The package should be considered as a ducttape style solution, until a bullet pr
 
 
 ## Installation and using
-You can install the package directly via npm from github via:
+You can install the package directly via npm from github via (Note submodule support in recent versions of node is broken [npm 2774](https://github.com/npm/cli/issues/2774), so install will fail, so in this case checkout git repo and submodules directly until first package release):
 
 ```bash
 npm install --save git+https://github.com/fails-components/webtransport
