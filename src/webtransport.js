@@ -18,6 +18,7 @@ class Http3WTStream {
     this.id = args.id
     this.objint = args.object
     this.parentid = args.parentid
+    this.parentobj = args.parentobj
     this.bidirectional = args.bidirectional
     this.incoming = args.incoming
 
@@ -95,6 +96,7 @@ class Http3WTSession {
   constructor(args) {
     this.id = args.id
     this.objint = args.object
+    this.parentobj = args.parentobj
 
     this.ready = new Promise((res, rej) => {
       this.readyResolve = res
@@ -193,6 +195,7 @@ class Http3WTSession {
       id: args.streamid,
       object: args.object,
       parentid: args.id,
+      parentobj: this,
       bidirectional: args.bidirectional,
       incoming: args.incoming
     })
@@ -285,7 +288,8 @@ export class Http3Server {
             if (args.object) {
               const sesobj = new Http3WTSession({
                 id: args.id,
-                object: args.object
+                object: args.object,
+                parentobj: this
               })
               this.visitors[args.id] =new WeakRef(sesobj)
               if (this.sessionController[args.path])
