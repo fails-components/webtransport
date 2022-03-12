@@ -107,7 +107,9 @@ namespace quic
     socket_api.EnableReceiveTimestamp(fd_);
 
     sockaddr_storage addr = address.generic_address();
-    int rc = bind(fd_, reinterpret_cast<sockaddr *>(&addr), sizeof(addr));
+    // @BENBENZ: fix on mac OSX (was needed or a EINVAL is returned) (from api::Bind in quic_udp_socket_posix.cc)
+    int addr_len = address.host().IsIPv4() ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
+    int rc = bind(fd_, reinterpret_cast<sockaddr *>(&addr), addr_len);
     if (rc < 0)
     {
       QUIC_LOG(ERROR) << "Bind failed: " << strerror(errno) << "\n";
@@ -126,7 +128,7 @@ namespace quic
       port_ = address.port();
     }
 
-    const int kEpollFlags = EPOLLIN | EPOLLOUT | EPOLLET;
+    const int kEpollFlags = UV_READABLE | UV_WRITABLE | UV_DISCONNECT;
 
     epoll_server_.set_timeout_in_us(-1); // negative values would mean wait forever
     epoll_server_.RegisterFD(fd_, this, kEpollFlags);
@@ -652,9 +654,9 @@ namespace quic
     QUICHE_DCHECK_EQ(fd, fd_);
     event->out_ready_mask = 0;
 
-    if (event->in_events & EPOLLIN)
+    if (event->in_events & UV_READABLE)
     {
-      QUIC_DVLOG(1) << "EPOLLIN";
+      QUIC_DVLOG(1) << "UV_READABLE";
 
       dispatcher_->ProcessBufferedChlos(kNumSessionsToCreatePerSocketEvent);
 
@@ -668,16 +670,16 @@ namespace quic
 
       if (dispatcher_->HasChlosBuffered())
       {
-        // Register EPOLLIN event to consume buffered CHLO(s).
-        event->out_ready_mask |= EPOLLIN;
+        // Register UV_READABLE event to consume buffered CHLO(s).
+        event->out_ready_mask |= UV_READABLE;
       }
     }
-    if (event->in_events & EPOLLOUT)
+    if (event->in_events & UV_WRITABLE)
     {
       dispatcher_->OnCanWrite();
       if (dispatcher_->HasPendingWrites())
       {
-        event->out_ready_mask |= EPOLLOUT;
+        event->out_ready_mask |= UV_WRITABLE;
       }
     }
   }

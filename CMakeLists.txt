@@ -4,7 +4,7 @@ project (webtransport)
 
 
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
-set(CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 17)
 
 set(BUILD_TESTING OFF)
 
@@ -69,6 +69,8 @@ platform/net/quic/platform/impl/quic_server_stats_impl.h
 platform/net/quic/platform/impl/quic_stack_trace_impl.h
 platform/net/quic/platform/impl/quic_epoll_clock.h
 platform/net/quic/platform/impl/quic_epoll_clock.cc
+platform/net/quic/platform/impl/simple_libuv_epoll_server.cc
+platform/net/quic/platform/impl/simple_libuv_epoll_server.h
 #protofiles
 #${PROTO_SRCS}
 #${CMAKE_CURRENT_BINARY_DIR}/third_party/quiche/quic/core/proto/cached_network_parameters.pb.h
@@ -791,9 +793,11 @@ set_property(TARGET gquiche PROPERTY CXX_STANDARD 17)
 target_include_directories(gquiche
 PUBLIC third_party/quiche
 PUBLIC third_party/boringssl/src/include
+PUBLIC third_party/abseil-cpp
 PUBLIC platform
 PUBLIC .
 PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
+PUBLIC ${CMAKE_JS_INC}
 )
 target_link_libraries(gquiche 
 absl::base 
@@ -805,6 +809,10 @@ absl::any
 absl::synchronization 
 protobuf
 ssl crypto)
+
+if(APPLE)
+        target_compile_definitions (gquiche PRIVATE __APPLE_USE_RFC_3542)
+endif()
 
 
 # google quiche build parameters end
@@ -830,7 +838,7 @@ target_include_directories(${PROJECT_NAME}
  PRIVATE ${NODE_ADDON_API_DIR})
 
 
-add_definitions(-DNAPI_VERSION=3)
+#add_definitions(-DNAPI_VERSION=3)
 
 
 

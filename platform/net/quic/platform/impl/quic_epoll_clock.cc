@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #include "net/quic/platform/impl/quic_epoll_clock.h"
-#include "epoll_server/simple_epoll_server.h"
+#include "net/quic/platform/impl/simple_libuv_epoll_server.h"
 #include "quic/platform/api/quic_flag_utils.h"
 #include "quic/platform/api/quic_flags.h"
 namespace quic {
-QuicEpollClock::QuicEpollClock(epoll_server::SimpleEpollServer* epoll_server)
+QuicEpollClock::QuicEpollClock(QuicEpollServerImpl* epoll_server)
     : epoll_server_(epoll_server), largest_time_(QuicTime::Zero()) {}
 QuicEpollClock::~QuicEpollClock() {}
 QuicTime QuicEpollClock::ApproximateNow() const {

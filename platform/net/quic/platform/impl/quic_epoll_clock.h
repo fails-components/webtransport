@@ -6,15 +6,15 @@
 // #include "base/compiler_specific.h"
 #include "quic/core/quic_clock.h"
 #include "quic/core/quic_time.h"
-namespace epoll_server {
-class SimpleEpollServer;
-}  // namespace epoll_server
+#include "net/quic/platform/impl/quic_epoll_impl.h"
+
+
 namespace quic {
 // Clock to efficiently retrieve an approximately accurate time from an
 // net::EpollServer.
 class QuicEpollClock : public QuicClock {
  public:
-  explicit QuicEpollClock(epoll_server::SimpleEpollServer* epoll_server);
+  explicit QuicEpollClock(QuicEpollServerImpl* epoll_server);
   QuicEpollClock(const QuicEpollClock&) = delete;
   QuicEpollClock& operator=(const QuicEpollClock&) = delete;
   ~QuicEpollClock() override;
@@ -31,7 +31,7 @@ class QuicEpollClock : public QuicClock {
   QuicTime ConvertWallTimeToQuicTime(
       const QuicWallTime& walltime) const override;
  protected:
-  epoll_server::SimpleEpollServer* epoll_server_;
+  QuicEpollServerImpl* epoll_server_;
   // Largest time returned from Now() so far.
   mutable QuicTime largest_time_;
 };

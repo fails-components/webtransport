@@ -14,7 +14,7 @@ struct iovec {
   void* iov_base; /* Pointer to data.  */
   size_t iov_len; /* Length of data.  */
 };
-#elif defined(linux)
+#elif defined(linux) || defined(__APPLE__)
 #include <sys/uio.h>
 #endif  // defined(OS_WIN)
 
