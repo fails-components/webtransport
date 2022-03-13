@@ -4,8 +4,8 @@
 // found in the LICENSE file.
 #ifndef NET_QUIC_PLATFORM_IMPL_QUIC_STREAM_BUFFER_ALLOCATOR_IMPL_H_
 #define NET_QUIC_PLATFORM_IMPL_QUIC_STREAM_BUFFER_ALLOCATOR_IMPL_H_
-#include "quic/core/quic_simple_buffer_allocator.h"
+#include "common/simple_buffer_allocator.h"
 namespace quic {
-using QuicStreamBufferAllocatorImpl = SimpleBufferAllocator;
+using QuicStreamBufferAllocatorImpl = quiche::SimpleBufferAllocator;
 }  // namespace quic
 #endif  // NET_QUIC_PLATFORM_IMPL_QUIC_STREAM_BUFFER_ALLOCATOR_IMPL_H_

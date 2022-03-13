@@ -16,7 +16,7 @@
 #include "quic/tools/quic_simple_crypto_server_stream_helper.h"
 #include "net/quic/platform/impl/quic_epoll_clock.h"
 #include "quic/core/crypto/proof_source_x509.h"
-#include "quic/platform/api/quic_reference_counted.h"
+#include "common/platform/api/quiche_reference_counted.h"
 
 using namespace Nan;
 
@@ -751,7 +751,7 @@ namespace quic
         // Callback *callback, int port, std::unique_ptr<ProofSource> proof_source,  const char *secret
 
         std::stringstream certstream(cert, std::ios_base::in);
-        QuicReferenceCountedPointer<ProofSource::Chain> chain(new ProofSource::Chain(CertificateView::LoadPemFromStream(&certstream)));
+        quiche::QuicheReferenceCountedPointer<ProofSource::Chain> chain(new ProofSource::Chain(CertificateView::LoadPemFromStream(&certstream)));
 
         std::stringstream privkeystream(privkey, std::ios_base::in);
 

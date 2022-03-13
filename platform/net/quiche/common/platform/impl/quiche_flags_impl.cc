@@ -12,7 +12,6 @@
 #include "net/quiche/common/platform/impl/quic_flags_list_add.h"
 #undef QUIC_FLAG
 #undef QUIC_FLAGT
-
 // fix annoying compiler buf
 
 #include "http2/decoder/decode_buffer.h"

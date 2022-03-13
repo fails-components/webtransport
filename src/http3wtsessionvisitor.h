@@ -226,7 +226,7 @@ namespace quic
 
     private:
 
-        class DatagramAllocator: public QuicBufferAllocator
+        class DatagramAllocator: public quiche::QuicheBufferAllocator
         {
         public:
             DatagramAllocator(Http3Server* server): server_(server)
@@ -256,10 +256,10 @@ namespace quic
         void writeDatagramInt(char * buffer, size_t len, Nan::Persistent<v8::Object> *bufferhandle)
         {
             allocator_.registerBuffer(buffer,bufferhandle);
-            auto ubuffer = QuicUniqueBufferPtr(buffer,
-                             QuicBufferDeleter(&allocator_));
+            auto ubuffer = quiche::QuicheUniqueBufferPtr(buffer,
+                             quiche::QuicheBufferDeleter(&allocator_));
   
-            quiche::QuicheMemSlice slice(std::move(ubuffer), len);
+            quiche::QuicheMemSlice slice(quiche::QuicheBuffer(std::move(ubuffer), len));
             session_->SendOrQueueDatagram(std::move(slice));
             server_->informDatagramSend(objnum_);
 
