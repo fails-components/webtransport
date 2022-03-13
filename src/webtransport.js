@@ -194,7 +194,7 @@ class Http3WTSession {
 
     if (this.closedResolve) this.closedResolve(errorcode)
   }
-  
+
   onStream(args) {
     const strobj = new Http3WTStream({
       id: args.streamid,
@@ -235,7 +235,7 @@ class Http3WTSession {
     const stream=streamref.deref()
     if (stream) {
       stream.onStreamClosed(args)
-      this.streams.delete(args.streamid)
+      delete this.streams[args.streamid]
     } 
   }
 
