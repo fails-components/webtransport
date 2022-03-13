@@ -188,8 +188,13 @@ class Http3WTSession {
     this.rejectBiDi = []
     this.rejectUniDi = []
 
+    this.incomBiDiController.close()
+    this.incomUniDiController.close()
+    this.incomDatagramController.close()
+
     if (this.closedResolve) this.closedResolve(errorcode)
   }
+  
   onStream(args) {
     const strobj = new Http3WTStream({
       id: args.streamid,
