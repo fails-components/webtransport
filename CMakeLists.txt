@@ -788,6 +788,7 @@ PUBLIC third_party/boringssl/src/include
 PUBLIC third_party/abseil-cpp
 PUBLIC platform
 PUBLIC .
+PUBLIC ${Protobuf_INCLUDE_DIRS}
 PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
 PUBLIC ${CMAKE_JS_INC}
 )
@@ -798,8 +799,8 @@ absl::strings
 absl::str_format
 absl::flat_hash_map
 absl::any 
-absl::synchronization 
-protobuf
+absl::synchronization
+${Protobuf_LIBRARIES}
 ssl crypto)
 
 if(APPLE)
