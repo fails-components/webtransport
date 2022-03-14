@@ -204,7 +204,7 @@ class Http3WTSession {
       bidirectional: args.bidirectional,
       incoming: args.incoming
     })
-    this.streams[args.streamid] = new WeakRef(strobj)
+    this.streams[args.streamid] = strobj
     if (args.incoming) {
       if (args.bidirectional) {
         this.incomBiDiController.enqueue(strobj)
@@ -232,11 +232,8 @@ class Http3WTSession {
     if (! streamref)
        throw new Error('Unknown stream in streamClosed')
 
-    const stream=streamref.deref()
-    if (stream) {
-      stream.onStreamClosed(args)
-      delete this.streams[args.streamid]
-    } 
+    streamref.onStreamClosed(args)
+    delete this.streams[args.streamid] 
   }
 
   onStreamRead(args) {
@@ -244,10 +241,7 @@ class Http3WTSession {
     if (! streamref)
        throw new Error('Unknown stream in streamRead')
 
-    const stream=streamref.deref()
-    if (stream) {
-      stream.onStreamRead(args)
-    } else throw new Error('Unknown stream in streamRead')
+    streamref.onStreamRead(args)
   }
 
   onStreamWrite(args) {
@@ -255,10 +249,7 @@ class Http3WTSession {
     if (! streamref)
        throw new Error('Unknown stream in streamWrite')
 
-    const stream=streamref.deref()
-    if (stream) {
-      stream.onStreamWrite(args)
-    } else throw new Error('Unknown stream in streamWrite')
+    streamref.onStreamWrite(args)
   }
 
   onDatagramReceived(args) {
@@ -296,7 +287,7 @@ export class Http3Server {
                 object: args.object,
                 parentobj: this
               })
-              this.visitors[args.id] =new WeakRef(sesobj)
+              this.visitors[args.id] = sesobj
               if (this.sessionController[args.path])
                 this.sessionController[args.path].enqueue(sesobj)
             } else throw new Error('Http3WTSessionVisitor')
@@ -304,13 +295,13 @@ export class Http3Server {
           break
         case 'SessionReady':
           {
-            const visitor = this.visitors[args.id].deref();
+            const visitor = this.visitors[args.id]
             if (visitor) visitor.onReady()
           }
           break
         case 'SessionClose':
           {
-            const visitor = this.visitors[args.id].deref();
+            const visitor = this.visitors[args.id]
             if (visitor)
               visitor.onClose(args.errorcode, args.error)
             delete this.visitors[args.id]
@@ -318,7 +309,7 @@ export class Http3Server {
           break
         case 'DatagramReceived':
           {
-            const visitor = this.visitors[args.id].deref();
+            const visitor = this.visitors[args.id]
             if (
               args.id &&
               visitor &&
@@ -329,14 +320,14 @@ export class Http3Server {
           break
         case 'DatagramSend':
           {
-            const visitor = this.visitors[args.id].deref();
+            const visitor = this.visitors[args.id]
             if (args.id && visitor)
               visitor.onDatagramSend(args)
           }
           break
         case 'Http3WTStreamVisitor':
           {
-            const visitor = this.visitors[args.id].deref();
+            const visitor = this.visitors[args.id]
             if (
               visitor &&
               args.streamid &&
@@ -350,7 +341,7 @@ export class Http3Server {
           break
         case 'StreamClosed':
           {
-            const visitor = this.visitors[args.id].deref();
+            const visitor = this.visitors[args.id]
             if (visitor && args.streamid && args.id) {
               visitor.onStreamClosed(args)
             } else throw new Error('Malformed StreamClosed')
@@ -358,7 +349,7 @@ export class Http3Server {
           break
         case 'StreamRead':
           {
-            const visitor = this.visitors[args.id].deref();
+            const visitor = this.visitors[args.id]
             if (
               visitor &&
               args.streamid &&
@@ -371,7 +362,7 @@ export class Http3Server {
           break
         case 'StreamWrite':
           {
-            const visitor = this.visitors[args.id].deref();
+            const visitor = this.visitors[args.id]
             if (visitor && args.streamid && args.id) {
               visitor.onStreamWrite(args)
             } else throw new Error('Malformed StreamWrite')
