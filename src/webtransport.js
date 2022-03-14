@@ -313,7 +313,7 @@ export class Http3Server {
             const visitor = this.visitors[args.id].deref();
             if (visitor)
               visitor.onClose(args.errorcode, args.error)
-            this.visitors.delete(args.id)
+            delete this.visitors[args.id]
           }
           break
         case 'DatagramReceived':

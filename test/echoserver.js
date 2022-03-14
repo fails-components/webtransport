@@ -41,6 +41,7 @@ try {
           const bidistr = await bidiReader.read()
           if (bidistr.done) {
             console.log('bidiReader terminated')
+            break
           }
           if (bidistr.value) {
             // ok we got a stream
@@ -63,6 +64,7 @@ try {
           const unidistr = await unidiReader.read()
           if (unidistr.done) {
             console.log('unidiReader terminated')
+            break
           }
           if (unidistr.value) {
             // ok we got a stream
