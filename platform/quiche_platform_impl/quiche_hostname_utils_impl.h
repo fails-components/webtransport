@@ -1,6 +1,6 @@
 // from envoy so LICENSE.envoy applies
-#ifndef NET_QUIC_PLATFORM_IMPL_QUIC_HOSTNAME_UTILS_IMPL_H_
-#define NET_QUIC_PLATFORM_IMPL_QUIC_HOSTNAME_UTILS_IMPL_H_
+#ifndef NET_QUICHE_PLATFORM_IMPL_QUIC_HOSTNAME_UTILS_IMPL_H_
+#define NET_QUICHE_PLATFORM_IMPL_QUIC_HOSTNAME_UTILS_IMPL_H_
 
 // NOLINT(namespace-envoy)
 //
@@ -11,9 +11,9 @@
 #include "absl/strings/string_view.h"
 #include "quic/platform/api/quic_export.h"
 
-namespace quic {
+namespace quiche {
 
-class QUIC_EXPORT_PRIVATE QuicHostnameUtilsImpl {
+class QUIC_EXPORT_PRIVATE QuicheHostnameUtilsImpl {
 public:
   // Returns true if the sni is valid, false otherwise.
   //  (1) disallow IP addresses;
@@ -34,7 +34,7 @@ public:
   static std::string NormalizeHostname(absl::string_view hostname);
 
 private:
-  QuicHostnameUtilsImpl() = delete;
+  QuicheHostnameUtilsImpl() = delete;
 };
 
 } // namespace quic

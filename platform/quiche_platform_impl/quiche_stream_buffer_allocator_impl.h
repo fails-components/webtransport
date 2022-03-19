@@ -5,7 +5,7 @@
 #ifndef NET_QUIC_PLATFORM_IMPL_QUIC_STREAM_BUFFER_ALLOCATOR_IMPL_H_
 #define NET_QUIC_PLATFORM_IMPL_QUIC_STREAM_BUFFER_ALLOCATOR_IMPL_H_
 #include "common/simple_buffer_allocator.h"
-namespace quic {
-using QuicStreamBufferAllocatorImpl = quiche::SimpleBufferAllocator;
+namespace quiche {
+using QuicheStreamBufferAllocatorImpl = quiche::SimpleBufferAllocator;
 }  // namespace quic
 #endif  // NET_QUIC_PLATFORM_IMPL_QUIC_STREAM_BUFFER_ALLOCATOR_IMPL_H_

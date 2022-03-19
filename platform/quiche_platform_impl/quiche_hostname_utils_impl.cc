@@ -5,7 +5,7 @@
 // consumed or referenced directly by other Envoy code. It serves purely as a
 // porting layer for QUICHE.
 
-#include "net/quic/platform/impl/quic_hostname_utils_impl.h"
+#include "quiche_platform_impl/quiche_hostname_utils_impl.h"
 
 #include <string>
 
@@ -15,11 +15,11 @@
 // TODO(wub): Implement both functions on top of GoogleUrl, then enable
 // quiche/quic/platform/api/quic_hostname_utils_test.cc.
 
-namespace quic {
+namespace quiche {
 
 // static
 // NOLINTNEXTLINE(readability-identifier-naming)
-bool QuicHostnameUtilsImpl::IsValidSNI(absl::string_view sni) {
+bool QuicheHostnameUtilsImpl::IsValidSNI(absl::string_view sni) {
   // TODO(wub): Implement it on top of GoogleUrl, once it is available.
 
   return sni.find_last_of('.') != std::string::npos /* &&
@@ -28,7 +28,7 @@ bool QuicHostnameUtilsImpl::IsValidSNI(absl::string_view sni) {
 
 // static
 // NOLINTNEXTLINE(readability-identifier-naming)
-std::string QuicHostnameUtilsImpl::NormalizeHostname(absl::string_view hostname) {
+std::string QuicheHostnameUtilsImpl::NormalizeHostname(absl::string_view hostname) {
   // TODO(wub): Implement it on top of GoogleUrl, once it is available.
   std::string host = absl::AsciiStrToLower(hostname);
 

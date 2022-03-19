@@ -6,7 +6,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "net/quic/platform/impl/simple_libuv_epoll_server.h"
+#include "quiche_platform_impl/simple_libuv_epoll_server.h"
 
 #include <errno.h>   // for errno
 #include <stdlib.h>  // for abort

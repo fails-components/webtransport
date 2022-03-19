@@ -7,17 +7,17 @@
 //
 // Note that this server is intended to verify correctness of the client and is
 // in no way expected to be performant.
-#ifndef NET_QUIC_PLATFORM_IMPL_QUIC_EPOLL_IMPL_H_
-#define NET_QUIC_PLATFORM_IMPL_QUIC_EPOLL_IMPL_H_
+#ifndef NET_QUICHE_PLATFORM_IMPL_QUIC_EPOLL_IMPL_H_
+#define NET_QUICHE_PLATFORM_IMPL_QUIC_EPOLL_IMPL_H_
 
-#include "net/quic/platform/impl/simple_libuv_epoll_server.h"
+#include "quiche_platform_impl/simple_libuv_epoll_server.h"
 
-namespace quic {
+namespace quiche {
 
-using QuicEpollServerImpl = epoll_server::SimpleLibuvEpollServer;
-using QuicEpollEventImpl = epoll_server::LibuvEpollEvent;
-using QuicEpollAlarmBaseImpl = epoll_server::LibuvEpollAlarm;
-using QuicEpollCallbackInterfaceImpl = epoll_server::LibuvEpollCallbackInterface;
+using QuicheEpollServerImpl = epoll_server::SimpleLibuvEpollServer;
+using QuicheEpollEventImpl = epoll_server::LibuvEpollEvent;
+using QuicheEpollAlarmBaseImpl = epoll_server::LibuvEpollAlarm;
+using QuicheEpollCallbackInterfaceImpl = epoll_server::LibuvEpollCallbackInterface;
 
 }  // namespace quic
 

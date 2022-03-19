@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef NET_QUIC_PLATFORM_IMPL_QUIC_UDP_SOCKET_PLATFORM_IMPL_H_
-#define NET_QUIC_PLATFORM_IMPL_QUIC_UDP_SOCKET_PLATFORM_IMPL_H_
+#ifndef NET_QUICHE_PLATFORM_IMPL_QUICHE_UDP_SOCKET_PLATFORM_IMPL_H_
+#define NET_QUICHE_PLATFORM_IMPL_QUICHE_UDP_SOCKET_PLATFORM_IMPL_H_
 
 #include <sys/socket.h>
 
 #include <cstddef>
 #include <cstdint>
 
-namespace quic {
+namespace quiche {
 
 const size_t kCmsgSpaceForGooglePacketHeaderImpl = 0;
 

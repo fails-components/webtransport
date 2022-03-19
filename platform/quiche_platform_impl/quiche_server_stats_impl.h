@@ -1,6 +1,6 @@
 // from envoy so LICENSE.envoy applies
-#ifndef QUIC_SERVER_STATS_IMPL
-#define QUIC_SERVER_STATS_IMPL
+#ifndef QUICHE_SERVER_STATS_IMPL
+#define QUICHE_SERVER_STATS_IMPL
 
 
 // NOLINT(namespace-envoy)
@@ -9,19 +9,19 @@
 // consumed or referenced directly by other Envoy code. It serves purely as a
 // porting layer for QUICHE.
 
-#define QUIC_SERVER_HISTOGRAM_ENUM_IMPL(name, sample, enum_size, docstring)                        \
+#define QUICHE_SERVER_HISTOGRAM_ENUM_IMPL(name, sample, enum_size, docstring)                        \
   do {                                                                                             \
   } while (0)
 
-#define QUIC_SERVER_HISTOGRAM_BOOL_IMPL(name, sample, docstring)                                   \
+#define QUICHE_SERVER_HISTOGRAM_BOOL_IMPL(name, sample, docstring)                                   \
   do {                                                                                             \
   } while (0)
 
-#define QUIC_SERVER_HISTOGRAM_TIMES_IMPL(name, sample, min, max, bucket_count, docstring)          \
+#define QUICHE_SERVER_HISTOGRAM_TIMES_IMPL(name, sample, min, max, bucket_count, docstring)          \
   do {                                                                                             \
   } while (0)
 
-#define QUIC_SERVER_HISTOGRAM_COUNTS_IMPL(name, sample, min, max, bucket_count, docstring)         \
+#define QUICHE_SERVER_HISTOGRAM_COUNTS_IMPL(name, sample, min, max, bucket_count, docstring)         \
   do {                                                                                             \
   } while (0)
 
