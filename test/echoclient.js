@@ -40,22 +40,22 @@ export class WebTransportTest {
       const data2 = new Uint8Array([68, 69, 70])
       writer.write(data1)
       writer.write(data2)
-      try {
-        await writer.close()
-        console.log('All data has been sent.')
-      } catch (error) {
-        console.error(`An error occurred: ${error}`)
-      }
       const reader = stream.readable.getReader()
-      let i = 2
+      let i = 6
       while (true && i > 0) {
         const { done, value } = await reader.read()
         if (done) {
           break
         }
         // value is a Uint8Array
-        console.log(value)
-        i--
+        console.log('incoming bidi stream', value)
+        i -= value.length
+      }
+      try {
+        await writer.close()
+        console.log('All data has been sent.')
+      } catch (error) {
+        console.error(`An error occurred: ${error}`)
       }
       console.log('webtransport sending bidistream success')
       const bidiReader = this.transport.incomingBidirectionalStreams.getReader()
@@ -68,14 +68,8 @@ export class WebTransportTest {
         const data4 = new Uint8Array([74, 75, 76])
         write.write(data3)
         write.write(data4)
-        try {
-          await write.close()
-          console.log('All data has been sent for incoming bidi stream.')
-        } catch (error) {
-          console.error(`An error occurred: ${error}`)
-        }
         const readbd = bidistream.readable.getReader()
-        let i = 2
+        let i = 6
         while (true && i > 0) {
           const { done, value } = await readbd.read()
           if (done) {
@@ -83,7 +77,13 @@ export class WebTransportTest {
           }
           // value is a Uint8Array
           console.log('incom bd', value)
-          i--
+          i -= value.length
+        }
+        try {
+          await write.close()
+          console.log('All data has been sent for incoming bidi stream.')
+        } catch (error) {
+          console.error(`An error occurred: ${error}`)
         }
       }
       console.log('now unidirectional tests')
@@ -99,7 +99,7 @@ export class WebTransportTest {
         const unidistream = incomunidi.value
         console.log('got a unidistream')
         const readud = unidistream.getReader()
-        let i = 2
+        let i = 6
         while (true && i > 0) {
           const { done, value } = await readud.read()
           if (done) {
@@ -107,7 +107,7 @@ export class WebTransportTest {
           }
           // value is a Uint8Array
           console.log('incom ud', value)
-          i--
+          i -= value.length
         }
       }
       console.log('finally test datagrams')
@@ -117,7 +117,7 @@ export class WebTransportTest {
       datawrite.write(data7)
       datawrite.write(data8)
       const readdg = await this.transport.datagrams.readable.getReader()
-      i = 10
+      i = 6
       while (true && i > 0) {
         const { done, value } = await readdg.read()
         if (done) {
@@ -125,7 +125,7 @@ export class WebTransportTest {
         }
         // value is a Uint8Array
         console.log('incom dg', value)
-        i--
+        i -= value.length
       }
     }
   }
