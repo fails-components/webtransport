@@ -115,11 +115,17 @@ class LibuvEpollCallbackInterface {
   // Summary:
   //   Returns a name describing the class for use in debug/error reporting.
   virtual std::string Name() const = 0;
-
+  
   virtual ~LibuvEpollCallbackInterface() {}
 
  protected:
   LibuvEpollCallbackInterface() {}
+};
+
+class LibuvEpollAsyncCallbackInterface {
+ public:
+  // called in the lib uv event loop
+  virtual void OnAsyncExecution() = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -495,6 +501,10 @@ class EPOLL_EXPORT_PRIVATE SimpleLibuvEpollServer {
   // Compatibility stub.
   void Shutdown() {}
 
+  void TriggerAsync();
+
+  void SetAsyncCallback(LibuvEpollAsyncCallbackInterface *asynccb){ asynccb_ = asynccb; }
+
   // Summary:
   //   A function for implementing the ready list. It invokes OnEvent for each
   //   of the fd in the ready list, and takes care of adding them back to the
@@ -515,6 +525,7 @@ class EPOLL_EXPORT_PRIVATE SimpleLibuvEpollServer {
   static void eventcallback( uv_poll_t *handle, int status, int events);
   static void timercallback(uv_timer_t *handle);
   static void closecallback( uv_handle_t* handle);
+  static void asynccallback(uv_async_t *handle);
 
   // this struct is used internally, and is never used by anything external
   // to this class. Some of its members are declared mutable to get around the
@@ -720,6 +731,10 @@ class EPOLL_EXPORT_PRIVATE SimpleLibuvEpollServer {
 
   uv_loop_t loop; // event loop
   uv_timer_t looptimer; // event loop timer
+  // async handle
+  uv_async_t asynchandle;
+
+  LibuvEpollAsyncCallbackInterface* asynccb_;
 
 #ifdef EPOLL_SERVER_EVENT_TRACING
 #error "EPOLL_SERVER_EVENT_TRACING is not implemented for libuv"

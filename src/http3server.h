@@ -71,7 +71,8 @@ namespace quic
         std::string *para = nullptr; // for session, we own it, and must delete it
     };
 
-    class Http3Server : public QuicEpollCallbackInterface, public AsyncProgressQueueWorker<Http3ProgressReport>, // may be replace char later
+    class Http3Server : public QuicEpollCallbackInterface, public epoll_server::LibuvEpollAsyncCallbackInterface,
+                         public AsyncProgressQueueWorker<Http3ProgressReport>, // may be replace char later
                         public Nan::ObjectWrap
     {
     public:
@@ -106,6 +107,8 @@ namespace quic
         void OnUnregistration(int /*fd*/, bool /*replaced*/) override {}
 
         void OnShutdown(QuicEpollServer * /*eps*/, int /*fd*/) override {}
+
+        void OnAsyncExecution() override;
 
         void informAboutNewSession(Http3WTSessionVisitor *session, absl::string_view path);
         void informSessionClosed(uint32_t objnum_, WebTransportSessionError error_code, absl::string_view error_message);

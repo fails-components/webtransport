@@ -107,6 +107,7 @@ SimpleLibuvEpollServer::SimpleLibuvEpollServer()
       recorded_now_in_us_(0),
       ready_list_size_(0),
       wake_cb_(new ReadPipeCallback),
+      asynccb_(nullptr),
       read_fd_(-1),
       write_fd_(-1),
       in_wait_for_events_and_execute_callbacks_(false),
@@ -115,6 +116,8 @@ SimpleLibuvEpollServer::SimpleLibuvEpollServer()
 
   uv_loop_init(&loop);
   uv_timer_init(&loop, &looptimer);
+  uv_async_init(&loop, &asynchandle, asynccallback);
+  asynchandle.data =  (void*) this;
  
   LIST_INIT(&ready_list_);
   LIST_INIT(&tmp_list_);
@@ -539,6 +542,11 @@ void SimpleLibuvEpollServer::LogStateOnCrash() {
       << "-------------------/Epoll Server------------------------";
 }
 
+void SimpleLibuvEpollServer::TriggerAsync()
+{
+  uv_async_send(&asynchandle);
+}
+
 void SimpleLibuvEpollServer::eventcallback( uv_poll_t *handle, int status, int events ) {
     SimpleLibuvEpollServer* server = (SimpleLibuvEpollServer*) handle->data ;
     int fd ;
@@ -552,6 +560,12 @@ void SimpleLibuvEpollServer::timercallback(uv_timer_t *handle)
 }
 
 void SimpleLibuvEpollServer::closecallback( uv_handle_t* handle ) {
+}
+
+void SimpleLibuvEpollServer::asynccallback(uv_async_t *handle)
+{
+  SimpleLibuvEpollServer* server = (SimpleLibuvEpollServer*) handle->data ;
+  if (server->asynccb_) server->asynccb_->OnAsyncExecution();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

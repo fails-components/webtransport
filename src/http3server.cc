@@ -40,6 +40,7 @@ namespace quic
         AsyncProgressQueueWorker(callback),
         progress_(nullptr), objnum_(1)
   {
+    epoll_server_.SetAsyncCallback(this);
   }
 
   Http3Server::~Http3Server()
@@ -180,9 +181,13 @@ namespace quic
     while (!quit_.HasBeenNotified())
     {
       epoll_server_.WaitForEventsAndExecuteCallbacks();
-      ExecuteScheduledActions();
     }
     progress_ = nullptr;
+  }
+
+  void Http3Server::OnAsyncExecution()
+  {
+     ExecuteScheduledActions();
   }
 
   void Http3Server::ExecuteScheduledActions()
@@ -204,6 +209,7 @@ namespace quic
     QUICHE_DCHECK(!quit_.HasBeenNotified());
     QuicWriterMutexLock lock(&scheduled_actions_lock_);
     scheduled_actions_.push_back(std::move(action));
+    epoll_server_.TriggerAsync();
   }
 
   uint32_t Http3Server::getNewObjNum()
