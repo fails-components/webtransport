@@ -62,15 +62,15 @@ namespace quic
              Nan::GetFunction(tpl).ToLocalChecked());
 
     // http3wtsessionvisitor
-    v8::Local<v8::FunctionTemplate> tplwt = Nan::New<v8::FunctionTemplate>(Http3WTSessionVisitor::New);
-    tplwt->SetClassName(Nan::New("Http3WTSessionVisitor").ToLocalChecked());
+    v8::Local<v8::FunctionTemplate> tplwt = Nan::New<v8::FunctionTemplate>(Http3WTSession::New);
+    tplwt->SetClassName(Nan::New("Http3WTSession").ToLocalChecked());
     tplwt->InstanceTemplate()->SetInternalFieldCount(1);
-    Nan::SetPrototypeMethod(tplwt, "orderBidiStream", Http3WTSessionVisitor::orderBidiStream);
-    Nan::SetPrototypeMethod(tplwt, "orderUnidiStream", Http3WTSessionVisitor::orderUnidiStream);
-    Nan::SetPrototypeMethod(tplwt, "writeDatagram", Http3WTSessionVisitor::writeDatagram);
+    Nan::SetPrototypeMethod(tplwt, "orderBidiStream", Http3WTSession::orderBidiStream);
+    Nan::SetPrototypeMethod(tplwt, "orderUnidiStream", Http3WTSession::orderUnidiStream);
+    Nan::SetPrototypeMethod(tplwt, "writeDatagram", Http3WTSession::writeDatagram);
 
-    Http3WTSessionVisitor::constructor().Reset(Nan::GetFunction(tplwt).ToLocalChecked());
-    Nan::Set(target, Nan::New("Http3WTSessionVisitor").ToLocalChecked(),
+    Http3WTSession::constructor().Reset(Nan::GetFunction(tplwt).ToLocalChecked());
+    Nan::Set(target, Nan::New("Http3WTSession").ToLocalChecked(),
              Nan::GetFunction(tplwt).ToLocalChecked());
 
     // http3wtstreamvisitor
@@ -312,11 +312,11 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3Server::informAboutNewSession(Http3WTSessionVisitor *session, absl::string_view path)
+  void Http3Server::informAboutNewSession(Http3WTSession *session, absl::string_view path)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::NewSession;
-    report.sessionvisitor = session;
+    report.session = session;
     report.objnum = session->getObjNum();
     report.para = new std::string(path);
     if (progress_)
@@ -505,11 +505,11 @@ namespace quic
     callback->Call(1, argv);
   }
 
-  void Http3Server::processNewSession(Http3WTSessionVisitor *visitor, uint32_t objnum, const std::string &path)
+  void Http3Server::processNewSession(Http3WTSession *session, uint32_t objnum, const std::string &path)
   {
     HandleScope scope;
 
-    auto obj = Http3WTSessionVisitor::NewInstance(visitor);
+    auto obj = Http3WTSession::NewInstance(session);
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("Http3WTSessionVisitor").ToLocalChecked();
     v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
@@ -580,7 +580,7 @@ namespace quic
       {
       case Http3ProgressReport::NewSession:
       {
-        processNewSession(cur.sessionvisitor, cur.objnum, *cur.para);
+        processNewSession(cur.session, cur.objnum, *cur.para);
       }
       break;
       case Http3ProgressReport::SessionReady:

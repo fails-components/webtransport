@@ -8,22 +8,22 @@
 namespace quic
 {
 
-    void Http3WTSessionVisitor::OnSessionClosed(WebTransportSessionError error_code,
+    void Http3WTSession::Visitor::OnSessionClosed(WebTransportSessionError error_code,
                                                 const std::string &error_message)
     {
 
-        server_->informSessionClosed(objnum_, error_code, error_message);
+        session_->server_->informSessionClosed(session_->objnum_, error_code, error_message);
     }
 
-    void Http3WTSessionVisitor::OnSessionReady(const spdy::SpdyHeaderBlock &)
+    void Http3WTSession::Visitor::OnSessionReady(const spdy::SpdyHeaderBlock &)
     {
-        server_->informSessionReady(objnum_);
+        session_->server_->informSessionReady(session_->objnum_);
 
-        if (session_->CanOpenNextOutgoingBidirectionalStream())
+        if (session_->session_->CanOpenNextOutgoingBidirectionalStream())
         {
             OnCanCreateNewOutgoingBidirectionalStream();
         }
-        if (session_->CanOpenNextOutgoingUnidirectionalStream())
+        if (session_->session_->CanOpenNextOutgoingUnidirectionalStream())
         {
             OnCanCreateNewOutgoingUnidirectionalStream();
         }

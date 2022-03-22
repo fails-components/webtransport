@@ -28,7 +28,7 @@ namespace quic
 {
 
     class Http3Server;
-    class Http3WTSessionVisitor;
+    class Http3WTSession;
     class Http3WTStreamVisitor;
 
     struct Http3ProgressReport
@@ -59,7 +59,7 @@ namespace quic
         union
         {
             Http3WTStreamVisitor *streamvisitor;       // unowned
-            Http3WTSessionVisitor *sessionvisitor;     // unowned
+            Http3WTSession *session;     // unowned
             Nan::Persistent<v8::Object> *bufferhandle; // we own it and must delete it if present
             bool fin;
         };
@@ -110,7 +110,7 @@ namespace quic
 
         void OnAsyncExecution() override;
 
-        void informAboutNewSession(Http3WTSessionVisitor *session, absl::string_view path);
+        void informAboutNewSession(Http3WTSession *session, absl::string_view path);
         void informSessionClosed(uint32_t objnum_, WebTransportSessionError error_code, absl::string_view error_message);
         void informSessionReady(uint32_t objnum_);
 
@@ -176,7 +176,7 @@ namespace quic
 
         QuicDispatcher *CreateQuicDispatcher();
 
-        void processNewSession(Http3WTSessionVisitor *visitor, uint32_t objnum, const std::string &path);
+        void processNewSession(Http3WTSession *visitor, uint32_t objnum, const std::string &path);
         void processSessionClose(uint32_t objnum, uint32_t errorcode, const std::string &path);
         void processSessionReady(uint32_t objnum);
 
@@ -191,7 +191,6 @@ namespace quic
 
         const AsyncProgressQueueWorker::ExecutionProgress *progress_;
         uint32_t objnum_;
-        std::map<uint32_t, Http3WTSessionVisitor *> visitors;
     };
 
 }
