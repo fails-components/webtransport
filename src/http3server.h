@@ -29,7 +29,7 @@ namespace quic
 
     class Http3Server;
     class Http3WTSession;
-    class Http3WTStreamVisitor;
+    class Http3WTStream;
 
     struct Http3ProgressReport
     {
@@ -58,7 +58,7 @@ namespace quic
         };
         union
         {
-            Http3WTStreamVisitor *streamvisitor;       // unowned
+            Http3WTStream *stream;       // unowned
             Http3WTSession *session;     // unowned
             Nan::Persistent<v8::Object> *bufferhandle; // we own it and must delete it if present
             bool fin;
@@ -114,7 +114,7 @@ namespace quic
         void informSessionClosed(uint32_t objnum_, WebTransportSessionError error_code, absl::string_view error_message);
         void informSessionReady(uint32_t objnum_);
 
-        void informAboutStream(bool incom, bool bidir, uint32_t objnum_, Http3WTStreamVisitor *stream);
+        void informAboutStream(bool incom, bool bidir, uint32_t objnum_, Http3WTStream *stream);
         void informStreamClosed(uint32_t objnum, uint32_t strid);
         void informAboutStreamRead(uint32_t objnum, uint32_t strid, std::string *data, bool fin);
         void informAboutStreamWrite(uint32_t objnum, uint32_t strid, Nan::Persistent<v8::Object> *bufferhandle, bool success);
@@ -180,7 +180,7 @@ namespace quic
         void processSessionClose(uint32_t objnum, uint32_t errorcode, const std::string &path);
         void processSessionReady(uint32_t objnum);
 
-        void processStream(bool incom, bool bidi, uint32_t objnum, Http3WTStreamVisitor *streamvisitor, uint32_t streamid);
+        void processStream(bool incom, bool bidi, uint32_t objnum, Http3WTStream *stream, uint32_t streamid);
         void processStreamClosed(uint32_t objnum, uint32_t streamid);
         void processStreamRead(uint32_t objnum, uint32_t streamid, std::string *data, bool fin);
         void processStreamWrite(uint32_t objnum, uint32_t strid, Nan::Persistent<v8::Object> *bufferhandle, bool success);

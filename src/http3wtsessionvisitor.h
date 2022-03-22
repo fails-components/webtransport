@@ -72,12 +72,13 @@ namespace quic
                     {
                         return;
                     }
+                    Http3WTStream * wtstream = new Http3WTStream(stream, session_->objnum_, session_->server_);
                     QUIC_DVLOG(1)
-                        << "Http3WTSessionVisitor received a bidirectional stream "
+                        << "Http3WTSession received a bidirectional stream "
                         << stream->GetStreamId();
                     stream->SetVisitor(
-                        std::make_unique<Http3WTStreamVisitor>(stream, session_->objnum_, session_->server_));
-                    session_->server_->informAboutStream(true, true, session_->objnum_, static_cast<Http3WTStreamVisitor *>(stream->visitor()));
+                        std::make_unique<Http3WTStream::Visitor>(wtstream));
+                    session_->server_->informAboutStream(true, true, session_->objnum_, static_cast<Http3WTStream *>(wtstream));
                     stream->visitor()->OnCanRead();
                 }
             }
@@ -92,11 +93,12 @@ namespace quic
                     {
                         return;
                     }
+                    Http3WTStream * wtstream = new Http3WTStream(stream, session_->objnum_, session_->server_);
                     QUIC_DVLOG(1)
-                        << "Http3WTSessionVisitor received a unidirectional stream";
+                        << "Http3WTSession received a unidirectional stream";
                     stream->SetVisitor(
-                        std::make_unique<Http3WTStreamVisitor>(stream, session_->objnum_, session_->server_));
-                    session_->server_->informAboutStream(true, false, session_->objnum_, static_cast<Http3WTStreamVisitor *>(stream->visitor()));
+                        std::make_unique<Http3WTStream::Visitor>(wtstream));
+                    session_->server_->informAboutStream(true, false, session_->objnum_, static_cast<Http3WTStream *>(wtstream));
                     stream->visitor()->OnCanRead();
                 }
             }
@@ -147,9 +149,10 @@ namespace quic
                 QUIC_DVLOG(1)
                     << "Http3WTSessionVisitor opens a bidirectional stream";
                 WebTransportStream *stream = session_->OpenOutgoingBidirectionalStream();
+                Http3WTStream * wtstream = new Http3WTStream(stream, objnum_, server_);
                 stream->SetVisitor(
-                    std::make_unique<Http3WTStreamVisitor>(stream, objnum_, server_));
-                server_->informAboutStream(false, true, objnum_, static_cast<Http3WTStreamVisitor *>(stream->visitor()));
+                    std::make_unique<Http3WTStream::Visitor>(wtstream));
+                server_->informAboutStream(false, true, objnum_, static_cast<Http3WTStream *>(wtstream));
                 stream->visitor()->OnCanWrite();
                 ordBidiStreams--;
             }
@@ -164,9 +167,11 @@ namespace quic
                 QUIC_DVLOG(1)
                     << "Http3WTSessionVisitor opened a unidirectional stream";
                 WebTransportStream *stream = session_->OpenOutgoingUnidirectionalStream();
+                Http3WTStream * wtstream = new Http3WTStream(stream, objnum_, server_);
                 stream->SetVisitor(
-                    std::make_unique<Http3WTStreamVisitor>(stream, objnum_, server_));
-                server_->informAboutStream(false, false, objnum_, static_cast<Http3WTStreamVisitor *>(stream->visitor()));
+                    std::make_unique<Http3WTStream::Visitor>(wtstream));
+
+                server_->informAboutStream(false, false, objnum_, static_cast<Http3WTStream *>(wtstream));
                 stream->visitor()->OnCanWrite();
                 ordUnidiStreams--;
             }

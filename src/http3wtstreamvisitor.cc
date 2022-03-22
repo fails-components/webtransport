@@ -8,7 +8,7 @@
 namespace quic
 {
 
-    Http3WTStreamVisitor::~Http3WTStreamVisitor()
+    Http3WTStream::~Http3WTStream()
     {
         while (chunks_.size() > 0)
         {
@@ -22,7 +22,7 @@ namespace quic
         server_->informStreamClosed(parentobjnum_, stream_->GetStreamId());
     }
 
-    void Http3WTStreamVisitor::OnCanRead()
+    void Http3WTStream::doCanRead()
     {
         // first figure out if we have readable data
         size_t readable = stream_->ReadableBytes();
@@ -40,7 +40,7 @@ namespace quic
         }
     }
 
-    void Http3WTStreamVisitor::OnCanWrite()
+    void Http3WTStream::doCanWrite()
     {
         if (stop_sending_received_ || pause_reading_)
         {

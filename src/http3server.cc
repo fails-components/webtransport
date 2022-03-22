@@ -74,16 +74,16 @@ namespace quic
              Nan::GetFunction(tplwt).ToLocalChecked());
 
     // http3wtstreamvisitor
-    v8::Local<v8::FunctionTemplate> tplwtsv = Nan::New<v8::FunctionTemplate>(Http3WTStreamVisitor::New);
-    tplwtsv->SetClassName(Nan::New("Http3WTStreamVisitor").ToLocalChecked());
+    v8::Local<v8::FunctionTemplate> tplwtsv = Nan::New<v8::FunctionTemplate>(Http3WTStream::New);
+    tplwtsv->SetClassName(Nan::New("Http3WTStream").ToLocalChecked());
     tplwtsv->InstanceTemplate()->SetInternalFieldCount(1);
-    Nan::SetPrototypeMethod(tplwtsv, "writeChunk", Http3WTStreamVisitor::writeChunk);
-    Nan::SetPrototypeMethod(tplwtsv, "closeStream", Http3WTStreamVisitor::closeStream);
-    Nan::SetPrototypeMethod(tplwtsv, "startReading", Http3WTStreamVisitor::startReading);
-    Nan::SetPrototypeMethod(tplwtsv, "stopReading", Http3WTStreamVisitor::stopReading);
+    Nan::SetPrototypeMethod(tplwtsv, "writeChunk", Http3WTStream::writeChunk);
+    Nan::SetPrototypeMethod(tplwtsv, "closeStream", Http3WTStream::closeStream);
+    Nan::SetPrototypeMethod(tplwtsv, "startReading", Http3WTStream::startReading);
+    Nan::SetPrototypeMethod(tplwtsv, "stopReading", Http3WTStream::stopReading);
 
-    Http3WTStreamVisitor::constructor().Reset(Nan::GetFunction(tplwtsv).ToLocalChecked());
-    Nan::Set(target, Nan::New("Http3WTStreamVisitor").ToLocalChecked(),
+    Http3WTStream::constructor().Reset(Nan::GetFunction(tplwtsv).ToLocalChecked());
+    Nan::Set(target, Nan::New("Http3WTStream").ToLocalChecked(),
              Nan::GetFunction(tplwtsv).ToLocalChecked());
   }
 
@@ -217,7 +217,7 @@ namespace quic
     return objnum_++;
   }
 
-  void Http3Server::informAboutStream(bool incom, bool bidir, uint32_t objnum, Http3WTStreamVisitor *stream)
+  void Http3Server::informAboutStream(bool incom, bool bidir, uint32_t objnum, Http3WTStream *stream)
   {
     struct Http3ProgressReport report;
     if (incom)
@@ -243,7 +243,7 @@ namespace quic
       }
     }
     report.objnum = objnum;
-    report.streamvisitor = stream;
+    report.stream = stream;
     report.streamid = stream->getStreamId();
     if (progress_)
       progress_->Send(&report, 1);
@@ -351,12 +351,12 @@ namespace quic
     delete sdata;
   }
 
-  void Http3Server::processStream(bool incom, bool bidi, uint32_t objnum, Http3WTStreamVisitor *streamvisitor, uint32_t streamid)
+  void Http3Server::processStream(bool incom, bool bidi, uint32_t objnum, Http3WTStream *stream, uint32_t streamid)
   {
 
     HandleScope scope;
 
-    auto obj = Http3WTStreamVisitor::NewInstance(streamvisitor);
+    auto obj = Http3WTStream::NewInstance(stream);
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("Http3WTStreamVisitor").ToLocalChecked();
     v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
@@ -595,22 +595,22 @@ namespace quic
       break;
       case Http3ProgressReport::IncomBiDiStream:
       {
-        processStream(true, true, cur.objnum, cur.streamvisitor, cur.streamid);
+        processStream(true, true, cur.objnum, cur.stream, cur.streamid);
       }
       break;
       case Http3ProgressReport::IncomUniDiStream:
       {
-        processStream(true, false, cur.objnum, cur.streamvisitor, cur.streamid);
+        processStream(true, false, cur.objnum, cur.stream, cur.streamid);
       }
       break;
       case Http3ProgressReport::OutgoBiDiStream:
       {
-        processStream(false, true, cur.objnum, cur.streamvisitor, cur.streamid);
+        processStream(false, true, cur.objnum, cur.stream, cur.streamid);
       }
       break;
       case Http3ProgressReport::OutgoUniDiStream:
       {
-        processStream(false, false, cur.objnum, cur.streamvisitor, cur.streamid);
+        processStream(false, false, cur.objnum, cur.stream, cur.streamid);
       }
       break;
       case Http3ProgressReport::StreamClosed:

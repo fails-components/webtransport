@@ -26,23 +26,73 @@ namespace quic
 {
     class Http3Server;
 
-    class Http3WTStreamVisitor : public WebTransportStreamVisitor, public Nan::ObjectWrap
+    class Http3WTStream : public Nan::ObjectWrap
     {
     public:
-        Http3WTStreamVisitor(WebTransportStream *stream, uint32_t pobjnum, Http3Server *server)
+        Http3WTStream(WebTransportStream *stream, uint32_t pobjnum, Http3Server *server)
             : stream_(stream), parentobjnum_(pobjnum), server_(server) {}
 
-        ~Http3WTStreamVisitor();
+        ~Http3WTStream();
 
-        void OnCanRead() override;
+        class Visitor : public WebTransportStreamVisitor
+        {
+        public:
+            Visitor(Http3WTStream *stream) : stream_(stream) {}
 
-        void OnCanWrite() override;
+            ~Visitor()
+            {
+                Http3WTStream *strobj = stream_;
+                std::function<void()> task = [strobj]()
+                { strobj->Unref(); };
+                stream_->server_->Schedule(task);
+            }
+
+            void OnCanRead() override {
+                stream_->doCanRead();
+            }
+
+            void OnCanWrite() override
+            {
+                stream_->doCanWrite();
+            }
+
+            void OnResetStreamReceived(WebTransportStreamError /*error*/) override
+            {
+                // Send FIN in response to a stream reset.  We want to test that we can
+                // operate one side of the stream cleanly while the other is reset, thus
+                // replying with a FIN rather than a RESET_STREAM is more appropriate here.
+                stream_->send_fin_ = true;
+                OnCanWrite();
+            }
+            void OnStopSendingReceived(WebTransportStreamError /*error*/) override
+            {
+                stream_->stop_sending_received_ = true;
+            }
+            void OnWriteSideInDataRecvdState() override {}
+
+            void OnStopReading()
+            {
+                stream_->doStopReading();
+            }
+
+        protected:
+            Http3WTStream *stream_;
+        };
+
+        void doCanRead();
+
+        void doCanWrite();
+
+        void doStopReading()
+        {
+            pause_reading_ = true;
+        }
 
         void tryWrite()
         {
             if (stream_->CanWrite())
             {
-                OnCanWrite();
+                doCanWrite();
             }
         }
 
@@ -51,27 +101,8 @@ namespace quic
             pause_reading_ = false;
             if (stream_->ReadableBytes() > 0)
             {
-                OnCanRead();
+                doCanRead();
             }
-        }
-
-        void OnResetStreamReceived(WebTransportStreamError /*error*/) override
-        {
-            // Send FIN in response to a stream reset.  We want to test that we can
-            // operate one side of the stream cleanly while the other is reset, thus
-            // replying with a FIN rather than a RESET_STREAM is more appropriate here.
-            send_fin_ = true;
-            OnCanWrite();
-        }
-        void OnStopSendingReceived(WebTransportStreamError /*error*/) override
-        {
-            stop_sending_received_ = true;
-        }
-        void OnWriteSideInDataRecvdState() override {}
-
-        void OnStopReading()
-        {
-            pause_reading_ = true;
         }
 
         uint32_t getStreamId() { return stream_->GetStreamId(); }
@@ -80,7 +111,7 @@ namespace quic
 
         static NAN_METHOD(startReading)
         {
-            Http3WTStreamVisitor *obj = Nan::ObjectWrap::Unwrap<Http3WTStreamVisitor>(info.Holder());
+            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
             if (!info[0]->IsUndefined())
             {
                 v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
@@ -93,20 +124,20 @@ namespace quic
 
         static NAN_METHOD(stopReading)
         {
-            Http3WTStreamVisitor *obj = Nan::ObjectWrap::Unwrap<Http3WTStreamVisitor>(info.Holder());
+            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
             if (!info[0]->IsUndefined())
             {
                 v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
 
                 std::function<void()> task = [obj]()
-                { obj->OnStopReading(); };
+                { obj->doStopReading(); };
                 obj->server_->Schedule(task);
             }
         }
 
         static NAN_METHOD(writeChunk)
         {
-            Http3WTStreamVisitor *obj = Nan::ObjectWrap::Unwrap<Http3WTStreamVisitor>(info.Holder());
+            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
             // ok we have to get the buffer
             if (!info[0]->IsUndefined())
             {
@@ -124,7 +155,7 @@ namespace quic
 
         static NAN_METHOD(closeStream)
         {
-            Http3WTStreamVisitor *obj = Nan::ObjectWrap::Unwrap<Http3WTStreamVisitor>(info.Holder());
+            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
             std::function<void()> task = [obj]()
             { obj->send_fin_ = true; };
         }
@@ -133,20 +164,20 @@ namespace quic
         {
             if (!info.IsConstructCall())
             {
-                return Nan::ThrowError("Http3WTStreamVisitor() must be called as a constructor");
+                return Nan::ThrowError("Http3WTStream() must be called as a constructor");
             }
 
             if (info.Length() != 1 || !info[0]->IsExternal())
             {
-                return Nan::ThrowError("Http3WTStreamVisitor() can only be called internally");
+                return Nan::ThrowError("Http3WTStream() can only be called internally");
             }
 
-            Http3WTStreamVisitor *obj = static_cast<Http3WTStreamVisitor *>(info[0].As<v8::External>()->Value());
+            Http3WTStream *obj = static_cast<Http3WTStream *>(info[0].As<v8::External>()->Value());
             obj->Wrap(info.This());
             info.GetReturnValue().Set(info.This());
         }
 
-        static v8::Local<v8::Object> NewInstance(Http3WTStreamVisitor *sv)
+        static v8::Local<v8::Object> NewInstance(Http3WTStream *sv)
         {
             Nan::EscapableHandleScope scope;
 
@@ -154,6 +185,8 @@ namespace quic
             v8::Local<v8::Value> argv[argc] = {Nan::New<v8::External>(sv)};
             v8::Local<v8::Function> constr = Nan::New<v8::Function>(constructor());
             v8::Local<v8::Object> instance = Nan::NewInstance(constr, argc, argv).ToLocalChecked();
+
+            sv->Ref();
 
             return scope.Escape(instance);
         }
