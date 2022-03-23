@@ -51,7 +51,7 @@ namespace quic
 
             ~Visitor()
             {
-                Http3WTSession * sessobj = session_;
+                Http3WTSession *sessobj = session_;
                 std::function<void()> task = [sessobj]()
                 { sessobj->Unref(); };
                 session_->server_->Schedule(task);
@@ -72,7 +72,7 @@ namespace quic
                     {
                         return;
                     }
-                    Http3WTStream * wtstream = new Http3WTStream(stream, session_->objnum_, session_->server_);
+                    Http3WTStream *wtstream = new Http3WTStream(stream, session_->objnum_, session_->server_);
                     QUIC_DVLOG(1)
                         << "Http3WTSession received a bidirectional stream "
                         << stream->GetStreamId();
@@ -93,7 +93,7 @@ namespace quic
                     {
                         return;
                     }
-                    Http3WTStream * wtstream = new Http3WTStream(stream, session_->objnum_, session_->server_);
+                    Http3WTStream *wtstream = new Http3WTStream(stream, session_->objnum_, session_->server_);
                     QUIC_DVLOG(1)
                         << "Http3WTSession received a unidirectional stream";
                     stream->SetVisitor(
@@ -125,7 +125,6 @@ namespace quic
 
         protected:
             Http3WTSession *session_;
-
         };
 
         void
@@ -149,7 +148,7 @@ namespace quic
                 QUIC_DVLOG(1)
                     << "Http3WTSessionVisitor opens a bidirectional stream";
                 WebTransportStream *stream = session_->OpenOutgoingBidirectionalStream();
-                Http3WTStream * wtstream = new Http3WTStream(stream, objnum_, server_);
+                Http3WTStream *wtstream = new Http3WTStream(stream, objnum_, server_);
                 stream->SetVisitor(
                     std::make_unique<Http3WTStream::Visitor>(wtstream));
                 server_->informAboutStream(false, true, objnum_, static_cast<Http3WTStream *>(wtstream));
@@ -167,7 +166,7 @@ namespace quic
                 QUIC_DVLOG(1)
                     << "Http3WTSessionVisitor opened a unidirectional stream";
                 WebTransportStream *stream = session_->OpenOutgoingUnidirectionalStream();
-                Http3WTStream * wtstream = new Http3WTStream(stream, objnum_, server_);
+                Http3WTStream *wtstream = new Http3WTStream(stream, objnum_, server_);
                 stream->SetVisitor(
                     std::make_unique<Http3WTStream::Visitor>(wtstream));
 
@@ -249,6 +248,40 @@ namespace quic
             }
         }
 
+        static NAN_METHOD(close)
+        {
+            Http3WTSession *obj = Nan::ObjectWrap::Unwrap<Http3WTSession>(info.Holder());
+            int code = 0;
+            std::string reason("unknown reason");
+            v8::Isolate *isolate = info.GetIsolate();
+
+            if (!info[0]->IsUndefined())
+            {
+                v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+                v8::MaybeLocal<v8::Object> obj = info[0]->ToObject(context);
+                v8::Local<v8::String> codeProp = Nan::New("code").ToLocalChecked();
+                v8::Local<v8::String> reasonProp = Nan::New("reason").ToLocalChecked();
+                if (!obj.IsEmpty())
+                {
+                    v8::Local<v8::Object> lobj = obj.ToLocalChecked();
+                    if (Nan::HasOwnProperty(lobj, codeProp).FromJust() && !Nan::Get(lobj, codeProp).IsEmpty())
+                    {
+                        v8::Local<v8::Value> codeValue = Nan::Get(lobj, codeProp).ToLocalChecked();
+                        code = Nan::To<int>(codeValue).FromJust();
+                    }
+                    if (Nan::HasOwnProperty(lobj, reasonProp).FromJust() && !Nan::Get(lobj, reasonProp).IsEmpty())
+                    {
+                        v8::Local<v8::Value> reasonValue = Nan::Get(lobj, reasonProp).ToLocalChecked();
+                        reason = *v8::String::Utf8Value(isolate, reasonValue->ToString(context).ToLocalChecked());
+                    }
+                }
+            }
+
+            std::function<void()> task = [obj,code,reason]()
+            { obj->session_->CloseSession(code, reason); };
+            obj->server_->Schedule(task);
+        }
+
         uint32_t getObjNum() { return objnum_; }
 
     private:
@@ -296,6 +329,5 @@ namespace quic
         uint32_t ordBidiStreams;
         uint32_t ordUnidiStreams;
     };
-
 }
 #endif

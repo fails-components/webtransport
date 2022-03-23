@@ -97,6 +97,7 @@ class Http3WTSession {
     this.id = args.id
     this.objint = args.object
     this.parentobj = args.parentobj
+    this.state = 'connected'
 
     this.ready = new Promise((res, rej) => {
       this.readyResolve = res
@@ -171,6 +172,13 @@ class Http3WTSession {
     return prom
   }
 
+  close(closeInfo) {
+    if (this.state === 'closed' ||  this.state === 'failed' ) return
+    if(this.objint) {
+      this.objint.close({code: closeInfo.closeCode, reason: closeInfo.reason.substring(0,1023)}) ;
+    }
+  }
+
   onReady(error) {
     if (this.readyResolve) this.readyResolve()
     delete this.readyResolve
@@ -191,6 +199,8 @@ class Http3WTSession {
     this.incomBiDiController.close()
     this.incomUniDiController.close()
     this.incomDatagramController.close()
+    this.state = 'closed'
+    delete this.parentobj.visitors[this.id]
 
     if (this.closedResolve) this.closedResolve(errorcode)
   }

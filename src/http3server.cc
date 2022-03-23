@@ -68,6 +68,7 @@ namespace quic
     Nan::SetPrototypeMethod(tplwt, "orderBidiStream", Http3WTSession::orderBidiStream);
     Nan::SetPrototypeMethod(tplwt, "orderUnidiStream", Http3WTSession::orderUnidiStream);
     Nan::SetPrototypeMethod(tplwt, "writeDatagram", Http3WTSession::writeDatagram);
+    Nan::SetPrototypeMethod(tplwt, "close", Http3WTSession::close);
 
     Http3WTSession::constructor().Reset(Nan::GetFunction(tplwt).ToLocalChecked());
     Nan::Set(target, Nan::New("Http3WTSession").ToLocalChecked(),
