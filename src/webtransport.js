@@ -21,6 +21,7 @@ class Http3WTStream {
     this.parentobj = args.parentobj
     this.bidirectional = args.bidirectional
     this.incoming = args.incoming
+    this.closed = false
 
     this.writeChunksRes = []
     this.writeChunksRej = []
@@ -32,6 +33,11 @@ class Http3WTStream {
           this.objint.startReading()
         },
         pull: async (controller) => {
+          if (this.closed) {
+            return new Promise((res,rej)=>{
+              rej()
+            })
+          }
           this.objint.startReading()
         },
         cancel: (controller) => {
@@ -45,6 +51,11 @@ class Http3WTStream {
           this.writableController = controller
         },
         write: (chunk, controller) => {
+          if (this.closed) {
+            return new Promise((res,rej)=>{
+              rej()
+            })
+          }
           if (chunk instanceof Uint8Array) {
             const ret = new Promise((res, rej) => {
               this.writeChunksRes.push(res)
@@ -55,7 +66,7 @@ class Http3WTStream {
           } else throw new Error('chunk is not of instanceof Uint8Array ')
         },
         close: (controller) => {
-          this.objint.closeStream()
+          if (!this.closed) this.objint.closeStream()
         }
       })
     }
@@ -66,6 +77,7 @@ class Http3WTStream {
     for (const rej in this.writeChunksRej) rej()
     this.writeChunksRej = []
     this.writeChunksRes = []
+    this.closed = true
   }
 
   onStreamRead(args) {
