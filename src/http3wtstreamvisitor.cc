@@ -8,18 +8,25 @@
 namespace quic
 {
 
-    Http3WTStream::~Http3WTStream()
+    Http3WTStream::Visitor::~Visitor()
     {
-        while (chunks_.size() > 0)
+        while (stream_->chunks_.size() > 0)
         {
-            auto cur = chunks_.front();
+            auto cur = stream_->chunks_.front();
 
             // now we have to inform the server TODO
-            server_->informAboutStreamWrite(parentobjnum_, stream_->GetStreamId(), cur.bufferhandle, false);
+            stream_->server_->informAboutStreamWrite(stream_->parentobjnum_, stream_->stream_->GetStreamId(), cur.bufferhandle, false);
 
-            chunks_.pop_front();
+            stream_->chunks_.pop_front();
         }
-        server_->informStreamClosed(parentobjnum_, stream_->GetStreamId());
+        stream_->server_->informStreamClosed(stream_->parentobjnum_, stream_->stream_->GetStreamId());
+        
+        Http3WTStream *strobj = stream_;
+        std::function<void()> task = [strobj]()
+        { strobj->Unref(); };
+        stream_->server_->Schedule(task);
+
+        stream_->stream_ =  nullptr;
     }
 
     void Http3WTStream::doCanRead()

@@ -32,20 +32,15 @@ namespace quic
         Http3WTStream(WebTransportStream *stream, uint32_t pobjnum, Http3Server *server)
             : stream_(stream), parentobjnum_(pobjnum), server_(server) {}
 
-        ~Http3WTStream();
+        ~Http3WTStream(){};
 
         class Visitor : public WebTransportStreamVisitor
         {
         public:
             Visitor(Http3WTStream *stream) : stream_(stream) {}
 
-            ~Visitor()
-            {
-                Http3WTStream *strobj = stream_;
-                std::function<void()> task = [strobj]()
-                { strobj->Unref(); };
-                stream_->server_->Schedule(task);
-            }
+            ~Visitor();
+            
 
             void OnCanRead() override {
                 stream_->doCanRead();
