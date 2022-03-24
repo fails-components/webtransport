@@ -19,6 +19,7 @@ class Http3WTStream {
     this.objint = args.object
     this.parentid = args.parentid
     this.parentobj = args.parentobj
+    this.transport = args.transport
     this.bidirectional = args.bidirectional
     this.incoming = args.incoming
     this.closed = false
@@ -75,6 +76,7 @@ class Http3WTStream {
   onStreamClosed(args) {
     if (this.readable) this.readableController.close()
     for (const rej in this.writeChunksRej) rej()
+    this.transport.removeStream(this.parentid, this.id)
     this.writeChunksRej = []
     this.writeChunksRes = []
     this.closed = true
@@ -119,7 +121,6 @@ class Http3WTSession {
       this.closedResolve = res
       this.closedReject = rej
     })
-    this.streams = {}
 
     this.incomingBidirectionalStreams = new ReadableStream({
       start: async (controller) => {
@@ -212,7 +213,7 @@ class Http3WTSession {
     this.incomUniDiController.close()
     this.incomDatagramController.close()
     this.state = 'closed'
-    delete this.parentobj.visitors[this.id]
+    delete this.parentobj.sessions[this.id]
 
     if (this.closedResolve) this.closedResolve(errorcode)
   }
@@ -223,10 +224,11 @@ class Http3WTSession {
       object: args.object,
       parentid: args.id,
       parentobj: this,
+      transport: this.parentobj,
       bidirectional: args.bidirectional,
       incoming: args.incoming
     })
-    this.streams[args.streamid] = strobj
+    this.parentobj.addStream(args.id, args.streamid, strobj)
     if (args.incoming) {
       if (args.bidirectional) {
         this.incomBiDiController.enqueue(strobj)
@@ -249,30 +251,6 @@ class Http3WTSession {
       }
     }
   }
-  onStreamClosed(args) {
-    const streamref = this.streams[args.streamid]
-    if (! streamref)
-       throw new Error('Unknown stream in streamClosed')
-
-    streamref.onStreamClosed(args)
-    delete this.streams[args.streamid] 
-  }
-
-  onStreamRead(args) {
-    const streamref = this.streams[args.streamid]
-    if (! streamref)
-       throw new Error('Unknown stream in streamRead')
-
-    streamref.onStreamRead(args)
-  }
-
-  onStreamWrite(args) {
-    const streamref = this.streams[args.streamid]
-    if (! streamref)
-       throw new Error('Unknown stream in streamWrite')
-
-    streamref.onStreamWrite(args)
-  }
 
   onDatagramReceived(args) {
     this.incomDatagramController.enqueue(args.datagram)
@@ -290,10 +268,40 @@ export class Http3Server {
     this.serverCallback = this.serverCallback.bind(this)
     this.serverInt = wtrouter.Http3Server(args, this.serverCallback)
 
-    this.visitors = {}
+    this.sessions = {}
+    this.streams = {}
 
     this.sessionStreams = {}
     this.sessionController = {}
+  }
+
+  addStream(sessionid, streamid, stream)
+  {
+    let sessinfo = this.streams[sessionid]
+    if (!sessinfo) {
+      sessinfo = {numstreams: 0}
+      this.streams[sessionid] = sessinfo
+
+    }
+    sessinfo[streamid] = stream
+  }
+
+  getStream(sessionid, streamid)
+  {
+    let sessinfo = this.streams[sessionid]
+    if (!sessinfo) throw new Error('unknown session for stream')
+    if (!sessinfo[streamid]) throw new Error('unknown streamid for stream')
+    return sessinfo[streamid]
+  }
+
+  removeStream(sessionid, streamid)
+  {
+    let sessinfo = this.streams[sessionid]
+    if (!sessinfo) throw new Error('unknown session for stream')
+    if (!sessinfo[streamid]) throw new Error('unknown streamid for stream')
+    delete sessinfo[streamid]
+    sessinfo.numstreams--
+    if (sessinfo.numstreams === 0) delete this.streams[sessionid]
   }
 
   serverCallback(args) {
@@ -309,7 +317,7 @@ export class Http3Server {
                 object: args.object,
                 parentobj: this
               })
-              this.visitors[args.id] = sesobj
+              this.sessions[args.id] = sesobj
               if (this.sessionController[args.path])
                 this.sessionController[args.path].enqueue(sesobj)
             } else throw new Error('Http3WTSessionVisitor')
@@ -317,21 +325,21 @@ export class Http3Server {
           break
         case 'SessionReady':
           {
-            const visitor = this.visitors[args.id]
+            const visitor = this.sessions[args.id]
             if (visitor) visitor.onReady()
           }
           break
         case 'SessionClose':
           {
-            const visitor = this.visitors[args.id]
+            const visitor = this.sessions[args.id]
             if (visitor)
               visitor.onClose(args.errorcode, args.error)
-            delete this.visitors[args.id]
+            delete this.sessions[args.id]
           }
           break
         case 'DatagramReceived':
           {
-            const visitor = this.visitors[args.id]
+            const visitor = this.sessions[args.id]
             if (
               args.id &&
               visitor &&
@@ -342,14 +350,14 @@ export class Http3Server {
           break
         case 'DatagramSend':
           {
-            const visitor = this.visitors[args.id]
+            const visitor = this.sessions[args.id]
             if (args.id && visitor)
               visitor.onDatagramSend(args)
           }
           break
         case 'Http3WTStreamVisitor':
           {
-            const visitor = this.visitors[args.id]
+            const visitor = this.sessions[args.id]
             if (
               visitor &&
               args.streamid &&
@@ -363,19 +371,15 @@ export class Http3Server {
           break
         case 'StreamClosed':
           {
-            const visitor = this.visitors[args.id]
-            if (visitor && args.streamid && args.id) {
-              visitor.onStreamClosed(args)
-            } else throw new Error('Malformed StreamClosed')
+            const visitor = this.getStream(args.id, args.streamid)
+            visitor.onStreamClosed(args)
           }
           break
         case 'StreamRead':
           {
-            const visitor = this.visitors[args.id]
+            const visitor =  this.getStream(args.id, args.streamid)
             if (
               visitor &&
-              args.streamid &&
-              args.id &&
               args.hasOwnProperty('data')
             ) {
               visitor.onStreamRead(args)
@@ -384,10 +388,8 @@ export class Http3Server {
           break
         case 'StreamWrite':
           {
-            const visitor = this.visitors[args.id]
-            if (visitor && args.streamid && args.id) {
-              visitor.onStreamWrite(args)
-            } else throw new Error('Malformed StreamWrite')
+            const visitor =  this.getStream(args.id, args.streamid) 
+            visitor.onStreamWrite(args)
           }
           break
         default:
