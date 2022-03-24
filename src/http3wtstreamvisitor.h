@@ -30,7 +30,7 @@ namespace quic
     {
     public:
         Http3WTStream(WebTransportStream *stream, uint32_t pobjnum, Http3Server *server)
-            : stream_(stream), parentobjnum_(pobjnum), server_(server) {}
+            : stream_(stream), parentobjnum_(pobjnum), server_(server), objnum_(stream->GetStreamId()) {}
 
         ~Http3WTStream(){};
 
@@ -40,9 +40,9 @@ namespace quic
             Visitor(Http3WTStream *stream) : stream_(stream) {}
 
             ~Visitor();
-            
 
-            void OnCanRead() override {
+            void OnCanRead() override
+            {
                 stream_->doCanRead();
             }
 
@@ -100,7 +100,7 @@ namespace quic
             }
         }
 
-        uint32_t getStreamId() { return stream_->GetStreamId(); }
+        uint32_t getStreamId() { return objnum_; }
 
         // nan stuff
 
@@ -112,7 +112,8 @@ namespace quic
                 v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
 
                 std::function<void()> task = [obj]()
-                { obj->tryRead(); };
+                { if (!obj->stream_) return; // we do not have to cancel a promise?
+                  obj->tryRead(); };
                 obj->server_->Schedule(task);
             }
         }
@@ -204,6 +205,11 @@ namespace quic
 
         void writeChunkInt(char *buffer, size_t len, Nan::Persistent<v8::Object> *bufferhandle)
         {
+            if (!stream_)
+            {
+                cancelWrite(bufferhandle);
+                return;
+            }
             WChunks cur;
             cur.buffer = buffer;
             cur.len = len;
@@ -212,10 +218,13 @@ namespace quic
             tryWrite();
         }
 
+        void cancelWrite(Nan::Persistent<v8::Object> *handle);
+
     private:
         WebTransportStream *stream_;
         Http3Server *server_;
-        uint32_t parentobjnum_;
+        const uint32_t parentobjnum_;
+        const uint32_t objnum_;
         bool send_fin_ = false;
         bool stop_sending_received_ = false;
         bool pause_reading_ = false;

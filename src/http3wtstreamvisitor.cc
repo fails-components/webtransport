@@ -15,18 +15,23 @@ namespace quic
             auto cur = stream_->chunks_.front();
 
             // now we have to inform the server TODO
-            stream_->server_->informAboutStreamWrite(stream_->parentobjnum_, stream_->stream_->GetStreamId(), cur.bufferhandle, false);
+            stream_->server_->informAboutStreamWrite(stream_->parentobjnum_, stream_->getStreamId(), cur.bufferhandle, false);
 
             stream_->chunks_.pop_front();
         }
-        stream_->server_->informStreamClosed(stream_->parentobjnum_, stream_->stream_->GetStreamId());
-        
+        stream_->server_->informStreamClosed(stream_->parentobjnum_, stream_->getStreamId());
+
         Http3WTStream *strobj = stream_;
         std::function<void()> task = [strobj]()
         { strobj->Unref(); };
         stream_->server_->Schedule(task);
 
-        stream_->stream_ =  nullptr;
+        stream_->stream_ = nullptr;
+    }
+
+    void Http3WTStream::cancelWrite(Nan::Persistent<v8::Object> *handle)
+    {
+        server_->informAboutStreamWrite(parentobjnum_, objnum_, handle, false);
     }
 
     void Http3WTStream::doCanRead()
@@ -41,9 +46,9 @@ namespace quic
             WebTransportStream::ReadResult result = stream_->Read(&(*data)[0], readable);
             data->resize(result.bytes_read);
             QUIC_DVLOG(1) << "Attempted reading on WebTransport bidirectional stream "
-                          << stream_->GetStreamId()
+                          << objnum_
                           << ", bytes read: " << result.bytes_read;
-            server_->informAboutStreamRead(parentobjnum_, stream_->GetStreamId(), data, result.fin);
+            server_->informAboutStreamRead(parentobjnum_, objnum_, data, result.fin);
         }
     }
 
@@ -59,9 +64,9 @@ namespace quic
             auto cur = chunks_.front();
             bool success = stream_->Write(absl::string_view(cur.buffer, cur.len));
             QUIC_DVLOG(1) << "Attempted writing on WebTransport bidirectional stream "
-                          << stream_->GetStreamId()
+                          << objnum_
                           << ", success: " << (success ? "yes" : "no");
-            server_->informAboutStreamWrite(parentobjnum_, stream_->GetStreamId(), cur.bufferhandle, success);
+            server_->informAboutStreamWrite(parentobjnum_, objnum_, cur.bufferhandle, success);
             if (!success)
             {
                 return;
