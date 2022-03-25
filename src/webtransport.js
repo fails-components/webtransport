@@ -75,7 +75,7 @@ class Http3WTStream {
 
   onStreamClosed(args) {
     if (this.readable) this.readableController.close()
-    for (const rej in this.writeChunksRej) rej()
+    for (const rej of this.writeChunksRej) rej()
     this.transport.removeStream(this.parentid, this.id)
     this.writeChunksRej = []
     this.writeChunksRes = []
@@ -199,9 +199,9 @@ class Http3WTSession {
 
   onClose(errorcode, error) {
     delete this.objint // not valid any more
-    for (const rej in this.rejectBiDi) rej()
-    for (const rej in this.rejectUniDi) rej()
-    for (const rej in this.writeDatagramRej) rej()
+    for (const rej of this.rejectBiDi) rej()
+    for (const rej of this.rejectUniDi) rej()
+    for (const rej of this.writeDatagramRej) rej()
     this.writeDatagramRej = []
     this.writeDatagramRes = []
     this.resolveBiDi = []
@@ -403,7 +403,7 @@ export class Http3Server {
   }
 
   destroy() {
-    for (let i in this.sessionController) {
+    for (let i of this.sessionController) {
       i.close() // inform the controller, that we are closing
     }
     this.serverInt.Destroy() // destroy the server process
