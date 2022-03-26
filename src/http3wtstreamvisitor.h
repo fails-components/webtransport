@@ -37,7 +37,7 @@ namespace quic
         class Visitor : public WebTransportStreamVisitor
         {
         public:
-            Visitor(Http3WTStream *stream) : stream_(stream) {}
+            Visitor(Http3WTStream *stream) : stream_(stream), lasterror(0) {}
 
             ~Visitor();
 
@@ -51,19 +51,18 @@ namespace quic
                 stream_->doCanWrite();
             }
 
-            void OnResetStreamReceived(WebTransportStreamError /*error*/) override
+            void OnResetStreamReceived(WebTransportStreamError error) override
             {
                 // Send FIN in response to a stream reset.  We want to test that we can
                 // operate one side of the stream cleanly while the other is reset, thus
                 // replying with a FIN rather than a RESET_STREAM is more appropriate here.
+                lasterror = error;
                 stream_->send_fin_ = true;
                 OnCanWrite();
             }
-            void OnStopSendingReceived(WebTransportStreamError /*error*/) override
-            {
-                stream_->stop_sending_received_ = true;
-            }
-            void OnWriteSideInDataRecvdState() override {}
+            void OnStopSendingReceived(WebTransportStreamError /*error*/) override;
+            
+            void OnWriteSideInDataRecvdState() override;
 
             void OnStopReading()
             {
@@ -72,6 +71,7 @@ namespace quic
 
         protected:
             Http3WTStream *stream_;
+            WebTransportStreamError lasterror;
         };
 
         void doCanRead();
@@ -154,6 +154,26 @@ namespace quic
             Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
             std::function<void()> task = [obj]()
             { obj->send_fin_ = true; };
+        }
+
+        static NAN_METHOD(resetStream)
+        {
+            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
+            int code = 0;
+            v8::Isolate *isolate = info.GetIsolate();
+            unsigned int reason = 0;
+
+            if (!info[0]->IsUndefined())
+            {
+                v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+                v8::Local<v8::Int32> reasonl = info[0]->ToInt32(context).ToLocalChecked();
+                reason = Nan::To<unsigned int>(reasonl).FromJust();
+                
+            }
+
+            std::function<void()> task = [obj,reason]()
+            { obj->stream_->ResetWithUserCode(reason); };
+            obj->server_->Schedule(task);
         }
 
         static NAN_METHOD(New)

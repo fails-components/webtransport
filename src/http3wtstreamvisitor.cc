@@ -19,14 +19,23 @@ namespace quic
 
             stream_->chunks_.pop_front();
         }
-        stream_->server_->informStreamClosed(stream_->parentobjnum_, stream_->getStreamId());
-
         Http3WTStream *strobj = stream_;
         std::function<void()> task = [strobj]()
         { strobj->Unref(); };
         stream_->server_->Schedule(task);
 
         stream_->stream_ = nullptr;
+    }
+
+     void Http3WTStream::Visitor::OnWriteSideInDataRecvdState() 
+     {
+         if (stream_->send_fin_)  stream_->server_->informStreamClosed(stream_->parentobjnum_, stream_->getStreamId(), lasterror); // may be move below
+     }
+
+    void Http3WTStream::Visitor::OnStopSendingReceived(WebTransportStreamError error)
+    {
+        stream_->stop_sending_received_ = true;
+        stream_->server_->informStreamClosed(stream_->parentobjnum_, stream_->getStreamId(), error); // may be move below
     }
 
     void Http3WTStream::cancelWrite(Nan::Persistent<v8::Object> *handle)
@@ -66,12 +75,12 @@ namespace quic
             QUIC_DVLOG(1) << "Attempted writing on WebTransport bidirectional stream "
                           << objnum_
                           << ", success: " << (success ? "yes" : "no");
-            server_->informAboutStreamWrite(parentobjnum_, objnum_, cur.bufferhandle, success);
             if (!success)
             {
                 return;
             }
             // now we have to inform the server TODO
+            server_->informAboutStreamWrite(parentobjnum_, objnum_, cur.bufferhandle, true);
 
             chunks_.pop_front();
         }

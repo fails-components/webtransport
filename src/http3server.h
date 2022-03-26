@@ -46,6 +46,7 @@ namespace quic
             StreamClosed,
             StreamRead,
             StreamWrite,
+            StreamReset,
             DatagramReceived,
             DatagramSend,
             DatagramBufferFree
@@ -62,6 +63,7 @@ namespace quic
             Http3WTSession *session;     // unowned
             Nan::Persistent<v8::Object> *bufferhandle; // we own it and must delete it if present
             bool fin;
+            WebTransportStreamError wtscode;
         };
         union
         {
@@ -115,9 +117,10 @@ namespace quic
         void informSessionReady(uint32_t objnum_);
 
         void informAboutStream(bool incom, bool bidir, uint32_t objnum_, Http3WTStream *stream);
-        void informStreamClosed(uint32_t objnum, uint32_t strid);
+        void informStreamClosed(uint32_t objnum, uint32_t strid, WebTransportStreamError error_code);
         void informAboutStreamRead(uint32_t objnum, uint32_t strid, std::string *data, bool fin);
         void informAboutStreamWrite(uint32_t objnum, uint32_t strid, Nan::Persistent<v8::Object> *bufferhandle, bool success);
+        void informAboutStreamReset(uint32_t objnum, uint32_t strid);
 
         void informDatagramReceived(uint32_t objnum, absl::string_view datagram);
         void informDatagramBufferFree(Nan::Persistent<v8::Object> *bufferhandle);
@@ -181,9 +184,10 @@ namespace quic
         void processSessionReady(uint32_t objnum);
 
         void processStream(bool incom, bool bidi, uint32_t objnum, Http3WTStream *stream, uint32_t streamid);
-        void processStreamClosed(uint32_t objnum, uint32_t streamid);
+        void processStreamClosed(uint32_t objnum, uint32_t streamid, WebTransportStreamError error_code);
         void processStreamRead(uint32_t objnum, uint32_t streamid, std::string *data, bool fin);
         void processStreamWrite(uint32_t objnum, uint32_t strid, Nan::Persistent<v8::Object> *bufferhandle, bool success);
+        void processStreamReset(uint32_t objnum, uint32_t strid);
 
         void processDatagramReceived(uint32_t objnum, std::string *datagram);
         void processDatagramSend(uint32_t objnum);

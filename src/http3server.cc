@@ -80,6 +80,7 @@ namespace quic
     tplwtsv->InstanceTemplate()->SetInternalFieldCount(1);
     Nan::SetPrototypeMethod(tplwtsv, "writeChunk", Http3WTStream::writeChunk);
     Nan::SetPrototypeMethod(tplwtsv, "closeStream", Http3WTStream::closeStream);
+    Nan::SetPrototypeMethod(tplwtsv, "resetStream", Http3WTStream::resetStream);
     Nan::SetPrototypeMethod(tplwtsv, "startReading", Http3WTStream::startReading);
     Nan::SetPrototypeMethod(tplwtsv, "stopReading", Http3WTStream::stopReading);
 
@@ -250,12 +251,13 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3Server::informStreamClosed(uint32_t objnum, uint32_t strid)
+  void Http3Server::informStreamClosed(uint32_t objnum, uint32_t strid, WebTransportStreamError code)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::StreamClosed;
     report.objnum = objnum;
     report.streamid = strid;
+    report.wtscode = code;
     if (progress_)
       progress_->Send(&report, 1);
   }
@@ -280,6 +282,16 @@ namespace quic
     report.streamid = strid;
     report.bufferhandle = bufferhandle;
     report.success = success;
+    if (progress_)
+      progress_->Send(&report, 1);
+  }
+
+  void Http3Server::informAboutStreamReset(uint32_t objnum, uint32_t strid)
+  {
+    struct Http3ProgressReport report;
+    report.type = Http3ProgressReport::StreamReset;
+    report.objnum = objnum;
+    report.streamid = strid;
     if (progress_)
       progress_->Send(&report, 1);
   }
@@ -386,7 +398,7 @@ namespace quic
     callback->Call(1, argv);
   }
 
-  void Http3Server::processStreamClosed(uint32_t objnum, uint32_t streamid)
+  void Http3Server::processStreamClosed(uint32_t objnum, uint32_t streamid, WebTransportStreamError code)
   {
     HandleScope scope;
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
@@ -395,11 +407,14 @@ namespace quic
     v8::Local<v8::Uint32> id = Nan::New(objnum);
     v8::Local<v8::String> streamProp = Nan::New("streamid").ToLocalChecked();
     v8::Local<v8::Uint32> streamVal = Nan::New(streamid);
+    v8::Local<v8::String> codeProp = Nan::New("code").ToLocalChecked();
+    v8::Local<v8::Int32> codeVal = Nan::New(code);
 
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
     retObj->Set(context, idProp, id).FromJust();
+    retObj->Set(context, codeProp, codeVal).FromJust();
     retObj->Set(context, streamProp, streamVal).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
@@ -456,6 +471,26 @@ namespace quic
     retObj->Set(context, idProp, id).FromJust();
     retObj->Set(context, streamProp, streamVal).FromJust();
     retObj->Set(context, successProp, successVal).FromJust();
+
+    v8::Local<v8::Value> argv[] = {retObj};
+    callback->Call(1, argv);
+  }
+
+  void Http3Server::processStreamReset(uint32_t objnum, uint32_t streamid)
+  {
+    HandleScope scope;
+    v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
+    v8::Local<v8::String> purposeVal = Nan::New("StreamReset").ToLocalChecked();
+    v8::Local<v8::String> idProp = Nan::New("id").ToLocalChecked();
+    v8::Local<v8::Uint32> id = Nan::New(objnum);
+    v8::Local<v8::String> streamProp = Nan::New("streamid").ToLocalChecked();
+    v8::Local<v8::Uint32> streamVal = Nan::New(streamid);
+
+    auto context = GetCurrentContext();
+    v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
+    retObj->Set(context, purposeProp, purposeVal).FromJust();
+    retObj->Set(context, idProp, id).FromJust();
+    retObj->Set(context, streamProp, streamVal).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
     callback->Call(1, argv);
@@ -616,7 +651,7 @@ namespace quic
       break;
       case Http3ProgressReport::StreamClosed:
       {
-        processStreamClosed(cur.objnum, cur.streamid);
+        processStreamClosed(cur.objnum, cur.streamid, cur.wtscode);
       }
       break;
       case Http3ProgressReport::StreamRead:
@@ -628,6 +663,11 @@ namespace quic
       case Http3ProgressReport::StreamWrite:
       {
         processStreamWrite(cur.objnum, cur.streamid, cur.bufferhandle, cur.success);
+      }
+      break;
+      case Http3ProgressReport::StreamReset:
+      {
+        processStreamReset(cur.objnum, cur.streamid);
       }
       break;
       case Http3ProgressReport::DatagramReceived:

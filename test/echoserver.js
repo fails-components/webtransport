@@ -36,51 +36,61 @@ try {
       helpfunc()
 
       const echofunc = async () => {
-        const bidiReader = value.incomingBidirectionalStreams.getReader()
-        while (true) {
-          const bidistr = await bidiReader.read()
-          if (bidistr.done) {
-            console.log('bidiReader terminated')
-            break
+        try {
+          const bidiReader = value.incomingBidirectionalStreams.getReader()
+          while (true) {
+            const bidistr = await bidiReader.read()
+            if (bidistr.done) {
+              console.log('bidiReader terminated')
+              break
+            }
+            if (bidistr.value) {
+              // ok we got a stream
+              const bidistream = bidistr.value
+              // echo it
+              await bidistream.readable.pipeTo(bidistream.writable)
+              console.log('bidiReader finished piping')
+            }
           }
-          if (bidistr.value) {
-            // ok we got a stream
-            const bidistream = bidistr.value
-            // echo it
-            await bidistream.readable.pipeTo(bidistream.writable)
-            console.log('bidiReader finished piping')
-          }
+        } catch (error) {
+          console.log('bidiReader exited with', error)
         }
       }
       echofunc()
       // now send a bidirectional stream out
-      const mybidistream =  await value.createBidirectionalStream()
-      // echo it 
+      const mybidistream = await value.createBidirectionalStream()
+      // echo it
       mybidistream.readable.pipeTo(mybidistream.writable)
       console.log('send a bidirectional stream out')
       const echofunc2 = async () => {
-        const unidiReader = value.incomingUnidirectionalStreams.getReader()
-        while (true) {
-          const unidistr = await unidiReader.read()
-          if (unidistr.done) {
-            console.log('unidiReader terminated')
-            break
+        try {
+          const unidiReader = value.incomingUnidirectionalStreams.getReader()
+          while (true) {
+            const unidistr = await unidiReader.read()
+            if (unidistr.done) {
+              console.log('unidiReader terminated')
+              break
+            }
+            if (unidistr.value) {
+              // ok we got a stream
+              const unidistream = unidistr.value
+              // echo it
+              const uniwritable = await value.createUnidirectionalStream()
+              await unidistream.pipeTo(uniwritable)
+              console.log('unidiReader finished piping')
+            }
           }
-          if (unidistr.value) {
-            // ok we got a stream
-            const unidistream = unidistr.value
-            // echo it
-            const uniwritable = await value.createUnidirectionalStream()
-            await unidistream.pipeTo(uniwritable)
-            console.log('unidiReader finished piping')
-          }
+        } catch (error) {
+          console.log('bidiReader2 exited with', error)
         }
       }
       echofunc2()
       console.log('install datagram echo')
-      value.datagrams.readable.pipeTo(value.datagrams.writable)
-
-      
+      try {
+        value.datagrams.readable.pipeTo(value.datagrams.writable)
+      } catch (error) {
+        console.log('datagram echo exited with', error)
+      }
     }
   }
   sessionHandle()

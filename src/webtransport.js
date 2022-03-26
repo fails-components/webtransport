@@ -24,8 +24,8 @@ class Http3WTStream {
     this.incoming = args.incoming
     this.closed = false
 
-    this.writeChunksRes = []
-    this.writeChunksRej = []
+    this.pendingoperation = null
+    this.pendingres = null
 
     if (this.bidirectional || this.incoming) {
       this.readable = new ReadableStream({
@@ -35,13 +35,14 @@ class Http3WTStream {
         },
         pull: async (controller) => {
           if (this.closed) {
-            return new Promise((res,rej)=>{
-              rej()
-            })
+            return new Promise((res, rej) => {})
           }
           this.objint.startReading()
         },
         cancel: (controller) => {
+          const promise = new Promise((res, rej) => {
+            this.abortres = res
+          })
           this.objint.closeStream()
         }
       })
@@ -53,21 +54,45 @@ class Http3WTStream {
         },
         write: (chunk, controller) => {
           if (this.closed) {
-            return new Promise((res,rej)=>{
-              rej()
+            return new Promise((res, rej) => {
             })
           }
           if (chunk instanceof Uint8Array) {
-            const ret = new Promise((res, rej) => {
-              this.writeChunksRes.push(res)
-              this.writeChunksRej.push(rej)
+            this.pendingoperation = new Promise((res, rej) => {
+              this.pendingres = res
             })
             this.objint.writeChunk(chunk)
-            return ret
+            return this.pendingoperation
           } else throw new Error('chunk is not of instanceof Uint8Array ')
         },
         close: (controller) => {
-          if (!this.closed) this.objint.closeStream()
+          if (this.closed) {
+            return new Promise((res, rej) => {
+              res()
+            })
+          }
+          this.objint.closeStream()
+          this.pendingoperation = new Promise((res, rej) => {
+            this.pendingres = res
+          })
+          return this.pendingoperation
+        },
+        abort: (reason) => {
+          if (this.closed) {
+            return new Promise((res, rej) => {
+              res()
+            })
+          }
+          let code = 0
+          if (reason && reason.code) {
+            if (reason.code < 0) code = 0
+            else if (reason.code > 255) code = 255
+            else code = reason.code
+          }
+          const promise = new Promise((res, rej) => {
+            this.abortres = res
+          })
+          this.objint.resetStream(code)
         }
       })
     }
@@ -75,10 +100,15 @@ class Http3WTStream {
 
   onStreamClosed(args) {
     if (this.readable) this.readableController.close()
-    for (const rej of this.writeChunksRej) rej()
+    if (this.pendingoperation) {
+      const res = this.pendingres
+      this.pendingoperation = null
+      this.pendingres = null
+      res()
+    }
+    if (this.writable && args.code !== 0) this.writable.error(args.code || 0)
+    console.log('stream closed', args)
     this.transport.removeStream(this.parentid, this.id)
-    this.writeChunksRej = []
-    this.writeChunksRes = []
     this.closed = true
   }
 
@@ -94,15 +124,27 @@ class Http3WTStream {
   }
 
   onStreamWrite(args) {
-    if (args.success) {
-      const front = this.writeChunksRes.shift()
-      this.writeChunksRej.shift()
-      front()
-    } else {
-      const front = this.writeChunksRej.shift()
-      this.writeChunksRes.shift()
-      front('writeChunk failed')
+    // we ignore success
+    if (this.pendingoperation) {
+      const res = this.pendingres
+      this.pendingoperation = null
+      this.pendingres = null
+      res()
     }
+  }
+
+  onStreamReset(args) {
+    if (this.abortres) {
+      this.abortres()
+      this.abortres = null
+      this.transport.removeStream(this.parentid, this.id)
+    }
+  }
+
+  errorStreams(error)
+  {
+    if (this.readable && this.readableController) this.readableController.error(error)
+    if (this.writeable && this.writeableController) this.writableController.error(error)
   }
 }
 
@@ -186,9 +228,12 @@ class Http3WTSession {
   }
 
   close(closeInfo) {
-    if (this.state === 'closed' ||  this.state === 'failed' ) return
-    if(this.objint) {
-      this.objint.close({code: closeInfo.closeCode, reason: closeInfo.reason.substring(0,1023)}) ;
+    if (this.state === 'closed' || this.state === 'failed') return
+    if (this.objint) {
+      this.objint.close({
+        code: closeInfo.closeCode,
+        reason: closeInfo.reason.substring(0, 1023)
+      })
     }
   }
 
@@ -213,6 +258,10 @@ class Http3WTSession {
     this.incomUniDiController.close()
     this.incomDatagramController.close()
     this.state = 'closed'
+    const streams = this.parentobj.removeAllStreams(this.id)
+
+    streams.forEach(ele => (ele.errorStreams(errorcode)))
+
     delete this.parentobj.sessions[this.id]
 
     if (this.closedResolve) this.closedResolve(errorcode)
@@ -275,33 +324,42 @@ export class Http3Server {
     this.sessionController = {}
   }
 
-  addStream(sessionid, streamid, stream)
-  {
+  addStream(sessionid, streamid, stream) {
     let sessinfo = this.streams[sessionid]
     if (!sessinfo) {
-      sessinfo = {numstreams: 0}
+      sessinfo = { numstreams: 0 }
       this.streams[sessionid] = sessinfo
-
     }
     sessinfo[streamid] = stream
   }
 
-  getStream(sessionid, streamid)
-  {
+  getStream(sessionid, streamid) {
     let sessinfo = this.streams[sessionid]
     if (!sessinfo) throw new Error('unknown session for stream')
     if (!sessinfo[streamid]) throw new Error('unknown streamid for stream')
     return sessinfo[streamid]
   }
 
-  removeStream(sessionid, streamid)
-  {
+  removeStream(sessionid, streamid) {
     let sessinfo = this.streams[sessionid]
     if (!sessinfo) throw new Error('unknown session for stream')
     if (!sessinfo[streamid]) throw new Error('unknown streamid for stream')
     delete sessinfo[streamid]
     sessinfo.numstreams--
     if (sessinfo.numstreams === 0) delete this.streams[sessionid]
+  }
+
+  removeAllStreams(sessionid)
+  {
+    let sessinfo = this.streams[sessionid]
+    delete sessinfo.numstreams
+    const retstreams = []
+    for (let stream in sessinfo) {
+      retstreams.push(sessinfo[stream])
+    }
+
+    delete this.streams[sessionid]
+    return retstreams
   }
 
   serverCallback(args) {
@@ -332,27 +390,21 @@ export class Http3Server {
         case 'SessionClose':
           {
             const visitor = this.sessions[args.id]
-            if (visitor)
-              visitor.onClose(args.errorcode, args.error)
+            if (visitor) visitor.onClose(args.errorcode, args.error)
             delete this.sessions[args.id]
           }
           break
         case 'DatagramReceived':
           {
             const visitor = this.sessions[args.id]
-            if (
-              args.id &&
-              visitor &&
-              args.hasOwnProperty('datagram')
-            )
+            if (args.id && visitor && args.hasOwnProperty('datagram'))
               visitor.onDatagramReceived(args)
           }
           break
         case 'DatagramSend':
           {
             const visitor = this.sessions[args.id]
-            if (args.id && visitor)
-              visitor.onDatagramSend(args)
+            if (args.id && visitor) visitor.onDatagramSend(args)
           }
           break
         case 'Http3WTStreamVisitor':
@@ -377,19 +429,22 @@ export class Http3Server {
           break
         case 'StreamRead':
           {
-            const visitor =  this.getStream(args.id, args.streamid)
-            if (
-              visitor &&
-              args.hasOwnProperty('data')
-            ) {
+            const visitor = this.getStream(args.id, args.streamid)
+            if (visitor && args.hasOwnProperty('data')) {
               visitor.onStreamRead(args)
             } else throw new Error('Malformed StreamRead')
           }
           break
         case 'StreamWrite':
           {
-            const visitor =  this.getStream(args.id, args.streamid) 
+            const visitor = this.getStream(args.id, args.streamid)
             visitor.onStreamWrite(args)
+          }
+          break
+        case 'StreamReset':
+          {
+            const visitor = this.getStream(args.id, args.streamid)
+            visitor.onStreamReset(args)
           }
           break
         default:
