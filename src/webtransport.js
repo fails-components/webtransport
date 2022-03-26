@@ -54,8 +54,7 @@ class Http3WTStream {
         },
         write: (chunk, controller) => {
           if (this.closed) {
-            return new Promise((res, rej) => {
-            })
+            return new Promise((res, rej) => {})
           }
           if (chunk instanceof Uint8Array) {
             this.pendingoperation = new Promise((res, rej) => {
@@ -141,10 +140,11 @@ class Http3WTStream {
     }
   }
 
-  errorStreams(error)
-  {
-    if (this.readable && this.readableController) this.readableController.error(error)
-    if (this.writeable && this.writeableController) this.writableController.error(error)
+  errorStreams(error) {
+    if (this.readable && this.readableController)
+      this.readableController.error(error)
+    if (this.writeable && this.writeableController)
+      this.writableController.error(error)
   }
 }
 
@@ -260,7 +260,7 @@ class Http3WTSession {
     this.state = 'closed'
     const streams = this.parentobj.removeAllStreams(this.id)
 
-    streams.forEach(ele => (ele.errorStreams(errorcode)))
+    streams.forEach((ele) => ele.errorStreams(errorcode))
 
     delete this.parentobj.sessions[this.id]
 
@@ -312,16 +312,13 @@ class Http3WTSession {
   }
 }
 
-export class Http3Server {
+class Http3WebTransport {
   constructor(args) {
-    this.serverCallback = this.serverCallback.bind(this)
-    this.serverInt = wtrouter.Http3Server(args, this.serverCallback)
+    this.transportCallback = this.transportCallback.bind(this)
+    this.transportInt = wtrouter.Http3WebTransport(args, this.transportCallback)
 
     this.sessions = {}
     this.streams = {}
-
-    this.sessionStreams = {}
-    this.sessionController = {}
   }
 
   addStream(sessionid, streamid, stream) {
@@ -349,8 +346,7 @@ export class Http3Server {
     if (sessinfo.numstreams === 0) delete this.streams[sessionid]
   }
 
-  removeAllStreams(sessionid)
-  {
+  removeAllStreams(sessionid) {
     let sessinfo = this.streams[sessionid]
     delete sessinfo.numstreams
     const retstreams = []
@@ -362,25 +358,10 @@ export class Http3Server {
     return retstreams
   }
 
-  serverCallback(args) {
+  transportCallback(args) {
     // console.log('incoming callback', args)
     if (args.purpose && args.id) {
       switch (args.purpose) {
-        case 'Http3WTSessionVisitor':
-          {
-            // create Http3 Visitor
-            if (args.object) {
-              const sesobj = new Http3WTSession({
-                id: args.id,
-                object: args.object,
-                parentobj: this
-              })
-              this.sessions[args.id] = sesobj
-              if (this.sessionController[args.path])
-                this.sessionController[args.path].enqueue(sesobj)
-            } else throw new Error('Http3WTSessionVisitor')
-          }
-          break
         case 'SessionReady':
           {
             const visitor = this.sessions[args.id]
@@ -447,21 +428,34 @@ export class Http3Server {
             visitor.onStreamReset(args)
           }
           break
-        default:
-          console.log('unknown purpose')
+        default: {
+          if (this.customCallback) {
+            this.customCallback(args)
+          } else {
+            throw new Error('unknown purpose')
+          }
+        }
       }
     }
   }
+}
+
+export class Http3Server extends Http3WebTransport {
+  constructor(args) {
+    super(args)
+    this.sessionStreams = {}
+    this.sessionController = {}
+  }
 
   startServer() {
-    this.serverInt.startServer()
+    this.transportInt.startServer()
   }
 
   destroy() {
     for (let i of this.sessionController) {
       i.close() // inform the controller, that we are closing
     }
-    this.serverInt.Destroy() // destroy the server process
+    this.transportInt.Destroy() // destroy the server process
   }
 
   sessionStream(path) {
@@ -473,7 +467,34 @@ export class Http3Server {
         this.sessionController[path] = controller
       }
     })
-    this.serverInt.addPath(path)
+    this.transportInt.addPath(path)
     return this.sessionStreams[path]
+  }
+
+  customCallback(args) {
+    // console.log('incoming callback', args)
+    if (args.purpose && args.id) {
+      switch (args.purpose) {
+        case 'Http3WTSessionVisitor':
+          {
+            // create Http3 Visitor
+            if (args.object) {
+              const sesobj = new Http3WTSession({
+                id: args.id,
+                object: args.object,
+                parentobj: this
+              })
+              this.sessions[args.id] = sesobj
+              if (this.sessionController[args.path])
+                this.sessionController[args.path].enqueue(sesobj)
+            } else throw new Error('Http3WTSessionVisitor')
+          }
+          break
+
+        default: {
+          throw new Error('unknown purpose')
+        }
+      }
+    }
   }
 }

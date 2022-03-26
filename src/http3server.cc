@@ -50,7 +50,7 @@ namespace quic
   NAN_MODULE_INIT(Http3Server::Init)
   {
     v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
-    tpl->SetClassName(Nan::New("Http3Server").ToLocalChecked());
+    tpl->SetClassName(Nan::New("Http3WebTransport").ToLocalChecked());
     tpl->InstanceTemplate()->SetInternalFieldCount(2);
     Nan::SetPrototypeMethod(tpl, "createHttp3Server", createHttp3Server);
     Nan::SetPrototypeMethod(tpl, "startServer", startServer);
@@ -58,7 +58,7 @@ namespace quic
     // Nan::SetPrototypeMethod(tpl, "getHandle", GetHandle);
     // Nan::SetPrototypeMethod(tpl, "getValue", GetValue);
     constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
-    Nan::Set(target, Nan::New("Http3Server").ToLocalChecked(),
+    Nan::Set(target, Nan::New("Http3WebTransport").ToLocalChecked(),
              Nan::GetFunction(tpl).ToLocalChecked());
 
     // http3wtsessionvisitor
