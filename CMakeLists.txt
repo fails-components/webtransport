@@ -64,6 +64,7 @@ platform/quiche_platform_impl/simple_libuv_epoll_server.cc
 platform/quiche_platform_impl/simple_libuv_epoll_server.h
 platform/net/quiche/common/platform/impl/quiche_flags_impl.h
 platform/net/quiche/common/platform/impl/quiche_flags_impl.cc
+platform/net/quiche/common/platform/impl/quiche_iovec_impl.h
 platform/quiche_platform_impl/quiche_mem_slice_impl.h
 platform/quiche_platform_impl/quiche_flag_utils_impl.h
 #protofiles
@@ -81,6 +82,7 @@ third_party/quiche/common/platform/api/quiche_flag_utils.h
 third_party/quiche/common/platform/api/quiche_flags.h
 third_party/quiche/common/platform/api/quiche_hostname_utils.cc
 third_party/quiche/common/platform/api/quiche_hostname_utils.h
+third_party/quiche/common/platform/api/quiche_iovec.h
 third_party/quiche/common/platform/api/quiche_logging.h
 third_party/quiche/common/platform/api/quiche_mem_slice.h
 third_party/quiche/common/platform/api/quiche_mutex.cc
@@ -102,7 +104,6 @@ third_party/quiche/common/quiche_data_reader.h
 third_party/quiche/common/quiche_data_writer.cc
 third_party/quiche/common/quiche_data_writer.h
 third_party/quiche/common/quiche_endian.h
-third_party/quiche/common/quiche_iovec.h
 third_party/quiche/common/quiche_linked_hash_map.h
 third_party/quiche/common/quiche_mem_slice_storage.h
 third_party/quiche/common/quiche_mem_slice_storage.cc
