@@ -45,6 +45,7 @@ namespace quic
 
     void Http3WTStream::doCanRead()
     {
+        if (pause_reading_) return ; // back pressure folks!
         // first figure out if we have readable data
         size_t readable = stream_->ReadableBytes();
         if (readable > 0)
