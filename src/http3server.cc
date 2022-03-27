@@ -25,7 +25,7 @@ namespace quic
 
   const size_t kNumSessionsToCreatePerSocketEvent = 16;
 
-  Http3Server::Http3Server(Callback *callback, Callback *cbstream, 
+  Http3Server::Http3Server(Callback *callback, Callback *cbstream, Callback *cbsession, 
                            std::string host, int port, std::unique_ptr<ProofSource> proof_source,
                            const char *secret)
       : port_(port), host_(host), fd_(-1), overflow_supported_(false),
@@ -38,7 +38,7 @@ namespace quic
                        KeyExchangeSource::Default()),
         expected_server_connection_id_length_(kQuicDefaultConnectionIdLength),
         AsyncProgressQueueWorker(callback),
-        progress_(nullptr), objnum_(1), cbstream_(cbstream)
+        progress_(nullptr), cbstream_(cbstream), cbsession_(cbsession)
   {
     epoll_server_.SetAsyncCallback(this);
   }
@@ -46,6 +46,7 @@ namespace quic
   Http3Server::~Http3Server()
   {
     delete cbstream_;
+    delete cbsession_;
   }
 
   NAN_MODULE_INIT(Http3Server::Init)
@@ -215,12 +216,7 @@ namespace quic
     epoll_server_.TriggerAsync();
   }
 
-  uint32_t Http3Server::getNewObjNum()
-  {
-    return objnum_++;
-  }
-
-  void Http3Server::informAboutStream(bool incom, bool bidir, uint32_t objnum, Http3WTStream *stream)
+  void Http3Server::informAboutStream(bool incom, bool bidir, Http3WTSession *sessionobj, Http3WTStream *stream)
   {
     struct Http3ProgressReport report;
     if (incom)
@@ -245,9 +241,8 @@ namespace quic
         report.type = Http3ProgressReport::OutgoUniDiStream;
       }
     }
-    report.objnum = objnum;
+    report.sessionobj = sessionobj;
     report.stream = stream;
-    report.streamid = stream->getStreamId();
     if (progress_)
       progress_->Send(&report, 1);
   }
@@ -293,21 +288,21 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3Server::informDatagramReceived(uint32_t objnum, absl::string_view datagram)
+  void Http3Server::informDatagramReceived(Http3WTSession *sessionobj, absl::string_view datagram)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::DatagramReceived;
-    report.objnum = objnum;
+    report.sessionobj = sessionobj;
     report.para = new std::string(datagram);
     if (progress_)
       progress_->Send(&report, 1);
   }
 
-  void Http3Server::informDatagramSend(uint32_t objnum)
+  void Http3Server::informDatagramSend(Http3WTSession *sessionobj)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::DatagramSend;
-    report.objnum = objnum;
+    report.sessionobj = sessionobj;
     if (progress_)
       progress_->Send(&report, 1);
   }
@@ -327,29 +322,28 @@ namespace quic
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::NewSession;
     report.session = session;
-    report.objnum = session->getObjNum();
     report.para = new std::string(path);
     if (progress_)
       progress_->Send(&report, 1);
   }
 
-  void Http3Server::informSessionClosed(uint32_t objnum, WebTransportSessionError error_code,
+  void Http3Server::informSessionClosed(Http3WTSession *sessionobj, WebTransportSessionError error_code,
                                         absl::string_view error_message)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::SessionClosed;
-    report.objnum = objnum;
+    report.sessionobj = sessionobj;
     report.para = new std::string(error_message);
     report.wtecode = error_code;
     if (progress_)
       progress_->Send(&report, 1);
   }
 
-  void Http3Server::informSessionReady(uint32_t objnum)
+  void Http3Server::informSessionReady(Http3WTSession *sessionobj)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::SessionReady;
-    report.objnum = objnum;
+    report.sessionobj = sessionobj;
     if (progress_)
       progress_->Send(&report, 1);
   }
@@ -361,38 +355,34 @@ namespace quic
     delete sdata;
   }
 
-  void Http3Server::processStream(bool incom, bool bidi, uint32_t objnum, Http3WTStream *stream, uint32_t streamid)
+  void Http3Server::processStream(bool incom, bool bidi, Http3WTSession *sessionobj, Http3WTStream *stream)
   {
 
     HandleScope scope;
 
-    auto obj = Http3WTStream::NewInstance(stream);
+    auto strVal = Http3WTStream::NewInstance(stream);
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("Http3WTStreamVisitor").ToLocalChecked();
-    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
-
-    v8::Local<v8::String> streamProp = Nan::New("streamid").ToLocalChecked();
-    v8::Local<v8::Uint32> streamVal = Nan::New(streamid);
-
-    v8::Local<v8::String> idProp = Nan::New("id").ToLocalChecked();
-    v8::Local<v8::Uint32> id = Nan::New(objnum);
+    v8::Local<v8::String> strProp = Nan::New("stream").ToLocalChecked();
 
     v8::Local<v8::String> incomProp = Nan::New("incoming").ToLocalChecked();
     v8::Local<v8::Boolean> incomVal = Nan::New(incom);
     v8::Local<v8::String> bidiProp = Nan::New("bidirectional").ToLocalChecked();
     v8::Local<v8::Boolean> bidiVal = Nan::New(bidi);
 
+    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
+    v8::Local<v8::Object> objVal = sessionobj->handle();
+
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, objProp, obj).FromJust();
-    retObj->Set(context, streamProp, streamVal).FromJust();
-    retObj->Set(context, idProp, id).FromJust();
+    retObj->Set(context, strProp, strVal).FromJust();
     retObj->Set(context, incomProp, incomVal).FromJust();
     retObj->Set(context, bidiProp, bidiVal).FromJust();
+    retObj->Set(context, objProp, objVal).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
-    callback->Call(1, argv);
+    Nan::Call(*cbsession_, 1, argv);
   }
 
   void Http3Server::processStreamClosed(Http3WTStream *streamobj, WebTransportStreamError code)
@@ -483,7 +473,7 @@ namespace quic
     retObj->Set(context, objProp, objVal).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
-    Nan::Call(*callback, 1, argv);
+    Nan::Call(*cbstream_, 1, argv);
   }
 
   void Http3Server::processDatagramBufferFree(Nan::Persistent<v8::Object> *bufferhandle)
@@ -492,46 +482,48 @@ namespace quic
     delete bufferhandle;   // free the handle object
   }
 
-  void Http3Server::processDatagramReceived(uint32_t objnum, std::string *datagram)
+  void Http3Server::processDatagramReceived(Http3WTSession *sessionobj, std::string *datagram)
   {
     HandleScope scope;
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("DatagramReceived").ToLocalChecked();
-    v8::Local<v8::String> idProp = Nan::New("id").ToLocalChecked();
-    v8::Local<v8::Uint32> id = Nan::New(objnum);
     v8::Local<v8::String> datagramProp = Nan::New("datagram").ToLocalChecked();
     v8::Local<v8::Object> datagramVal = Nan::NewBuffer(&(*datagram)[0], datagram->length(),
                                                        freeData, static_cast<void *>(datagram))
                                             .ToLocalChecked();
 
+    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
+    v8::Local<v8::Object> objVal = sessionobj->handle();
+
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, idProp, id).FromJust();
     retObj->Set(context, datagramProp, datagramVal).FromJust();
+    retObj->Set(context, objProp, objVal).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
-    Nan::Call(*callback, 1, argv);
+    Nan::Call(*cbsession_, 1, argv);
   }
 
-  void Http3Server::processDatagramSend(uint32_t objnum)
+  void Http3Server::processDatagramSend(Http3WTSession *sessionobj)
   {
     HandleScope scope;
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("DatagramSend").ToLocalChecked();
-    v8::Local<v8::String> idProp = Nan::New("id").ToLocalChecked();
-    v8::Local<v8::Uint32> id = Nan::New(objnum);
+
+    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
+    v8::Local<v8::Object> objVal = sessionobj->handle();
 
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, idProp, id).FromJust();
+    retObj->Set(context, objProp, objVal).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
-    Nan::Call(*callback, 1, argv);
+    Nan::Call(*cbsession_, 1, argv);
   }
 
-  void Http3Server::processNewSession(Http3WTSession *session, uint32_t objnum, const std::string &path)
+  void Http3Server::processNewSession(Http3WTSession *session, const std::string &path)
   {
     HandleScope scope;
 
@@ -543,58 +535,58 @@ namespace quic
     v8::Local<v8::String> pathProp = Nan::New("path").ToLocalChecked();
     v8::Local<v8::String> stringPath = Nan::New(path).ToLocalChecked();
 
-    v8::Local<v8::String> idProp = Nan::New("id").ToLocalChecked();
-    v8::Local<v8::Uint32> id = Nan::New(objnum);
-
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
     retObj->Set(context, objProp, obj).FromJust();
     retObj->Set(context, pathProp, stringPath).FromJust();
-    retObj->Set(context, idProp, id).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
     Nan::Call(*callback, 1, argv);
   }
 
-  void Http3Server::processSessionReady(uint32_t objnum)
+  void Http3Server::processSessionReady(Http3WTSession *sessionobj)
   {
     HandleScope scope;
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("SessionReady").ToLocalChecked();
-    v8::Local<v8::String> idProp = Nan::New("id").ToLocalChecked();
-    v8::Local<v8::Uint32> id = Nan::New(objnum);
+
+    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
+    v8::Local<v8::Object> objVal = sessionobj->handle();
 
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, idProp, id).FromJust();
+    retObj->Set(context, objProp, objVal).FromJust();
+
 
     v8::Local<v8::Value> argv[] = {retObj};
-    Nan::Call(*callback, 1, argv);
+    Nan::Call(*cbsession_, 1, argv);
   }
 
-  void Http3Server::processSessionClose(uint32_t objnum, uint32_t errorcode, const std::string &error)
+  void Http3Server::processSessionClose(Http3WTSession *sessionobj, uint32_t errorcode, const std::string &error)
   {
     HandleScope scope;
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("SessionClose").ToLocalChecked();
-    v8::Local<v8::String> idProp = Nan::New("id").ToLocalChecked();
-    v8::Local<v8::Uint32> id = Nan::New(objnum);
     v8::Local<v8::String> errorProp = Nan::New("error").ToLocalChecked();
     v8::Local<v8::String> errorVal = Nan::New(error).ToLocalChecked();
     v8::Local<v8::String> errorcProp = Nan::New("errorcode").ToLocalChecked();
     v8::Local<v8::Uint32> errorcVal = Nan::New(errorcode);
 
+    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
+    v8::Local<v8::Object> objVal = sessionobj->handle();
+
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, idProp, id).FromJust();
     retObj->Set(context, errorProp, errorVal).FromJust();
     retObj->Set(context, errorcProp, errorcVal).FromJust();
 
+    retObj->Set(context, objProp, objVal).FromJust();
+
     v8::Local<v8::Value> argv[] = {retObj};
-    Nan::Call(*callback, 1, argv);
+    Nan::Call(*cbsession_, 1, argv);
   }
 
   void Http3Server::HandleProgressCallback(const Http3ProgressReport *data, size_t count)
@@ -606,37 +598,37 @@ namespace quic
       {
       case Http3ProgressReport::NewSession:
       {
-        processNewSession(cur.session, cur.objnum, *cur.para);
+        processNewSession(cur.session, *cur.para);
       }
       break;
       case Http3ProgressReport::SessionReady:
       {
-        processSessionReady(cur.objnum);
+        processSessionReady(cur.sessionobj);
       }
       break;
       case Http3ProgressReport::SessionClosed:
       {
-        processSessionClose(cur.objnum, cur.wtecode, *cur.para);
+        processSessionClose(cur.sessionobj, cur.wtecode, *cur.para);
       }
       break;
       case Http3ProgressReport::IncomBiDiStream:
       {
-        processStream(true, true, cur.objnum, cur.stream, cur.streamid);
+        processStream(true, true, cur.sessionobj, cur.stream);
       }
       break;
       case Http3ProgressReport::IncomUniDiStream:
       {
-        processStream(true, false, cur.objnum, cur.stream, cur.streamid);
+        processStream(true, false, cur.sessionobj, cur.stream);
       }
       break;
       case Http3ProgressReport::OutgoBiDiStream:
       {
-        processStream(false, true, cur.objnum, cur.stream, cur.streamid);
+        processStream(false, true, cur.sessionobj, cur.stream);
       }
       break;
       case Http3ProgressReport::OutgoUniDiStream:
       {
-        processStream(false, false, cur.objnum, cur.stream, cur.streamid);
+        processStream(false, false, cur.sessionobj, cur.stream);
       }
       break;
       case Http3ProgressReport::StreamClosed:
@@ -662,13 +654,13 @@ namespace quic
       break;
       case Http3ProgressReport::DatagramReceived:
       {
-        processDatagramReceived(cur.objnum, cur.para);
+        processDatagramReceived(cur.sessionobj, cur.para);
         cur.para = nullptr; // take ownership of the data
       }
       break;
       case Http3ProgressReport::DatagramSend:
       {
-        processDatagramSend(cur.objnum);
+        processDatagramSend(cur.sessionobj);
       }
       break;
       case Http3ProgressReport::DatagramBufferFree:
@@ -731,17 +723,42 @@ namespace quic
       std::string cert;
       std::string privkey;
       std::string host("localhost");
-      if (info[1]->IsUndefined() /*|| info[1]->IsFunction()*/)
+
+      Callback *callback = nullptr;
+      Callback *cbstream = nullptr;
+      Callback *cbsession = nullptr;
+
+
+
+      v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+      if (!info[1]->IsUndefined() /*|| info[1]->IsFunction()*/)
       {
-        return Nan::ThrowError("Callback not passed to Http3Server internal");
-      }
-      if (info[2]->IsUndefined() /*|| info[1]->IsFunction()*/)
-      {
-        return Nan::ThrowError("Callback stream not passed to Http3Server internal");
-      }
+        v8::MaybeLocal<v8::Object> obj = info[1]->ToObject(context);
+        v8::Local<v8::String> tpProp = Nan::New("transportCallback").ToLocalChecked();
+        v8::Local<v8::String> strProp = Nan::New("streamCallback").ToLocalChecked();
+        v8::Local<v8::String> sessProp = Nan::New("sessionCallback").ToLocalChecked();
+        if (obj.IsEmpty())  return Nan::ThrowError("No callback obj for Http3Transport");
+        v8::Local<v8::Object> lobj = obj.ToLocalChecked();
+
+        if (Nan::HasOwnProperty(lobj, tpProp).FromJust() && !Nan::Get(lobj, tpProp).IsEmpty())
+        {
+          callback = new Callback(To<v8::Function>(Nan::Get(lobj, tpProp).ToLocalChecked()).ToLocalChecked());
+        } else return Nan::ThrowError("No transport callback");
+
+        if (Nan::HasOwnProperty(lobj, strProp).FromJust() && !Nan::Get(lobj, strProp).IsEmpty())
+        {
+          cbstream = new Callback(To<v8::Function>(Nan::Get(lobj, strProp).ToLocalChecked()).ToLocalChecked());
+        } else return Nan::ThrowError("No stream callback");
+
+        if (Nan::HasOwnProperty(lobj, sessProp).FromJust() && !Nan::Get(lobj, sessProp).IsEmpty())
+        {
+          cbsession = new Callback(To<v8::Function>(Nan::Get(lobj, sessProp).ToLocalChecked()).ToLocalChecked());
+        } else return Nan::ThrowError("No session callback");
+
+      } else  return Nan::ThrowError("Callback not passed to Http3Transport internal");
+      
       if (!info[0]->IsUndefined())
       {
-        v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
         v8::MaybeLocal<v8::Object> obj = info[0]->ToObject(context);
         v8::Local<v8::String> portProp = Nan::New("port").ToLocalChecked();
         v8::Local<v8::String> secretProp = Nan::New("secret").ToLocalChecked();
@@ -804,9 +821,8 @@ namespace quic
         if (proofsource == nullptr)
           return Nan::ThrowError("LoadPemFromStream cert failed for Http3Server");
 
-        Callback *callback = new Callback(To<v8::Function>(info[1]).ToLocalChecked());
-        Callback *cbstream = new Callback(To<v8::Function>(info[2]).ToLocalChecked());
-        Http3Server *object = new Http3Server(callback, cbstream, host, port, std::move(proofsource), secret.c_str());
+        
+        Http3Server *object = new Http3Server(callback, cbstream, cbsession, host, port, std::move(proofsource), secret.c_str());
         object->Wrap(info.This());
         info.GetReturnValue().Set(info.This());
       }
@@ -817,8 +833,8 @@ namespace quic
     }
     else
     {
-      const int argc = 3;
-      v8::Local<v8::Value> argv[argc] = {info[0], info[1], info[2]};
+      const int argc = 2;
+      v8::Local<v8::Value> argv[argc] = {info[0], info[1]};
       v8::Local<v8::Function> cons = Nan::New(constructor());
       auto instance = Nan::NewInstance(cons, argc, argv);
       if (!instance.IsEmpty())

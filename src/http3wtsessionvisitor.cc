@@ -12,12 +12,12 @@ namespace quic
                                                 const std::string &error_message)
     {
 
-        session_->server_->informSessionClosed(session_->objnum_, error_code, error_message);
+        session_->server_->informSessionClosed(session_, error_code, error_message);
     }
 
     void Http3WTSession::Visitor::OnSessionReady(const spdy::SpdyHeaderBlock &)
     {
-        session_->server_->informSessionReady(session_->objnum_);
+        session_->server_->informSessionReady(session_);
 
         if (session_->session_->CanOpenNextOutgoingBidirectionalStream())
         {

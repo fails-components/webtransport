@@ -56,7 +56,6 @@ namespace quic
             WebTransportStream::ReadResult result = stream_->Read(&(*data)[0], readable);
             data->resize(result.bytes_read);
             QUIC_DVLOG(1) << "Attempted reading on WebTransport bidirectional stream "
-                          << objnum_
                           << ", bytes read: " << result.bytes_read;
             server_->informAboutStreamRead(this, data, result.fin);
         }
@@ -74,7 +73,6 @@ namespace quic
             auto cur = chunks_.front();
             bool success = stream_->Write(absl::string_view(cur.buffer, cur.len));
             QUIC_DVLOG(1) << "Attempted writing on WebTransport bidirectional stream "
-                          << objnum_
                           << ", success: " << (success ? "yes" : "no");
             if (!success)
             {

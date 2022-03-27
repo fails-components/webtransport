@@ -52,13 +52,12 @@ namespace quic
             DatagramBufferFree
         } type;
         union { // always the originating obj
-            uint32_t objnum;
             Http3WTStream *streamobj;
+            Http3WTSession *sessionobj;
         }; 
         union
         {
             WebTransportSessionError wtecode;
-            uint32_t streamid;
         };
         union
         {
@@ -81,7 +80,7 @@ namespace quic
                         public Nan::ObjectWrap
     {
     public:
-        Http3Server(Callback *callback, Callback *cbstream, std::string host, int port, std::unique_ptr<ProofSource> proof_source, const char *secret);
+        Http3Server(Callback *callback, Callback *cbstream, Callback *cbsession,  std::string host, int port, std::unique_ptr<ProofSource> proof_source, const char *secret);
 
         Http3Server(const Http3Server &) = delete;
         Http3Server &operator=(const Http3Server &) = delete;
@@ -116,22 +115,21 @@ namespace quic
         void OnAsyncExecution() override;
 
         void informAboutNewSession(Http3WTSession *session, absl::string_view path);
-        void informSessionClosed(uint32_t objnum_, WebTransportSessionError error_code, absl::string_view error_message);
-        void informSessionReady(uint32_t objnum_);
+        void informSessionClosed(Http3WTSession *sessionobj, WebTransportSessionError error_code, absl::string_view error_message);
+        void informSessionReady(Http3WTSession *sessionobj);
 
-        void informAboutStream(bool incom, bool bidir, uint32_t objnum_, Http3WTStream *stream);
+        void informAboutStream(bool incom, bool bidir, Http3WTSession *sessionobj, Http3WTStream *stream);
         void informStreamClosed(Http3WTStream *streamobj, WebTransportStreamError error_code);
         void informAboutStreamRead(Http3WTStream *streamobj, std::string *data, bool fin);
         void informAboutStreamWrite(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, bool success);
         void informAboutStreamReset(Http3WTStream *streamobj);
 
-        void informDatagramReceived(uint32_t objnum, absl::string_view datagram);
+        void informDatagramReceived(Http3WTSession *sessionobj, absl::string_view datagram);
         void informDatagramBufferFree(Nan::Persistent<v8::Object> *bufferhandle);
-        void informDatagramSend(uint32_t objnum);
+        void informDatagramSend(Http3WTSession *sessionobj);
 
         void Schedule(std::function<void()> action);
 
-        uint32_t getNewObjNum();
 
     private:
         static NAN_METHOD(New);
@@ -182,24 +180,24 @@ namespace quic
 
         QuicDispatcher *CreateQuicDispatcher();
 
-        void processNewSession(Http3WTSession *visitor, uint32_t objnum, const std::string &path);
-        void processSessionClose(uint32_t objnum, uint32_t errorcode, const std::string &path);
-        void processSessionReady(uint32_t objnum);
+        void processNewSession(Http3WTSession *session, const std::string &path);
+        void processSessionClose(Http3WTSession *sessionobj, uint32_t errorcode, const std::string &path);
+        void processSessionReady(Http3WTSession *sessionobj);
 
-        void processStream(bool incom, bool bidi, uint32_t objnum, Http3WTStream *stream, uint32_t streamid);
+        void processStream(bool incom, bool bidi, Http3WTSession *sessionobj, Http3WTStream *stream);
         void processStreamClosed(Http3WTStream *streamobj, WebTransportStreamError error_code);
         void processStreamRead(Http3WTStream *streamobj, std::string *data, bool fin);
         void processStreamWrite(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, bool success);
         void processStreamReset(Http3WTStream *streamobj);
 
-        void processDatagramReceived(uint32_t objnum, std::string *datagram);
-        void processDatagramSend(uint32_t objnum);
+        void processDatagramReceived(Http3WTSession *sessionobj, std::string *datagram);
+        void processDatagramSend(Http3WTSession *sessionobj);
         void processDatagramBufferFree(Nan::Persistent<v8::Object> *bufferhandle);
 
         const AsyncProgressQueueWorker::ExecutionProgress *progress_;
-        uint32_t objnum_;
 
         Callback *cbstream_; 
+        Callback *cbsession_; 
     };
 
 }

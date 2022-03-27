@@ -29,8 +29,8 @@ namespace quic
     class Http3WTStream : public Nan::ObjectWrap
     {
     public:
-        Http3WTStream(WebTransportStream *stream, uint32_t pobjnum, Http3Server *server)
-            : stream_(stream), parentobjnum_(pobjnum), server_(server), objnum_(stream->GetStreamId()) {}
+        Http3WTStream(WebTransportStream *stream, Http3Server *server)
+            : stream_(stream), server_(server) {}
 
         ~Http3WTStream(){};
 
@@ -99,8 +99,6 @@ namespace quic
                 doCanRead();
             }
         }
-
-        uint32_t getStreamId() { return objnum_; }
 
         // nan stuff
 
@@ -243,8 +241,6 @@ namespace quic
     private:
         WebTransportStream *stream_;
         Http3Server *server_;
-        const uint32_t parentobjnum_;
-        const uint32_t objnum_;
         bool send_fin_ = false;
         bool stop_sending_received_ = false;
         bool pause_reading_ = false;
