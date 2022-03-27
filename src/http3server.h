@@ -51,7 +51,10 @@ namespace quic
             DatagramSend,
             DatagramBufferFree
         } type;
-        uint32_t objnum;
+        union { // always the originating obj
+            uint32_t objnum;
+            Http3WTStream *streamobj;
+        }; 
         union
         {
             WebTransportSessionError wtecode;
@@ -78,7 +81,7 @@ namespace quic
                         public Nan::ObjectWrap
     {
     public:
-        Http3Server(Callback *callback, std::string host, int port, std::unique_ptr<ProofSource> proof_source, const char *secret);
+        Http3Server(Callback *callback, Callback *cbstream, std::string host, int port, std::unique_ptr<ProofSource> proof_source, const char *secret);
 
         Http3Server(const Http3Server &) = delete;
         Http3Server &operator=(const Http3Server &) = delete;
@@ -117,10 +120,10 @@ namespace quic
         void informSessionReady(uint32_t objnum_);
 
         void informAboutStream(bool incom, bool bidir, uint32_t objnum_, Http3WTStream *stream);
-        void informStreamClosed(uint32_t objnum, uint32_t strid, WebTransportStreamError error_code);
-        void informAboutStreamRead(uint32_t objnum, uint32_t strid, std::string *data, bool fin);
-        void informAboutStreamWrite(uint32_t objnum, uint32_t strid, Nan::Persistent<v8::Object> *bufferhandle, bool success);
-        void informAboutStreamReset(uint32_t objnum, uint32_t strid);
+        void informStreamClosed(Http3WTStream *streamobj, WebTransportStreamError error_code);
+        void informAboutStreamRead(Http3WTStream *streamobj, std::string *data, bool fin);
+        void informAboutStreamWrite(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, bool success);
+        void informAboutStreamReset(Http3WTStream *streamobj);
 
         void informDatagramReceived(uint32_t objnum, absl::string_view datagram);
         void informDatagramBufferFree(Nan::Persistent<v8::Object> *bufferhandle);
@@ -184,10 +187,10 @@ namespace quic
         void processSessionReady(uint32_t objnum);
 
         void processStream(bool incom, bool bidi, uint32_t objnum, Http3WTStream *stream, uint32_t streamid);
-        void processStreamClosed(uint32_t objnum, uint32_t streamid, WebTransportStreamError error_code);
-        void processStreamRead(uint32_t objnum, uint32_t streamid, std::string *data, bool fin);
-        void processStreamWrite(uint32_t objnum, uint32_t strid, Nan::Persistent<v8::Object> *bufferhandle, bool success);
-        void processStreamReset(uint32_t objnum, uint32_t strid);
+        void processStreamClosed(Http3WTStream *streamobj, WebTransportStreamError error_code);
+        void processStreamRead(Http3WTStream *streamobj, std::string *data, bool fin);
+        void processStreamWrite(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, bool success);
+        void processStreamReset(Http3WTStream *streamobj);
 
         void processDatagramReceived(uint32_t objnum, std::string *datagram);
         void processDatagramSend(uint32_t objnum);
@@ -195,6 +198,8 @@ namespace quic
 
         const AsyncProgressQueueWorker::ExecutionProgress *progress_;
         uint32_t objnum_;
+
+        Callback *cbstream_; 
     };
 
 }

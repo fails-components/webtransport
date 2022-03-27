@@ -17,6 +17,7 @@ class Http3WTStream {
   constructor(args) {
     this.id = args.id
     this.objint = args.object
+    this.objint.jsobj = new WeakRef(this)
     this.parentid = args.parentid
     this.parentobj = args.parentobj
     this.transport = args.transport
@@ -28,72 +29,80 @@ class Http3WTStream {
     this.pendingres = null
 
     if (this.bidirectional || this.incoming) {
-      this.readable = new ReadableStream({
-        start: async (controller) => {
-          this.readableController = controller
-          this.objint.startReading()
-        },
-        pull: async (controller) => {
-          if (this.closed) {
-            return new Promise((res, rej) => {})
+      this.readable = new ReadableStream(
+        {
+          start: async (controller) => {
+            this.readableController = controller
+            this.parentobj.addReceiveStream(this.readable, controller)
+            this.objint.startReading()
+          },
+          pull: async (controller) => {
+            if (this.closed) {
+              return new Promise((res, rej) => {})
+            }
+            this.objint.startReading()
+          },
+          cancel: (controller) => {
+            const promise = new Promise((res, rej) => {
+              this.abortres = res
+            })
+            this.objint.closeStream()
           }
-          this.objint.startReading()
         },
-        cancel: (controller) => {
-          const promise = new Promise((res, rej) => {
-            this.abortres = res
-          })
-          this.objint.closeStream()
-        }
-      })
+        { highWaterMark: 4 }
+      )
     }
     if (this.bidirectional || !this.incoming) {
-      this.writable = new WritableStream({
-        start: async (controller) => {
-          this.writableController = controller
-        },
-        write: (chunk, controller) => {
-          if (this.closed) {
-            return new Promise((res, rej) => {})
-          }
-          if (chunk instanceof Uint8Array) {
+      this.writable = new WritableStream(
+        {
+          start: async (controller) => {
+            this.writableController = controller
+            this.parentobj.addSendStream(this.writable, controller)
+          },
+          write: (chunk, controller) => {
+            if (this.closed) {
+              return new Promise((res, rej) => {})
+            }
+            if (chunk instanceof Uint8Array) {
+              this.pendingoperation = new Promise((res, rej) => {
+                this.pendingres = res
+              })
+              this.objint.writeChunk(chunk)
+              return this.pendingoperation
+            } else throw new Error('chunk is not of instanceof Uint8Array ')
+          },
+          close: (controller) => {
+            if (this.closed) {
+              return new Promise((res, rej) => {
+                res()
+              })
+            }
+            this.objint.closeStream()
             this.pendingoperation = new Promise((res, rej) => {
               this.pendingres = res
             })
-            this.objint.writeChunk(chunk)
             return this.pendingoperation
-          } else throw new Error('chunk is not of instanceof Uint8Array ')
-        },
-        close: (controller) => {
-          if (this.closed) {
-            return new Promise((res, rej) => {
-              res()
+          },
+          abort: (reason) => {
+            if (this.closed) {
+              return new Promise((res, rej) => {
+                res()
+              })
+            }
+            let code = 0
+            if (reason && reason.code) {
+              if (reason.code < 0) code = 0
+              else if (reason.code > 255) code = 255
+              else code = reason.code
+            }
+            const promise = new Promise((res, rej) => {
+              this.abortres = res
             })
+            this.objint.resetStream(code)
           }
-          this.objint.closeStream()
-          this.pendingoperation = new Promise((res, rej) => {
-            this.pendingres = res
-          })
-          return this.pendingoperation
         },
-        abort: (reason) => {
-          if (this.closed) {
-            return new Promise((res, rej) => {
-              res()
-            })
-          }
-          let code = 0
-          if (reason && reason.code) {
-            if (reason.code < 0) code = 0
-            else if (reason.code > 255) code = 255
-            else code = reason.code
-          }
-          const promise = new Promise((res, rej) => {
-            this.abortres = res
-          })
-          this.objint.resetStream(code)
-        }
-      })
+        { highWaterMark: 4 }
+      )
     }
   }
 
@@ -107,7 +116,9 @@ class Http3WTStream {
     }
     if (this.writable && args.code !== 0) this.writable.error(args.code || 0)
     console.log('stream closed', args)
-    this.transport.removeStream(this.parentid, this.id)
+    if (this.readable) this.parentobj.removeReceiveStream(this.readable, this.readableController)
+    if (this.writable) this.parentobj.removeSendStream(this.writable, this.writableController)
+
     this.closed = true
   }
 
@@ -135,16 +146,46 @@ class Http3WTStream {
   onStreamReset(args) {
     if (this.abortres) {
       this.abortres()
-      this.abortres = null
-      this.transport.removeStream(this.parentid, this.id)
+       if (this.readable) this.parentobj.removeReceiveStream(this.readable, this.readableController)
+       if (this.writable) this.parentobj.removeSendStream(this.writable, this.writableController)
     }
   }
 
-  errorStreams(error) {
-    if (this.readable && this.readableController)
-      this.readableController.error(error)
-    if (this.writeable && this.writeableController)
-      this.writableController.error(error)
+
+  static callback(args) {
+    console.log('Stream callback called', args)
+    if (!args || !args.object || !args.object.jsobj)
+      throw new Error('Stream callback without jsobj')
+    const visitor = args.object.jsobj.deref()
+    if (args.purpose) {
+      switch (args.purpose) {
+        case 'StreamClosed':
+          {
+            visitor.onStreamClosed(args)
+          }
+          break
+        case 'StreamRead':
+          {
+            if (visitor && args.hasOwnProperty('data')) {
+              visitor.onStreamRead(args)
+            } else throw new Error('Malformed StreamRead')
+          }
+          break
+        case 'StreamWrite':
+          {
+            visitor.onStreamWrite(args)
+          }
+          break
+        case 'StreamReset':
+          {
+            visitor.onStreamReset(args)
+          }
+          break
+        default: {
+          throw new Error('unknown purpose Streamcb')
+        }
+      }
+    } else throw new Error('no purpose Streamcb')
   }
 }
 
@@ -207,6 +248,36 @@ class Http3WTSession {
     this.resolveUniDi = []
     this.rejectBiDi = []
     this.rejectUniDi = []
+
+    this.sendStreams = new Set()
+    this.receiveStreams = new Set()
+
+    this.sendStreamsController = new Set()
+    this.receiveStreamsController = new Set()
+  }
+
+  addSendStream(stream, controller)
+  {
+    this.sendStreams.add(stream)
+    this.sendStreamsController.add(controller)
+  }
+
+  removeSendStream(stream, controller)
+  {
+    this.sendStreams.delete(stream)
+    this.sendStreamsController.delete(controller)
+  }
+
+  addReceiveStream(stream, controller)
+  {
+    this.receiveStreams.add(stream)
+    this.receiveStreamsController.add(controller)
+  }
+
+  removeReceiveStream(stream, controller)
+  {
+    this.receiveStreams.delete(stream)
+    this.receiveStreamsController.delete(controller)
   }
 
   createBidirectionalStream() {
@@ -258,9 +329,14 @@ class Http3WTSession {
     this.incomUniDiController.close()
     this.incomDatagramController.close()
     this.state = 'closed'
-    const streams = this.parentobj.removeAllStreams(this.id)
 
-    streams.forEach((ele) => ele.errorStreams(errorcode))
+    this.sendStreamsController.forEach((ele) => ele.error(errorcode))
+    this.receiveStreamsController.forEach((ele) => ele.error(errorcode))
+
+    this.sendStreams.clear()
+    this.receiveStreams.clear()
+    this.sendStreamsController.clear()
+    this.receiveStreamsController.clear()
 
     delete this.parentobj.sessions[this.id]
 
@@ -277,7 +353,6 @@ class Http3WTSession {
       bidirectional: args.bidirectional,
       incoming: args.incoming
     })
-    this.parentobj.addStream(args.id, args.streamid, strobj)
     if (args.incoming) {
       if (args.bidirectional) {
         this.incomBiDiController.enqueue(strobj)
@@ -315,51 +390,17 @@ class Http3WTSession {
 class Http3WebTransport {
   constructor(args) {
     this.transportCallback = this.transportCallback.bind(this)
-    this.transportInt = wtrouter.Http3WebTransport(args, this.transportCallback)
+    this.transportInt = wtrouter.Http3WebTransport(
+      args,
+      this.transportCallback,
+      Http3WTStream.callback
+    )
 
     this.sessions = {}
-    this.streams = {}
-  }
-
-  addStream(sessionid, streamid, stream) {
-    let sessinfo = this.streams[sessionid]
-    if (!sessinfo) {
-      sessinfo = { numstreams: 0 }
-      this.streams[sessionid] = sessinfo
-    }
-    sessinfo[streamid] = stream
-  }
-
-  getStream(sessionid, streamid) {
-    let sessinfo = this.streams[sessionid]
-    if (!sessinfo) throw new Error('unknown session for stream')
-    if (!sessinfo[streamid]) throw new Error('unknown streamid for stream')
-    return sessinfo[streamid]
-  }
-
-  removeStream(sessionid, streamid) {
-    let sessinfo = this.streams[sessionid]
-    if (!sessinfo) throw new Error('unknown session for stream')
-    if (!sessinfo[streamid]) throw new Error('unknown streamid for stream')
-    delete sessinfo[streamid]
-    sessinfo.numstreams--
-    if (sessinfo.numstreams === 0) delete this.streams[sessionid]
-  }
-
-  removeAllStreams(sessionid) {
-    let sessinfo = this.streams[sessionid]
-    delete sessinfo.numstreams
-    const retstreams = []
-    for (let stream in sessinfo) {
-      retstreams.push(sessinfo[stream])
-    }
-
-    delete this.streams[sessionid]
-    return retstreams
   }
 
   transportCallback(args) {
-    // console.log('incoming callback', args)
+    console.log('incoming callback', args)
     if (args.purpose && args.id) {
       switch (args.purpose) {
         case 'SessionReady':
@@ -400,32 +441,6 @@ class Http3WebTransport {
             ) {
               visitor.onStream(args)
             } else throw new Error('Malformed Http3WTStreamVisitor')
-          }
-          break
-        case 'StreamClosed':
-          {
-            const visitor = this.getStream(args.id, args.streamid)
-            visitor.onStreamClosed(args)
-          }
-          break
-        case 'StreamRead':
-          {
-            const visitor = this.getStream(args.id, args.streamid)
-            if (visitor && args.hasOwnProperty('data')) {
-              visitor.onStreamRead(args)
-            } else throw new Error('Malformed StreamRead')
-          }
-          break
-        case 'StreamWrite':
-          {
-            const visitor = this.getStream(args.id, args.streamid)
-            visitor.onStreamWrite(args)
-          }
-          break
-        case 'StreamReset':
-          {
-            const visitor = this.getStream(args.id, args.streamid)
-            visitor.onStreamReset(args)
           }
           break
         default: {

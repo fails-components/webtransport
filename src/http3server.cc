@@ -25,7 +25,7 @@ namespace quic
 
   const size_t kNumSessionsToCreatePerSocketEvent = 16;
 
-  Http3Server::Http3Server(Callback *callback,
+  Http3Server::Http3Server(Callback *callback, Callback *cbstream, 
                            std::string host, int port, std::unique_ptr<ProofSource> proof_source,
                            const char *secret)
       : port_(port), host_(host), fd_(-1), overflow_supported_(false),
@@ -38,13 +38,14 @@ namespace quic
                        KeyExchangeSource::Default()),
         expected_server_connection_id_length_(kQuicDefaultConnectionIdLength),
         AsyncProgressQueueWorker(callback),
-        progress_(nullptr), objnum_(1)
+        progress_(nullptr), objnum_(1), cbstream_(cbstream)
   {
     epoll_server_.SetAsyncCallback(this);
   }
 
   Http3Server::~Http3Server()
   {
+    delete cbstream_;
   }
 
   NAN_MODULE_INIT(Http3Server::Init)
@@ -251,47 +252,43 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3Server::informStreamClosed(uint32_t objnum, uint32_t strid, WebTransportStreamError code)
+  void Http3Server::informStreamClosed(Http3WTStream *streamobj, WebTransportStreamError code)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::StreamClosed;
-    report.objnum = objnum;
-    report.streamid = strid;
+    report.streamobj = streamobj;
     report.wtscode = code;
     if (progress_)
       progress_->Send(&report, 1);
   }
 
-  void Http3Server::informAboutStreamRead(uint32_t objnum, uint32_t strid, std::string *data, bool fin)
+  void Http3Server::informAboutStreamRead(Http3WTStream *streamobj, std::string *data, bool fin)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::StreamRead;
-    report.objnum = objnum;
-    report.streamid = strid;
+    report.streamobj = streamobj;
     report.para = data;
     report.fin = fin;
     if (progress_)
       progress_->Send(&report, 1);
   }
 
-  void Http3Server::informAboutStreamWrite(uint32_t objnum, uint32_t strid, Nan::Persistent<v8::Object> *bufferhandle, bool success)
+  void Http3Server::informAboutStreamWrite(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, bool success)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::StreamWrite;
-    report.objnum = objnum;
-    report.streamid = strid;
+    report.streamobj = streamobj;
     report.bufferhandle = bufferhandle;
     report.success = success;
     if (progress_)
       progress_->Send(&report, 1);
   }
 
-  void Http3Server::informAboutStreamReset(uint32_t objnum, uint32_t strid)
+  void Http3Server::informAboutStreamReset(Http3WTStream *streamobj)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::StreamReset;
-    report.objnum = objnum;
-    report.streamid = strid;
+    report.streamobj = streamobj;
     if (progress_)
       progress_->Send(&report, 1);
   }
@@ -398,38 +395,32 @@ namespace quic
     callback->Call(1, argv);
   }
 
-  void Http3Server::processStreamClosed(uint32_t objnum, uint32_t streamid, WebTransportStreamError code)
+  void Http3Server::processStreamClosed(Http3WTStream *streamobj, WebTransportStreamError code)
   {
     HandleScope scope;
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("StreamClosed").ToLocalChecked();
-    v8::Local<v8::String> idProp = Nan::New("id").ToLocalChecked();
-    v8::Local<v8::Uint32> id = Nan::New(objnum);
-    v8::Local<v8::String> streamProp = Nan::New("streamid").ToLocalChecked();
-    v8::Local<v8::Uint32> streamVal = Nan::New(streamid);
     v8::Local<v8::String> codeProp = Nan::New("code").ToLocalChecked();
     v8::Local<v8::Int32> codeVal = Nan::New(code);
+
+    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
+    v8::Local<v8::Object> objVal = streamobj->handle();
 
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, idProp, id).FromJust();
     retObj->Set(context, codeProp, codeVal).FromJust();
-    retObj->Set(context, streamProp, streamVal).FromJust();
+    retObj->Set(context, objProp, objVal).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
-    callback->Call(1, argv);
+    Nan::Call(*cbstream_, 1, argv);
   }
 
-  void Http3Server::processStreamRead(uint32_t objnum, uint32_t streamid, std::string *data, bool fin)
+  void Http3Server::processStreamRead(Http3WTStream *streamobj, std::string *data, bool fin)
   {
     HandleScope scope;
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("StreamRead").ToLocalChecked();
-    v8::Local<v8::String> idProp = Nan::New("id").ToLocalChecked();
-    v8::Local<v8::Uint32> id = Nan::New(objnum);
-    v8::Local<v8::String> streamProp = Nan::New("streamid").ToLocalChecked();
-    v8::Local<v8::Uint32> streamVal = Nan::New(streamid);
     v8::Local<v8::String> finProp = Nan::New("fin").ToLocalChecked();
     v8::Local<v8::Boolean> finVal = Nan::New(fin);
     v8::Local<v8::String> dataProp = Nan::New("data").ToLocalChecked();
@@ -438,29 +429,30 @@ namespace quic
                                                    freeData, static_cast<void *>(data))
                                         .ToLocalChecked();
 
+    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
+    v8::Local<v8::Object> objVal = streamobj->handle();
+
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, idProp, id).FromJust();
-    retObj->Set(context, streamProp, streamVal).FromJust();
     retObj->Set(context, finProp, finVal).FromJust();
     retObj->Set(context, dataProp, dataVal).FromJust();
+    retObj->Set(context, objProp, objVal).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
-    callback->Call(1, argv);
+    Nan::Call(*cbstream_, 1, argv);
   }
 
-  void Http3Server::processStreamWrite(uint32_t objnum, uint32_t strid, Nan::Persistent<v8::Object> *bufferhandle, bool success)
+  void Http3Server::processStreamWrite(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, bool success)
   {
     HandleScope scope;
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("StreamWrite").ToLocalChecked();
-    v8::Local<v8::String> idProp = Nan::New("id").ToLocalChecked();
-    v8::Local<v8::Uint32> id = Nan::New(objnum);
-    v8::Local<v8::String> streamProp = Nan::New("streamid").ToLocalChecked();
-    v8::Local<v8::Uint32> streamVal = Nan::New(strid);
     v8::Local<v8::String> successProp = Nan::New("success").ToLocalChecked();
     v8::Local<v8::Boolean> successVal = Nan::New(success);
+
+    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
+    v8::Local<v8::Object> objVal = streamobj->handle();
 
     bufferhandle->Reset(); // release the outgoing buffer
     delete bufferhandle;   // free the handle object
@@ -468,32 +460,30 @@ namespace quic
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, idProp, id).FromJust();
-    retObj->Set(context, streamProp, streamVal).FromJust();
     retObj->Set(context, successProp, successVal).FromJust();
+    retObj->Set(context, objProp, objVal).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
-    callback->Call(1, argv);
+    Nan::Call(*cbstream_, 1, argv);
   }
 
-  void Http3Server::processStreamReset(uint32_t objnum, uint32_t streamid)
+  void Http3Server::processStreamReset(Http3WTStream *streamobj)
   {
     HandleScope scope;
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("StreamReset").ToLocalChecked();
-    v8::Local<v8::String> idProp = Nan::New("id").ToLocalChecked();
-    v8::Local<v8::Uint32> id = Nan::New(objnum);
-    v8::Local<v8::String> streamProp = Nan::New("streamid").ToLocalChecked();
-    v8::Local<v8::Uint32> streamVal = Nan::New(streamid);
+
+    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
+    v8::Local<v8::Object> objVal = streamobj->handle();
+
 
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, idProp, id).FromJust();
-    retObj->Set(context, streamProp, streamVal).FromJust();
+    retObj->Set(context, objProp, objVal).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
-    callback->Call(1, argv);
+    Nan::Call(*callback, 1, argv);
   }
 
   void Http3Server::processDatagramBufferFree(Nan::Persistent<v8::Object> *bufferhandle)
@@ -521,7 +511,7 @@ namespace quic
     retObj->Set(context, datagramProp, datagramVal).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
-    callback->Call(1, argv);
+    Nan::Call(*callback, 1, argv);
   }
 
   void Http3Server::processDatagramSend(uint32_t objnum)
@@ -538,7 +528,7 @@ namespace quic
     retObj->Set(context, idProp, id).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
-    callback->Call(1, argv);
+    Nan::Call(*callback, 1, argv);
   }
 
   void Http3Server::processNewSession(Http3WTSession *session, uint32_t objnum, const std::string &path)
@@ -564,7 +554,7 @@ namespace quic
     retObj->Set(context, idProp, id).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
-    callback->Call(1, argv);
+    Nan::Call(*callback, 1, argv);
   }
 
   void Http3Server::processSessionReady(uint32_t objnum)
@@ -581,7 +571,7 @@ namespace quic
     retObj->Set(context, idProp, id).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
-    callback->Call(1, argv);
+    Nan::Call(*callback, 1, argv);
   }
 
   void Http3Server::processSessionClose(uint32_t objnum, uint32_t errorcode, const std::string &error)
@@ -604,7 +594,7 @@ namespace quic
     retObj->Set(context, errorcProp, errorcVal).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
-    callback->Call(1, argv);
+    Nan::Call(*callback, 1, argv);
   }
 
   void Http3Server::HandleProgressCallback(const Http3ProgressReport *data, size_t count)
@@ -651,23 +641,23 @@ namespace quic
       break;
       case Http3ProgressReport::StreamClosed:
       {
-        processStreamClosed(cur.objnum, cur.streamid, cur.wtscode);
+        processStreamClosed(cur.streamobj, cur.wtscode);
       }
       break;
       case Http3ProgressReport::StreamRead:
       {
-        processStreamRead(cur.objnum, cur.streamid, cur.para, cur.fin);
+        processStreamRead(cur.streamobj, cur.para, cur.fin);
         cur.para = nullptr; // take ownership of the data
       }
       break;
       case Http3ProgressReport::StreamWrite:
       {
-        processStreamWrite(cur.objnum, cur.streamid, cur.bufferhandle, cur.success);
+        processStreamWrite(cur.streamobj, cur.bufferhandle, cur.success);
       }
       break;
       case Http3ProgressReport::StreamReset:
       {
-        processStreamReset(cur.objnum, cur.streamid);
+        processStreamReset(cur.streamobj);
       }
       break;
       case Http3ProgressReport::DatagramReceived:
@@ -745,6 +735,10 @@ namespace quic
       {
         return Nan::ThrowError("Callback not passed to Http3Server internal");
       }
+      if (info[2]->IsUndefined() /*|| info[1]->IsFunction()*/)
+      {
+        return Nan::ThrowError("Callback stream not passed to Http3Server internal");
+      }
       if (!info[0]->IsUndefined())
       {
         v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
@@ -811,7 +805,8 @@ namespace quic
           return Nan::ThrowError("LoadPemFromStream cert failed for Http3Server");
 
         Callback *callback = new Callback(To<v8::Function>(info[1]).ToLocalChecked());
-        Http3Server *object = new Http3Server(callback, host, port, std::move(proofsource), secret.c_str());
+        Callback *cbstream = new Callback(To<v8::Function>(info[2]).ToLocalChecked());
+        Http3Server *object = new Http3Server(callback, cbstream, host, port, std::move(proofsource), secret.c_str());
         object->Wrap(info.This());
         info.GetReturnValue().Set(info.This());
       }
@@ -822,8 +817,8 @@ namespace quic
     }
     else
     {
-      const int argc = 2;
-      v8::Local<v8::Value> argv[argc] = {info[0], info[1]};
+      const int argc = 3;
+      v8::Local<v8::Value> argv[argc] = {info[0], info[1], info[2]};
       v8::Local<v8::Function> cons = Nan::New(constructor());
       auto instance = Nan::NewInstance(cons, argc, argv);
       if (!instance.IsEmpty())

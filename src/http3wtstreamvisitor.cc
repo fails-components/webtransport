@@ -15,7 +15,7 @@ namespace quic
             auto cur = stream_->chunks_.front();
 
             // now we have to inform the server TODO
-            stream_->server_->informAboutStreamWrite(stream_->parentobjnum_, stream_->getStreamId(), cur.bufferhandle, false);
+            stream_->server_->informAboutStreamWrite(stream_, cur.bufferhandle, false);
 
             stream_->chunks_.pop_front();
         }
@@ -29,18 +29,18 @@ namespace quic
 
      void Http3WTStream::Visitor::OnWriteSideInDataRecvdState() 
      {
-         if (stream_->send_fin_)  stream_->server_->informStreamClosed(stream_->parentobjnum_, stream_->getStreamId(), lasterror); // may be move below
+         if (stream_->send_fin_)  stream_->server_->informStreamClosed(stream_, lasterror); // may be move below
      }
 
     void Http3WTStream::Visitor::OnStopSendingReceived(WebTransportStreamError error)
     {
         stream_->stop_sending_received_ = true;
-        stream_->server_->informStreamClosed(stream_->parentobjnum_, stream_->getStreamId(), error); // may be move below
+        stream_->server_->informStreamClosed(stream_, error); // may be move below
     }
 
     void Http3WTStream::cancelWrite(Nan::Persistent<v8::Object> *handle)
     {
-        server_->informAboutStreamWrite(parentobjnum_, objnum_, handle, false);
+        server_->informAboutStreamWrite(this, handle, false);
     }
 
     void Http3WTStream::doCanRead()
@@ -58,7 +58,7 @@ namespace quic
             QUIC_DVLOG(1) << "Attempted reading on WebTransport bidirectional stream "
                           << objnum_
                           << ", bytes read: " << result.bytes_read;
-            server_->informAboutStreamRead(parentobjnum_, objnum_, data, result.fin);
+            server_->informAboutStreamRead(this, data, result.fin);
         }
     }
 
@@ -81,7 +81,7 @@ namespace quic
                 return;
             }
             // now we have to inform the server TODO
-            server_->informAboutStreamWrite(parentobjnum_, objnum_, cur.bufferhandle, true);
+            server_->informAboutStreamWrite(this, cur.bufferhandle, true);
 
             chunks_.pop_front();
         }
