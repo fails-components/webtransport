@@ -110,14 +110,18 @@ SimpleLibuvEpollServer::SimpleLibuvEpollServer()
       asynccb_(nullptr),
       read_fd_(-1),
       write_fd_(-1),
-      in_wait_for_events_and_execute_callbacks_(false),
-      in_shutdown_(false),
-      last_delay_in_usec_(0) {
+      /*in_wait_for_events_and_execute_callbacks_(false),*/
+      in_shutdown_(false)/*,
+      last_delay_in_usec_(0) */ {
 
   uv_loop_init(&loop);
   uv_timer_init(&loop, &looptimer);
   uv_async_init(&loop, &asynchandle, asynccallback);
+  uv_check_init(&loop, &checkhandle);
+  uv_check_start(&checkhandle, checkcallback);
   asynchandle.data =  (void*) this;
+  checkhandle.data =  (void*) this;
+  looptimer.data =  (void*) this;
  
   LIST_INIT(&ready_list_);
   LIST_INIT(&tmp_list_);
@@ -187,6 +191,9 @@ SimpleLibuvEpollServer::~SimpleLibuvEpollServer() {
   close(read_fd_);
   close(write_fd_);
   uv_timer_stop(&looptimer);
+  uv_check_stop(&checkhandle);
+  uv_close((uv_handle_t*) &checkhandle, nullptr);
+  uv_close((uv_handle_t*) &asynchandle, nullptr);
   uv_close((uv_handle_t*) &looptimer, nullptr);
   uv_loop_close(&loop);
 }
@@ -238,6 +245,7 @@ void SimpleLibuvEpollServer::RegisterFD(int fd, CB* cb, int event_mask) {
     fd_i->cb = cb;
     fd_i->event_mask = event_mask;
     fd_i->events_to_fake = 0;
+    fd_i->event_applied = event_mask;
   } else {
     auto pair = cb_map_.insert(CBAndEventMask(cb, event_mask, fd));
     auto it = pair.first;
@@ -273,13 +281,6 @@ void SimpleLibuvEpollServer::SetNonblocking(int fd) {
   }
 }
 
-int SimpleLibuvEpollServer::libuv_wait_impl(int timeout_in_ms) {
-
-  uv_timer_start(&looptimer, timercallback, timeout_in_ms, 0);
-  int ret = uv_run(&loop, UV_RUN_ONCE);
-  uv_timer_stop(&looptimer);
-  return ret;
-}
 
 void SimpleLibuvEpollServer::RegisterFDForWrite(int fd, CB* cb) {
   RegisterFD(fd, cb, UV_WRITABLE);
@@ -324,6 +325,7 @@ void SimpleLibuvEpollServer::UnregisterFD(int fd) {
     fd_i->cb = NULL;
     fd_i->event_mask = 0;
     fd_i->events_to_fake = 0;
+    fd_i->event_applied = 0;
   }
 }
 
@@ -351,62 +353,101 @@ void SimpleLibuvEpollServer::HandleEvent(int fd, int event_mask) {
     // for event B (and are now processing event B).
     return;
   }
-  fd_i->events_asserted = event_mask;
+  int mask = event_mask;
+  
+  if ((mask & UV_WRITABLE)
+      && !(mask & UV_WRITABLE)) mask |= UV_WRITABLE;
+
+  fd_i->events_asserted = mask;
   CBAndEventMask* cb_and_mask = const_cast<CBAndEventMask*>(&*fd_i);
   AddToReadyList(cb_and_mask);
 }
 
 void SimpleLibuvEpollServer::WaitForEventsAndExecuteCallbacks() {
-  if (in_wait_for_events_and_execute_callbacks_) {
-    EPOLL_LOG(DFATAL) << "Attempting to call WaitForEventsAndExecuteCallbacks"
-                         " when an ancestor to the current function is already"
-                         " WaitForEventsAndExecuteCallbacks!";
-    // The line below is actually tested, but in coverage mode,
-    // we never see it.
-    return;  // COV_NF_LINE
-  }
-  AutoReset<bool> recursion_guard(&in_wait_for_events_and_execute_callbacks_,
-                                  true);
-  if (alarm_map_.empty()) {
-    // no alarms, this is business as usual.
-    WaitForEventsAndCallHandleEvents(timeout_in_us_);
-    recorded_now_in_us_ = 0;
-    return;
-  }
+    int ret = uv_run(&loop, UV_RUN_ONCE);
+}
 
-  // store the 'now'. If we recomputed 'now' every iteration
-  // down below, then we might never exit that loop-- any
-  // long-running alarms might install other long-running
-  // alarms, etc. By storing it here now, we ensure that
-  // a more reasonable amount of work is done here.
-  int64_t now_in_us = NowInUsec();
-
-  // Get the first timeout from the alarm_map where it is
-  // stored in absolute time.
-  int64_t next_alarm_time_in_us = alarm_map_.begin()->first;
-  EPOLL_VLOG(4) << "next_alarm_time = " << next_alarm_time_in_us
-                << " now             = " << now_in_us
-                << " timeout_in_us = " << timeout_in_us_;
+void SimpleLibuvEpollServer::ScheduleTimers() {
 
   int64_t wait_time_in_us;
-  int64_t alarm_timeout_in_us = next_alarm_time_in_us - now_in_us;
-
-  // If the next alarm is sooner than the default timeout, or if there is no
-  // timeout (timeout_in_us_ == -1), wake up when the alarm should fire.
-  // Otherwise use the default timeout.
-  if (alarm_timeout_in_us < timeout_in_us_ || timeout_in_us_ < 0) {
-    wait_time_in_us = std::max(alarm_timeout_in_us, static_cast<int64_t>(0));
-  } else {
+  if (alarm_map_.empty())
+  {
+    // no alarms, this is business as usual.
     wait_time_in_us = timeout_in_us_;
   }
+  else
+  {
 
-  EPOLL_VLOG(4) << "wait_time_in_us = " << wait_time_in_us;
+    // store the 'now'. If we recomputed 'now' every iteration
+    // down below, then we might never exit that loop-- any
+    // long-running alarms might install other long-running
+    // alarms, etc. By storing it here now, we ensure that
+    // a more reasonable amount of work is done here.
+    int64_t now_in_us = NowInUsec(); // TODO replace mit libuv
 
-  // wait for events.
+    // Get the first timeout from the alarm_map where it is
+    // stored in absolute time.
+    int64_t next_alarm_time_in_us = alarm_map_.begin()->first;
+    EPOLL_VLOG(4) << "next_alarm_time = " << next_alarm_time_in_us
+                  << " now             = " << now_in_us
+                  << " timeout_in_us = " << timeout_in_us_;
 
-  WaitForEventsAndCallHandleEvents(wait_time_in_us);
-  CallAndReregisterAlarmEvents();
-  recorded_now_in_us_ = 0;
+    int64_t alarm_timeout_in_us = next_alarm_time_in_us - now_in_us;
+
+    // If the next alarm is sooner than the default timeout, or if there is no
+    // timeout (timeout_in_us_ == -1), wake up when the alarm should fire.
+    // Otherwise use the default timeout.
+    if (alarm_timeout_in_us < timeout_in_us_ || timeout_in_us_ < 0)
+    {
+      wait_time_in_us = std::max(alarm_timeout_in_us, static_cast<int64_t>(0));
+    }
+    else
+    {
+      wait_time_in_us = timeout_in_us_;
+    }
+
+    EPOLL_VLOG(4) << "wait_time_in_us = " << wait_time_in_us;
+  }
+
+    // wait for events.
+
+    
+
+    if (wait_time_in_us == 0 || ready_list_.lh_first != NULL)
+    {
+      // If ready list is not empty, then don't sleep at all.
+      wait_time_in_us = 0;
+    }
+    else if (wait_time_in_us < 0)
+    {
+      EPOLL_LOG(INFO) << "Negative epoll timeout: " << wait_time_in_us
+                      << "us; epoll will wait forever for events.";
+      // If timeout_in_us is < 0 we are supposed to Wait forever.  This means we
+      // should set timeout_in_us to -1000 so we will
+      // Wait(-1000/1000) == Wait(-1) == Wait forever.
+      wait_time_in_us = -1000;
+    }
+    else
+    {
+      // If timeout is specified, and the ready list is empty.
+      if (wait_time_in_us< 1000)
+      {
+        wait_time_in_us = 1000;
+      }
+    }
+    const int timeout_in_ms = wait_time_in_us / 1000;
+    // int64_t expected_wakeup_us = NowInUsec() + wait_time_in_us;
+
+  
+    if (timeout_in_ms < 0) uv_timer_stop(&looptimer);
+    else  uv_timer_start(&looptimer, timercallback, timeout_in_ms / 1000, 0);
+ 
+}
+
+void SimpleLibuvEpollServer::ExecuteTimers()
+{
+   if (!alarm_map_.empty()) CallAndReregisterAlarmEvents(); // timers should be after callback execution
+   recorded_now_in_us_ = 0;
 }
 
 void SimpleLibuvEpollServer::SetFDReady(int fd, int events_to_fake) {
@@ -551,11 +592,28 @@ void SimpleLibuvEpollServer::eventcallback( uv_poll_t *handle, int status, int e
     SimpleLibuvEpollServer* server = (SimpleLibuvEpollServer*) handle->data ;
     int fd ;
     uv_fileno((uv_handle_t*)handle,&fd) ;
+    // printf("eventcallback %d %d %d %d %d\n", status, events, fd, UV_READABLE, UV_WRITABLE);
     server->HandleEvent( fd , events ) ;
+}
+
+// have poll io call
+// UpdateTimeAndCallReadyLis() // check handle
+
+// ExecuteTimers
+// Scheduletimers
+// then go into poll io call again
+
+void SimpleLibuvEpollServer::checkcallback(uv_check_t *handle)
+{
+  SimpleLibuvEpollServer* server = (SimpleLibuvEpollServer*) handle->data;
+  server->UpdateTimeAndCallReadyList();
 }
 
 void SimpleLibuvEpollServer::timercallback(uv_timer_t *handle)
 {
+  SimpleLibuvEpollServer* server = (SimpleLibuvEpollServer*) handle->data;
+  server->ExecuteTimers();
+  server->ScheduleTimers();
   // NOOP
 }
 
@@ -599,7 +657,7 @@ void SimpleLibuvEpollServer::AddFD(int fd, uv_poll_t *ee, int event_mask) const 
                      << uv_strerror(saved_errno);
     return ;
   }
-  error = uv_poll_start(ee, event_mask | UV_DISCONNECT, eventcallback);
+  error = uv_poll_start(ee, event_mask, eventcallback);
   if (error) {
     int saved_errno = error;
     EPOLL_LOG(FATAL) << "Epoll uv_poll_start error for fd " << fd << ": "
@@ -647,34 +705,13 @@ void SimpleLibuvEpollServer::ModifyFD(int fd, int remove_event, int add_event) {
     EPOLL_VLOG(3) << " event_mask after: " << EventMaskToString(event_mask);
 
     ModFD(fd, &fd_i->handle, event_mask);
+    fd_i->event_applied = event_mask;
 
     fd_i->cb->OnModification(fd, event_mask);
   }
 }
 
-void SimpleLibuvEpollServer::WaitForEventsAndCallHandleEvents(int64_t timeout_in_us) {
-  if (timeout_in_us == 0 || ready_list_.lh_first != NULL) {
-    // If ready list is not empty, then don't sleep at all.
-    timeout_in_us = 0;
-  } else if (timeout_in_us < 0) {
-    EPOLL_LOG(INFO) << "Negative epoll timeout: " << timeout_in_us
-                    << "us; epoll will wait forever for events.";
-    // If timeout_in_us is < 0 we are supposed to Wait forever.  This means we
-    // should set timeout_in_us to -1000 so we will
-    // Wait(-1000/1000) == Wait(-1) == Wait forever.
-    timeout_in_us = -1000;
-  } else {
-    // If timeout is specified, and the ready list is empty.
-    if (timeout_in_us < 1000) {
-      timeout_in_us = 1000;
-    }
-  }
-  const int timeout_in_ms = timeout_in_us / 1000;
-  int64_t expected_wakeup_us = NowInUsec() + timeout_in_us;
-
-  int nfds = libuv_wait_impl(timeout_in_ms);
-  EPOLL_VLOG(3) << "nfds=" << nfds;
-
+void SimpleLibuvEpollServer::UpdateTimeAndCallReadyList() {
 #ifdef EPOLL_SERVER_EVENT_TRACING
   event_recorder_.RecordEpollWaitEvent(timeout_in_ms, nfds);
 #endif
@@ -687,7 +724,9 @@ void SimpleLibuvEpollServer::WaitForEventsAndCallHandleEvents(int64_t timeout_in
   // done epoll_wait, which guarantees that the maximum error is the amount of
   // time it takes to process all the events generated by epoll_wait.
   recorded_now_in_us_ = NowInUsec();
+  // TODO use libuv time eventually
 
+/*
   if (timeout_in_us > 0) {
     int64_t delta = NowInUsec() - expected_wakeup_us;
     last_delay_in_usec_ = delta > 0 ? delta : 0;
@@ -695,8 +734,8 @@ void SimpleLibuvEpollServer::WaitForEventsAndCallHandleEvents(int64_t timeout_in
     // timeout_in_us < 0 means we waited forever until an event;
     // timeout_in_us == 0 means there was no kernel delay to track.
     last_delay_in_usec_ = 0;
-  }
-
+  }*/
+  /*
   if (nfds < 0) {
     // Catch interrupted syscall and just ignore it and move on.
     if (errno != EINTR && errno != 0) {
@@ -705,7 +744,7 @@ void SimpleLibuvEpollServer::WaitForEventsAndCallHandleEvents(int64_t timeout_in
       EPOLL_LOG(FATAL) << "Error " << saved_errno << " in epoll_wait: "
                        << strerror_r(saved_errno, buf, sizeof(buf));
     }
-  }
+  } */
 
   // Now run through the ready list.
   if (ready_list_.lh_first) {
@@ -747,9 +786,24 @@ void SimpleLibuvEpollServer::CallReadyListCallbacks() {
       // called, and we should now get rid of the object.
       if (cb_and_mask->cb == NULL) {
         cb_map_.erase(*cb_and_mask);
-      } else if (event.out_ready_mask != 0) {
-        cb_and_mask->events_to_fake = event.out_ready_mask;
-        AddToReadyList(cb_and_mask);
+      } else {
+        int events_to_apply = cb_and_mask->event_mask;
+        int out_ready_mask = event.out_ready_mask;
+        if (!(UV_WRITABLE & out_ready_mask))
+        { // no pending writes, we are not waiting for writing
+          events_to_apply &= ~UV_WRITABLE;
+        }
+        if (events_to_apply != cb_and_mask->event_applied)
+        {
+          ModFD(cb_and_mask->fd, &cb_and_mask->handle, events_to_apply);
+          cb_and_mask->event_applied = events_to_apply;
+        }
+        out_ready_mask &= ~UV_WRITABLE; // fake only other flags
+        if (out_ready_mask != 0)
+        {
+          cb_and_mask->events_to_fake = out_ready_mask;
+          AddToReadyList(cb_and_mask);
+        }
       }
     }
   }

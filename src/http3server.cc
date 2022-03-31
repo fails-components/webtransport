@@ -133,7 +133,7 @@ namespace quic
       port_ = address.port();
     }
 
-    const int kEpollFlags = UV_READABLE | UV_WRITABLE | UV_DISCONNECT;
+    const int kEpollFlags = UV_READABLE | UV_WRITABLE; // there is no analogue to EPOLLET in libuv hopefully not a problem
 
     epoll_server_.set_timeout_in_us(-1); // negative values would mean wait forever
     epoll_server_.RegisterFD(fd_, this, kEpollFlags);

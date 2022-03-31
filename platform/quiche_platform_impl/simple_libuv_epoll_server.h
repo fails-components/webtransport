@@ -512,19 +512,17 @@ class EPOLL_EXPORT_PRIVATE SimpleLibuvEpollServer {
   //   is non-zero).
   void CallReadyListCallbacks();
 
-  int64_t LastDelayInUsec() const { return last_delay_in_usec_; }
+  // int64_t LastDelayInUsec() const { return last_delay_in_usec_; }
 
  protected:
   virtual void SetNonblocking(int fd);
 
-  // This exists here so that we can override this function in unittests
-  // in order to make effective mock SimpleEpollServer objects.
-  virtual int libuv_wait_impl(int timeout_in_ms);
 
-
-  static void eventcallback( uv_poll_t *handle, int status, int events);
+// callbacks for libuv
+  static void eventcallback(uv_poll_t *handle, int status, int events);
+  static void checkcallback(uv_check_t *handle);
   static void timercallback(uv_timer_t *handle);
-  static void closecallback( uv_handle_t* handle);
+  static void closecallback(uv_handle_t* handle);
   static void asynccallback(uv_async_t *handle);
 
   // this struct is used internally, and is never used by anything external
@@ -551,6 +549,7 @@ class EPOLL_EXPORT_PRIVATE SimpleLibuvEpollServer {
         : cb(cb),
           fd(fd),
           event_mask(event_mask),
+          event_applied(event_mask),
           events_asserted(0),
           events_to_fake(0),
           in_use(false) {
@@ -579,6 +578,8 @@ class EPOLL_EXPORT_PRIVATE SimpleLibuvEpollServer {
     mutable int events_asserted;
     // the event_mask for the ready list to use to call OnEvent.
     mutable int events_to_fake;
+    // the events applied to libuv
+    mutable int event_applied;
     // toggle around calls to OnEvent to tell UnregisterFD to not erase the
     // iterator because HandleEvent is using it.
     mutable bool in_use;
@@ -657,13 +658,16 @@ class EPOLL_EXPORT_PRIVATE SimpleLibuvEpollServer {
   ////////////////////////////////////////
 
   // Summary:
-  //   Waits for events, and calls HandleEvents() for each
-  //   fd, event pair discovered to possibly have an event.
-  //   Note that a callback (B) may get a spurious event if
-  //   another callback (A) has closed a file-descriptor N, and
-  //   the callback (B) has a newly opened file-descriptor, which
-  //   also happens to be N.
-  virtual void WaitForEventsAndCallHandleEvents(int64_t timeout_in_us);
+  // records currentime and callsready list if necessary
+ void UpdateTimeAndCallReadyList();
+
+ // Summary:
+ // executes pending alarms
+ void ExecuteTimers();
+
+ // Summary:
+ // calculate the wake timer for the next loop
+ void ScheduleTimers();
 
   // Summary:
   //   An internal function for implementing the ready list. It adds a fd's
@@ -733,6 +737,7 @@ class EPOLL_EXPORT_PRIVATE SimpleLibuvEpollServer {
   uv_timer_t looptimer; // event loop timer
   // async handle
   uv_async_t asynchandle;
+  uv_check_t checkhandle;
 
   LibuvEpollAsyncCallbackInterface* asynccb_;
 
@@ -980,11 +985,11 @@ class EPOLL_EXPORT_PRIVATE SimpleLibuvEpollServer {
   // without doing work, and logs to ERROR, or aborts the program (in
   // DEBUG mode). If so, then it sets the bool to true, does work, and
   // sets it back to false when done. This catches unwanted recursion.
-  bool in_wait_for_events_and_execute_callbacks_;
+  // bool in_wait_for_events_and_execute_callbacks_;
 
   // Returns true when the SimpleEpollServer() is being destroyed.
   bool in_shutdown_;
-  int64_t last_delay_in_usec_;
+  // int64_t last_delay_in_usec_;
 };
 
 class LibuvEpollAlarmCallbackInterface {
