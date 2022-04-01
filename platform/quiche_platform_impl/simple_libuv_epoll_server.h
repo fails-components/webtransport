@@ -524,6 +524,7 @@ class EPOLL_EXPORT_PRIVATE SimpleLibuvEpollServer {
   static void timercallback(uv_timer_t *handle);
   static void closecallback(uv_handle_t* handle);
   static void asynccallback(uv_async_t *handle);
+  static void preparecallback(uv_prepare_t* handle);
 
   // this struct is used internally, and is never used by anything external
   // to this class. Some of its members are declared mutable to get around the
@@ -738,6 +739,7 @@ class EPOLL_EXPORT_PRIVATE SimpleLibuvEpollServer {
   // async handle
   uv_async_t asynchandle;
   uv_check_t checkhandle;
+  uv_prepare_t preparehandle;
 
   LibuvEpollAsyncCallbackInterface* asynccb_;
 

@@ -119,9 +119,12 @@ SimpleLibuvEpollServer::SimpleLibuvEpollServer()
   uv_async_init(&loop, &asynchandle, asynccallback);
   uv_check_init(&loop, &checkhandle);
   uv_check_start(&checkhandle, checkcallback);
+  uv_prepare_init(&loop,&preparehandle);
+  uv_prepare_start(&preparehandle, preparecallback);
   asynchandle.data =  (void*) this;
   checkhandle.data =  (void*) this;
   looptimer.data =  (void*) this;
+  preparehandle.data = (void*) this;
  
   LIST_INIT(&ready_list_);
   LIST_INIT(&tmp_list_);
@@ -192,9 +195,11 @@ SimpleLibuvEpollServer::~SimpleLibuvEpollServer() {
   close(write_fd_);
   uv_timer_stop(&looptimer);
   uv_check_stop(&checkhandle);
+  uv_prepare_stop(&preparehandle);
   uv_close((uv_handle_t*) &checkhandle, nullptr);
   uv_close((uv_handle_t*) &asynchandle, nullptr);
   uv_close((uv_handle_t*) &looptimer, nullptr);
+  uv_close((uv_handle_t*) &preparehandle, nullptr);
   uv_loop_close(&loop);
 }
 
@@ -613,8 +618,12 @@ void SimpleLibuvEpollServer::timercallback(uv_timer_t *handle)
 {
   SimpleLibuvEpollServer* server = (SimpleLibuvEpollServer*) handle->data;
   server->ExecuteTimers();
+}
+
+void SimpleLibuvEpollServer::preparecallback(uv_prepare_t *handle)
+{
+  SimpleLibuvEpollServer* server = (SimpleLibuvEpollServer*) handle->data;
   server->ScheduleTimers();
-  // NOOP
 }
 
 void SimpleLibuvEpollServer::closecallback( uv_handle_t* handle ) {
