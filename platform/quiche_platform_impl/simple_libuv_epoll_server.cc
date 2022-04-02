@@ -445,7 +445,7 @@ void SimpleLibuvEpollServer::ScheduleTimers() {
 
   
     if (timeout_in_ms < 0) uv_timer_stop(&looptimer);
-    else  uv_timer_start(&looptimer, timercallback, timeout_in_ms / 1000, 0);
+    else  uv_timer_start(&looptimer, timercallback, timeout_in_ms, 0);
  
 }
 
