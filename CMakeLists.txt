@@ -51,6 +51,7 @@ platform/quiche_platform_impl/quiche_error_code_wrappers_impl.h
 platform/quiche_platform_impl/quiche_epoll_impl.h
 platform/quiche_platform_impl/quiche_hostname_utils_impl.h
 platform/quiche_platform_impl/quiche_hostname_utils_impl.cc
+platform/quiche_platform_impl/quiche_iovec_impl.h
 platform/quiche_platform_impl/quiche_mutex_impl.h
 platform/quiche_platform_impl/quiche_stack_trace_impl.h
 platform/quiche_platform_impl/quiche_stream_buffer_allocator_impl.h
@@ -64,7 +65,6 @@ platform/quiche_platform_impl/simple_libuv_epoll_server.cc
 platform/quiche_platform_impl/simple_libuv_epoll_server.h
 platform/net/quiche/common/platform/impl/quiche_flags_impl.h
 platform/net/quiche/common/platform/impl/quiche_flags_impl.cc
-platform/net/quiche/common/platform/impl/quiche_iovec_impl.h
 platform/quiche_platform_impl/quiche_mem_slice_impl.h
 platform/quiche_platform_impl/quiche_flag_utils_impl.h
 #protofiles
@@ -80,7 +80,8 @@ third_party/quiche/common/platform/api/quiche_bug_tracker.h
 third_party/quiche/common/platform/api/quiche_export.h
 third_party/quiche/common/platform/api/quiche_flag_utils.h
 third_party/quiche/common/platform/api/quiche_flags.h
-third_party/quiche/common/platform/api/quiche_hostname_utils.cc
+# the next one would need google url, which we like to skip
+#third_party/quiche/common/platform/api/quiche_hostname_utils.cc
 third_party/quiche/common/platform/api/quiche_hostname_utils.h
 third_party/quiche/common/platform/api/quiche_iovec.h
 third_party/quiche/common/platform/api/quiche_logging.h
@@ -95,6 +96,7 @@ third_party/quiche/common/platform/api/quiche_url_utils.h
 third_party/quiche/common/platform/default/quiche_platform_impl/quiche_prefetch_impl.h
 third_party/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.cc
 third_party/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.h
+third_party/quiche/common/platform/default/quiche_platform_impl/quiche_iovec_impl.h
 third_party/quiche/common/print_elements.h
 third_party/quiche/common/quiche_buffer_allocator.cc
 third_party/quiche/common/quiche_buffer_allocator.h

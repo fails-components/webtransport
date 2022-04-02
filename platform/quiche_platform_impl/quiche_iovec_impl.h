@@ -5,17 +5,6 @@
 #ifndef NET_QUICHE_PLATFORM_IMPL_QUIC_IOVEC_IMPL_H_
 #define NET_QUICHE_PLATFORM_IMPL_QUIC_IOVEC_IMPL_H_
 
-#include <stddef.h>
-
-
-#if defined(_WIN32)
-/* Structure for scatter/gather I/O.  */
-struct iovec {
-  void* iov_base; /* Pointer to data.  */
-  size_t iov_len; /* Length of data.  */
-};
-#elif defined(linux) || defined(__APPLE__)
-#include <sys/uio.h>
-#endif  // defined(OS_WIN)
+#include "third_party/quiche/common/platform/default/quiche_platform_impl/quiche_iovec_impl.h"
 
 #endif  // NET_QUIC_PLATFORM_IMPL_QUIC_IOVEC_IMPL_H_
