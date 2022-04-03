@@ -44,6 +44,7 @@ class Http3WTStream {
             const promise = new Promise((res, rej) => {
               this.abortres = res
             })
+            this.readableclosed = true
             this.objint.closeStream()
           }
         },
@@ -153,6 +154,8 @@ class Http3WTStream {
         )
       if (this.writable)
         this.parentobj.removeSendStream(this.writable, this.writableController)
+      this.readableclosed = true
+      this.parentobj.removeStreamObj(this)
     }
   }
 
@@ -255,9 +258,18 @@ class Http3WTSession {
 
     this.sendStreams = new Set()
     this.receiveStreams = new Set()
+    this.streamObjs = new Set()
 
     this.sendStreamsController = new Set()
     this.receiveStreamsController = new Set()
+  }
+
+  addStreamObj(stream) {
+    this.streamObjs.add(stream)
+  }
+
+  removeStreamObj(stream) {
+    this.streamObjs.delete(stream)
   }
 
   addSendStream(stream, controller) {
@@ -332,11 +344,13 @@ class Http3WTSession {
 
     this.sendStreamsController.forEach((ele) => ele.error(errorcode))
     this.receiveStreamsController.forEach((ele) => ele.error(errorcode))
+    this.streamObjs.forEach((ele)=> ele.readableclosed = true)
 
     this.sendStreams.clear()
     this.receiveStreams.clear()
     this.sendStreamsController.clear()
     this.receiveStreamsController.clear()
+    this.streamObjs.clear()
 
     if (this.closedResolve) this.closedResolve(errorcode)
   }
@@ -349,6 +363,7 @@ class Http3WTSession {
       bidirectional: args.bidirectional,
       incoming: args.incoming
     })
+    this.addStreamObj(strobj)
     if (args.incoming) {
       if (args.bidirectional) {
         this.incomBiDiController.enqueue(strobj)
