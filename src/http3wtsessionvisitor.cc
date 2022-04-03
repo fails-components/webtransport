@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include "src/http3wtsessionvisitor.h"
-#include "src/http3server.h"
+#include "src/http3eventloop.h"
 
 namespace quic
 {
@@ -12,12 +12,12 @@ namespace quic
                                                 const std::string &error_message)
     {
 
-        session_->server_->informSessionClosed(session_, error_code, error_message);
+        session_->eventloop_->informSessionClosed(session_, error_code, error_message);
     }
 
     void Http3WTSession::Visitor::OnSessionReady(const spdy::SpdyHeaderBlock &)
     {
-        session_->server_->informSessionReady(session_);
+        session_->eventloop_->informSessionReady(session_);
 
         if (session_->session_->CanOpenNextOutgoingBidirectionalStream())
         {

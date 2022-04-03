@@ -21,6 +21,7 @@ namespace quic
 {
 
   class Http3Server;
+  class Http3EventLoop;
 
   // This interface implements the functionality to fetch a response
   // from the backend (such as cache, http-proxy etc) to serve
@@ -35,7 +36,8 @@ namespace quic
       std::unique_ptr<WebTransportVisitor> visitor;
     };
 
-    Http3ServerBackend() : server_(nullptr) {}
+    Http3ServerBackend(Http3EventLoop *eventloop) : eventloop_(eventloop),
+     server_(nullptr) {}
 
     ~Http3ServerBackend();
 
@@ -48,10 +50,11 @@ namespace quic
     bool UsesDatagramContexts() { return true; }
     bool SupportsExtendedConnect() { return true; }
 
-    void addPath(std::string &path) { paths_.insert(path); }
+    void addPath(std::string path) { paths_.insert(path); }
 
   protected:
     Http3Server *server_; // unowned
+    Http3EventLoop *eventloop_; // unowned
     std::set<std::string> paths_;
   };
 

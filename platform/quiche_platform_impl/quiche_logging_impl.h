@@ -66,7 +66,7 @@ class StdoutLogSink {
   protected:
     bool condition;
     static DevZeroStream dump;
-    const int logverbose=1;
+    static const int logverbose=1;
     const bool nolog= true;
 
 };

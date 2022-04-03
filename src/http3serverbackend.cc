@@ -11,6 +11,7 @@
 #include "src/http3serverbackend.h"
 #include "src/http3wtsessionvisitor.h"
 #include "src/http3server.h"
+#include "src/http3eventloop.h"
 
 #include <utility>
 
@@ -25,7 +26,6 @@
 #include "common/platform/api/quiche_file_utils.h"
 #include "common/quiche_text_utils.h"
 
-#include "src/http3server.h"
 
 using spdy::Http2HeaderBlock;
 
@@ -69,11 +69,11 @@ namespace quic
     if (paths_.find(path) != paths_.end())
     { // to do handle our web transport paths
       WebTransportResponse response;
-      Http3WTSession * wtsession = new Http3WTSession(session, server_);
+      Http3WTSession * wtsession = new Http3WTSession(session, eventloop_);
       response.response_headers[":status"] = "200";
       response.visitor =
           std::make_unique<Http3WTSession::Visitor>(wtsession); 
-      server_->informAboutNewSession(static_cast<Http3WTSession *>(wtsession), path);
+      eventloop_->informAboutNewSession(server_, static_cast<Http3WTSession *>(wtsession), path);
       return response;
     }
 

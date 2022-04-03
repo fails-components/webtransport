@@ -20,19 +20,19 @@
 #include "quic/platform/api/quic_logging.h"
 #include "common/quiche_circular_deque.h"
 
-#include "src/http3server.h"
+#include "src/http3eventloop.h"
 
 namespace quic
 {
-    class Http3Server;
+    class Http3EventLoop;
 
     class Http3WTStream : public Nan::ObjectWrap
     {
     public:
-        Http3WTStream(WebTransportStream *stream, Http3Server *server)
-            : stream_(stream), server_(server) {}
+        Http3WTStream(WebTransportStream *stream, Http3EventLoop *eventloop)
+            : stream_(stream), eventloop_(eventloop) {}
 
-        ~Http3WTStream(){};
+        ~Http3WTStream(){printf("stream destruct %x\n", this);};
 
         class Visitor : public WebTransportStreamVisitor
         {
@@ -112,7 +112,7 @@ namespace quic
                 std::function<void()> task = [obj]()
                 { if (!obj->stream_) return; // we do not have to cancel a promise?
                   obj->tryRead(); };
-                obj->server_->Schedule(task);
+                obj->eventloop_->Schedule(task);
             }
         }
 
@@ -125,7 +125,7 @@ namespace quic
 
                 std::function<void()> task = [obj]()
                 { obj->doStopReading(); };
-                obj->server_->Schedule(task);
+                obj->eventloop_->Schedule(task);
             }
         }
 
@@ -143,7 +143,7 @@ namespace quic
 
                 std::function<void()> task = [obj, bufferHandle, buffer, len]()
                 { obj->writeChunkInt(buffer, len, bufferHandle); };
-                obj->server_->Schedule(task);
+                obj->eventloop_->Schedule(task);
             }
         }
 
@@ -171,7 +171,7 @@ namespace quic
 
             std::function<void()> task = [obj,reason]()
             { obj->stream_->ResetWithUserCode(reason); };
-            obj->server_->Schedule(task);
+            obj->eventloop_->Schedule(task);
         }
 
         static NAN_METHOD(New)
@@ -240,7 +240,7 @@ namespace quic
 
     private:
         WebTransportStream *stream_;
-        Http3Server *server_;
+        Http3EventLoop *eventloop_;
         bool send_fin_ = false;
         bool stop_sending_received_ = false;
         bool pause_reading_ = false;

@@ -24,7 +24,7 @@
 #include "common/quiche_circular_deque.h"
 #include "common/platform/api/quiche_mem_slice.h"
 
-#include "src/http3server.h"
+#include "src/http3eventloop.h"
 
 namespace quic
 {
@@ -33,8 +33,8 @@ namespace quic
     class Http3WTSession : public Nan::ObjectWrap
     {
     public:
-        Http3WTSession(WebTransportSession *session, Http3Server *server)
-            : session_(session), server_(server), ordBidiStreams(0), ordUnidiStreams(0), allocator_(server)
+        Http3WTSession(WebTransportSession *session, Http3EventLoop *eventloop)
+            : session_(session), eventloop_(eventloop), ordBidiStreams(0), ordUnidiStreams(0), allocator_(eventloop)
         {
         }
 
@@ -52,8 +52,8 @@ namespace quic
             {
                 Http3WTSession *sessobj = session_;
                 std::function<void()> task = [sessobj]()
-                { sessobj->Unref(); };
-                session_->server_->Schedule(task);
+                { printf("sess unref\n");sessobj->Unref(); };
+                session_->eventloop_->Schedule(task);
             }
 
             void OnSessionReady(const spdy::SpdyHeaderBlock &) override;
@@ -71,13 +71,13 @@ namespace quic
                     {
                         return;
                     }
-                    Http3WTStream *wtstream = new Http3WTStream(stream, session_->server_);
+                    Http3WTStream *wtstream = new Http3WTStream(stream, session_->eventloop_);
                     QUIC_DVLOG(1)
                         << "Http3WTSession received a bidirectional stream "
                         << stream->GetStreamId();
                     stream->SetVisitor(
                         std::make_unique<Http3WTStream::Visitor>(wtstream));
-                    session_->server_->informAboutStream(true, true, session_, static_cast<Http3WTStream *>(wtstream));
+                    session_->eventloop_->informAboutStream(true, true, session_, static_cast<Http3WTStream *>(wtstream));
                     stream->visitor()->OnCanRead();
                 }
             }
@@ -92,19 +92,19 @@ namespace quic
                     {
                         return;
                     }
-                    Http3WTStream *wtstream = new Http3WTStream(stream, session_->server_);
+                    Http3WTStream *wtstream = new Http3WTStream(stream, session_->eventloop_);
                     QUIC_DVLOG(1)
                         << "Http3WTSession received a unidirectional stream";
                     stream->SetVisitor(
                         std::make_unique<Http3WTStream::Visitor>(wtstream));
-                    session_->server_->informAboutStream(true, false, session_, static_cast<Http3WTStream *>(wtstream));
+                    session_->eventloop_->informAboutStream(true, false, session_, static_cast<Http3WTStream *>(wtstream));
                     stream->visitor()->OnCanRead();
                 }
             }
 
             void OnDatagramReceived(absl::string_view datagram) override
             {
-                session_->server_->informDatagramReceived(session_, datagram);
+                session_->eventloop_->informDatagramReceived(session_, datagram);
                 /*auto buffer = MakeUniqueBuffer(&allocator_, datagram.size());
                 memcpy(buffer.get(), datagram.data(), datagram.size());
                 quiche::QuicheMemSlice slice(std::move(buffer), datagram.size());
@@ -147,10 +147,10 @@ namespace quic
                 QUIC_DVLOG(1)
                     << "Http3WTSessionVisitor opens a bidirectional stream";
                 WebTransportStream *stream = session_->OpenOutgoingBidirectionalStream();
-                Http3WTStream *wtstream = new Http3WTStream(stream, server_);
+                Http3WTStream *wtstream = new Http3WTStream(stream, eventloop_);
                 stream->SetVisitor(
                     std::make_unique<Http3WTStream::Visitor>(wtstream));
-                server_->informAboutStream(false, true, this, static_cast<Http3WTStream *>(wtstream));
+                eventloop_->informAboutStream(false, true, this, static_cast<Http3WTStream *>(wtstream));
                 stream->visitor()->OnCanWrite();
                 ordBidiStreams--;
             }
@@ -165,11 +165,11 @@ namespace quic
                 QUIC_DVLOG(1)
                     << "Http3WTSessionVisitor opened a unidirectional stream";
                 WebTransportStream *stream = session_->OpenOutgoingUnidirectionalStream();
-                Http3WTStream *wtstream = new Http3WTStream(stream, server_);
+                Http3WTStream *wtstream = new Http3WTStream(stream, eventloop_);
                 stream->SetVisitor(
                     std::make_unique<Http3WTStream::Visitor>(wtstream));
 
-                server_->informAboutStream(false, false, this, static_cast<Http3WTStream *>(wtstream));
+                eventloop_->informAboutStream(false, false, this, static_cast<Http3WTStream *>(wtstream));
                 stream->visitor()->OnCanWrite();
                 ordUnidiStreams--;
             }
@@ -219,7 +219,7 @@ namespace quic
             Http3WTSession *obj = Nan::ObjectWrap::Unwrap<Http3WTSession>(info.Holder());
             std::function<void()> task = [obj]()
             { obj->tryOpenBidiStream(); };
-            obj->server_->Schedule(task);
+            obj->eventloop_->Schedule(task);
         }
 
         static NAN_METHOD(orderUnidiStream)
@@ -227,7 +227,7 @@ namespace quic
             Http3WTSession *obj = Nan::ObjectWrap::Unwrap<Http3WTSession>(info.Holder());
             std::function<void()> task = [obj]()
             { obj->tryOpenUnidiStream(); };
-            obj->server_->Schedule(task);
+            obj->eventloop_->Schedule(task);
         }
 
         static NAN_METHOD(writeDatagram)
@@ -243,7 +243,7 @@ namespace quic
 
                 std::function<void()> task = [obj, bufferHandle, buffer, len]()
                 { obj->writeDatagramInt(buffer, len, bufferHandle); };
-                obj->server_->Schedule(task);
+                obj->eventloop_->Schedule(task);
             }
         }
 
@@ -278,7 +278,7 @@ namespace quic
 
             std::function<void()> task = [obj,code,reason]()
             { obj->session_->CloseSession(code, reason); };
-            obj->server_->Schedule(task);
+            obj->eventloop_->Schedule(task);
         }
 
 
@@ -286,7 +286,7 @@ namespace quic
         class DatagramAllocator : public quiche::QuicheBufferAllocator
         {
         public:
-            DatagramAllocator(Http3Server *server) : server_(server)
+            DatagramAllocator(Http3EventLoop *eventloop) : eventloop_(eventloop)
             {
             }
 
@@ -295,7 +295,7 @@ namespace quic
 
             void Delete(char *buffer)
             {
-                server_->informDatagramBufferFree(buffers_[buffer]);
+                eventloop_->informDatagramBufferFree(buffers_[buffer]);
                 buffers_.erase(buffer);
             }
 
@@ -305,7 +305,7 @@ namespace quic
             }
 
         protected:
-            Http3Server *server_;
+            Http3EventLoop *eventloop_;
             std::map<char *, Nan::Persistent<v8::Object> *> buffers_;
         };
 
@@ -317,12 +317,12 @@ namespace quic
 
             quiche::QuicheMemSlice slice(quiche::QuicheBuffer(std::move(ubuffer), len));
             session_->SendOrQueueDatagram(std::move(slice));
-            server_->informDatagramSend(this);
+            eventloop_->informDatagramSend(this);
         }
         WebTransportSession *session_;
         DatagramAllocator allocator_;
         bool echo_stream_opened_ = false;
-        Http3Server *server_;
+        Http3EventLoop *eventloop_;
         uint32_t ordBidiStreams;
         uint32_t ordUnidiStreams;
     };

@@ -16,7 +16,7 @@ const wtrouter = require(wtpath)
 class Http3WTStream {
   constructor(args) {
     this.objint = args.object
-    this.objint.jsobj = new WeakRef(this)
+    this.objint.jsobj = this
     this.parentobj = args.parentobj
     this.transport = args.transport
     this.bidirectional = args.bidirectional
@@ -167,7 +167,7 @@ class Http3WTStream {
     // console.log('Stream callback called', args)
     if (!args || !args.object || !args.object.jsobj)
       throw new Error('Stream callback without jsobj')
-    const visitor = args.object.jsobj.deref()
+    const visitor = args.object.jsobj
     if (args.purpose) {
       switch (args.purpose) {
         case 'StreamClosed':
@@ -179,7 +179,10 @@ class Http3WTStream {
           {
             if (visitor && args.hasOwnProperty('data')) {
               visitor.onStreamRead(args)
-            } else throw new Error('Malformed StreamRead')
+            } else {
+              console.log('Stream callback called', visitor, args)
+              throw new Error('Malformed StreamRead')
+            }
           }
           break
         case 'StreamWrite':
@@ -203,7 +206,7 @@ class Http3WTStream {
 class Http3WTSession {
   constructor(args) {
     this.objint = args.object
-    this.objint.jsobj = new WeakRef(this)
+    this.objint.jsobj = this
     this.parentobj = args.parentobj
     this.state = 'connected'
 
@@ -350,7 +353,7 @@ class Http3WTSession {
 
     this.sendStreamsController.forEach((ele) => ele.error(errorcode))
     this.receiveStreamsController.forEach((ele) => ele.error(errorcode))
-    this.streamObjs.forEach((ele)=> ele.readableclosed = true)
+    this.streamObjs.forEach((ele) => (ele.readableclosed = true))
 
     this.sendStreams.clear()
     this.receiveStreams.clear()
@@ -407,7 +410,7 @@ class Http3WTSession {
     // console.log('Session callback called', args)
     if (!args || !args.object || !args.object.jsobj)
       throw new Error('Session callback without jsobj')
-    const visitor = args.object.jsobj.deref()
+    const visitor = args.object.jsobj
     if (args.purpose) {
       switch (args.purpose) {
         case 'SessionReady':
@@ -452,21 +455,23 @@ class Http3WTSession {
 
 class Http3WebTransport {
   constructor(args) {
-    this.transportCallback = this.transportCallback.bind(this)
-    this.transportInt = wtrouter.Http3WebTransport(args, {
-      transportCallback: this.transportCallback,
-      streamCallback: Http3WTStream.callback,
-      sessionCallback: Http3WTSession.callback
-    })
+    const eventloop =
+      Http3EventLoop.getGlobalEventLoop().eventloopInt
+    
+    this.transportInt = wtrouter.Http3WebTransport(args, eventloop)
+    this.transportInt.jsobj = this
 
     this.sessions = {}
   }
 
-  transportCallback(args) {
-    // console.log('incoming callback', args)
+  static transportCallback(args) {
+    console.log('incoming callback', args)
+    if (!args || !args.object || !args.object.jsobj)
+      throw new Error('Transport callback without jsobj')
+    const visitor = args.object.jsobj
     if (args.purpose) {
-      if (this.customCallback) {
-        this.customCallback(args)
+      if (visitor.customCallback) {
+        visitor.customCallback(args)
       } else {
         throw new Error('unknown purpose')
       }
@@ -483,6 +488,10 @@ export class Http3Server extends Http3WebTransport {
 
   startServer() {
     this.transportInt.startServer()
+  }
+
+  stopServer() {
+    this.transportInt.stopServer()
   }
 
   destroy() {
@@ -506,7 +515,7 @@ export class Http3Server extends Http3WebTransport {
   }
 
   customCallback(args) {
-    // console.log('incoming callback', args)
+    console.log('incoming callback', args)
     if (args.purpose) {
       switch (args.purpose) {
         case 'Http3WTSessionVisitor':
@@ -514,7 +523,7 @@ export class Http3Server extends Http3WebTransport {
             // create Http3 Visitor
             if (args.object) {
               const sesobj = new Http3WTSession({
-                object: args.object,
+                object: args.session,
                 parentobj: this
               })
               if (this.sessionController[args.path])
@@ -530,3 +539,32 @@ export class Http3Server extends Http3WebTransport {
     }
   }
 }
+
+class Http3EventLoop {
+  static globalLoop = null
+  constructor(args) {
+    this.eventloopInt = wtrouter.Http3EventLoop({
+      transportCallback: Http3WebTransport.transportCallback,
+      streamCallback: Http3WTStream.callback,
+      sessionCallback: Http3WTSession.callback
+    })
+    this.eventloopInt.jsobj = this
+  }
+
+  startEventLoop() {
+    this.eventloopInt.startEventLoop()
+  }
+
+  static createGlobalEventLoop() {
+    if (!Http3EventLoop.globalLoop) {
+      Http3EventLoop.globalLoop = new Http3EventLoop()
+      Http3EventLoop.globalLoop.startEventLoop()
+    }
+  }
+
+  static getGlobalEventLoop() {
+    return Http3EventLoop.globalLoop
+  }
+}
+
+Http3EventLoop.createGlobalEventLoop()

@@ -15,32 +15,32 @@ namespace quic
             auto cur = stream_->chunks_.front();
 
             // now we have to inform the server TODO
-            stream_->server_->informAboutStreamWrite(stream_, cur.bufferhandle, false);
+            stream_->eventloop_->informAboutStreamWrite(stream_, cur.bufferhandle, false);
 
             stream_->chunks_.pop_front();
         }
         Http3WTStream *strobj = stream_;
         std::function<void()> task = [strobj]()
-        { strobj->Unref(); };
-        stream_->server_->Schedule(task);
+        {printf("stream unref %x\n", strobj); strobj->Unref(); };
+        stream_->eventloop_->Schedule(task);
 
         stream_->stream_ = nullptr;
     }
 
      void Http3WTStream::Visitor::OnWriteSideInDataRecvdState() 
      {
-         if (stream_->send_fin_)  stream_->server_->informStreamClosed(stream_, lasterror); // may be move below
+         if (stream_->send_fin_)  stream_->eventloop_->informStreamClosed(stream_, lasterror); // may be move below
      }
 
     void Http3WTStream::Visitor::OnStopSendingReceived(WebTransportStreamError error)
     {
         stream_->stop_sending_received_ = true;
-        stream_->server_->informStreamClosed(stream_, error); // may be move below
+        stream_->eventloop_->informStreamClosed(stream_, error); // may be move below
     }
 
     void Http3WTStream::cancelWrite(Nan::Persistent<v8::Object> *handle)
     {
-        server_->informAboutStreamWrite(this, handle, false);
+        eventloop_->informAboutStreamWrite(this, handle, false);
     }
 
     void Http3WTStream::doCanRead()
@@ -57,7 +57,7 @@ namespace quic
             data->resize(result.bytes_read);
             QUIC_DVLOG(1) << "Attempted reading on WebTransport bidirectional stream "
                           << ", bytes read: " << result.bytes_read;
-            server_->informAboutStreamRead(this, data, result.fin);
+            eventloop_->informAboutStreamRead(this, data, result.fin);
         }
     }
 
@@ -79,7 +79,7 @@ namespace quic
                 return;
             }
             // now we have to inform the server TODO
-            server_->informAboutStreamWrite(this, cur.bufferhandle, true);
+            eventloop_->informAboutStreamWrite(this, cur.bufferhandle, true);
 
             chunks_.pop_front();
         }
