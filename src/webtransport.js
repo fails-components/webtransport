@@ -106,7 +106,11 @@ class Http3WTStream {
   }
 
   onStreamClosed(args) {
-    if (this.readable) this.readableController.close()
+    // console.log('onStreamClosed')
+    if (this.readable && !this.readableclosed) {
+      this.readableController.close()
+      this.readableclosed = true
+    }
     if (this.pendingoperation) {
       const res = this.pendingres
       this.pendingoperation = null
@@ -311,6 +315,7 @@ class Http3WTSession {
   }
 
   close(closeInfo) {
+    // console.log('closeinfo', closeInfo)
     if (this.state === 'closed' || this.state === 'failed') return
     if (this.objint) {
       this.objint.close({
@@ -327,6 +332,7 @@ class Http3WTSession {
 
   onClose(errorcode, error) {
     delete this.objint // not valid any more
+    // console.log('onClose')
     for (const rej of this.rejectBiDi) rej()
     for (const rej of this.rejectUniDi) rej()
     for (const rej of this.writeDatagramRej) rej()
