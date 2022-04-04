@@ -49,8 +49,6 @@ platform/quiche_platform_impl/quiche_client_stats_impl.h
 platform/quiche_platform_impl/quiche_bug_tracker_impl.h
 platform/quiche_platform_impl/quiche_error_code_wrappers_impl.h
 platform/quiche_platform_impl/quiche_epoll_impl.h
-platform/quiche_platform_impl/quiche_hostname_utils_impl.h
-platform/quiche_platform_impl/quiche_hostname_utils_impl.cc
 platform/quiche_platform_impl/quiche_iovec_impl.h
 platform/quiche_platform_impl/quiche_mutex_impl.h
 platform/quiche_platform_impl/quiche_stack_trace_impl.h
@@ -75,13 +73,22 @@ platform/quiche_platform_impl/quiche_flag_utils_impl.h
 #${CMAKE_CURRENT_BINARY_DIR}/third_party/quiche/quic/core/proto/cached_network_parameters.pb.cc
 #${CMAKE_CURRENT_BINARY_DIR}/third_party/quiche/quic/core/proto/crypto_server_config.pb.cc
 #${CMAKE_CURRENT_BINARY_DIR}/third_party/quiche/quic/core/proto/source_address_token.pb.cc
+# url file
+third_party/googleurl/url/url_canon.cc
+third_party/googleurl/url/url_canon_internal.cc
+third_party/googleurl/url/url_canon_path.cc
+third_party/googleurl/url/url_canon_stdstring.cc
+third_party/googleurl/url/third_party/mozilla/url_parse.h
+third_party/googleurl/url/url_canon.h
+third_party/googleurl/url/url_canon_internal.h
+third_party/googleurl/url/url_canon_stdstring.h
+third_party/googleurl/url/url_parse_internal.h
 # normal files
 third_party/quiche/common/platform/api/quiche_bug_tracker.h
 third_party/quiche/common/platform/api/quiche_export.h
 third_party/quiche/common/platform/api/quiche_flag_utils.h
 third_party/quiche/common/platform/api/quiche_flags.h
-# the next one would need google url, which we like to skip
-#third_party/quiche/common/platform/api/quiche_hostname_utils.cc
+third_party/quiche/common/platform/api/quiche_hostname_utils.cc
 third_party/quiche/common/platform/api/quiche_hostname_utils.h
 third_party/quiche/common/platform/api/quiche_iovec.h
 third_party/quiche/common/platform/api/quiche_logging.h
@@ -790,6 +797,7 @@ target_include_directories(gquiche
 PUBLIC third_party/quiche
 PUBLIC third_party/boringssl/src/include
 PUBLIC third_party/abseil-cpp
+PUBLIC third_party/googleurl
 PUBLIC platform
 PUBLIC .
 PUBLIC ${Protobuf_INCLUDE_DIRS}
