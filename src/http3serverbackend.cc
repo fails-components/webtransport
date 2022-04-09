@@ -19,12 +19,12 @@
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "quic/core/http/spdy_utils.h"
-#include "quic/platform/api/quic_bug_tracker.h"
-#include "quic/platform/api/quic_logging.h"
+#include "quiche/quic/core/http/spdy_utils.h"
+#include "quiche/quic/platform/api/quic_bug_tracker.h"
+#include "quiche/quic/platform/api/quic_logging.h"
 //#include "quic/tools/web_transport_test_visitors.h"
-#include "common/platform/api/quiche_file_utils.h"
-#include "common/quiche_text_utils.h"
+#include "quiche/common/platform/api/quiche_file_utils.h"
+#include "quiche/common/quiche_text_utils.h"
 
 
 using spdy::Http2HeaderBlock;

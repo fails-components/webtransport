@@ -3,11 +3,11 @@
 // found in the LICENSE file.
 #ifndef NET_TOOLS_EPOLL_SERVER_PLATFORM_IMPL_EPOLL_BUG_IMPL_H_
 #define NET_TOOLS_EPOLL_SERVER_PLATFORM_IMPL_EPOLL_BUG_IMPL_H_
-#include "net/tools/epoll_server/platform/impl/epoll_logging_impl.h"
+#include "platform/quiche_platform_impl/epoll_logging_impl.h"
 #define EPOLL_BUG_IMPL(bug_id) EPOLL_LOG_IMPL(DFATAL)
 #define EPOLL_BUG_V2_IMPL(bug_id) EPOLL_LOG_IMPL(DFATAL)
 
-#include "common/platform/api/quiche_logging.h"
+#include "quiche/common/platform/api/quiche_logging.h"
 
 #define DCHECK(var1) QUICHE_DCHECK(var1)
 #define DCHECK_GE(var1, var2) QUICHE_DCHECK_GE(var1, var2)

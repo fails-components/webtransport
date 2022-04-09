@@ -14,7 +14,7 @@
 #include <memory>
 
 #include "absl/strings/string_view.h"
-#include "spdy/core/spdy_protocol.h"
+#include "quiche/spdy/core/spdy_protocol.h"
 
 namespace quic
 {

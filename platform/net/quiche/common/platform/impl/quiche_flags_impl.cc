@@ -8,13 +8,13 @@
 
 #define QUIC_FLAG(flag, value) bool flag = value;
 #define QUIC_FLAGT(type, flag, value) type flag = value;
-#include "third_party/quiche/quic/core/quic_flags_list.h"
+#include "third_party/quiche/quiche/quic/core/quic_flags_list.h"
 #include "net/quiche/common/platform/impl/quic_flags_list_add.h"
 #undef QUIC_FLAG
 #undef QUIC_FLAGT
 // fix annoying compiler buf
 
-#include "http2/decoder/decode_buffer.h"
+#include "quiche/http2/decoder/decode_buffer.h"
 namespace http2{
 constexpr size_t DecodeBuffer::kMaxDecodeBufferLength;
 }

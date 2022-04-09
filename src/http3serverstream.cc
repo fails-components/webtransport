@@ -17,15 +17,15 @@
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "quic/core/http/quic_spdy_stream.h"
-#include "quic/core/http/spdy_utils.h"
-#include "quic/core/http/web_transport_http3.h"
-#include "quic/core/quic_utils.h"
-#include "quic/platform/api/quic_bug_tracker.h"
-#include "quic/platform/api/quic_flags.h"
-#include "quic/platform/api/quic_logging.h"
+#include "quiche/quic/core/http/quic_spdy_stream.h"
+#include "quiche/quic/core/http/spdy_utils.h"
+#include "quiche/quic/core/http/web_transport_http3.h"
+#include "quiche/quic/core/quic_utils.h"
+#include "quiche/quic/platform/api/quic_bug_tracker.h"
+#include "quiche/quic/platform/api/quic_flags.h"
+#include "quiche/quic/platform/api/quic_logging.h"
 #include "src/http3serversession.h"
-#include "spdy/core/spdy_protocol.h"
+#include "quiche/spdy/core/spdy_protocol.h"
 
 using spdy::Http2HeaderBlock;
 

@@ -19,10 +19,10 @@
 
 #include "src/http3wtstreamvisitor.h"
 
-#include "quic/core/web_transport_interface.h"
-#include "quic/platform/api/quic_logging.h"
-#include "common/quiche_circular_deque.h"
-#include "common/platform/api/quiche_mem_slice.h"
+#include "quiche/quic/core/web_transport_interface.h"
+#include "quiche/quic/platform/api/quic_logging.h"
+#include "quiche/common/quiche_circular_deque.h"
+#include "quiche/common/platform/api/quiche_mem_slice.h"
 
 #include "src/http3eventloop.h"
 

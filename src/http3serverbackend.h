@@ -13,9 +13,9 @@
 
 #include <memory>
 
-#include "quic/core/quic_types.h"
-#include "quic/core/web_transport_interface.h"
-#include "spdy/core/spdy_header_block.h"
+#include "quiche/quic/core/quic_types.h"
+#include "quiche/quic/core/web_transport_interface.h"
+#include "quiche/spdy/core/spdy_header_block.h"
 
 namespace quic
 {

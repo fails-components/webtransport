@@ -14,11 +14,11 @@
 #include <vector>
 #include <algorithm>
 
-#include "third_party/quiche/common/platform/api/quiche_flags.h"
-#include "third_party/quiche/common/platform/api/quiche_export.h"
+#include "third_party/quiche/quiche/common/platform/api/quiche_flags.h"
+#include "third_party/quiche/quiche/common/platform/api/quiche_export.h"
 #define QUIC_FLAG(flag, value) QUICHE_EXPORT_PRIVATE extern bool flag;
 #define QUIC_FLAGT(type, flag, value) QUICHE_EXPORT_PRIVATE extern type flag;
-#include "third_party/quiche/quic/core/quic_flags_list.h"
+#include "third_party/quiche/quiche/quic/core/quic_flags_list.h"
 #include "net/quiche/common/platform/impl/quic_flags_list_add.h"
 #undef QUIC_FLAG
 #undef QUIC_FLAGT

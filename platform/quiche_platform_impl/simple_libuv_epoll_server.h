@@ -40,8 +40,8 @@
 
 #include <uv.h>
 
-#include "epoll_server/platform/api/epoll_export.h"
-#include "epoll_server/platform/api/epoll_logging.h"
+#include "quiche/epoll_server/platform/api/epoll_export.h"
+#include "quiche/epoll_server/platform/api/epoll_logging.h"
 
 namespace epoll_server {
 

@@ -13,13 +13,13 @@
 #include <utility>
 
 #include "absl/memory/memory.h"
-#include "quic/core/http/quic_server_initiated_spdy_stream.h"
-#include "quic/core/http/quic_spdy_session.h"
-#include "quic/core/quic_connection.h"
-#include "quic/core/quic_types.h"
-#include "quic/core/quic_utils.h"
-#include "quic/platform/api/quic_flags.h"
-#include "quic/platform/api/quic_logging.h"
+#include "quiche/quic/core/http/quic_server_initiated_spdy_stream.h"
+#include "quiche/quic/core/http/quic_spdy_session.h"
+#include "quiche/quic/core/quic_connection.h"
+#include "quiche/quic/core/quic_types.h"
+#include "quiche/quic/core/quic_utils.h"
+#include "quiche/quic/platform/api/quic_flags.h"
+#include "quiche/quic/platform/api/quic_logging.h"
 #include "src/http3serverstream.h"
 
 namespace quic

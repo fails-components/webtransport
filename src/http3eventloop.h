@@ -15,12 +15,12 @@
 #include <nan.h>
 
 #include "src/http3serverbackend.h"
-#include "quic/core/crypto/quic_crypto_server_config.h"
-#include "quic/core/quic_udp_socket.h"
-#include "quic/core/quic_dispatcher.h"
-#include "quic/core/quic_packet_reader.h"
-#include "quic/platform/api/quic_socket_address.h"
-#include "quic/platform/api/quic_epoll.h"
+#include "quiche/quic/core/crypto/quic_crypto_server_config.h"
+#include "quiche/quic/core/quic_udp_socket.h"
+#include "quiche/quic/core/quic_dispatcher.h"
+#include "quiche/quic/core/quic_packet_reader.h"
+#include "quiche/quic/platform/api/quic_socket_address.h"
+#include "quiche/quic/platform/api/quic_epoll.h"
 
 using namespace Nan;
 

@@ -5,7 +5,7 @@
 #ifndef QUICHE_PREFETCH_IMPL_H_
 #define QUICHE_PREFETCH_IMPL_H_
 
-#include "third_party/quiche/common/platform/default/quiche_platform_impl/quiche_prefetch_impl.h"
+#include "third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_prefetch_impl.h"
 
 
 #endif  

@@ -11,12 +11,12 @@
 #include "src/http3eventloop.h"
 #include "src/http3dispatcher.h"
 #include "src/http3wtsessionvisitor.h"
-#include "quic/core/quic_epoll_alarm_factory.h"
-#include "quic/core/quic_epoll_connection_helper.h"
-#include "quic/tools/quic_simple_crypto_server_stream_helper.h"
-#include "quic/core/quic_epoll_clock.h"
-#include "quic/core/crypto/proof_source_x509.h"
-#include "common/platform/api/quiche_reference_counted.h"
+#include "quiche/quic/core/quic_epoll_alarm_factory.h"
+#include "quiche/quic/core/quic_epoll_connection_helper.h"
+#include "quiche/quic/tools/quic_simple_crypto_server_stream_helper.h"
+#include "quiche/quic/core/quic_epoll_clock.h"
+#include "quiche/quic/core/crypto/proof_source_x509.h"
+#include "quiche/common/platform/api/quiche_reference_counted.h"
 
 using namespace Nan;
 

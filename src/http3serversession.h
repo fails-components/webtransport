@@ -22,11 +22,11 @@
 #include <utility>
 #include <vector>
 
-#include "quic/core/http/quic_server_session_base.h"
-#include "quic/core/http/quic_spdy_session.h"
-#include "quic/core/quic_crypto_server_stream_base.h"
-#include "quic/core/quic_packets.h"
-#include "quic/platform/api/quic_containers.h"
+#include "quiche/quic/core/http/quic_server_session_base.h"
+#include "quiche/quic/core/http/quic_spdy_session.h"
+#include "quiche/quic/core/quic_crypto_server_stream_base.h"
+#include "quiche/quic/core/quic_packets.h"
+#include "quiche/quic/platform/api/quic_containers.h"
 //#include "quic/tools/quic_backend_response.h"
 #include "src/http3serverbackend.h"
 #include "src/http3serverstream.h" // todo

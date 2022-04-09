@@ -10,7 +10,7 @@
 
 
 
-#include "common/platform/default/quiche_platform_impl/quiche_reference_counted_impl.h"
+#include "quiche/common/platform/default/quiche_platform_impl/quiche_reference_counted_impl.h"
 
 
 #endif  // NET_QUIC_PLATFORM_IMPL_QUIC_REFERENCE_COUNTED_IMPL_H_

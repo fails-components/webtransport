@@ -16,8 +16,8 @@
 #include <algorithm>
 #include <utility>
 
-#include "epoll_server/platform/api/epoll_bug.h"
-#include "epoll_server/platform/api/epoll_time.h"
+#include "quiche/epoll_server/platform/api/epoll_bug.h"
+#include "quiche/epoll_server/platform/api/epoll_time.h"
 
 // Design notes: An efficient implementation of ready list has the following
 // desirable properties:

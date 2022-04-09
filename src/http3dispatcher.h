@@ -13,8 +13,8 @@
 
 #include "src/http3serverbackend.h"
 #include "absl/strings/string_view.h"
-#include "quic/core/http/quic_server_session_base.h"
-#include "quic/core/quic_dispatcher.h"
+#include "quiche/quic/core/http/quic_server_session_base.h"
+#include "quiche/quic/core/quic_dispatcher.h"
 
 namespace quic
 {
