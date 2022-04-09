@@ -66,7 +66,10 @@ class Http3WTStream {
               this.pendingoperation = new Promise((res, rej) => {
                 this.pendingres = res
               })
-              this.objint.writeChunk(chunk)
+              const dataprom = this.parentobj.waitForDatagramsSend()
+              dataprom.finally(()=> {
+                this.objint.writeChunk(chunk)
+              })
               return this.pendingoperation
             } else throw new Error('chunk is not of instanceof Uint8Array ')
           },
@@ -239,6 +242,7 @@ class Http3WTSession {
     })
     this.writeDatagramRes = []
     this.writeDatagramRej = []
+    this.writeDatagramProm = []
     this.datagrams.writable = new WritableStream({
       start: async (controller) => {
         this.outgoDatagramController = controller
@@ -250,6 +254,7 @@ class Http3WTSession {
             this.writeDatagramRes.push(res)
             this.writeDatagramRej.push(rej)
           })
+          this.writeDatagramProm.push(ret)
           this.objint.writeDatagram(chunk)
           return ret
         } else throw new Error('chunk is not of type Uint8Array')
@@ -270,6 +275,14 @@ class Http3WTSession {
 
     this.sendStreamsController = new Set()
     this.receiveStreamsController = new Set()
+  }
+
+  async waitForDatagramsSend()
+  {
+    while (this.writeDatagramProm.length > 0)
+    {
+      await Promise.allSettled(this.writeDatagramProm)
+    }
   }
 
   addStreamObj(stream) {
@@ -342,6 +355,7 @@ class Http3WTSession {
     for (const rej of this.writeDatagramRej) rej()
     this.writeDatagramRej = []
     this.writeDatagramRes = []
+    this.writeDatagramProm = []
     this.resolveBiDi = []
     this.resolveUniDi = []
     this.rejectBiDi = []
@@ -404,6 +418,7 @@ class Http3WTSession {
 
   onDatagramSend(args) {
     this.writeDatagramRej.shift()
+    this.writeDatagramProm.shift()
     const res = this.writeDatagramRes.shift()
     res()
   }
