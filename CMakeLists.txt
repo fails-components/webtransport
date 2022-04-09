@@ -83,6 +83,8 @@ third_party/googleurl/url/url_canon.h
 third_party/googleurl/url/url_canon_internal.h
 third_party/googleurl/url/url_canon_stdstring.h
 third_party/googleurl/url/url_parse_internal.h
+third_party/googleurl/url/url_canon_host.cc
+third_party/googleurl/url/url_canon_ip.cc
 # normal files
 third_party/quiche/common/platform/api/quiche_bug_tracker.h
 third_party/quiche/common/platform/api/quiche_export.h
