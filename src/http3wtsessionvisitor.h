@@ -63,6 +63,7 @@ namespace quic
 
             void OnIncomingBidirectionalStreamAvailable() override
             {
+                if (!session_->session_) return;
                 while (true)
                 {
                     WebTransportStream *stream =
@@ -84,6 +85,7 @@ namespace quic
 
             void OnIncomingUnidirectionalStreamAvailable() override
             {
+                if (!session_->session_) return;
                 while (true)
                 {
                     WebTransportStream *stream =
@@ -141,6 +143,7 @@ namespace quic
 
         void TrySendingBidirectionalStreams()
         {
+            if (!session_) return;
             while (ordBidiStreams > 0 &&
                    session_->CanOpenNextOutgoingBidirectionalStream())
             {
@@ -158,6 +161,7 @@ namespace quic
 
         void TrySendingUnidirectionalStreams()
         {
+            if (!session_) return;
             // move to some where else?
             while (ordUnidiStreams > 0 &&
                    session_->CanOpenNextOutgoingUnidirectionalStream())
@@ -311,6 +315,10 @@ namespace quic
 
         void writeDatagramInt(char *buffer, size_t len, Nan::Persistent<v8::Object> *bufferhandle)
         {
+            if (!session_) {
+                eventloop_->informDatagramSend(this);
+                return;
+            }
             allocator_.registerBuffer(buffer, bufferhandle);
             auto ubuffer = quiche::QuicheUniqueBufferPtr(buffer,
                                                          quiche::QuicheBufferDeleter(&allocator_));

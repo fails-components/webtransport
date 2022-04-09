@@ -244,6 +244,7 @@ class Http3WTSession {
         this.outgoDatagramController = controller
       },
       write: (chunk, controller) => {
+        if (this.state === 'closed') throw new Error('Session is closed')
         if (chunk instanceof Uint8Array) {
           const ret = new Promise((res, rej) => {
             this.writeDatagramRes.push(res)
@@ -349,6 +350,7 @@ class Http3WTSession {
     this.incomBiDiController.close()
     this.incomUniDiController.close()
     this.incomDatagramController.close()
+    this.outgoDatagramController.error(errorcode)
     this.state = 'closed'
 
     this.sendStreamsController.forEach((ele) => ele.error(errorcode))
