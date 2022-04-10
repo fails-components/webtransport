@@ -364,7 +364,7 @@ class Http3WTSession {
     this.incomBiDiController.close()
     this.incomUniDiController.close()
     this.incomDatagramController.close()
-    this.outgoDatagramController.error(errorcode)
+    // this.outgoDatagramController.error(errorcode)
     this.state = 'closed'
 
     this.sendStreamsController.forEach((ele) => ele.error(errorcode))
