@@ -26,19 +26,34 @@ class Http3WTStream {
     this.pendingoperation = null
     this.pendingres = null
 
+    this.pendingoperationRead = null
+    this.pendingresRead = null
+    this.pendingboybRead = null
+
     if (this.bidirectional || this.incoming) {
       this.readable = new ReadableStream(
         {
-          start: async (controller) => {
+          start: (controller) => {
             this.readableController = controller
             this.parentobj.addReceiveStream(this.readable, controller)
-            this.objint.startReading()
           },
-          pull: async (controller) => {
+          pull: (controller) => {
             if (this.closed) {
               return new Promise((res, rej) => {})
             }
-            this.objint.startReading()
+            const byob = controller.byobRequest
+            if (byob?.view instanceof Uint8Array) {
+              this.pendingoperationRead = new Promise((res, rej) => {
+                this.pendingresRead = res
+              })
+              this.pendingboybRead = byob
+              this.objint.readByob(byob.view)
+             
+              return this.pendingoperationRead
+            } else {
+              console.log('byob ', byob)
+              throw new Error('chunk is not of instanceof Uint8Array ')
+            }
           },
           cancel: (controller) => {
             const promise = new Promise((res, rej) => {
@@ -46,9 +61,11 @@ class Http3WTStream {
             })
             this.readableclosed = true
             this.objint.closeStream()
-          }
-        },
-        { highWaterMark: 4 }
+          },
+          type: 'bytes',
+          autoAllocateChunkSize: 4096 // lets take this as buffer size
+        } /* ,
+        { highWaterMark: 4 * 65536 }*/
       )
     }
     if (this.bidirectional || !this.incoming) {
@@ -120,6 +137,13 @@ class Http3WTStream {
       this.pendingres = null
       res()
     }
+    if (this.pendingoperationRead) {
+      const res = this.pendingresRead
+      this.pendingoperationRead = null
+      this.pendingresRead = null
+      this.pendingboybRead = null
+      res()
+    } 
     if (this.writable && args.code !== 0) this.writable.error(args.code || 0)
     // console.log('stream closed', args)
     if (this.readable)
@@ -131,9 +155,17 @@ class Http3WTStream {
   }
 
   onStreamRead(args) {
-    if (args.data && !this.readableclosed) {
-      this.readableController.enqueue(args.data)
-      if (this.readableController.desiredSize < 0) this.objint.stopReading()
+    if (!this.readableclosed) {
+      if (this.pendingoperationRead) {
+        if (args.datalen) this.pendingboybRead.respond(args.datalen)
+        // this.readableController.enqueue(data)
+        const res = this.pendingresRead
+        this.pendingoperationRead = null
+        this.pendingresRead = null
+        this.pendingboybRead = null
+        res()
+      } else throw new Error('onStreamRead with no pending operation')
+      // if (this.readableController.desiredSize < 0) this.objint.stopReading()
     }
     if (args.fin) {
       this.readableController.close()
@@ -180,7 +212,7 @@ class Http3WTStream {
           break
         case 'StreamRead':
           {
-            if (visitor && args.hasOwnProperty('data')) {
+            if (visitor && args.hasOwnProperty('datalen')) {
               visitor.onStreamRead(args)
             } else {
               console.log('Stream callback called', visitor, args)

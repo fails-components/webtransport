@@ -19,6 +19,15 @@ namespace quic
 
             stream_->chunks_.pop_front();
         }
+        while (stream_->byobs_.size() > 0)
+        {
+            auto cur = stream_->byobs_.front();
+
+            // now we have to inform the server TODO
+            stream_->eventloop_->informAboutStreamRead(stream_, cur.bufferhandle, 0, false, false);
+
+            stream_->byobs_.pop_front();
+        }
         Http3WTStream *strobj = stream_;
         std::function<void()> task = [strobj]()
         {printf("stream unref %x\n", strobj); strobj->Unref(); };
@@ -45,19 +54,22 @@ namespace quic
 
     void Http3WTStream::doCanRead()
     {
-        if (pause_reading_) return ; // back pressure folks!
+        // if (pause_reading_) return ; // back pressure folks!
         // first figure out if we have readable data
         size_t readable = stream_->ReadableBytes();
-        if (readable > 0)
+        while (readable > 0 && byobs_.size() > 0)
         {
+            auto cur = byobs_.front();
             // ok create a string obj to hold the data
-            std::string *data = new std::string();
-            data->resize(readable);
-            WebTransportStream::ReadResult result = stream_->Read(&(*data)[0], readable);
-            data->resize(result.bytes_read);
+
+            WebTransportStream::ReadResult result = 
+                stream_->Read(cur.buffer, std::min(readable,cur.len));
+            cur.lenread = result.bytes_read;
             QUIC_DVLOG(1) << "Attempted reading on WebTransport bidirectional stream "
                           << ", bytes read: " << result.bytes_read;
-            eventloop_->informAboutStreamRead(this, data, result.fin);
+            eventloop_->informAboutStreamRead(this, cur.bufferhandle, cur.lenread, result.fin, true);
+            readable = stream_->ReadableBytes();
+            byobs_.pop_front();
         }
     }
 

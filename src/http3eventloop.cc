@@ -78,6 +78,7 @@ namespace quic
     tplwtsv->SetClassName(Nan::New("Http3WTStream").ToLocalChecked());
     tplwtsv->InstanceTemplate()->SetInternalFieldCount(1);
     Nan::SetPrototypeMethod(tplwtsv, "writeChunk", Http3WTStream::writeChunk);
+    Nan::SetPrototypeMethod(tplwtsv, "readByob", Http3WTStream::readByob);
     Nan::SetPrototypeMethod(tplwtsv, "closeStream", Http3WTStream::closeStream);
     Nan::SetPrototypeMethod(tplwtsv, "resetStream", Http3WTStream::resetStream);
     Nan::SetPrototypeMethod(tplwtsv, "startReading", Http3WTStream::startReading);
@@ -178,13 +179,15 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::informAboutStreamRead(Http3WTStream *streamobj, std::string *data, bool fin)
+  void Http3EventLoop::informAboutStreamRead(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, size_t lenread, bool fin, bool success)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::StreamRead;
     report.streamobj = streamobj;
-    report.para = data;
+    report.bufferhandle = bufferhandle;
     report.fin = fin;
+    report.lenread = lenread;
+    report.success = success;
     if (progress_)
       progress_->Send(&report, 1);
   }
@@ -328,28 +331,32 @@ namespace quic
     Nan::Call(*cbstream_, 1, argv);
   }
 
-  void Http3EventLoop::processStreamRead(Http3WTStream *streamobj, std::string *data, bool fin)
+  void Http3EventLoop::processStreamRead(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, size_t lenread, bool fin, bool success)
   {
     HandleScope scope;
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("StreamRead").ToLocalChecked();
     v8::Local<v8::String> finProp = Nan::New("fin").ToLocalChecked();
     v8::Local<v8::Boolean> finVal = Nan::New(fin);
-    v8::Local<v8::String> dataProp = Nan::New("data").ToLocalChecked();
+    v8::Local<v8::String> datalenProp = Nan::New("datalen").ToLocalChecked();
+    v8::Local<v8::Uint32> datalenVal = Nan::New((uint32_t) lenread);
+    v8::Local<v8::String> successProp = Nan::New("success").ToLocalChecked();
+    v8::Local<v8::Boolean> successVal = Nan::New(success);
 
-    v8::Local<v8::Object> dataVal = Nan::NewBuffer(&(*data)[0], data->length(),
-                                                   freeData, static_cast<void *>(data))
-                                        .ToLocalChecked();
 
     v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
     v8::Local<v8::Object> objVal = streamobj->handle();
+
+    bufferhandle->Reset(); // release the incoming buffer
+    delete bufferhandle;   // free the handle object
 
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
     retObj->Set(context, finProp, finVal).FromJust();
-    retObj->Set(context, dataProp, dataVal).FromJust();
+    retObj->Set(context, datalenProp, datalenVal).FromJust();
     retObj->Set(context, objProp, objVal).FromJust();
+    retObj->Set(context, successProp, successVal).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
     Nan::Call(*cbstream_, 1, argv);
@@ -564,8 +571,7 @@ namespace quic
       break;
       case Http3ProgressReport::StreamRead:
       {
-        processStreamRead(cur.streamobj, cur.para, cur.fin);
-        cur.para = nullptr; // take ownership of the data
+        processStreamRead(cur.streamobj, cur.bufferhandle, cur.lenread, cur.fin, cur.success);
       }
       break;
       case Http3ProgressReport::StreamWrite:

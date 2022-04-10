@@ -59,14 +59,18 @@ namespace quic
         union
         {
             WebTransportSessionError wtecode;
+            size_t lenread;
         };
         union
         {
             Http3WTStream *stream;       // unowned
             Http3WTSession *session;     // unowned
             Nan::Persistent<v8::Object> *bufferhandle; // we own it and must delete it if present
-            bool fin;
             WebTransportStreamError wtscode;
+        };
+        union
+        {
+            bool fin;
         };
         union
         {
@@ -111,7 +115,7 @@ namespace quic
 
         void informAboutStream(bool incom, bool bidir, Http3WTSession *sessionobj, Http3WTStream *stream);
         void informStreamClosed(Http3WTStream *streamobj, WebTransportStreamError error_code);
-        void informAboutStreamRead(Http3WTStream *streamobj, std::string *data, bool fin);
+        void informAboutStreamRead(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, size_t lenread, bool fin, bool success);
         void informAboutStreamWrite(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, bool success);
         void informAboutStreamReset(Http3WTStream *streamobj);
 
@@ -152,7 +156,7 @@ namespace quic
 
         void processStream(bool incom, bool bidi, Http3WTSession *sessionobj, Http3WTStream *stream);
         void processStreamClosed(Http3WTStream *streamobj, WebTransportStreamError error_code);
-        void processStreamRead(Http3WTStream *streamobj, std::string *data, bool fin);
+        void processStreamRead(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, size_t lenread, bool fin, bool success);
         void processStreamWrite(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, bool success);
         void processStreamReset(Http3WTStream *streamobj);
 

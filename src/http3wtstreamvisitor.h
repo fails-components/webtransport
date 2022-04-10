@@ -129,6 +129,24 @@ namespace quic
             }
         }
 
+        static NAN_METHOD(readByob)
+        {
+            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
+            // ok we have to get the buffer
+            if (!info[0]->IsUndefined())
+            {
+                v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+                v8::Local<v8::Object> bufferlocal = info[0]->ToObject(context).ToLocalChecked();
+                Nan::Persistent<v8::Object> *bufferHandle = new Nan::Persistent<v8::Object>(bufferlocal);
+                char *buffer = node::Buffer::Data(bufferlocal);
+                size_t len = node::Buffer::Length(bufferlocal);
+
+                std::function<void()> task = [obj, bufferHandle, buffer, len]()
+                { obj->readByobInt(buffer, len, bufferHandle); };
+                obj->eventloop_->Schedule(task);
+            }
+        }
+
         static NAN_METHOD(writeChunk)
         {
             Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
@@ -221,6 +239,14 @@ namespace quic
             Nan::Persistent<v8::Object> *bufferhandle;
         };
 
+        struct RByobs
+        {
+            char *buffer;
+            size_t len;
+            size_t lenread;
+            Nan::Persistent<v8::Object> *bufferhandle;
+        };
+
         void writeChunkInt(char *buffer, size_t len, Nan::Persistent<v8::Object> *bufferhandle)
         {
             if (!stream_)
@@ -236,6 +262,22 @@ namespace quic
             tryWrite();
         }
 
+        void readByobInt(char *buffer, size_t len, Nan::Persistent<v8::Object> *bufferhandle)
+        {
+            if (!stream_)
+            {
+                cancelWrite(bufferhandle);
+                return;
+            }
+            RByobs cur;
+            cur.buffer = buffer;
+            cur.len = len;
+            cur.lenread = 0;
+            cur.bufferhandle = bufferhandle;
+            byobs_.push_back(cur);
+            tryRead();
+        }
+
         void cancelWrite(Nan::Persistent<v8::Object> *handle);
 
     private:
@@ -245,6 +287,7 @@ namespace quic
         bool stop_sending_received_ = false;
         bool pause_reading_ = false;
         std::deque<WChunks> chunks_;
+        std::deque<RByobs> byobs_;
     };
 }
 
