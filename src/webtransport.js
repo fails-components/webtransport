@@ -417,6 +417,7 @@ class Http3WTSession {
   }
 
   onDatagramSend(args) {
+    if (this.state === 'closed') return
     this.writeDatagramRej.shift()
     this.writeDatagramProm.shift()
     const res = this.writeDatagramRes.shift()
