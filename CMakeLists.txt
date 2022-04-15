@@ -691,14 +691,6 @@ third_party/quiche/quiche/quic/platform/api/quic_socket_address.cc
 third_party/quiche/quiche/quic/platform/api/quic_socket_address.h
 third_party/quiche/quiche/quic/platform/api/quic_stack_trace.h
 third_party/quiche/quiche/quic/platform/api/quic_thread.h
-#third_party/quiche/quiche/quic/quic_transport/quic_transport_client_session.cc
-#third_party/quiche/quiche/quic/quic_transport/quic_transport_client_session.h
-third_party/quiche/quiche/quic/quic_transport/quic_transport_protocol.h
-#third_party/quiche/quiche/quic/quic_transport/quic_transport_server_session.cc
-#third_party/quiche/quiche/quic/quic_transport/quic_transport_server_session.h
-third_party/quiche/quiche/quic/quic_transport/quic_transport_session_interface.h
-third_party/quiche/quiche/quic/quic_transport/quic_transport_stream.cc
-third_party/quiche/quiche/quic/quic_transport/quic_transport_stream.h
 third_party/quiche/quiche/quic/tools/quic_simple_crypto_server_stream_helper.cc
 third_party/quiche/quiche/quic/tools/quic_simple_crypto_server_stream_helper.h
 third_party/quiche/quiche/spdy/core/hpack/hpack_constants.cc
