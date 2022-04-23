@@ -42,7 +42,6 @@ endif(COMMAND cmake_policy)
 add_library(gquiche SHARED 
 #plattform impl
 platform/quiche_platform_impl/epoll_bug_impl.h
-platform/quiche_platform_impl/epoll_export_impl.h
 platform/quiche_platform_impl/epoll_logging_impl.h
 platform/quiche_platform_impl/epoll_time_impl.h
 platform/quiche_platform_impl/quiche_export_impl.h

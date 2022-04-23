@@ -17,7 +17,7 @@
 #include <utility>
 
 #include "quiche/epoll_server/platform/api/epoll_bug.h"
-#include "quiche/epoll_server/platform/api/epoll_time.h"
+#include "absl/time/clock.h"  // TODO replace with libuv
 
 // Design notes: An efficient implementation of ready list has the following
 // desirable properties:
@@ -545,7 +545,9 @@ void SimpleLibuvEpollServer::Wake() {
   DCHECK_EQ(rv, 1);
 }
 
-int64_t SimpleLibuvEpollServer::NowInUsec() const { return WallTimeNowInUsec(); }
+int64_t SimpleLibuvEpollServer::NowInUsec() const { 
+  return absl::GetCurrentTimeNanos() / 1000; 
+}
 
 int64_t SimpleLibuvEpollServer::ApproximateNowInUsec() const {
   if (recorded_now_in_us_ != 0) {
