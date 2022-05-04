@@ -91,7 +91,7 @@ async function run() {
   await new Promise((resolve) => setTimeout(resolve, 2000))
 
   try {
-    client.close({ closeCode: 5, reason: 'tests finished' })
+    client.close({ closeCode: 0, reason: 'tests finished' })
   } catch (error) {
     console.log('client close problem', error)
   }

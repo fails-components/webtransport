@@ -75,7 +75,7 @@ export async function incomingBidirectionalEchoTest(session) {
           console.log('Server is gone')
           break
         }
-        console.log('got a newsession', value)
+        console.log('got a newsession')
         await value.ready
         console.log('server session is ready')
         const helpfunc = async () => {

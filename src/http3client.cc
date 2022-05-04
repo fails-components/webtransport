@@ -206,7 +206,7 @@ namespace quic
 
     Http3Client::~Http3Client()
     {
-         printf("client destruct %x\n", this);
+         // printf("client destruct %x\n", this);
     }
 
     bool Http3Client::closeClientInt()

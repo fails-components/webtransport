@@ -340,7 +340,7 @@ class Http3WTSession {
   }
 
   close(closeInfo) {
-    console.log('closeinfo', closeInfo)
+    // console.log('closeinfo', closeInfo)
     if (this.state === 'closed' || this.state === 'failed') return
     if (this.objint) {
       this.objint.close({
@@ -500,7 +500,7 @@ class Http3WebTransport {
   }
 
   static transportCallback(args) {
-    console.log('incoming callback transport', args)
+    // console.log('incoming callback transport', args)
     if (!args || !args.object || !args.object.jsobj)
       throw new Error('Transport callback without jsobj')
     const visitor = args.object.jsobj

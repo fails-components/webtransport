@@ -40,7 +40,7 @@ namespace quic
 
         ~Http3WTSession()
         {
-            printf("session destruct %x\n", this);
+            // printf("session destruct %x\n", this);
         }
 
         class Visitor : public WebTransportVisitor

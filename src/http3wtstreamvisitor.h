@@ -32,7 +32,7 @@ namespace quic
         Http3WTStream(WebTransportStream *stream, Http3EventLoop *eventloop)
             : stream_(stream), eventloop_(eventloop) {}
 
-        ~Http3WTStream(){printf("stream destruct %x\n", this);};
+        ~Http3WTStream(){/*printf("stream destruct %x\n", this);*/};
 
         class Visitor : public WebTransportStreamVisitor
         {

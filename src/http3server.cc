@@ -44,7 +44,7 @@ namespace quic
 
   Http3Server::~Http3Server()
   {
-    printf("server destruct %x\n", this);
+    // printf("server destruct %x\n", this);
   }
 
 
