@@ -28,14 +28,24 @@ namespace quic
 {
 
     class Http3Server;
+    class Http3Client;
     class Http3WTSession;
     class Http3WTStream;
+
+    class LifetimeHelper {
+    public:
+        virtual void doUnref() = 0;
+    };
+
 
     struct Http3ProgressReport
     {
     public:
         enum
         {
+            ClientConnected,
+            ClientWebTransportSupport,
+            NewClientSession,
             NewSession,
             SessionReady,
             SessionClosed,
@@ -49,12 +59,15 @@ namespace quic
             StreamReset,
             DatagramReceived,
             DatagramSend,
-            DatagramBufferFree
+            DatagramBufferFree,
+            Unref
         } type;
         union { // always the originating obj
             Http3WTStream *streamobj;
             Http3WTSession *sessionobj;
             Http3Server *serverobj;
+            Http3Client *clientobj;
+            LifetimeHelper * obj;
         }; 
         union
         {
@@ -85,7 +98,7 @@ namespace quic
                         public Nan::ObjectWrap
     {
     public:
-        Http3EventLoop(Callback *callback, Callback *cbstream, Callback *cbsession);
+        Http3EventLoop(Callback *cbeventloop, Callback *callback, Callback *cbstream, Callback *cbsession);
 
         Http3EventLoop(const Http3EventLoop &) = delete;
         Http3EventLoop &operator=(const Http3EventLoop &) = delete;
@@ -109,6 +122,10 @@ namespace quic
 
         void OnAsyncExecution() override;
 
+        void informAboutClientConnected(Http3Client *client, bool success);
+        void informClientWebtransportSupport(Http3Client *client);
+        void informNewClientSession(Http3Client *client, Http3WTSession *session);
+
         void informAboutNewSession(Http3Server *server, Http3WTSession *session, absl::string_view path);
         void informSessionClosed(Http3WTSession *sessionobj, WebTransportSessionError error_code, absl::string_view error_message);
         void informSessionReady(Http3WTSession *sessionobj);
@@ -123,12 +140,17 @@ namespace quic
         void informDatagramBufferFree(Nan::Persistent<v8::Object> *bufferhandle);
         void informDatagramSend(Http3WTSession *sessionobj);
 
+        void informUnref(LifetimeHelper * obj);
+
         void Schedule(std::function<void()> action);
+
+        int64_t NowInUsec() const {return epoll_server_.NowInUsec();} // remove later
 
 
     private:
         static NAN_METHOD(New);
         static NAN_METHOD(startEventLoop);
+        static NAN_METHOD(shutDownEventLoop);
 
 
         static void freeData(char *data, void *hint);
@@ -148,6 +170,10 @@ namespace quic
 
         QuicPacketCount packets_dropped_;
         QuicEpollServer epoll_server_;
+
+        void processClientConnected(Http3Client * clientobj, bool success);
+        void processClientWebtransportSupport(Http3Client *client);
+        void processNewClientSession(Http3Client *client, Http3WTSession *session);
         
 
         void processNewSession(Http3Server * serverobj, Http3WTSession *session, const std::string &path);
@@ -165,11 +191,15 @@ namespace quic
         void processDatagramBufferFree(Nan::Persistent<v8::Object> *bufferhandle);
 
         bool startEventLoopInt();
+        bool shutDownEventLoopInt();
 
         const AsyncProgressQueueWorker::ExecutionProgress *progress_;
 
         Callback *cbstream_; 
         Callback *cbsession_; 
+        Callback *cbtransport_; 
+
+        bool loop_running_;
     };
 
 }

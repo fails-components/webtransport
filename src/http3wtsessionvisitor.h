@@ -30,7 +30,7 @@ namespace quic
 {
     // class Http3Server;
 
-    class Http3WTSession : public Nan::ObjectWrap
+    class Http3WTSession : public Nan::ObjectWrap,  public LifetimeHelper
     {
     public:
         Http3WTSession(WebTransportSession *session, Http3EventLoop *eventloop)
@@ -40,7 +40,7 @@ namespace quic
 
         ~Http3WTSession()
         {
-            // printf("Http3WTSession destructor");
+            // printf("session destruct %x\n", this);
         }
 
         class Visitor : public WebTransportVisitor
@@ -51,9 +51,7 @@ namespace quic
             ~Visitor()
             {
                 Http3WTSession *sessobj = session_;
-                std::function<void()> task = [sessobj]()
-                { printf("sess unref\n");sessobj->Unref(); };
-                session_->eventloop_->Schedule(task);
+                session_->eventloop_->informUnref(sessobj);
             }
 
             void OnSessionReady(const spdy::SpdyHeaderBlock &) override;
@@ -177,6 +175,10 @@ namespace quic
                 stream->visitor()->OnCanWrite();
                 ordUnidiStreams--;
             }
+        }
+
+        void doUnref() override {
+            Unref();
         }
 
         // nan stuff

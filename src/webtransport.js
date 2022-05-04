@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import { getRoot } from 'bindings'
 import { createRequire } from 'module'
 import { ReadableStream, WritableStream } from 'node:stream/web'
 
@@ -39,7 +38,9 @@ class Http3WTStream {
           },
           pull: (controller) => {
             if (this.closed) {
-              return new Promise((res, rej) => {})
+              return new Promise((res, rej) => {
+                rej()
+              })
             }
             const byob = controller.byobRequest
             if (byob?.view instanceof Uint8Array) {
@@ -71,7 +72,7 @@ class Http3WTStream {
     if (this.bidirectional || !this.incoming) {
       this.writable = new WritableStream(
         {
-          start: async (controller) => {
+          start: (controller) => {
             this.writableController = controller
             this.parentobj.addSendStream(this.writable, controller)
           },
@@ -84,7 +85,7 @@ class Http3WTStream {
                 this.pendingres = res
               })
               const dataprom = this.parentobj.waitForDatagramsSend()
-              dataprom.finally(()=> {
+              dataprom.finally(() => {
                 this.objint.writeChunk(chunk)
               })
               return this.pendingoperation
@@ -118,6 +119,7 @@ class Http3WTStream {
               this.abortres = res
             })
             this.objint.resetStream(code)
+            return promise
           }
         },
         { highWaterMark: 4 }
@@ -126,7 +128,6 @@ class Http3WTStream {
   }
 
   onStreamClosed(args) {
-    // console.log('onStreamClosed')
     if (this.readable && !this.readableclosed) {
       this.readableController.close()
       this.readableclosed = true
@@ -240,8 +241,10 @@ class Http3WTStream {
 
 class Http3WTSession {
   constructor(args) {
-    this.objint = args.object
-    this.objint.jsobj = this
+    if (args.object) {
+      this.objint = args.object
+      this.objint.jsobj = this
+    }
     this.parentobj = args.parentobj
     this.state = 'connected'
 
@@ -255,20 +258,20 @@ class Http3WTSession {
     })
 
     this.incomingBidirectionalStreams = new ReadableStream({
-      start: async (controller) => {
+      start: (controller) => {
         this.incomBiDiController = controller
       }
     })
 
     this.incomingUnidirectionalStreams = new ReadableStream({
-      start: async (controller) => {
+      start: (controller) => {
         this.incomUniDiController = controller
       }
     })
 
     this.datagrams = {}
     this.datagrams.readable = new ReadableStream({
-      start: async (controller) => {
+      start: (controller) => {
         this.incomDatagramController = controller
       }
     })
@@ -276,7 +279,7 @@ class Http3WTSession {
     this.writeDatagramRej = []
     this.writeDatagramProm = []
     this.datagrams.writable = new WritableStream({
-      start: async (controller) => {
+      start: (controller) => {
         this.outgoDatagramController = controller
       },
       write: (chunk, controller) => {
@@ -309,10 +312,15 @@ class Http3WTSession {
     this.receiveStreamsController = new Set()
   }
 
-  async waitForDatagramsSend()
-  {
-    while (this.writeDatagramProm.length > 0)
-    {
+  setSessionObj(object) {
+    if (object) {
+      this.objint = object
+      this.objint.jsobj = this
+    }
+  }
+
+  async waitForDatagramsSend() {
+    while (this.writeDatagramProm.length > 0) {
       await Promise.allSettled(this.writeDatagramProm)
     }
   }
@@ -410,6 +418,10 @@ class Http3WTSession {
     this.streamObjs.clear()
 
     if (this.closedResolve) this.closedResolve(errorcode)
+    if (this.closeHook) {
+      this.closeHook()
+      delete this.closeHook
+    }
   }
 
   onStream(args) {
@@ -449,6 +461,7 @@ class Http3WTSession {
   }
 
   onDatagramSend(args) {
+    if (this.state === 'closed') return
     this.writeDatagramRej.shift()
     this.writeDatagramProm.shift()
     const res = this.writeDatagramRes.shift()
@@ -494,27 +507,32 @@ class Http3WTSession {
             } else throw new Error('Malformed Http3WTStreamVisitor')
           }
           break
-        default: {
-          throw new Error('unknown purpose Sessioncb')
-        }
+        default:
+          {
+            throw new Error('unknown purpose Sessioncb')
+          }
+          break
       }
     } else throw new Error('no purpose Sessioncb')
   }
 }
 
 class Http3WebTransport {
-  constructor(args) {
-    const eventloop =
-      Http3EventLoop.getGlobalEventLoop().eventloopInt
-    
-    this.transportInt = wtrouter.Http3WebTransport(args, eventloop)
+  constructor(args, purpose) {
+    const eventloop = Http3EventLoop.getGlobalEventLoop(this).eventloopInt
+
+    if (purpose === 'server')
+      this.transportInt = wtrouter.Http3WebTransportServer(args, eventloop)
+    else if (purpose === 'client')
+      this.transportInt = wtrouter.Http3WebTransportClient(args, eventloop)
+    else throw new Error('unknown purpose')
     this.transportInt.jsobj = this
 
     this.sessions = {}
   }
 
   static transportCallback(args) {
-    console.log('incoming callback', args)
+    // console.log('incoming callback transport', args)
     if (!args || !args.object || !args.object.jsobj)
       throw new Error('Transport callback without jsobj')
     const visitor = args.object.jsobj
@@ -530,7 +548,7 @@ class Http3WebTransport {
 
 export class Http3Server extends Http3WebTransport {
   constructor(args) {
-    super(args)
+    super(args, 'server')
     this.sessionStreams = {}
     this.sessionController = {}
   }
@@ -541,13 +559,10 @@ export class Http3Server extends Http3WebTransport {
 
   stopServer() {
     this.transportInt.stopServer()
-  }
-
-  destroy() {
-    for (let i of this.sessionController) {
-      i.close() // inform the controller, that we are closing
+    for (let i in this.sessionController) {
+      this.sessionController[i].close() // inform the controller, that we are closing
+      delete this.sessionController[i]
     }
-    this.transportInt.Destroy() // destroy the server process
   }
 
   sessionStream(path) {
@@ -564,7 +579,7 @@ export class Http3Server extends Http3WebTransport {
   }
 
   customCallback(args) {
-    console.log('incoming callback', args)
+    // console.log('incoming callback server', args)
     if (args.purpose) {
       switch (args.purpose) {
         case 'Http3WTSessionVisitor':
@@ -589,31 +604,233 @@ export class Http3Server extends Http3WebTransport {
   }
 }
 
+class Http3Client extends Http3WebTransport {
+  constructor(args) {
+    super(args, 'client')
+
+    this.sessionobj = new Promise((resolve, reject) => {
+      this.sessionProm = { resolve, reject }
+    })
+    this.sessionobjint = null
+    this.closeHookSession = this.closeHookSession.bind(this)
+
+    this.handleConnection()
+  }
+
+  async handleConnection() {
+    this.quicconnected = new Promise((resolve, reject) => {
+      this.quicconnectedProm = { resolve, reject }
+    })
+
+    this.webtransport = new Promise((resolve, reject) => {
+      this.webtransportProm = { resolve, reject }
+    })
+
+    try {
+      await this.quicconnected
+      // now create Webtransport session
+      setTimeout(() => {
+        if (this.webtransportProm) {
+          this.webtransportProm.reject(
+            new Error('Timeout webtransport support')
+          )
+          delete this.webtransportProm
+        }
+      }, 2000)
+    } catch (error) {
+      throw new Error('Connecting failed for client:' + error)
+    }
+  }
+
+  async createWTSession(sessionobj, path) {
+    // TODO
+    try {
+      await this.webtransport // wait for webtransport support
+      // ok now we open the session
+      this.sessionobjint = sessionobj
+      this.transportInt.openWTSession(path)
+      console.log('wait for session')
+      // we wait for a new session
+      const sessobj = await this.sessionobj
+
+      delete this.sessionobj
+
+      return sessobj
+    } catch (error) {
+      throw new Error('createWTSession failed ' + error)
+    }
+  }
+
+  closeHookSession() {
+    this.transportInt.closeClient()
+  }
+
+  customCallback(args) {
+    // console.log('incoming callback custom client', args)
+    if (args.purpose) {
+      switch (args.purpose) {
+        case 'ClientConnected':
+          {
+            if (this.quicconnectedProm) {
+              if (args.success) this.quicconnectedProm.resolve()
+              else
+                this.quicconnectedProm.reject(
+                  new Error('Connecting quic client failed')
+                )
+            } else throw new Error('Client connected with no pending promise')
+          }
+          break
+        case 'ClientWebtransportSupport':
+          {
+            if (this.webtransportProm) {
+              this.webtransportProm.resolve()
+              delete this.webtransportProm
+            }
+          }
+          break
+        case 'Http3WTSessionVisitor':
+          {
+            // create Http3 Visitor
+            if (args.session && this.sessionProm && this.sessionobjint) {
+              this.sessionobjint.setSessionObj(args.session)
+              args.session.jsobj.closeHook = this.closeHookSession
+              delete this.sessionobjint
+              this.sessionProm.resolve(args.session)
+              delete this.sessionProm
+            } else
+              throw new Error(
+                'Http3WTSessionVisitor no object session or nor sessionprom'
+              )
+          }
+          break
+
+        default: {
+          throw new Error('unknown purpose')
+        }
+      }
+    }
+  }
+}
+
+export class WebTransport {
+  constructor(url, args) {
+    if (!url) throw new Error('no URL supplied')
+    const ourl = (this.urlint = new URL(url))
+
+    if (ourl.protocol !== 'https:')
+      return new Error('URL is not supported for webtransport')
+    const hostname = ourl.hostname
+    let port = ourl.port
+    if (port == '') port = 443
+
+    this.client = new Http3Client({ hostname, port, ...args })
+
+    this.sessionint = new Http3WTSession({
+      /* object: args.session,*/
+      parentobj: this.client
+    })
+
+    this.ready = this.sessionint.ready
+    this.closed = this.sessionint.closed
+
+    this.datagrams = this.sessionint.datagrams
+
+    this.incomingBidirectionalStreams =
+      this.sessionint.incomingBidirectionalStreams
+
+    this.incomingUnidirectionalStreams =
+      this.sessionint.incomingUnidirectionalStreams
+
+    this.establishSession()
+  }
+
+  async establishSession() {
+    try {
+      await this.client.quicconnected
+      const session = await this.client.createWTSession(
+        this.sessionint,
+        this.urlint.pathname
+      )
+    } catch (error) {
+      throw new Error('Establishing session failed ' + error)
+    }
+  }
+
+  close(closeinfo) {
+    return this.sessionint.close(closeinfo)
+  }
+
+  createBidirectionalStream() {
+    return this.sessionint.createBidirectionalStream()
+  }
+
+  createUnidirectionalStream() {
+    return this.sessionint.createUnidirectionalStream()
+  }
+}
+
 class Http3EventLoop {
   static globalLoop = null
   constructor(args) {
     this.eventloopInt = wtrouter.Http3EventLoop({
       transportCallback: Http3WebTransport.transportCallback,
       streamCallback: Http3WTStream.callback,
-      sessionCallback: Http3WTSession.callback
+      sessionCallback: Http3WTSession.callback,
+      eventloopCallback: Http3EventLoop.callback
     })
     this.eventloopInt.jsobj = this
+
+    this.refObjects = new Set()
+    this.loopGuardian = this.loopGuardian.bind(this)
   }
 
   startEventLoop() {
+    console.log('start GlobalEventLoop')
     this.eventloopInt.startEventLoop()
+    this.loopGuardianTimer = setInterval(this.loopGuardian, 5000)
   }
+
+  shutdownEventLoop() {
+    console.log('shutdown GlobalEventLoop')
+    Http3EventLoop.globalLoop = null
+    clearInterval(this.loopGuardianTimer)
+    this.eventloopInt.shutDownEventLoop()
+  }
+
+  loopGuardian() {
+    for (let item of this.refObjects) {
+      if (typeof item.deref() === 'undefined') this.refObjects.delete(item)
+    }
+    if (this.refObjects.size === 0) {
+      const now = Date.now()
+      if (!this.refObjectsEmptyTime) this.refObjectsEmptyTime = now
+      else if (now - this.refObjectsEmptyTime > 20 * 1000)
+        this.shutdownEventLoop()
+    } else if (this.refObjectsEmptyTime) delete this.refObjectsEmptyTime
+  }
+
+  static callback() {
+    console.log('final eventloop callback called')
+  }
+
 
   static createGlobalEventLoop() {
     if (!Http3EventLoop.globalLoop) {
       Http3EventLoop.globalLoop = new Http3EventLoop()
       Http3EventLoop.globalLoop.startEventLoop()
+      console.log('createGlobalEventLoop')
     }
   }
 
-  static getGlobalEventLoop() {
+  static getGlobalEventLoop(object) {
+    if (!object) throw new Error('getGlobalEventLoop without reference object')
+    if (!Http3EventLoop.globalLoop) Http3EventLoop.createGlobalEventLoop()
+    Http3EventLoop.globalLoop.refObjects.add(new WeakRef(object))
     return Http3EventLoop.globalLoop
   }
 }
 
-Http3EventLoop.createGlobalEventLoop()
+export function testcheck()
+{
+  return !Http3EventLoop.globalLoop
+}

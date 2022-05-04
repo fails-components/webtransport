@@ -26,13 +26,13 @@ namespace quic
 {
     class Http3EventLoop;
 
-    class Http3WTStream : public Nan::ObjectWrap
+    class Http3WTStream : public Nan::ObjectWrap, public LifetimeHelper
     {
     public:
         Http3WTStream(WebTransportStream *stream, Http3EventLoop *eventloop)
             : stream_(stream), eventloop_(eventloop) {}
 
-        ~Http3WTStream(){printf("stream destruct %x\n", this);};
+        ~Http3WTStream(){/*printf("stream destruct %x\n", this);*/};
 
         class Visitor : public WebTransportStreamVisitor
         {
@@ -85,7 +85,7 @@ namespace quic
 
         void tryWrite()
         {
-            if (stream_->CanWrite())
+            if (stream_ && stream_->CanWrite())
             {
                 doCanWrite();
             }
@@ -94,10 +94,14 @@ namespace quic
         void tryRead()
         {
             pause_reading_ = false;
-            if (stream_->ReadableBytes() > 0)
+            if (stream_ && stream_->ReadableBytes() > 0)
             {
                 doCanRead();
             }
+        }
+
+        void doUnref() override {
+            Unref();
         }
 
         // nan stuff
@@ -169,7 +173,10 @@ namespace quic
         {
             Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
             std::function<void()> task = [obj]()
-            { obj->send_fin_ = true; };
+            { obj->send_fin_ = true; 
+              obj->tryWrite();
+            };
+            obj->eventloop_->Schedule(task);
         }
 
         static NAN_METHOD(resetStream)
@@ -188,7 +195,7 @@ namespace quic
             }
 
             std::function<void()> task = [obj,reason]()
-            { obj->stream_->ResetWithUserCode(reason); };
+            { if (obj->stream_) obj->stream_->ResetWithUserCode(reason); };
             obj->eventloop_->Schedule(task);
         }
 

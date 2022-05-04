@@ -75,10 +75,6 @@ namespace quic
 
     void OnCanCreateNewOutgoingStream(bool unidirectional) override;
 
-    bool ShouldNegotiateDatagramContexts() override
-    {
-      return http3_server_backend_->UsesDatagramContexts();
-    }
 
   protected:
     // QuicSession methods:

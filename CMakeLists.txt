@@ -42,7 +42,6 @@ endif(COMMAND cmake_policy)
 add_library(gquiche SHARED 
 #plattform impl
 platform/quiche_platform_impl/epoll_bug_impl.h
-platform/quiche_platform_impl/epoll_export_impl.h
 platform/quiche_platform_impl/epoll_logging_impl.h
 platform/quiche_platform_impl/epoll_time_impl.h
 platform/quiche_platform_impl/quiche_export_impl.h
@@ -242,6 +241,8 @@ third_party/quiche/quiche/http2/platform/api/http2_logging.h
 #third_party/quiche/quiche/http2/platform/api/http2_macros.h
 third_party/quiche/quiche/quic/core/chlo_extractor.cc
 third_party/quiche/quiche/quic/core/chlo_extractor.h
+third_party/quiche/quiche/quic/core/quic_ping_manager.cc
+third_party/quiche/quiche/quic/core/quic_ping_manager.h
 third_party/quiche/quiche/quic/core/congestion_control/bandwidth_sampler.cc
 third_party/quiche/quiche/quic/core/congestion_control/bandwidth_sampler.h
 third_party/quiche/quiche/quic/core/congestion_control/bbr2_drain.cc
@@ -466,7 +467,7 @@ third_party/quiche/quiche/quic/core/http/quic_spdy_stream.cc
 third_party/quiche/quiche/quic/core/http/quic_spdy_stream.h
 third_party/quiche/quiche/quic/core/http/quic_spdy_stream_body_manager.cc
 third_party/quiche/quiche/quic/core/http/quic_spdy_stream_body_manager.h
-# third_party/quiche/quiche/quic/core/http/spdy_server_push_utils.cc
+third_party/quiche/quiche/quic/core/http/spdy_server_push_utils.cc
 third_party/quiche/quiche/quic/core/http/spdy_server_push_utils.h
 third_party/quiche/quiche/quic/core/http/spdy_utils.cc
 third_party/quiche/quiche/quic/core/http/spdy_utils.h
@@ -691,14 +692,6 @@ third_party/quiche/quiche/quic/platform/api/quic_socket_address.cc
 third_party/quiche/quiche/quic/platform/api/quic_socket_address.h
 third_party/quiche/quiche/quic/platform/api/quic_stack_trace.h
 third_party/quiche/quiche/quic/platform/api/quic_thread.h
-#third_party/quiche/quiche/quic/quic_transport/quic_transport_client_session.cc
-#third_party/quiche/quiche/quic/quic_transport/quic_transport_client_session.h
-third_party/quiche/quiche/quic/quic_transport/quic_transport_protocol.h
-#third_party/quiche/quiche/quic/quic_transport/quic_transport_server_session.cc
-#third_party/quiche/quiche/quic/quic_transport/quic_transport_server_session.h
-third_party/quiche/quiche/quic/quic_transport/quic_transport_session_interface.h
-third_party/quiche/quiche/quic/quic_transport/quic_transport_stream.cc
-third_party/quiche/quiche/quic/quic_transport/quic_transport_stream.h
 third_party/quiche/quiche/quic/tools/quic_simple_crypto_server_stream_helper.cc
 third_party/quiche/quiche/quic/tools/quic_simple_crypto_server_stream_helper.h
 third_party/quiche/quiche/spdy/core/hpack/hpack_constants.cc

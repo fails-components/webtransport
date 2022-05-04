@@ -40,7 +40,6 @@
 
 #include <uv.h>
 
-#include "quiche/epoll_server/platform/api/epoll_export.h"
 #include "quiche/epoll_server/platform/api/epoll_logging.h"
 
 namespace epoll_server {
@@ -131,7 +130,7 @@ class LibuvEpollAsyncCallbackInterface {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-class EPOLL_EXPORT_PRIVATE SimpleLibuvEpollServer {
+class SimpleLibuvEpollServer {
  public:
   typedef LibuvEpollAlarmCallbackInterface AlarmCB;
   typedef LibuvEpollCallbackInterface CB;
@@ -1039,7 +1038,7 @@ class LibuvEpollAlarmCallbackInterface {
 // Any classes overriding these functions must either call the implementation
 // of the parent class, or is must otherwise make sure that the 'registered_'
 // boolean and the token, 'token_', are updated appropriately.
-class EPOLL_EXPORT_PRIVATE LibuvEpollAlarm : public LibuvEpollAlarmCallbackInterface {
+class LibuvEpollAlarm : public LibuvEpollAlarmCallbackInterface {
  public:
   LibuvEpollAlarm();
 
