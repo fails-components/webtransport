@@ -20,11 +20,8 @@ namespace quic
             stream_->chunks_.pop_front();
         }
         Http3WTStream *strobj = stream_;
-        std::function<void()> task = [strobj]()
-        {printf("stream unref %x\n", strobj); strobj->Unref(); };
-        stream_->eventloop_->Schedule(task);
-
         stream_->stream_ = nullptr;
+        strobj->eventloop_->informUnref(strobj);
     }
 
      void Http3WTStream::Visitor::OnWriteSideInDataRecvdState() 

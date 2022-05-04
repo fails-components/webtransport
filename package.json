@@ -10,7 +10,7 @@
   "type": "module",
   "scripts": {
     "start": "node test/echoserver.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node test/test.js",
     "install": "cmake-js build",
     "rebuild": "cmake-js rebuild",
     "rebuild-debug": "cmake-js rebuild -D",
@@ -32,7 +32,8 @@
   "dependencies": {
     "bindings": "^1.5.0",
     "nan": "^2.15.0",
-    "node-addon-api": "^4.2.0"
+    "node-addon-api": "^4.2.0",
+    "selfsigned": "^2.0.1"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.17.0",

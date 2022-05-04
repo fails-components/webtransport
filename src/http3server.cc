@@ -44,14 +44,10 @@ namespace quic
 
   Http3Server::~Http3Server()
   {
+    printf("server destruct %x\n", this);
   }
 
 
-
-  NAN_METHOD(Http3Server::createHttp3Server)
-  {
-    // ok this creates an http3server object from javascript side
-  }
 
   bool Http3Server::CreateUDPSocketAndListen(const QuicSocketAddress &address)
   {
@@ -113,7 +109,7 @@ namespace quic
 
     close(fd_);
     fd_ = -1;
-    Unref();
+    eventloop_->informUnref(this); // must be done on the other thread...
     return true;
   }
 
@@ -336,7 +332,7 @@ namespace quic
     std::function<void()> task = [obj]()
     { if (!obj->startServerInt())
     {
-      return Nan::ThrowError("startServerInt failed for Http3Server");
+      printf("startServerInt failed for Http3Server\n");
     } };
     obj->eventloop_->Schedule(task);
     
@@ -349,7 +345,7 @@ namespace quic
     std::function<void()> task = [obj]()
     { if (!obj->stopServerInt())
     {
-      return Nan::ThrowError("startServerInt failed for Http3Server");
+      printf("stopServerInt failed for Http3Server\n");
     } };
     obj->eventloop_->Schedule(task);
     

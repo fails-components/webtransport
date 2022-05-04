@@ -650,7 +650,7 @@ void SimpleLibuvEpollServer::DelFD(int fd, uv_poll_t *handle) const {
     EPOLL_LOG(FATAL) << "Epoll set removal error for fd " << fd << ": "
                      << uv_strerror(saved_errno);
   }
-  uv_close((uv_handle_t*)&handle, closecallback);
+  uv_close((uv_handle_t*)handle, closecallback);
 }
 
 ////////////////////////////////////////

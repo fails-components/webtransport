@@ -15,6 +15,7 @@
 #include <nan.h>
 
 #include "src/http3serverbackend.h"
+#include "src/http3eventloop.h"
 #include "quiche/quic/core/crypto/quic_crypto_server_config.h"
 #include "quiche/quic/core/quic_udp_socket.h"
 #include "quiche/quic/core/quic_dispatcher.h"
@@ -30,7 +31,7 @@ namespace quic
     class Http3EventLoop;
     
 
-    class Http3Server : public QuicEpollCallbackInterface, public Nan::ObjectWrap
+    class Http3Server : public QuicEpollCallbackInterface, public Nan::ObjectWrap, public LifetimeHelper
     {
     public:
         Http3Server(Http3EventLoop * eventloop, std::string host, int port, 
@@ -42,7 +43,6 @@ namespace quic
 
         ~Http3Server();
 
-        static NAN_METHOD(createHttp3Server);
 
         bool CreateUDPSocketAndListen(const QuicSocketAddress &address);
 
@@ -75,6 +75,10 @@ namespace quic
         {
             static Nan::Persistent<v8::Function> my_constructor;
             return my_constructor;
+        }
+
+        void doUnref() override {
+            Unref();
         }
        
 
