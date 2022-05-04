@@ -8,8 +8,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef QUICHE_QUIC_TOOLS_QUIC_SIMPLE_SERVER_STREAM_H_
-#define QUICHE_QUIC_TOOLS_QUIC_SIMPLE_SERVER_STREAM_H_
+#ifndef HTTP3_SERVER_STREAM_H
+#define HTTP3_SERVER_STREAM_H
 
 #include "absl/strings/string_view.h"
 #include "quiche/quic/core/http/quic_spdy_server_stream_base.h"

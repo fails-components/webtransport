@@ -241,6 +241,8 @@ third_party/quiche/quiche/http2/platform/api/http2_logging.h
 #third_party/quiche/quiche/http2/platform/api/http2_macros.h
 third_party/quiche/quiche/quic/core/chlo_extractor.cc
 third_party/quiche/quiche/quic/core/chlo_extractor.h
+third_party/quiche/quiche/quic/core/quic_ping_manager.cc
+third_party/quiche/quiche/quic/core/quic_ping_manager.h
 third_party/quiche/quiche/quic/core/congestion_control/bandwidth_sampler.cc
 third_party/quiche/quiche/quic/core/congestion_control/bandwidth_sampler.h
 third_party/quiche/quiche/quic/core/congestion_control/bbr2_drain.cc
@@ -465,7 +467,7 @@ third_party/quiche/quiche/quic/core/http/quic_spdy_stream.cc
 third_party/quiche/quiche/quic/core/http/quic_spdy_stream.h
 third_party/quiche/quiche/quic/core/http/quic_spdy_stream_body_manager.cc
 third_party/quiche/quiche/quic/core/http/quic_spdy_stream_body_manager.h
-# third_party/quiche/quiche/quic/core/http/spdy_server_push_utils.cc
+third_party/quiche/quiche/quic/core/http/spdy_server_push_utils.cc
 third_party/quiche/quiche/quic/core/http/spdy_server_push_utils.h
 third_party/quiche/quiche/quic/core/http/spdy_utils.cc
 third_party/quiche/quiche/quic/core/http/spdy_utils.h
