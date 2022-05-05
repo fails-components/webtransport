@@ -1,7 +1,7 @@
 !["FAILS logo"](failslogo.svg)
 # Fancy automated internet lecture system (**FAILS**) - components (Webtransport module)
 
-![main](https://github.com/fails-components/webtransport/actions/workflows/libtest.yml/badge.svg)
+Tests on master ![master](https://github.com/fails-components/webtransport/actions/workflows/libtest.yml/badge.svg?branch=master), Tests on thordpartylibtracker ![master](https://github.com/fails-components/webtransport/actions/workflows/libtest.yml/badge.svg?branch=thirdpartyibtracker)
 
 (c) 2023- Marten Richter
 

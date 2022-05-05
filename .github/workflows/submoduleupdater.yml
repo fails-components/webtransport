@@ -1,0 +1,51 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Third party lib tester
+
+# Controls when the workflow will run
+on:
+
+  schedule:
+    - cron: '20 0 * * *'  # every day at midnight
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+          ref: thridpartylibtracker
+          
+      - name: Git Submodule Update Boring SSL
+        run:
+          git submodule update --remote third_party/boringssl/src
+      
+      - name: Git Submodule Update quiche
+        run:
+          git submodule update --remote third_party/quiche
+
+      - name: Git Submodule Update zlib
+        run:
+          git submodule update --remote third_party/zlib
+          
+      - name: Git Submodule Update googleurl
+        run:
+          git submodule update --remote third_party/googleurl
+          
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v4
+        with:
+          branch: thirdpartylibtester
+          delete-branch: true
+          title: "Automated update of thirdparty libraries"
+          body: "Automated changes by thirdparty libraries tracker GitHub action"
