@@ -47,4 +47,4 @@ jobs:
           branch: thirdpartylibtracker
           delete-branch: true
           title: "Automated update of thirdparty libraries"
-          body: "Automated changes by thirdparty libraries tracker GitHub action
+          body: "Automated changes by thirdparty libraries tracker GitHub action"
