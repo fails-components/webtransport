@@ -107,6 +107,8 @@ third_party/quiche/quiche/common/platform/api/quiche_url_utils.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_prefetch_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.cc
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_iovec_impl.h
 third_party/quiche/quiche/common/print_elements.h
 third_party/quiche/quiche/common/quiche_buffer_allocator.cc
@@ -234,10 +236,6 @@ third_party/quiche/quiche/http2/http2_constants.cc
 third_party/quiche/quiche/http2/http2_constants.h
 third_party/quiche/quiche/http2/http2_structures.cc
 third_party/quiche/quiche/http2/http2_structures.h
-third_party/quiche/quiche/http2/platform/api/http2_bug_tracker.h
-third_party/quiche/quiche/http2/platform/api/http2_flag_utils.h
-third_party/quiche/quiche/http2/platform/api/http2_flags.h
-third_party/quiche/quiche/http2/platform/api/http2_logging.h
 #third_party/quiche/quiche/http2/platform/api/http2_macros.h
 third_party/quiche/quiche/quic/core/chlo_extractor.cc
 third_party/quiche/quiche/quic/core/chlo_extractor.h
@@ -675,7 +673,6 @@ third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
 third_party/quiche/quiche/quic/core/quic_udp_socket.h
 third_party/quiche/quiche/quic/platform/api/quic_bug_tracker.h
 third_party/quiche/quiche/quic/platform/api/quic_client_stats.h
-third_party/quiche/quiche/quic/platform/api/quic_containers.h
 third_party/quiche/quiche/quic/platform/api/quic_export.h
 third_party/quiche/quiche/quic/platform/api/quic_exported_stats.h
 third_party/quiche/quiche/quic/platform/api/quic_flag_utils.h
