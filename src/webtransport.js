@@ -531,6 +531,7 @@ export class Http3Server extends Http3WebTransport {
       this.sessionController[i].close() // inform the controller, that we are closing
       delete this.sessionController[i]
     }
+    this.stopped = true
   }
 
   sessionStream(path) {
@@ -631,6 +632,7 @@ class Http3Client extends Http3WebTransport {
 
   closeHookSession() {
     this.transportInt.closeClient()
+    this.stopped = true
   }
 
   customCallback(args) {
@@ -767,7 +769,8 @@ class Http3EventLoop {
 
   loopGuardian() {
     for (let item of this.refObjects) {
-      if (typeof item.deref() === 'undefined') this.refObjects.delete(item)
+      if (typeof item.deref() === 'undefined' 
+            || item.deref()?.stopped) this.refObjects.delete(item)
     }
     if (this.refObjects.size === 0) {
       const now = Date.now()
