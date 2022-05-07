@@ -36,6 +36,7 @@
     "selfsigned": "^2.0.1"
   },
   "devDependencies": {
+    "@babel/core": "^7.17.10",
     "@babel/eslint-parser": "^7.17.0",
     "cmake-js": "^6.3.0",
     "eslint": "^7.32.0",
