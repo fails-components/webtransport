@@ -10,13 +10,13 @@ set(BUILD_TESTING OFF)
 
 set(ABSL_PROPAGATE_CXX_STD ON)
 # include abseil
-add_subdirectory(third_party/abseil-cpp)
+add_subdirectory(third_party/abseil-cpp EXCLUDE_FROM_ALL)
 
 # include boring ssl
-add_subdirectory(third_party/boringssl/src)
+add_subdirectory(third_party/boringssl/src EXCLUDE_FROM_ALL)
 
 # include zlib
-add_subdirectory(third_party/zlib)
+add_subdirectory(third_party/zlib EXCLUDE_FROM_ALL)
 
 include(FindProtobuf)
 find_package(Protobuf REQUIRED)
