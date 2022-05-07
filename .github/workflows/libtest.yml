@@ -6,9 +6,9 @@ name: Automated build and client/server unit tests
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
-    branches: [ master, thirdpartylibtracker ]
+    branches: [ master ]
   pull_request:
-    branches: [ master, thirdpartylibtracker ]
+    branches: [ master ]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
