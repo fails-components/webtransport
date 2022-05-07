@@ -5,8 +5,9 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/node_modules/nan",
-                "${workspaceFolder}/third_party/quiche",
-                "${workspaceFolder}/platform"
+                "${workspaceFolder}/third_party/quiche/quiche",
+                "${workspaceFolder}/platform",
+                "${workspaceFolder}/third_party/quiche"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang-9",

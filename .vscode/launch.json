@@ -7,7 +7,7 @@
        "preLaunchTask": "npm: build-debug",
        "program": "/usr/local/bin/node",
        "args": [
-          "/workspaces/webtransport/test/echoserver.js"
+          "/workspaces/webtransport/test/test.js"
        ]
     }]
   }
