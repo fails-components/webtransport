@@ -15,7 +15,7 @@ on:
         required: true
         default: 'warning'
       tags:
-        description: 'Testing node.js github package publish workflow'
+        description: 'Testing node.js package publish workflow'
   
 jobs:
   publish-gpr:
@@ -47,13 +47,10 @@ jobs:
       - name: Log when unchanged
         if: steps.check.outputs.changed == 'false'
         run: 'echo "No version change :/"'
-        
-      - name: Install libraries for building
-        if: steps.check.outputs.changed == 'true'
-        run: sudo apt-get install -y clang-9 cmake build-essential perl6 golang  ninja-build protobuf-compiler  
+
       - name: Install and build
         if: steps.check.outputs.changed == 'true'
-        run: npm ci
+        run: npm ci --ignore-scripts=true
 
       - run: npm publish --tag stable
         if: ${{ steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}

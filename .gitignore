@@ -1,7 +1,8 @@
 .env
 files
-node_modules
-build
+/node_modules
+/build
+!/third_party/googleurl/build
 *.crt
 *.csr
 *.key
