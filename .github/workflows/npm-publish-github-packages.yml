@@ -18,17 +18,7 @@ on:
         description: 'Testing node.js github package publish workflow'
   
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
-        with:
-          node-version: 16
-      - run: npm ci
-
   publish-gpr:
-    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -43,19 +33,27 @@ jobs:
         with:
           node-version: 16
           registry-url: https://npm.pkg.github.com/
-      - run: npm ci
+
 
       - name: Check if version has been updated
         id: check
         uses: EndBug/version-check@v1
         with: 
          diff-search: true
+
       - name: Log when changed
         if: steps.check.outputs.changed == 'true'
         run: 'echo "Version change found in commit ${{ steps.check.outputs.commit }}! New version: ${{ steps.check.outputs.version }} (${{ steps.check.outputs.type }})"'
       - name: Log when unchanged
         if: steps.check.outputs.changed == 'false'
         run: 'echo "No version change :/"'
+        
+      - name: Install libraries for building
+        if: steps.check.outputs.changed == 'true'
+        run: sudo apt-get install -y clang-9 cmake build-essential perl6 golang  ninja-build protobuf-compiler  
+      - name: Install and build
+        if: steps.check.outputs.changed == 'true'
+        run: npm ci
 
       - run: npm publish --tag stable
         if: ${{ steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
