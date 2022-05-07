@@ -39,7 +39,9 @@ npm install --save https://github.com/fails-components/webtransport
 
 If you are running the install as root, you need to use `--unsafe-perm` as flag.
 Installing the package requires a full building environment including clang-9, perl6, golang,  ninja-build and protobuf-compiler and protobuf headers. See the `Dockerfile` or `Dockerfile.development` for required debian packages. 
-This should work for linux and Mac OS X. In principle, compiling under windows should be possible, but not tested yet.  PR for patches and for compiling instructions and necessary changes are welcome for all possible environments. 
+This should work for linux and Mac OS X. Windows is not supported, since cmake.js only works with msvc and some libraries require clang, I recommend a Docker container instead. Of course,  PR for patches and for compiling instructions and necessary changes are welcome for all possible environments. 
+
+Warning the build time takes more than 10 minutes!
 
 In the directory `test` you find a simple echo server code. That answers to a series of WebTransport echos. Furthermore some example browser code and finally a unit test of the library including certificate generation. 
 
