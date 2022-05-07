@@ -1,9 +1,9 @@
 !["FAILS logo"](failslogo.svg)
 # Fancy automated internet lecture system (**FAILS**) - components (Webtransport module)
 
-Tests on master ![master](https://github.com/fails-components/webtransport/actions/workflows/libtest.yml/badge.svg?branch=master), Tests on thordpartylibtracker ![master](https://github.com/fails-components/webtransport/actions/workflows/libtest.yml/badge.svg?branch=thirdpartyibtracker)
+Tests on master ![master](https://github.com/fails-components/webtransport/actions/workflows/libtest.yml/badge.svg?branch=master)
 
-(c) 2023- Marten Richter
+(c) 2022- Marten Richter
 
 This package is part of FAILS.
 A web based lecture system developed out of university lectures.
@@ -26,13 +26,13 @@ The package should be considered as a ducttape style solution, until a bullet pr
 You can install the package directly via npm from node.js or github packages:
 
 ```bash
-npm install --save git+https://github.com/fails-components/webtransport
+npm install @fails-components/webtransport
 ```
-but before you have to add to your `.npmrc` file with you want to use the github package registry instead of npm.js
+In case of github packages, please add to your `.npmrc` file
 ```
 @fails-components:registry=https://npm.pkg.github.com
 ```
-You need to be authenticated against github, if you use github packages.
+In this case you need to be authenticated against github.
 
 If you are running the install as root, you need to use `--unsafe-perm` as flag.
 Installing the package requires a full building environment including clang-9, perl6, golang,  ninja-build and protobuf-compiler and protobuf headers. See the `Dockerfile` or `Dockerfile.development` for required debian packages. 

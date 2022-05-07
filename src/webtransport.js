@@ -2,14 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import { existsSync } from 'fs'
 import { createRequire } from 'module'
 import { ReadableStream, WritableStream } from 'node:stream/web'
 
 const require = createRequire(import.meta.url)
 let wtpath = '../build/Release/webtransport.node'
-if (process.env.NODE_ENV !== 'production') {
+if (
+  process.env.NODE_ENV !== 'production' &&
+  existsSync('../build/Debug/webtransport.node')
+) {
   wtpath = '../build/Debug/webtransport.node'
 }
+
 const wtrouter = require(wtpath)
 
 class Http3WTStream {
