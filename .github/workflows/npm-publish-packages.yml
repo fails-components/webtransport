@@ -48,7 +48,7 @@ jobs:
         if: steps.check.outputs.changed == 'false'
         run: 'echo "No version change :/"'
 
-      - name: Install and build
+      - name: Install
         if: steps.check.outputs.changed == 'true'
         run: npm ci --ignore-scripts=true
 
@@ -68,3 +68,27 @@ jobs:
         if: ${{ steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Switch to npmjs 
+        if: steps.check.outputs.changed == 'true'
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+          registry-url: https://registry.npmjs.org/
+
+      - run: npm publish --tag stable
+        if: ${{ steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish --tag next
+        if: ${{ steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm dist-tag add @fails-components/webtransport@${{ steps.check.outputs.version }} latest
+        if: ${{ steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm dist-tag add @fails-components/webtransport@${{ steps.check.outputs.version }} latestunstable
+        if: ${{ steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1497,7 +1497,7 @@ namespace quic
 
             if (serverCertificateHashes.size() > 0)
             {
-                verifier = std::make_unique<WebTransportFingerprintProofVerifier>(helper->GetClock(), 365);
+                verifier = std::make_unique<WebTransportFingerprintProofVerifier>(helper->GetClock(), 14);
 
                 for (auto cur = serverCertificateHashes.begin();
                      cur != serverCertificateHashes.end(); cur++)

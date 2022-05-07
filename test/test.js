@@ -30,7 +30,7 @@ async function run() {
   ]
   let certificate = generateCertificate(attrs, {
     keySize: 2048,
-    days: 30,
+    days: 13, // note this is limited to 14 days according to spec, we do not check this
     algorithm: 'sha256'
   })
 
