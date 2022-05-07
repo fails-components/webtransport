@@ -8,15 +8,38 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(BUILD_TESTING OFF)
 
+IF(MSVC)
+    set(CMAKE_CXX_STANDARD 11)
+ENDIF(MSVC)
+
+
 set(ABSL_PROPAGATE_CXX_STD ON)
 # include abseil
 add_subdirectory(third_party/abseil-cpp)
 
 # include boring ssl
+IF(MSVC)
+    set(CMAKE_CXX_STANDARD 11)
+ENDIF(MSVC)
+
 add_subdirectory(third_party/boringssl/src)
+
+IF(MSVC)
+    set(CMAKE_CXX_STANDARD 17)
+ENDIF(MSVC)
 
 # include zlib
 add_subdirectory(third_party/zlib)
+
+if(DEFINED ENV{PROTOBUFINCLUDEDIR})
+ set(Protobuf_INCLUDE_DIR  $ENV{PROTOBUFINCLUDEDIR})
+ message(STATUS "Set Protobuf_INCLUDE_DIR to environment variable PROTOBUFINCLUDEDIR")
+endif()
+
+if(DEFINED ENV{PROTOBUFLIBRARIES})
+ set(Protobuf_LIBRARIES  $ENV{PROTOBUFLIBRARIES})
+ message(STATUS "Set Protobuf_LIBRARIES to environment variable PROTOBUFLIBRARIES")
+endif()
 
 include(FindProtobuf)
 find_package(Protobuf REQUIRED)
