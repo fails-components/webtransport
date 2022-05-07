@@ -1,7 +1,7 @@
 {
   "name": "@fails-components/webtransport",
   "version": "0.0.0",
-  "description": "A router for audio, video and screensharing data using webtransport and websocket",
+  "description": "A component to add webtransport support (server and client) to node.js using libquiche",
   "main": "test/echoserver.js",
   "module": "src/webtransport.js",
   "engines": {
@@ -36,6 +36,7 @@
     "selfsigned": "^2.0.1"
   },
   "devDependencies": {
+    "@babel/core": "^7.17.10",
     "@babel/eslint-parser": "^7.17.0",
     "cmake-js": "^6.3.0",
     "eslint": "^7.32.0",

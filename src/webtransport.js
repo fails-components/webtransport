@@ -769,8 +769,8 @@ class Http3EventLoop {
 
   loopGuardian() {
     for (let item of this.refObjects) {
-      if (typeof item.deref() === 'undefined' 
-            || item.deref()?.stopped) this.refObjects.delete(item)
+      if (typeof item.deref() === 'undefined' || item.deref()?.stopped)
+        this.refObjects.delete(item)
     }
     if (this.refObjects.size === 0) {
       const now = Date.now()
@@ -783,7 +783,6 @@ class Http3EventLoop {
   static callback() {
     console.log('final eventloop callback called')
   }
-
 
   static createGlobalEventLoop() {
     if (!Http3EventLoop.globalLoop) {
@@ -801,7 +800,6 @@ class Http3EventLoop {
   }
 }
 
-export function testcheck()
-{
+export function testcheck() {
   return !Http3EventLoop.globalLoop
 }
