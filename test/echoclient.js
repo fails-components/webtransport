@@ -2,13 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import { echoTestsConnection } from './testsuite'
+import { echoTestsConnection } from './testsuite.js'
+import { WebTransport  } from '../src/webtransport.js'
 
-async function startClientTests(args) {
+async function startClientTests(args, hashes) {
   const url = 'https://' + args.hostname + ':' + args.port + '/echo'
   console.log('startconnection')
+  const hashargs = { ...hashes }
+  hashargs.serverCertificateHashes = hashes.serverCertificateHashes.map(
+    (el) => ({
+      algorithm: el.algorithm,
+      value: Buffer.from(el.value.split(':').map((el) => parseInt(el, 16)))
+    })
+  )
   // eslint-disable-next-line no-undef
-  const transport = new WebTransport(url)
+  console.log('hashagrs', hashargs)
+  const transport = new WebTransport(url, hashargs)
   transport.closed
     .then(() => {
       console.log('The HTTP/3 connection to ', url, 'closed gracefully.')
@@ -28,4 +37,16 @@ async function startClientTests(args) {
   echoTestsConnection(transport)
 }
 
-startClientTests()
+// edit the next lines for your test setting
+startClientTests(
+  { hostname: '192.168.1.108', port: 8081 },
+  {
+    serverCertificateHashes: [
+      {
+        algorithm: 'sha-256',
+        value:
+          '78:CB:61:68:30:4D:9F:CF:9F:7E:D8:20:B6:4E:4E:85:62:FE:F7:70:84:64:73:38:4C:D7:76:D5:4B:CF:98:38'
+      }
+    ]
+  }
+)
