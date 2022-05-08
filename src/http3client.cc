@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// portions taken from libquiche, original copyright, see LICENSE.chromium
+// portions taken from libquiche or Chromium, original copyright, see LICENSE.chromium
 // Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -42,119 +42,29 @@ using spdy::Http2HeaderBlock;
 
 namespace quic
 {
-    namespace
+
+    // taken from chromium to behave like the browser
+    // A version of WebTransportFingerprintProofVerifier that enforces
+    // Chromium-specific policies.
+    class ChromiumWebTransportFingerprintProofVerifier
+        : public quic::WebTransportFingerprintProofVerifier
     {
+    public:
+        using WebTransportFingerprintProofVerifier::
+            WebTransportFingerprintProofVerifier;
 
-        // RecordingProofVerifier accepts any certificate chain and records the common
-        // name of the leaf and then delegates the actual verification to an actual
-        // verifier. If no optional verifier is provided, then VerifyProof will return
-        // success.
-        class RecordingProofVerifier : public ProofVerifier
+    protected:
+        bool IsKeyTypeAllowedByPolicy(
+            const quic::CertificateView &certificate) override
         {
-        public:
-            explicit RecordingProofVerifier(std::unique_ptr<ProofVerifier> verifier)
-                : verifier_(std::move(verifier)) {}
-
-            // ProofVerifier interface.
-            QuicAsyncStatus VerifyProof(
-                const std::string &hostname, const uint16_t port,
-                const std::string &server_config, QuicTransportVersion transport_version,
-                absl::string_view chlo_hash, const std::vector<std::string> &certs,
-                const std::string &cert_sct, const std::string &signature,
-                const ProofVerifyContext *context, std::string *error_details,
-                std::unique_ptr<ProofVerifyDetails> *details,
-                std::unique_ptr<ProofVerifierCallback> callback) override
+            if (certificate.public_key_type() == quic::PublicKeyType::kRsa)
             {
-                QuicAsyncStatus process_certs_result = ProcessCerts(certs, cert_sct);
-                if (process_certs_result != QUIC_SUCCESS)
-                {
-                    return process_certs_result;
-                }
-
-                if (!verifier_)
-                {
-                    return QUIC_SUCCESS;
-                }
-
-                return verifier_->VerifyProof(hostname, port, server_config,
-                                              transport_version, chlo_hash, certs, cert_sct,
-                                              signature, context, error_details, details,
-                                              std::move(callback));
+                return false;
             }
-
-            QuicAsyncStatus VerifyCertChain(
-                const std::string & /*hostname*/, const uint16_t /*port*/,
-                const std::vector<std::string> &certs,
-                const std::string & /*ocsp_response*/, const std::string &cert_sct,
-                const ProofVerifyContext * /*context*/, std::string * /*error_details*/,
-                std::unique_ptr<ProofVerifyDetails> * /*details*/, uint8_t * /*out_alert*/,
-                std::unique_ptr<ProofVerifierCallback> /*callback*/) override
-            {
-                return ProcessCerts(certs, cert_sct);
-            }
-
-            std::unique_ptr<ProofVerifyContext> CreateDefaultContext() override
-            {
-                return verifier_ != nullptr ? verifier_->CreateDefaultContext() : nullptr;
-            }
-
-            const std::string &common_name() const { return common_name_; }
-
-            const std::string &cert_sct() const { return cert_sct_; }
-
-        private:
-            QuicAsyncStatus ProcessCerts(const std::vector<std::string> &certs,
-                                         const std::string &cert_sct)
-            {
-                common_name_.clear();
-                if (certs.empty())
-                {
-                    return QUIC_FAILURE;
-                }
-
-                // Parse the cert into an X509 structure.
-                const uint8_t *data;
-                data = reinterpret_cast<const uint8_t *>(certs[0].data());
-                bssl::UniquePtr<X509> cert(d2i_X509(nullptr, &data, certs[0].size()));
-                if (!cert.get())
-                {
-                    return QUIC_FAILURE;
-                }
-
-                // Extract the CN field
-                X509_NAME *subject = X509_get_subject_name(cert.get());
-                const int index = X509_NAME_get_index_by_NID(subject, NID_commonName, -1);
-                if (index < 0)
-                {
-                    return QUIC_FAILURE;
-                }
-                ASN1_STRING *name_data =
-                    X509_NAME_ENTRY_get_data(X509_NAME_get_entry(subject, index));
-                if (name_data == nullptr)
-                {
-                    return QUIC_FAILURE;
-                }
-
-                // Convert the CN to UTF8, in case the cert represents it in a different
-                // format.
-                unsigned char *buf = nullptr;
-                const int len = ASN1_STRING_to_UTF8(&buf, name_data);
-                if (len <= 0)
-                {
-                    return QUIC_FAILURE;
-                }
-                bssl::UniquePtr<unsigned char> deleter(buf);
-
-                common_name_.assign(reinterpret_cast<const char *>(buf), len);
-                cert_sct_ = cert_sct;
-                return QUIC_SUCCESS;
-            }
-
-            std::unique_ptr<ProofVerifier> verifier_;
-            std::string common_name_;
-            std::string cert_sct_;
-        };
-    } // namespace
+            return WebTransportFingerprintProofVerifier::IsKeyTypeAllowedByPolicy(
+                certificate);
+        }
+    };
 
     QuicStreamId GetNthClientInitiatedBidirectionalStreamId(
         QuicTransportVersion version, int n)
@@ -206,7 +116,7 @@ namespace quic
 
     Http3Client::~Http3Client()
     {
-         // printf("client destruct %x\n", this);
+        // printf("client destruct %x\n", this);
     }
 
     bool Http3Client::closeClientInt()
@@ -258,7 +168,7 @@ namespace quic
         spdy::SpdyHeaderBlock headers;
         if (!PopulateHeaderBlockFromUrl(uri, &headers))
         {
-            return ;
+            return;
         }
         SendMessageAsync(headers, "");
     }
@@ -268,7 +178,7 @@ namespace quic
         spdy::SpdyHeaderBlock headers;
         if (!PopulateHeaderBlockFromUrl(uri, &headers))
         {
-            return ;
+            return;
         }
 
         QuicSpdyClientSession *session = session_.get();
@@ -289,7 +199,7 @@ namespace quic
             QuicAsyncStatus rv =
                 push_promise_index_.Try(*headers, this, &handle);
             if (rv == QUIC_SUCCESS)
-                return ;
+                return;
             if (rv == QUIC_PENDING)
             {
                 // May need to retry request if asynchronous rendezvous fails.
@@ -297,14 +207,14 @@ namespace quic
                     new spdy::SpdyHeaderBlock(headers->Clone()));
                 push_promise_data_to_resend_ = std::make_unique<Http3ClientDataToResend>(
                     std::move(new_headers), body, fin, this);
-                return ;
+                return;
             }
         }
 
-
         std::shared_ptr<spdy::Http2HeaderBlock> spdy_headers;
         bool hasheaders = false;
-        if (headers != nullptr) {
+        if (headers != nullptr)
+        {
             spdy_headers = std::make_shared<spdy::SpdyHeaderBlock>(headers->Clone());
             hasheaders = true;
         }
@@ -317,7 +227,7 @@ namespace quic
             {
                 if (stream == nullptr)
                 {
-                    return ;
+                    return;
                 }
                 // QuicSpdyStreamPeer::set_ack_listener(stream, ack_listener);
 
@@ -335,24 +245,23 @@ namespace quic
                 {
                     stream->WriteOrBufferBody(std::string(body), fin);
                     ret = body.length();
-                } 
+                }
             });
     }
 
     void Http3Client::SendMessageAsync(const spdy::SpdyHeaderBlock &headers,
-                                          absl::string_view body)
+                                       absl::string_view body)
     {
         return SendMessageAsync(headers, body, /*fin=*/true);
     }
 
     void Http3Client::SendMessageAsync(const spdy::SpdyHeaderBlock &headers,
-                                          absl::string_view body, bool fin)
+                                       absl::string_view body, bool fin)
     {
         // Always force creation of a stream for SendMessage.
         latest_created_stream_ = nullptr;
 
         GetOrCreateStreamAndSendRequest(&headers, body, fin);
-
     }
 
     bool Http3Client::response_complete() const { return response_complete_; }
@@ -388,9 +297,7 @@ namespace quic
         }
     }
 
-
-
-    void Http3Client::CreateClientStream(std::function<void (QuicSpdyClientStream *)> finish)
+    void Http3Client::CreateClientStream(std::function<void(QuicSpdyClientStream *)> finish)
     {
         if (!connected())
         {
@@ -426,7 +333,7 @@ namespace quic
             if (!connected())
             {
                 finish(nullptr);
-                return ;
+                return;
             }
         }
         if (open_streams_.empty())
@@ -436,17 +343,16 @@ namespace quic
         if (!latest_created_stream_)
         {
             CreateClientStream(
-                [this, finish] (QuicSpdyClientStream *stream)
+                [this, finish](QuicSpdyClientStream *stream)
                 {
                     SetLatestCreatedStream(stream);
                     if (latest_created_stream_)
                     {
                         latest_created_stream_->SetPriority(
-                        spdy::SpdyStreamPrecedence(priority_));
+                            spdy::SpdyStreamPrecedence(priority_));
                     }
                     finish(latest_created_stream_);
-                }
-            );
+                });
         }
         else
         {
@@ -467,18 +373,6 @@ namespace quic
             return QUIC_NO_ERROR;
         }
         return session_->error();
-    }
-
-    const std::string &Http3Client::cert_common_name() const
-    {
-        return reinterpret_cast<RecordingProofVerifier *>(crypto_config_.proof_verifier())
-            ->common_name();
-    }
-
-    const std::string &Http3Client::cert_sct() const
-    {
-        return reinterpret_cast<RecordingProofVerifier *>(crypto_config_.proof_verifier())
-            ->cert_sct();
     }
 
     const QuicTagValueMap &Http3Client::GetServerConfig()
@@ -747,13 +641,11 @@ namespace quic
             else
                 recheck = true;
         }
-       
 
-        while (finish_stream_open_.size() > 0
-           && session_->CanOpenNextOutgoingBidirectionalStream())
+        while (finish_stream_open_.size() > 0 && session_->CanOpenNextOutgoingBidirectionalStream())
         {
             auto *stream = static_cast<QuicSpdyClientStream *>(
-            session_->CreateOutgoingBidirectionalStream());
+                session_->CreateOutgoingBidirectionalStream());
             if (stream)
             {
                 stream->set_visitor(this);
@@ -1493,11 +1385,11 @@ namespace quic
             std::unique_ptr<QuicConnectionHelperInterface> helper =
                 std::make_unique<QuicEpollConnectionHelper>(eventloop->getEpollServer(), QuicAllocator::SIMPLE);
 
-            std::unique_ptr<WebTransportFingerprintProofVerifier> verifier;
+            std::unique_ptr<ChromiumWebTransportFingerprintProofVerifier> verifier;
 
             if (serverCertificateHashes.size() > 0)
             {
-                verifier = std::make_unique<WebTransportFingerprintProofVerifier>(helper->GetClock(), 14);
+                verifier = std::make_unique<ChromiumWebTransportFingerprintProofVerifier>(helper->GetClock(), 14);
 
                 for (auto cur = serverCertificateHashes.begin();
                      cur != serverCertificateHashes.end(); cur++)

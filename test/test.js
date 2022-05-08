@@ -4,10 +4,9 @@
 
 // this file runs various tests
 
-import { generate as generateCertificate } from 'selfsigned'
+import { generateWebTransportCertificate } from './certificate.js'
 import { Http3Server, WebTransport, testcheck } from '../src/webtransport.js'
 import { echoTestsConnection, runEchoServer } from './testsuite.js'
-import { X509Certificate } from 'crypto'
 
 async function run() {
   setTimeout(() => {
@@ -28,36 +27,29 @@ async function run() {
     { shortName: 'O', value: 'WebTransport Test Server' },
     { shortName: 'CN', value: '127.0.0.1' }
   ]
-  let certificate = generateCertificate(attrs, {
+  let certificate
+
+  certificate = await generateWebTransportCertificate(attrs, {
     keySize: 2048,
     days: 13, // note this is limited to 14 days according to spec, we do not check this
     algorithm: 'sha256'
   })
 
-  const x509cert = new X509Certificate(certificate.cert)
-
-  const certhash = Buffer.from(
-    x509cert.fingerprint256.split(':').map((el) => parseInt(el, 16))
-  )
-
   console.log('start Http3Server and startup echo tests')
   // now ramp up the server
   let http3server
-  try {
-    http3server = new Http3Server({
-      port: 8080,
-      host: '127.0.0.1',
-      secret: 'mysecret',
-      cert: certificate.cert, // unclear if it is the correct format
-      privKey: certificate.private
-    })
-    certificate = null
 
-    runEchoServer(http3server)
-    http3server.startServer() // you can call destroy to remove the server
-  } catch (error) {
-    console.log('http3error', error)
-  }
+  http3server = new Http3Server({
+    port: 8080,
+    host: '127.0.0.1',
+    secret: 'mysecret',
+    cert: certificate.cert, // unclear if it is the correct format
+    privKey: certificate.private
+  })
+
+  runEchoServer(http3server)
+  http3server.startServer() // you can call destroy to remove the server
+
   console.log('server started now wait 2 seconds')
 
   await new Promise((resolve) => setTimeout(resolve, 2000))
@@ -66,7 +58,7 @@ async function run() {
   const url = 'https://127.0.0.1:8080/echo'
 
   let client = new WebTransport(url, {
-    serverCertificateHashes: [{ algorithm: 'sha-256', value: certhash }]
+    serverCertificateHashes: [{ algorithm: 'sha-256', value: certificate.hash }]
   })
   client.closed
     .then(() => {
@@ -81,7 +73,6 @@ async function run() {
         '.'
       )
     })
-
   console.log('wait for client to be ready')
   await client.ready
   console.log('client is ready')
@@ -90,11 +81,8 @@ async function run() {
 
   await new Promise((resolve) => setTimeout(resolve, 2000))
 
-  try {
-    client.close({ closeCode: 0, reason: 'tests finished' })
-  } catch (error) {
-    console.log('client close problem', error)
-  }
+  client.close({ closeCode: 0, reason: 'tests finished' })
+
   client = null
 
   console.log('client closes now wait 2 seconds')
