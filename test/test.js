@@ -30,9 +30,7 @@ async function run() {
   let certificate
 
   certificate = await generateWebTransportCertificate(attrs, {
-    keySize: 2048,
-    days: 13, // note this is limited to 14 days according to spec, we do not check this
-    algorithm: 'sha256'
+    days: 13
   })
 
   console.log('start Http3Server and startup echo tests')
