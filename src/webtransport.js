@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url)
 let wtpath = '../build/Release/webtransport.node'
 if (
   process.env.NODE_ENV !== 'production' &&
-  existsSync('../build/Debug/webtransport.node')
+  existsSync('build/Debug/webtransport.node')
 ) {
   wtpath = '../build/Debug/webtransport.node'
 }
