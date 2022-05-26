@@ -52,6 +52,7 @@ class Http3WTStream {
             })
             this.readableclosed = true
             this.objint.closeStream()
+            return promise
           }
         },
         { highWaterMark: 4 }
@@ -612,7 +613,7 @@ class Http3Client extends Http3WebTransport {
         }
       }, 2000)
     } catch (error) {
-      throw new Error('Connecting failed for client:' + error)
+      console.log('Connecting failed for client:' + error)
     }
   }
 
@@ -727,7 +728,8 @@ export class WebTransport {
         this.urlint.pathname
       )
     } catch (error) {
-      throw new Error('Establishing session failed ' + error)
+      this.sessionint.readyReject(new Error('Establishing session failed ' + error))
+      console.log('Establishing session failed ' + error)
     }
   }
 
