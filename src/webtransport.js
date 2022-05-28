@@ -40,9 +40,7 @@ class Http3WTStream {
           },
           pull: (controller) => {
             if (this.closed) {
-              return new Promise((res, rej) => {
-                rej()
-              })
+              return Promise.resolve()
             }
             this.objint.startReading()
           },
@@ -67,7 +65,7 @@ class Http3WTStream {
           },
           write: (chunk, controller) => {
             if (this.closed) {
-              return new Promise((res, rej) => {})
+              return Promise.resolve()
             }
             if (chunk instanceof Uint8Array) {
               this.pendingoperation = new Promise((res, rej) => {
@@ -82,9 +80,7 @@ class Http3WTStream {
           },
           close: (controller) => {
             if (this.closed) {
-              return new Promise((res, rej) => {
-                res()
-              })
+              return Promise.resolve()
             }
             this.objint.closeStream()
             this.pendingoperation = new Promise((res, rej) => {
@@ -225,11 +221,11 @@ class Http3WTSession {
     this.ready = new Promise((res, rej) => {
       this.readyResolve = res
       this.readyReject = rej
-    })
+    }).catch(() => {}) // add default handler if no one cares
     this.closed = new Promise((res, rej) => {
       this.closedResolve = res
       this.closedReject = rej
-    })
+    }).catch(() => {}) // add default handler if no one cares
 
     this.incomingBidirectionalStreams = new ReadableStream({
       start: (controller) => {
@@ -295,7 +291,11 @@ class Http3WTSession {
 
   async waitForDatagramsSend() {
     while (this.writeDatagramProm.length > 0) {
-      await Promise.allSettled(this.writeDatagramProm)
+      try {
+        await Promise.allSettled(this.writeDatagramProm)
+      } catch (error) {
+        console.log('datagram promise failed ', error)
+      }
     }
   }
 
@@ -585,7 +585,7 @@ class Http3Client extends Http3WebTransport {
 
     this.sessionobj = new Promise((resolve, reject) => {
       this.sessionProm = { resolve, reject }
-    })
+    }).catch(() => {}) // add default handler if no one cares
     this.sessionobjint = null
     this.closeHookSession = this.closeHookSession.bind(this)
 
@@ -595,11 +595,11 @@ class Http3Client extends Http3WebTransport {
   async handleConnection() {
     this.quicconnected = new Promise((resolve, reject) => {
       this.quicconnectedProm = { resolve, reject }
-    })
+    }).catch(() => {}) // add default handler if no one cares
 
     this.webtransport = new Promise((resolve, reject) => {
       this.webtransportProm = { resolve, reject }
-    })
+    }).catch(() => {}) // add default handler if no one cares
 
     try {
       await this.quicconnected
@@ -728,7 +728,9 @@ export class WebTransport {
         this.urlint.pathname
       )
     } catch (error) {
-      this.sessionint.readyReject(new Error('Establishing session failed ' + error))
+      this.sessionint.readyReject(
+        new Error('Establishing session failed ' + error)
+      )
       console.log('Establishing session failed ' + error)
     }
   }
