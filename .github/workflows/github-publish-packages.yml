@@ -1,7 +1,7 @@
 # This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
 # For more information see: https://help.github.com/actions/language-and-framework-guides/publishing-nodejs-packages
 
-name: Node.js Package publish on npmjs
+name: Node.js Package publish on github
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: 16
-          registry-url: https://registry.npmjs.org/
+          registry-url: https://npm.pkg.github.com/
 
 
       - name: Check if version has been updated
@@ -55,16 +55,17 @@ jobs:
       - run: npm publish --tag stable
         if: ${{ steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm publish --tag next
         if: ${{ steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm dist-tag add @fails-components/webtransport@${{ steps.check.outputs.version }} latest
         if: ${{ steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm dist-tag add @fails-components/webtransport@${{ steps.check.outputs.version }} latestunstable
         if: ${{ steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
