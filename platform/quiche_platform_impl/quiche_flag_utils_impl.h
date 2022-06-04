@@ -5,22 +5,7 @@
 #ifndef NET_QUICHE_COMMON_PLATFORM_IMPL_QUICHE_FLAG_UTILS_IMPL_H_
 #define NET_QUICHE_COMMON_PLATFORM_IMPL_QUICHE_FLAG_UTILS_IMPL_H_
 
-#include "quiche_platform_impl/quiche_logging_impl.h"
+#include "third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flag_utils_impl.h"
 
-#define QUICHE_RELOADABLE_FLAG_COUNT_IMPL(flag) \
-  QUICHE_DVLOG_IMPL(3) << "FLAG_" #flag ": reloadable"
-#define QUICHE_RELOADABLE_FLAG_COUNT_N_IMPL(flag, instance, total) \
-  QUICHE_DVLOG_IMPL(3) << "FLAG_" #flag ": reloadable, instance: " << instance \
-           << " total: " << total
-
-#define QUICHE_RESTART_FLAG_COUNT_IMPL(flag) \
-  QUICHE_DVLOG_IMPL(3) << "FLAG_" #flag ": resart"
-#define QUICHE_RESTART_FLAG_COUNT_N_IMPL(flag, instance, total) \
-  QUICHE_DVLOG_IMPL(3) << "FLAG_" #flag ": restart, instance: " << instance \
-           << " total: " << total
-
-#define QUICHE_CODE_COUNT_IMPL(flag) QUICHE_DVLOG_IMPL(3) << "FLAG_" #flag
-#define QUICHE_CODE_COUNT_N_IMPL(flag, instance, total) \
-  QUICHE_DVLOG_IMPL(3) << "FLAG_" #flag
 
 #endif  // NET_QUICHE_COMMON_PLATFORM_IMPL_QUICHE_FLAG_UTILS_IMPL_H_
