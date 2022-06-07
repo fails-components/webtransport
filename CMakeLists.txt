@@ -63,8 +63,6 @@ platform/quiche_platform_impl/quiche_prefetch_impl.h
 platform/quiche_platform_impl/quiche_server_stats_impl.h
 platform/quiche_platform_impl/simple_libuv_epoll_server.cc
 platform/quiche_platform_impl/simple_libuv_epoll_server.h
-platform/net/quiche/common/platform/impl/quiche_flags_impl.h
-platform/net/quiche/common/platform/impl/quiche_flags_impl.cc
 platform/quiche_platform_impl/quiche_mem_slice_impl.h
 platform/quiche_platform_impl/quiche_flag_utils_impl.h
 #protofiles
@@ -106,6 +104,11 @@ third_party/quiche/quiche/common/platform/api/quiche_reference_counted.h
 third_party/quiche/quiche/common/platform/api/quiche_thread_local.h
 third_party/quiche/quiche/common/platform/api/quiche_time_utils.h
 third_party/quiche/quiche/common/platform/api/quiche_url_utils.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quic_flags_impl.cc
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quic_flags_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flag_utils_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_prefetch_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.h
