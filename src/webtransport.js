@@ -5,12 +5,15 @@
 import { existsSync } from 'fs'
 import { createRequire } from 'module'
 import { ReadableStream, WritableStream } from 'node:stream/web'
+import * as path from 'path'
+import * as url from 'url'
 
 const require = createRequire(import.meta.url)
+const dirname = url.fileURLToPath(new URL('.', import.meta.url))
 let wtpath = '../build/Release/webtransport.node'
 if (
   process.env.NODE_ENV !== 'production' &&
-  existsSync('build/Debug/webtransport.node')
+  existsSync(path.join(dirname,'../build/Debug/webtransport.node'))
 ) {
   wtpath = '../build/Debug/webtransport.node'
 }
