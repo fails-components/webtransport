@@ -48,29 +48,27 @@ namespace quic
                         public QuicClientPushPromiseIndex::Delegate,
                         public ProcessPacketInterface,
                         public Nan::ObjectWrap,
-                        public LifetimeHelper 
+                        public LifetimeHelper
     {
     public:
         Http3Client(Http3EventLoop *eventloop, QuicSocketAddress server_address,
                     const std::string &server_hostname,
+                    int local_port,
                     std::unique_ptr<ProofVerifier> proof_verifier,
                     std::unique_ptr<SessionCache> session_cache,
-                    std::unique_ptr<QuicConnectionHelperInterface> helper,
-                    int local_port);
+                    std::unique_ptr<QuicConnectionHelperInterface> helper);
 
         ~Http3Client() override;
-
 
         // From EpollCallbackInterface
         std::string Name() const override { return "Http3Client"; }
 
-        
         void OnRegistration(QuicEpollServer * /*eps*/,
                             int /*fd*/,
                             int /*event_mask*/) override;
         void OnModification(int /*fd*/, int /*event_mask*/) override;
         void OnEvent(int /*fd*/, QuicEpollEvent * /*event*/) override;
-        void OnUnregistration(int /*fd*/, bool /*replaced*/) override ;
+        void OnUnregistration(int /*fd*/, bool /*replaced*/) override;
 
         void OnShutdown(QuicEpollServer * /*eps*/, int /*fd*/) override;
 
@@ -102,12 +100,12 @@ namespace quic
         // Sends a request containing |headers| and |body| and returns the number of
         // bytes sent (the size of the serialized request headers and body).
         void SendMessageAsync(const spdy::SpdyHeaderBlock &headers,
-                            absl::string_view body);
+                              absl::string_view body);
         // Sends a request containing |headers| and |body| with the fin bit set to
         // |fin| and returns the number of bytes sent (the size of the serialized
         // request headers and body).
         void SendMessageAsync(const spdy::SpdyHeaderBlock &headers,
-                            absl::string_view body, bool fin);
+                              absl::string_view body, bool fin);
 
         void SendConnectivityProbing();
         void Connect();
@@ -153,7 +151,6 @@ namespace quic
         size_t bytes_read() const;
         size_t bytes_written() const;
 
-
         // If the client has at least one UDP socket, return the latest created one.
         // Otherwise, return -1.
         int GetLatestFD() const;
@@ -179,7 +176,7 @@ namespace quic
         const QuicSocketAddress &address() const;
 
         // Returns a newly created QuicSpdyClientStream to callback
-        void CreateClientStream(std::function<void (QuicSpdyClientStream *)> finish);
+        void CreateClientStream(std::function<void(QuicSpdyClientStream *)> finish);
 
         // From QuicSpdyStream::Visitor
         void OnClose(QuicSpdyStream *stream) override;
@@ -196,7 +193,7 @@ namespace quic
         void OnRendezvousResult(QuicSpdyStream *) override;
 
         // Returns nullptr if the maximum number of streams have already been created.
-        //QuicSpdyClientStream *GetOrCreateStream();
+        // QuicSpdyClientStream *GetOrCreateStream();
         // async replacement
         void RunOnStreamMaybeCreateStream(std::function<void(QuicSpdyClientStream *)> finish);
 
@@ -208,7 +205,6 @@ namespace quic
 
         QuicRstStreamErrorCode stream_error() { return stream_error_; }
         QuicErrorCode connection_error() const;
-
 
         // Get the server config map.  Server config must exist.
         const QuicTagValueMap &GetServerConfig();
@@ -253,7 +249,6 @@ namespace quic
 
         static NAN_METHOD(New);
 
-
         static NAN_METHOD(openWTSession);
         static NAN_METHOD(closeClient);
 
@@ -263,8 +258,8 @@ namespace quic
             return my_constructor;
         }
 
-        
-        void doUnref() override {
+        void doUnref() override
+        {
             Unref();
         }
 
@@ -326,7 +321,6 @@ namespace quic
             uint64_t bytes_written;
             int64_t response_body_size;
         };
-
 
         // Index of pending promised streams. Must outlive |session_|.
         QuicClientPushPromiseIndex push_promise_index_;
@@ -531,7 +525,7 @@ namespace quic
         uint32_t num_attempts_connect_;
         bool webtransport_server_support_inform_;
 
-        std::queue<std::function<void (QuicSpdyClientStream *)>> finish_stream_open_;
+        std::queue<std::function<void(QuicSpdyClientStream *)>> finish_stream_open_;
     };
 
 } // namespace quic

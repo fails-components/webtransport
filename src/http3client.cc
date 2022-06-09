@@ -81,10 +81,10 @@ namespace quic
 
     Http3Client::Http3Client(Http3EventLoop *eventloop,
                              QuicSocketAddress server_address, const std::string &server_hostname,
+                             int local_port,
                              std::unique_ptr<ProofVerifier> proof_verifier,
                              std::unique_ptr<SessionCache> session_cache,
-                             std::unique_ptr<QuicConnectionHelperInterface> helper,
-                             int local_port)
+                             std::unique_ptr<QuicConnectionHelperInterface> helper)
         : server_id_(QuicServerId(server_hostname, server_address.port(), false)),
           initialized_(false),
           local_port_(local_port),
@@ -1451,8 +1451,8 @@ namespace quic
                                                                             freeaddrinfo);
             address = QuicSocketAddress(info_list->ai_addr, info_list->ai_addrlen);
 
-            Http3Client *object = new Http3Client(eventloop, address, hostname,
-                                                  std::move(verifier), std::move(cache), std::move(helper), local_port);
+            Http3Client *object = new Http3Client(eventloop, address, hostname, local_port,
+                                                  std::move(verifier), std::move(cache), std::move(helper));
             object->SetUserAgentID("fails-components/webtransport");
             object->Wrap(info.This());
             info.GetReturnValue().Set(info.This());
