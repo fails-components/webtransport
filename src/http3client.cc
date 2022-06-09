@@ -83,10 +83,11 @@ namespace quic
                              QuicSocketAddress server_address, const std::string &server_hostname,
                              std::unique_ptr<ProofVerifier> proof_verifier,
                              std::unique_ptr<SessionCache> session_cache,
-                             std::unique_ptr<QuicConnectionHelperInterface> helper)
+                             std::unique_ptr<QuicConnectionHelperInterface> helper,
+                             int local_port)
         : server_id_(QuicServerId(server_hostname, server_address.port(), false)),
           initialized_(false),
-          local_port_(0),
+          local_port_(local_port),
           store_response_(false),
           latest_response_code_(-1),
           overflow_supported_(false),
@@ -1290,6 +1291,7 @@ namespace quic
             std::vector<WebTransportHash> serverCertificateHashes;
             std::string privkey;
             std::string hostname = "localhost";
+            int local_port = 0;
 
             v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
 
@@ -1303,6 +1305,7 @@ namespace quic
                 v8::Local<v8::String> valueProp = Nan::New("value").ToLocalChecked();
                 v8::Local<v8::String> portProp = Nan::New("port").ToLocalChecked();
                 v8::Local<v8::String> hostnameProp = Nan::New("hostname").ToLocalChecked();
+                v8::Local<v8::String> localPortProp = Nan::New("localPort").ToLocalChecked();
                 if (!obj.IsEmpty())
                 {
 
@@ -1364,6 +1367,15 @@ namespace quic
                         }
                         else
                             return Nan::ThrowError("serverCertificateHashes is not an array");
+                    }
+
+                    if (Nan::HasOwnProperty(lobj, localPortProp).FromJust() && !Nan::Get(lobj, localPortProp).IsEmpty())
+                    {
+                        v8::Local<v8::Value> localPortValue = Nan::Get(lobj, localPortProp).ToLocalChecked();
+                        if (localPortValue->IsNumber())
+                            local_port = Nan::To<int>(localPortValue).FromJust();
+                        else
+                            return Nan::ThrowError("localPort is not a number");
                     }
                 }
             }
@@ -1440,7 +1452,7 @@ namespace quic
             address = QuicSocketAddress(info_list->ai_addr, info_list->ai_addrlen);
 
             Http3Client *object = new Http3Client(eventloop, address, hostname,
-                                                  std::move(verifier), std::move(cache), std::move(helper));
+                                                  std::move(verifier), std::move(cache), std::move(helper), local_port);
             object->SetUserAgentID("fails-components/webtransport");
             object->Wrap(info.This());
             info.GetReturnValue().Set(info.This());
