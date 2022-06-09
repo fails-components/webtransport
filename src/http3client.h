@@ -55,7 +55,8 @@ namespace quic
                     const std::string &server_hostname,
                     std::unique_ptr<ProofVerifier> proof_verifier,
                     std::unique_ptr<SessionCache> session_cache,
-                    std::unique_ptr<QuicConnectionHelperInterface> helper);
+                    std::unique_ptr<QuicConnectionHelperInterface> helper,
+                    int local_port);
 
         ~Http3Client() override;
 
