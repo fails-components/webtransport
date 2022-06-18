@@ -20,7 +20,7 @@ add_subdirectory(third_party/abseil-cpp EXCLUDE_FROM_ALL)
 # include boring ssl
 IF(MSVC)
     set(CMAKE_CXX_STANDARD 11)
-    add_compile_options(/Wv:18)
+#    add_compile_options(/Wv:18)
 ENDIF(MSVC)
 
 add_subdirectory(third_party/boringssl/src EXCLUDE_FROM_ALL)
