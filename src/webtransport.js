@@ -2,14 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import { existsSync } from 'fs'
 import { createRequire } from 'module'
 import { ReadableStream, WritableStream } from 'node:stream/web'
+import * as path from 'path'
+import * as url from 'url'
 
 const require = createRequire(import.meta.url)
+const dirname = url.fileURLToPath(new URL('.', import.meta.url))
 let wtpath = '../build/Release/webtransport.node'
-if (process.env.NODE_ENV !== 'production') {
+if (
+  process.env.NODE_ENV !== 'production' &&
+  existsSync(path.join(dirname,'../build/Debug/webtransport.node'))
+) {
   wtpath = '../build/Debug/webtransport.node'
 }
+
 const wtrouter = require(wtpath)
 
 class Http3WTStream {
@@ -35,9 +43,7 @@ class Http3WTStream {
           },
           pull: (controller) => {
             if (this.closed) {
-              return new Promise((res, rej) => {
-                rej()
-              })
+              return Promise.resolve()
             }
             this.objint.startReading()
           },
@@ -47,6 +53,7 @@ class Http3WTStream {
             })
             this.readableclosed = true
             this.objint.closeStream()
+            return promise
           }
         },
         { highWaterMark: 4 }
@@ -61,7 +68,7 @@ class Http3WTStream {
           },
           write: (chunk, controller) => {
             if (this.closed) {
-              return new Promise((res, rej) => {})
+              return Promise.resolve()
             }
             if (chunk instanceof Uint8Array) {
               this.pendingoperation = new Promise((res, rej) => {
@@ -76,9 +83,7 @@ class Http3WTStream {
           },
           close: (controller) => {
             if (this.closed) {
-              return new Promise((res, rej) => {
-                res()
-              })
+              return Promise.resolve()
             }
             this.objint.closeStream()
             this.pendingoperation = new Promise((res, rej) => {
@@ -219,11 +224,11 @@ class Http3WTSession {
     this.ready = new Promise((res, rej) => {
       this.readyResolve = res
       this.readyReject = rej
-    })
+    }).catch(() => {}) // add default handler if no one cares
     this.closed = new Promise((res, rej) => {
       this.closedResolve = res
       this.closedReject = rej
-    })
+    }).catch(() => {}) // add default handler if no one cares
 
     this.incomingBidirectionalStreams = new ReadableStream({
       start: (controller) => {
@@ -289,7 +294,11 @@ class Http3WTSession {
 
   async waitForDatagramsSend() {
     while (this.writeDatagramProm.length > 0) {
-      await Promise.allSettled(this.writeDatagramProm)
+      try {
+        await Promise.allSettled(this.writeDatagramProm)
+      } catch (error) {
+        console.log('datagram promise failed ', error)
+      }
     }
   }
 
@@ -579,7 +588,7 @@ class Http3Client extends Http3WebTransport {
 
     this.sessionobj = new Promise((resolve, reject) => {
       this.sessionProm = { resolve, reject }
-    })
+    }).catch(() => {}) // add default handler if no one cares
     this.sessionobjint = null
     this.closeHookSession = this.closeHookSession.bind(this)
 
@@ -589,11 +598,11 @@ class Http3Client extends Http3WebTransport {
   async handleConnection() {
     this.quicconnected = new Promise((resolve, reject) => {
       this.quicconnectedProm = { resolve, reject }
-    })
+    }).catch(() => {}) // add default handler if no one cares
 
     this.webtransport = new Promise((resolve, reject) => {
       this.webtransportProm = { resolve, reject }
-    })
+    }).catch(() => {}) // add default handler if no one cares
 
     try {
       await this.quicconnected
@@ -607,7 +616,7 @@ class Http3Client extends Http3WebTransport {
         }
       }, 2000)
     } catch (error) {
-      throw new Error('Connecting failed for client:' + error)
+      console.log('Connecting failed for client:' + error)
     }
   }
 
@@ -722,7 +731,10 @@ export class WebTransport {
         this.urlint.pathname
       )
     } catch (error) {
-      throw new Error('Establishing session failed ' + error)
+      this.sessionint.readyReject(
+        new Error('Establishing session failed ' + error)
+      )
+      console.log('Establishing session failed ' + error)
     }
   }
 
@@ -769,8 +781,8 @@ class Http3EventLoop {
 
   loopGuardian() {
     for (let item of this.refObjects) {
-      if (typeof item.deref() === 'undefined' 
-            || item.deref()?.stopped) this.refObjects.delete(item)
+      if (typeof item.deref() === 'undefined' || item.deref()?.stopped)
+        this.refObjects.delete(item)
     }
     if (this.refObjects.size === 0) {
       const now = Date.now()
@@ -783,7 +795,6 @@ class Http3EventLoop {
   static callback() {
     console.log('final eventloop callback called')
   }
-
 
   static createGlobalEventLoop() {
     if (!Http3EventLoop.globalLoop) {
@@ -801,7 +812,6 @@ class Http3EventLoop {
   }
 }
 
-export function testcheck()
-{
+export function testcheck() {
   return !Http3EventLoop.globalLoop
 }

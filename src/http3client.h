@@ -55,7 +55,8 @@ namespace quic
                     const std::string &server_hostname,
                     std::unique_ptr<ProofVerifier> proof_verifier,
                     std::unique_ptr<SessionCache> session_cache,
-                    std::unique_ptr<QuicConnectionHelperInterface> helper);
+                    std::unique_ptr<QuicConnectionHelperInterface> helper,
+                    int local_port);
 
         ~Http3Client() override;
 
@@ -208,13 +209,6 @@ namespace quic
         QuicRstStreamErrorCode stream_error() { return stream_error_; }
         QuicErrorCode connection_error() const;
 
-        // cert_common_name returns the common name value of the server's certificate,
-        // or the empty std::string if no certificate was presented.
-        const std::string &cert_common_name() const;
-
-        // cert_sct returns the signed timestamp of the server's certificate,
-        // or the empty std::string if no signed timestamp was presented.
-        const std::string &cert_sct() const;
 
         // Get the server config map.  Server config must exist.
         const QuicTagValueMap &GetServerConfig();

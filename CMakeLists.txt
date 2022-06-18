@@ -15,21 +15,21 @@ ENDIF(MSVC)
 
 set(ABSL_PROPAGATE_CXX_STD ON)
 # include abseil
-add_subdirectory(third_party/abseil-cpp)
+add_subdirectory(third_party/abseil-cpp EXCLUDE_FROM_ALL)
 
 # include boring ssl
 IF(MSVC)
     set(CMAKE_CXX_STANDARD 11)
 ENDIF(MSVC)
 
-add_subdirectory(third_party/boringssl/src)
+add_subdirectory(third_party/boringssl/src EXCLUDE_FROM_ALL)
 
 IF(MSVC)
     set(CMAKE_CXX_STANDARD 17)
 ENDIF(MSVC)
 
 # include zlib
-add_subdirectory(third_party/zlib)
+add_subdirectory(third_party/zlib EXCLUDE_FROM_ALL)
 
 if(DEFINED ENV{PROTOBUFINCLUDEDIR})
  set(Protobuf_INCLUDE_DIR  $ENV{PROTOBUFINCLUDEDIR})
@@ -86,8 +86,6 @@ platform/quiche_platform_impl/quiche_prefetch_impl.h
 platform/quiche_platform_impl/quiche_server_stats_impl.h
 platform/quiche_platform_impl/simple_libuv_epoll_server.cc
 platform/quiche_platform_impl/simple_libuv_epoll_server.h
-platform/net/quiche/common/platform/impl/quiche_flags_impl.h
-platform/net/quiche/common/platform/impl/quiche_flags_impl.cc
 platform/quiche_platform_impl/quiche_mem_slice_impl.h
 platform/quiche_platform_impl/quiche_flag_utils_impl.h
 #protofiles
@@ -110,6 +108,8 @@ third_party/googleurl/url/url_canon_stdstring.h
 third_party/googleurl/url/url_parse_internal.h
 third_party/googleurl/url/url_canon_host.cc
 third_party/googleurl/url/url_canon_ip.cc
+third_party/googleurl/build/buildflag.h
+third_party/googleurl/build/build_config.h
 # normal files
 third_party/quiche/quiche/common/platform/api/quiche_bug_tracker.h
 third_party/quiche/quiche/common/platform/api/quiche_export.h
@@ -127,6 +127,11 @@ third_party/quiche/quiche/common/platform/api/quiche_reference_counted.h
 third_party/quiche/quiche/common/platform/api/quiche_thread_local.h
 third_party/quiche/quiche/common/platform/api/quiche_time_utils.h
 third_party/quiche/quiche/common/platform/api/quiche_url_utils.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quic_flags_impl.cc
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quic_flags_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flag_utils_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_prefetch_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.h
@@ -162,6 +167,8 @@ third_party/quiche/quiche/http2/adapter/http2_session.h
 third_party/quiche/quiche/http2/adapter/http2_util.cc
 third_party/quiche/quiche/http2/adapter/http2_util.h
 third_party/quiche/quiche/http2/adapter/http2_visitor_interface.h
+third_party/quiche/quiche/http2/adapter/noop_header_validator.h
+third_party/quiche/quiche/http2/adapter/noop_header_validator.cc
 third_party/quiche/quiche/http2/adapter/oghttp2_adapter.cc
 third_party/quiche/quiche/http2/adapter/oghttp2_adapter.h
 third_party/quiche/quiche/http2/adapter/oghttp2_session.cc
