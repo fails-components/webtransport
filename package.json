@@ -13,7 +13,7 @@
     "test": "node test/test.js",
     "install": "cmake-js build",
     "rebuild": "cmake-js rebuild",
-    "rebuild-debug": "cmake-js rebuild -D",
+    "rebuild-debug": "cmake-js rebuild -D -t ClangCL",
     "build-debug": "cmake-js build -D"
   },
   "repository": {
@@ -37,7 +37,7 @@
   "devDependencies": {
     "@babel/core": "^7.17.10",
     "@babel/eslint-parser": "^7.17.0",
-    "cmake-js": "^6.3.0",
+    "cmake-js": "^6.3.2",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^7.2.0",
     "eslint-config-standard": "^16.0.2",
