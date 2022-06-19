@@ -12,7 +12,6 @@
 #include "src/http3wtsessionvisitor.h"
 #include "src/http3eventloop.h"
 #include "quiche/quic/core/quic_default_packet_writer.h"
-#include "quiche/quic/core/quic_epoll_alarm_factory.h"
 #include "quiche/quic/core/quic_epoll_connection_helper.h"
 #include "quiche/quic/tools/quic_simple_crypto_server_stream_helper.h"
 #include "quiche/quic/core/quic_epoll_clock.h"
@@ -86,9 +85,9 @@ namespace quic
       port_ = address.port();
     }
 
-    const int kEpollFlags = UV_READABLE | UV_WRITABLE; // there is no analogue to EPOLLET in libuv hopefully not a problem
+    const int kEpollFlags = kSocketEventReadable | kSocketEventWritable; // there is no analogue to EPOLLET in libuv hopefully not a problem
 
-    eventloop_->getEpollServer()->RegisterFD(fd_, this, kEpollFlags);
+    eventloop_->getQuicEventLoop()->RegisterSocket(fd_, kEpollFlags, this);
     dispatcher_.reset(CreateQuicDispatcher());
     dispatcher_->InitializeWithWriter(new QuicDefaultPacketWriter(fd_));
 
@@ -98,7 +97,7 @@ namespace quic
   bool Http3Server::stopServerInt()
   {
     
-    eventloop_->getEpollServer()->UnregisterFD(fd_);
+    eventloop_->getQuicEventLoop()->UnregisterSocket(fd_);
 
     // if (!silent_close_) {
     //  Before we shut down the epoll server, give all active sessions a chance
@@ -122,8 +121,8 @@ namespace quic
             eventloop_->getEpollServer(), QuicAllocator::BUFFER_POOL)),
         std::unique_ptr<QuicCryptoServerStreamBase::Helper>(
             new QuicSimpleCryptoServerStreamHelper()),
-        std::unique_ptr<QuicEpollAlarmFactory>(
-            new QuicEpollAlarmFactory(eventloop_->getEpollServer())),
+        std::unique_ptr<QuicAlarmFactory>(
+            eventloop_->getQuicEventLoop()->GetAlarmFactory()),
         &http3_server_backend_, expected_server_connection_id_length_);
   }
 
@@ -289,14 +288,15 @@ namespace quic
     return true;
   }
 
-  void Http3Server::OnEvent(int fd, QuicEpollEvent *event)
+  void Http3Server::OnSocketEvent(QuicEventLoop* event_loop, QuicUdpSocketFd fd,
+                             QuicSocketEventMask events)
   {
     QUICHE_DCHECK_EQ(fd, fd_);
-    event->out_ready_mask = 0;
+     QuicSocketEventMask eventsout = 0;
 
-    if (event->in_events & UV_READABLE)
+    if (events & kSocketEventReadable)
     {
-      QUIC_DVLOG(1) << "UV_READABLE";
+      QUIC_DVLOG(1) << "kSocketEventReadabl";
 
       dispatcher_->ProcessBufferedChlos(kNumSessionsToCreatePerSocketEvent);
 
@@ -310,18 +310,22 @@ namespace quic
 
       if (dispatcher_->HasChlosBuffered())
       {
-        // Register UV_READABLE event to consume buffered CHLO(s).
-        event->out_ready_mask |= UV_READABLE;
+        // Register kSocketEventReadabl event to consume buffered CHLO(s).
+        eventsout |= kSocketEventReadable;
       }
     }
-    if (event->in_events & UV_WRITABLE)
+    if (event->in_events & kSocketEventWritable)
     {
       dispatcher_->OnCanWrite();
       if (dispatcher_->HasPendingWrites())
       {
-        event->out_ready_mask |= UV_WRITABLE;
+        eventsout |= kSocketEventWritable;
       }
     }
+    if (eventsout != 0) {
+      eventloop_->getQuicEventLoop()->ArtificiallyNotifyEvent(fd_, eventsout);
+    }
+
   }
 
   NAN_METHOD(Http3Server::startServer)

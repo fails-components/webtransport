@@ -28,9 +28,9 @@ namespace quic
 
   Http3EventLoop::Http3EventLoop(Callback *cbeventloop, Callback *cbtransport, Callback *cbstream, Callback *cbsession)
       : AsyncProgressQueueWorker(cbeventloop), cbtransport_(cbtransport), 
-        progress_(nullptr), cbstream_(cbstream), cbsession_(cbsession)
+        progress_(nullptr), cbstream_(cbstream), cbsession_(cbsession),
+        scheduled_actions_alarm_(quic_event_loop_.GetAlarmFactory()->CreateAlarm(this))
   {
-    epoll_server_.SetAsyncCallback(this);
   }
 
   Http3EventLoop::~Http3EventLoop()
@@ -111,15 +111,14 @@ namespace quic
     loop_running_ = true;
     while (loop_running_)
     {
-      epoll_server_.WaitForEventsAndExecuteCallbacks();
+      quic_event_loop_.RunEventLoopOnce(QuicTime::Delta::Infinite()); // figure out the unit
     }
     printf("event loop exited\n");
     progress_ = nullptr;
-    epoll_server_.Shutdown();
     Unref();
   }
 
-  void Http3EventLoop::OnAsyncExecution()
+  void Http3EventLoop::OnAlarm()
   {
     ExecuteScheduledActions();
   }
@@ -143,7 +142,8 @@ namespace quic
     // QUICHE_DCHECK(!quit_.HasBeenNotified());
     QuicWriterMutexLock lock(&scheduled_actions_lock_);
     scheduled_actions_.push_back(std::move(action));
-    epoll_server_.TriggerAsync();
+    scheduled_actions_alarm_->Set(QuicTime::Zero());
+    // epoll_server_.TriggerAsync();
   }
 
   void Http3EventLoop::informAboutStream(bool incom, bool bidir, Http3WTSession *sessionobj, Http3WTStream *stream)
@@ -813,7 +813,7 @@ namespace quic
   {
 
     Ref();                               // do not garbage collect
-    epoll_server_.set_timeout_in_us(-1); // negative values would mean wait forever
+    // epoll_server_.set_timeout_in_us(-1); // negative values would mean wait forever
     Nan::AsyncQueueWorker(this);
     return true;
   }

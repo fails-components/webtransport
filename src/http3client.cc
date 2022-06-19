@@ -96,7 +96,7 @@ namespace quic
           crypto_config_(std::move(proof_verifier), std::move(session_cache)),
           helper_(std::move(helper)),
           eventloop_(eventloop),
-          alarm_factory_(new QuicEpollAlarmFactory(eventloop->getEpollServer())),
+          alarm_factory_(eventloop->getQuicEventLoop()->GetAlarmFactory()),
           supported_versions_({ParsedQuicVersion::RFCv1()}),
           initial_max_packet_length_(0),
           num_sent_client_hellos_(0),
@@ -426,13 +426,12 @@ namespace quic
         QuicSocketAddress server_address, QuicIpAddress bind_to_address,
         int bind_to_port)
     {
-        eventloop_->getEpollServer()->set_timeout_in_us(50 * 1000);
 
         QuicUdpSocketApi api;
-        int fd = api.Create(server_address.host().AddressFamilyToInt(),
+        QuicUdpSocketFd fd = api.Create(server_address.host().AddressFamilyToInt(),
                             /*receive_buffer_size =*/kDefaultSocketReceiveBuffer,
                             /*send_buffer_size =*/kDefaultSocketReceiveBuffer);
-        if (fd < 0)
+        if (fd == kQuicInvalidSocketFd)
         {
             return false;
         }
@@ -488,10 +487,10 @@ namespace quic
             QUIC_LOG(ERROR) << "Unable to get self address.  Error: "
                             << strerror(errno);
         }
-        const int kEpollFlags = UV_READABLE | UV_WRITABLE; // there is no analogue to EPOLLET in libuv hopefully not a problem
+        const int kEpollFlags = kSocketEventReadable | kSocketEventWritable; // there is no analogue to EPOLLET in libuv hopefully not a problem
 
         fd_address_map_[fd] = client_address;
-        eventloop_->getEpollServer()->RegisterFD(fd, this, kEpollFlags);
+        eventloop_->getQuicEventLoop()->RegisterSocket(fd, kEpollFlags, this);
         return true;
     }
 
@@ -510,11 +509,11 @@ namespace quic
         fd_address_map_.clear();
     }
 
-    void Http3Client::CleanUpUDPSocketImpl(int fd)
+    void Http3Client::CleanUpUDPSocketImpl(QuicUdpSocketFd fd)
     {
-        if (fd > -1)
+        if (fd != kQuicInvalidSocketFd)
         {
-            eventloop_->getEpollServer()->UnregisterFD(fd);
+            eventloop_->getQuicEventLoop()-> UnregisterSocket(fd);
             int rc = close(fd);
             QUICHE_DCHECK_EQ(0, rc);
         }
@@ -876,22 +875,13 @@ namespace quic
         return push_promise_data_to_resend_.get() || !open_streams_.empty();
     }
 
-    void Http3Client::OnRegistration(QuicEpollServer * /*eps*/,
-                                     int /*fd*/,
-                                     int /*event_mask*/) {}
-    void Http3Client::OnModification(int /*fd*/,
-                                     int /*event_mask*/) {}
-    void Http3Client::OnUnregistration(int /*fd*/,
-                                       bool /*replaced*/) {}
-    void Http3Client::OnShutdown(QuicEpollServer * /*eps*/,
-                                 int /*fd*/) {}
-
-    void Http3Client::OnEvent(int fd, QuicEpollEvent *event)
+    void Http3Client::OnSocketEvent(QuicEventLoop* event_loop, QuicUdpSocketFd fd,
+                             QuicSocketEventMask events)
     {
-        event->out_ready_mask = 0; // special
-        if (event->in_events & UV_READABLE)
+       QuicSocketEventMask eventsout = 0; // special
+        if (events & kSocketEventReadable)
         {
-            QUIC_DVLOG(1) << "Read packets on UV_READABLE";
+            QUIC_DVLOG(1) << "Read packets on kSocketEventReadable";
             int times_to_read = max_reads_per_epoll_loop_;
             bool more_to_read = true;
             QuicPacketCount packets_dropped = 0;
@@ -911,22 +901,25 @@ namespace quic
             }
             if (connected() && more_to_read)
             {
-                event->out_ready_mask |= UV_READABLE;
+                eventsout |= kSocketEventReadable;
             }
         }
-        if (connected() && (event->in_events & UV_WRITABLE))
+        if (connected() && (events & kSocketEventWritable))
         {
             writer_->SetWritable();
             session_->connection()->OnCanWrite();
             if (writer_->IsWriteBlocked())
             {
-                event->out_ready_mask |= UV_WRITABLE;
+                eventsout |= kSocketEventWritable;
             }
         }
 
         if (handleConnecting())
         {
-            event->out_ready_mask |= UV_READABLE; // please visit us again
+            eventsout |= kSocketEventReadable; // please visit us again
+        }
+        if (eventsout != 0) {
+            eventloop_->getQuicEventLoop()->ArtificiallyNotifyEvent(fd, eventsout);
         }
         /*  if (event->in_events & EPOLLERR)
           {

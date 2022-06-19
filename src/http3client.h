@@ -44,7 +44,7 @@ namespace quic
     class Http3EventLoop;
 
     class Http3Client : public QuicSpdyStream::Visitor,
-                        public QuicEpollCallbackInterface,
+                        public QuicSocketEventListener,
                         public QuicClientPushPromiseIndex::Delegate,
                         public ProcessPacketInterface,
                         public Nan::ObjectWrap,
@@ -60,17 +60,10 @@ namespace quic
 
         ~Http3Client() override;
 
-        // From EpollCallbackInterface
-        std::string Name() const override { return "Http3Client"; }
+        // From OnRegistration
 
-        void OnRegistration(QuicEpollServer * /*eps*/,
-                            int /*fd*/,
-                            int /*event_mask*/) override;
-        void OnModification(int /*fd*/, int /*event_mask*/) override;
-        void OnEvent(int /*fd*/, QuicEpollEvent * /*event*/) override;
-        void OnUnregistration(int /*fd*/, bool /*replaced*/) override;
-
-        void OnShutdown(QuicEpollServer * /*eps*/, int /*fd*/) override;
+        void OnSocketEvent(QuicEventLoop* event_loop, QuicUdpSocketFd fd,
+                             QuicSocketEventMask events) override;
 
         // From ProcessPacketInterface. This will be called for each received
         // packet.
@@ -336,7 +329,7 @@ namespace quic
         bool HasActiveRequests();
 
         // Actually clean up |fd|.
-        void CleanUpUDPSocketImpl(int fd);
+        void CleanUpUDPSocketImpl(QuicUdpSocketFd fd);
 
         bool clientInitialize();
 

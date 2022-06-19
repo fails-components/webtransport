@@ -21,7 +21,6 @@
 #include "quiche/quic/core/quic_dispatcher.h"
 #include "quiche/quic/core/quic_packet_reader.h"
 #include "quiche/quic/platform/api/quic_socket_address.h"
-#include "quiche/quic/platform/api/quic_epoll.h"
 
 using namespace Nan;
 
@@ -31,7 +30,7 @@ namespace quic
     class Http3EventLoop;
     
 
-    class Http3Server : public QuicEpollCallbackInterface, public Nan::ObjectWrap, public LifetimeHelper
+    class Http3Server : public QuicSocketEventListener, public Nan::ObjectWrap, public LifetimeHelper
     {
     public:
         Http3Server(Http3EventLoop * eventloop, std::string host, int port, 
@@ -49,18 +48,9 @@ namespace quic
        
 
 
-        // From EpollCallbackInterface
-        std::string Name() const override { return "Http3Server"; }
-
-        
-        void OnRegistration(QuicEpollServer * /*eps*/,
-                            int /*fd*/,
-                            int /*event_mask*/) override {}
-        void OnModification(int /*fd*/, int /*event_mask*/) override {}
-        void OnEvent(int /*fd*/, QuicEpollEvent * /*event*/) override;
-        void OnUnregistration(int /*fd*/, bool /*replaced*/) override {}
-
-        void OnShutdown(QuicEpollServer * /*eps*/, int /*fd*/) override {}
+        // From QuicSocketEventListener
+        void OnSocketEvent(QuicEventLoop* event_loop, QuicUdpSocketFd fd,
+                             QuicSocketEventMask events) override;
 
         static NAN_METHOD(New);
 

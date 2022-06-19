@@ -20,7 +20,7 @@
 #include "quiche/quic/core/quic_dispatcher.h"
 #include "quiche/quic/core/quic_packet_reader.h"
 #include "quiche/quic/platform/api/quic_socket_address.h"
-#include "quiche/quic/platform/api/quic_epoll.h"
+#include "quiche/quic/core/io/quic_default_event_loop.h"
 
 using namespace Nan;
 
@@ -89,7 +89,7 @@ namespace quic
         std::string *para = nullptr; // for session, we own it, and must delete it
     };
 
-    class Http3EventLoop :  public epoll_server::LibuvEpollAsyncCallbackInterface,
+    class Http3EventLoop :  public QuicSocketEventListener, public QuicAlarm::Delegate,
                          public AsyncProgressQueueWorker<Http3ProgressReport>, // may be replace char later
                         public Nan::ObjectWrap
     {
@@ -112,11 +112,19 @@ namespace quic
         // Server deletion is imminent.  Start cleaning up the epoll server.
         void Destroy() override;
 
-        QuicEpollServer *getEpollServer() {return &epoll_server_;};
+        QuicEventLoop *getQuicEventLoop() {return &quic_event_loop_;};
 
 
 
-        void OnAsyncExecution() override;
+        // replacement?
+        /*void OnSocketEvent(QuicEventLoop* event_loop, QuicUdpSocketFd fd,
+                             QuicSocketEventMask events)*/
+
+        // QuicAlarm::Delegate
+        QuicConnectionContext* GetConnectionContext() override {return nullptr;};
+
+        // Invoked when the alarm fires.
+        void OnAlarm() override;
 
         void informAboutClientConnected(Http3Client *client, bool success);
         void informClientWebtransportSupport(Http3Client *client);
@@ -140,7 +148,6 @@ namespace quic
 
         void Schedule(std::function<void()> action);
 
-        int64_t NowInUsec() const {return epoll_server_.NowInUsec();} // remove later
 
 
     private:
@@ -163,9 +170,11 @@ namespace quic
         quiche::QuicheCircularDeque<std::function<void()>> scheduled_actions_
             QUIC_GUARDED_BY(scheduled_actions_lock_);
 
+        std::unique_ptr<QuicAlarm> scheduled_actions_alarm_;
+
 
         QuicPacketCount packets_dropped_;
-        QuicEpollServer epoll_server_;
+        QuicDefaultEventLoop quic_event_loop_;
 
         void processClientConnected(Http3Client * clientobj, bool success);
         void processClientWebtransportSupport(Http3Client *client);
