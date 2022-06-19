@@ -12,9 +12,7 @@
 #include "src/http3wtsessionvisitor.h"
 #include "src/http3eventloop.h"
 #include "quiche/quic/core/quic_default_packet_writer.h"
-#include "quiche/quic/core/quic_epoll_connection_helper.h"
 #include "quiche/quic/tools/quic_simple_crypto_server_stream_helper.h"
-#include "quiche/quic/core/quic_epoll_clock.h"
 #include "quiche/quic/core/crypto/proof_source_x509.h"
 #include "quiche/common/platform/api/quiche_reference_counted.h"
 
@@ -85,7 +83,7 @@ namespace quic
       port_ = address.port();
     }
 
-    const int kEpollFlags = kSocketEventReadable | kSocketEventWritable; // there is no analogue to EPOLLET in libuv hopefully not a problem
+    const int kEpollFlags = kSocketEventReadable | kSocketEventWritable; 
 
     eventloop_->getQuicEventLoop()->RegisterSocket(fd_, kEpollFlags, this);
     dispatcher_.reset(CreateQuicDispatcher());
@@ -314,7 +312,7 @@ namespace quic
         eventsout |= kSocketEventReadable;
       }
     }
-    if (event->in_events & kSocketEventWritable)
+    if (events & kSocketEventWritable)
     {
       dispatcher_->OnCanWrite();
       if (dispatcher_->HasPendingWrites())

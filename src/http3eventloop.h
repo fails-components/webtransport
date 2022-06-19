@@ -89,7 +89,7 @@ namespace quic
         std::string *para = nullptr; // for session, we own it, and must delete it
     };
 
-    class Http3EventLoop :  public QuicSocketEventListener, public QuicAlarm::Delegate,
+    class Http3EventLoop :  public QuicAlarm::Delegate,
                          public AsyncProgressQueueWorker<Http3ProgressReport>, // may be replace char later
                         public Nan::ObjectWrap
     {

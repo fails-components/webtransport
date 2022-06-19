@@ -10,8 +10,8 @@
 #ifndef NET_QUICHE_PLATFORM_IMPL_QUIC_EPOLL_IMPL_H_
 #define NET_QUICHE_PLATFORM_IMPL_QUIC_EPOLL_IMPL_H_
 
-#include "quiche_platform_impl/simple_libuv_epoll_server.h"
-
+// #include "quiche_platform_impl/simple_libuv_epoll_server.h"
+/*
 namespace quiche {
 
 using QuicheEpollServerImpl = epoll_server::SimpleLibuvEpollServer;
@@ -19,6 +19,8 @@ using QuicheEpollEventImpl = epoll_server::LibuvEpollEvent;
 using QuicheEpollAlarmBaseImpl = epoll_server::LibuvEpollAlarm;
 using QuicheEpollCallbackInterfaceImpl = epoll_server::LibuvEpollCallbackInterface;
 
+
 }  // namespace quic
+*/
 
 #endif  // NET_QUIC_PLATFORM_IMPL_QUIC_EPOLL_IMPL_H_

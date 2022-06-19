@@ -41,16 +41,12 @@ endif(COMMAND cmake_policy)
 
 add_library(gquiche SHARED 
 #plattform impl
-platform/quiche_platform_impl/epoll_bug_impl.h
-platform/quiche_platform_impl/epoll_logging_impl.h
-platform/quiche_platform_impl/epoll_time_impl.h
 platform/quiche_platform_impl/quiche_export_impl.h
 platform/quiche_platform_impl/quiche_logging_impl.h
 platform/quiche_platform_impl/quiche_logging_impl.cc
 platform/quiche_platform_impl/quiche_containers_impl.h
 platform/quiche_platform_impl/quiche_client_stats_impl.h
 platform/quiche_platform_impl/quiche_bug_tracker_impl.h
-platform/quiche_platform_impl/quiche_epoll_impl.h
 platform/quiche_platform_impl/quiche_iovec_impl.h
 platform/quiche_platform_impl/quiche_mutex_impl.h
 platform/quiche_platform_impl/quiche_stack_trace_impl.h
@@ -128,8 +124,6 @@ third_party/quiche/quiche/common/quiche_mem_slice_storage.cc
 third_party/quiche/quiche/common/quiche_text_utils.cc
 third_party/quiche/quiche/common/quiche_text_utils.h
 third_party/quiche/quiche/common/simple_buffer_allocator.cc
-# third_party/quiche/quiche/epoll_server/simple_epoll_server.cc
-# third_party/quiche/quiche/epoll_server/simple_epoll_server.h
 third_party/quiche/quiche/http2/adapter/data_source.h
 third_party/quiche/quiche/http2/adapter/event_forwarder.cc
 third_party/quiche/quiche/http2/adapter/event_forwarder.h
@@ -380,8 +374,6 @@ third_party/quiche/quiche/quic/core/crypto/transport_parameters.cc
 third_party/quiche/quiche/quic/core/crypto/transport_parameters.h
 third_party/quiche/quiche/quic/core/crypto/web_transport_fingerprint_proof_verifier.cc
 third_party/quiche/quiche/quic/core/crypto/web_transport_fingerprint_proof_verifier.h
-third_party/quiche/quiche/quic/core/quic_epoll_alarm_factory.h
-third_party/quiche/quiche/quic/core/quic_epoll_alarm_factory.cc
 third_party/quiche/quiche/quic/core/frames/quic_ack_frame.cc
 third_party/quiche/quiche/quic/core/frames/quic_ack_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_ack_frequency_frame.cc
@@ -582,10 +574,6 @@ third_party/quiche/quiche/quic/core/quic_dispatcher.cc
 third_party/quiche/quiche/quic/core/quic_dispatcher.h
 third_party/quiche/quiche/quic/core/quic_error_codes.cc
 third_party/quiche/quiche/quic/core/quic_error_codes.h
-third_party/quiche/quiche/quic/core/quic_epoll_clock.h
-third_party/quiche/quiche/quic/core/quic_epoll_clock.cc
-third_party/quiche/quiche/quic/core/quic_epoll_connection_helper.h
-third_party/quiche/quiche/quic/core/quic_epoll_connection_helper.cc
 third_party/quiche/quiche/quic/core/quic_flags_list.h
 third_party/quiche/quiche/quic/core/quic_flow_controller.cc
 third_party/quiche/quiche/quic/core/quic_flow_controller.h

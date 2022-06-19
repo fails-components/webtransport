@@ -24,8 +24,6 @@
 #include "quiche/quic/core/http/quic_spdy_client_stream.h"
 #include "quiche/quic/core/http/spdy_utils.h"
 #include "quiche/quic/core/http/web_transport_http3.h"
-#include "quiche/quic/core/quic_epoll_connection_helper.h"
-#include "quiche/quic/core/quic_epoll_alarm_factory.h"
 #include "quiche/quic/core/web_transport_interface.h"
 #include "quiche/quic/core/quic_packet_writer_wrapper.h"
 #include "quiche/quic/core/quic_server_id.h"
@@ -104,7 +102,7 @@ namespace quic
           connected_or_attempting_connect_(false),
           server_connection_id_length_(kQuicDefaultConnectionIdLength),
           client_connection_id_length_(0),
-          max_reads_per_epoll_loop_(std::numeric_limits<int>::max()),
+          max_reads_per_loop_(std::numeric_limits<int>::max()),
           wait_for_encryption_(false),
           connection_in_progress_(false),
           num_attempts_connect_(0),
@@ -882,7 +880,7 @@ namespace quic
         if (events & kSocketEventReadable)
         {
             QUIC_DVLOG(1) << "Read packets on kSocketEventReadable";
-            int times_to_read = max_reads_per_epoll_loop_;
+            int times_to_read = max_reads_per_loop_;
             bool more_to_read = true;
             QuicPacketCount packets_dropped = 0;
             while (connected() && more_to_read && times_to_read > 0)

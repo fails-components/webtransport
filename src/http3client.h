@@ -30,7 +30,6 @@
 #include "quiche/quic/core/quic_framer.h"
 #include "quiche/quic/core/quic_packet_creator.h"
 #include "quiche/quic/core/quic_packets.h"
-#include "quiche/quic/platform/api/quic_epoll.h"
 #include "quiche/common/quiche_linked_hash_map.h"
 #include "quiche/quic/core/crypto/web_transport_fingerprint_proof_verifier.h"
 
@@ -505,7 +504,7 @@ namespace quic
         // HTTP/2 trailers from most recent response.
         std::string latest_response_trailers_;
 
-        int max_reads_per_epoll_loop_;
+        int max_reads_per_loop_;
 
         // Point to a QuicPacketReader object on the heap. The reader allocates more
         // space than allowed on the stack.
