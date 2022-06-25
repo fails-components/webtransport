@@ -20,7 +20,7 @@
 #include "quiche/quic/core/quic_dispatcher.h"
 #include "quiche/quic/core/quic_packet_reader.h"
 #include "quiche/quic/platform/api/quic_socket_address.h"
-#include "quiche/quic/core/io/quic_default_event_loop.h"
+#include "quiche/quic/core/io/quic_poll_event_loop.h"
 
 using namespace Nan;
 
@@ -174,7 +174,7 @@ namespace quic
 
 
         QuicPacketCount packets_dropped_;
-        QuicDefaultEventLoop quic_event_loop_;
+        QuicPollEventLoop quic_event_loop_;
 
         void processClientConnected(Http3Client * clientobj, bool success);
         void processClientWebtransportSupport(Http3Client *client);

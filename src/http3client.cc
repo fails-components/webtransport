@@ -25,6 +25,9 @@
 #include "quiche/quic/core/http/spdy_utils.h"
 #include "quiche/quic/core/http/web_transport_http3.h"
 #include "quiche/quic/core/web_transport_interface.h"
+#include "quiche/quic/core/quic_default_packet_writer.h"
+#include "quiche/quic/core/quic_default_connection_helper.h"
+#include "quiche/quic/core/quic_default_clock.h"
 #include "quiche/quic/core/quic_packet_writer_wrapper.h"
 #include "quiche/quic/core/quic_server_id.h"
 #include "quiche/quic/core/quic_utils.h"
@@ -1386,7 +1389,7 @@ namespace quic
             }
 
             std::unique_ptr<QuicConnectionHelperInterface> helper =
-                std::make_unique<QuicEpollConnectionHelper>(eventloop->getEpollServer(), QuicAllocator::SIMPLE);
+                std::make_unique<QuicDefaultConnectionHelper>();
 
             std::unique_ptr<ChromiumWebTransportFingerprintProofVerifier> verifier;
 

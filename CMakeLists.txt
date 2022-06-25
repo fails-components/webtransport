@@ -471,6 +471,8 @@ third_party/quiche/quiche/quic/core/http/web_transport_http3.h
 third_party/quiche/quiche/quic/core/http/web_transport_stream_adapter.cc
 third_party/quiche/quiche/quic/core/http/web_transport_stream_adapter.h
 third_party/quiche/quiche/quic/core/io/quic_event_loop.h
+third_party/quiche/quiche/quic/core/io/quic_poll_event_loop.h
+third_party/quiche/quiche/quic/core/io/quic_poll_event_loop.cc
 third_party/quiche/quiche/quic/core/legacy_quic_stream_id_manager.cc
 third_party/quiche/quiche/quic/core/legacy_quic_stream_id_manager.h
 third_party/quiche/quiche/quic/core/packet_number_indexed_queue.h
@@ -570,6 +572,9 @@ third_party/quiche/quiche/quic/core/quic_datagram_queue.cc
 third_party/quiche/quiche/quic/core/quic_datagram_queue.h
 third_party/quiche/quiche/quic/core/quic_default_packet_writer.cc
 third_party/quiche/quiche/quic/core/quic_default_packet_writer.h
+third_party/quiche/quiche/quic/core/quic_default_clock.cc
+third_party/quiche/quiche/quic/core/quic_default_clock.h
+third_party/quiche/quiche/quic/core/quic_default_connection_helper.h
 third_party/quiche/quiche/quic/core/quic_dispatcher.cc
 third_party/quiche/quiche/quic/core/quic_dispatcher.h
 third_party/quiche/quiche/quic/core/quic_error_codes.cc

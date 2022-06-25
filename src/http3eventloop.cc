@@ -15,6 +15,7 @@
 #include "quiche/quic/tools/quic_simple_crypto_server_stream_helper.h"
 #include "quiche/quic/core/crypto/proof_source_x509.h"
 #include "quiche/common/platform/api/quiche_reference_counted.h"
+#include "quiche/quic/core/quic_default_clock.h"
 
 using namespace Nan;
 
@@ -26,8 +27,9 @@ namespace quic
   Http3EventLoop::Http3EventLoop(Callback *cbeventloop, Callback *cbtransport, Callback *cbstream, Callback *cbsession)
       : AsyncProgressQueueWorker(cbeventloop), cbtransport_(cbtransport), 
         progress_(nullptr), cbstream_(cbstream), cbsession_(cbsession),
-        scheduled_actions_alarm_(quic_event_loop_.GetAlarmFactory()->CreateAlarm(this))
+        quic_event_loop_(QuicDefaultClock::Get())
   {
+    scheduled_actions_alarm_ = std::unique_ptr<QuicAlarm>(quic_event_loop_.GetAlarmFactory()->CreateAlarm(this));
   }
 
   Http3EventLoop::~Http3EventLoop()
@@ -139,7 +141,7 @@ namespace quic
     // QUICHE_DCHECK(!quit_.HasBeenNotified());
     QuicWriterMutexLock lock(&scheduled_actions_lock_);
     scheduled_actions_.push_back(std::move(action));
-    scheduled_actions_alarm_->Set(QuicTime::Zero());
+    scheduled_actions_alarm_->Update(QuicDefaultClock::Get()->Now(), QuicTime::Delta::Zero());
     // epoll_server_.TriggerAsync();
   }
 
