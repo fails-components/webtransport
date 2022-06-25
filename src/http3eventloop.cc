@@ -22,14 +22,59 @@ using namespace Nan;
 namespace quic
 {
 
+  static const int kErrorBufferSize = 256;
+
+  WakeUpHelper::WakeUpHelper(Http3EventLoop &eventloop)
+      : eventloop_(eventloop),
+        readcb_(*this),
+        read_fd_(-1),
+        write_fd_(-1)
+  {
+    // from epollserver
+    int pipe_fds[2];
+    if (pipe(pipe_fds) < 0)
+    {
+      // Unfortunately, it is impossible to test any such initialization in
+      // a constructor (as virtual methods do not yet work).
+      // This -could- be solved by moving initialization to an outside
+      // call...
+       int saved_errno = errno;
+       char buf[kErrorBufferSize];
+       QUICHE_LOG(FATAL) << "Error " << saved_errno << " in pipe(): "
+                       << strerror_r(saved_errno, buf, sizeof(buf));
+    }
+    read_fd_ = pipe_fds[0];
+    write_fd_ = pipe_fds[1];
+    eventloop_.getQuicEventLoop()->RegisterSocket(read_fd_, kSocketEventReadable, &readcb_);
+    eventloop_.SetNonblocking(read_fd_); // eventuelly should be part of register socket.
+  }
+
+  WakeUpHelper::~WakeUpHelper()
+  {
+    eventloop_.getQuicEventLoop()->UnregisterSocket(read_fd_);
+    close(read_fd_);
+    close(write_fd_);
+  }
+
+  void WakeUpHelper::Wake()
+  {
+    // from epollserver
+    char data = 'd'; // 'd' is for data.  It's good enough for me.
+    int rv = write(write_fd_, &data, 1);
+  }
+
+  void WakeUpHelper::woken()
+  {
+    eventloop_.OnWoken();
+  }
+
   const size_t kNumSessionsToCreatePerSocketEvent = 16;
 
   Http3EventLoop::Http3EventLoop(Callback *cbeventloop, Callback *cbtransport, Callback *cbstream, Callback *cbsession)
-      : AsyncProgressQueueWorker(cbeventloop), cbtransport_(cbtransport), 
+      : AsyncProgressQueueWorker(cbeventloop), cbtransport_(cbtransport),
         progress_(nullptr), cbstream_(cbstream), cbsession_(cbsession),
-        quic_event_loop_(QuicDefaultClock::Get())
+        quic_event_loop_(QuicDefaultClock::Get()), whelper_(*this)
   {
-    scheduled_actions_alarm_ = std::unique_ptr<QuicAlarm>(quic_event_loop_.GetAlarmFactory()->CreateAlarm(this));
   }
 
   Http3EventLoop::~Http3EventLoop()
@@ -117,9 +162,37 @@ namespace quic
     Unref();
   }
 
-  void Http3EventLoop::OnAlarm()
+  void Http3EventLoop::OnWoken()
   {
     ExecuteScheduledActions();
+  }
+
+  // originally from the epoll server
+  void Http3EventLoop::SetNonblocking(int fd)
+  {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1)
+    {
+      int saved_errno = errno;
+      char buf[kErrorBufferSize];
+      QUIC_LOG(FATAL) << "Error " << saved_errno << " doing fcntl(" << fd
+                      << ", F_GETFL, 0): "
+                      << strerror_r(saved_errno, buf, sizeof(buf));
+    }
+    if (!(flags & O_NONBLOCK))
+    {
+      int saved_flags = flags;
+      flags = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+      if (flags == -1)
+      {
+        // bad.
+        int saved_errno = errno;
+        char buf[kErrorBufferSize];
+        QUIC_LOG(FATAL) << "Error " << saved_errno << " doing fcntl(" << fd
+                        << ", F_SETFL, " << saved_flags
+                        << "): " << strerror_r(saved_errno, buf, sizeof(buf));
+      }
+    }
   }
 
   void Http3EventLoop::ExecuteScheduledActions()
@@ -141,7 +214,7 @@ namespace quic
     // QUICHE_DCHECK(!quit_.HasBeenNotified());
     QuicWriterMutexLock lock(&scheduled_actions_lock_);
     scheduled_actions_.push_back(std::move(action));
-    scheduled_actions_alarm_->Update(QuicDefaultClock::Get()->Now(), QuicTime::Delta::Zero());
+    whelper_.Wake(); // wake of the polling loop
     // epoll_server_.TriggerAsync();
   }
 
@@ -246,7 +319,7 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::informUnref(LifetimeHelper * obj)
+  void Http3EventLoop::informUnref(LifetimeHelper *obj)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::Unref;
@@ -324,13 +397,13 @@ namespace quic
     delete sdata;
   }
 
-  void Http3EventLoop::processClientConnected(Http3Client * clientobj, bool success)
+  void Http3EventLoop::processClientConnected(Http3Client *clientobj, bool success)
   {
     HandleScope scope;
 
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("ClientConnected").ToLocalChecked();
-   
+
     v8::Local<v8::String> successProp = Nan::New("success").ToLocalChecked();
     v8::Local<v8::Boolean> successVal = Nan::New(success);
 
@@ -345,7 +418,6 @@ namespace quic
 
     v8::Local<v8::Value> argv[] = {retObj};
     Nan::Call(*cbtransport_, 1, argv);
-
   }
 
   void Http3EventLoop::processClientWebtransportSupport(Http3Client *clientobj)
@@ -354,7 +426,7 @@ namespace quic
 
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("ClientWebtransportSupport").ToLocalChecked();
-   
+
     v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
     v8::Local<v8::Object> objVal = clientobj->handle();
 
@@ -365,7 +437,6 @@ namespace quic
 
     v8::Local<v8::Value> argv[] = {retObj};
     Nan::Call(*cbtransport_, 1, argv);
-
   }
 
   void Http3EventLoop::processStream(bool incom, bool bidi, Http3WTSession *sessionobj, Http3WTStream *stream)
@@ -561,16 +632,13 @@ namespace quic
     Nan::Call(*cbtransport_, 1, argv);
   }
 
-  
-  void  Http3EventLoop::processNewClientSession(Http3Client *clientobj, Http3WTSession *session)
+  void Http3EventLoop::processNewClientSession(Http3Client *clientobj, Http3WTSession *session)
   {
     HandleScope scope;
 
-    
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("Http3WTSessionVisitor").ToLocalChecked();
     v8::Local<v8::String> sessProp = Nan::New("session").ToLocalChecked();
-
 
     v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
     v8::Local<v8::Object> objVal = clientobj->handle();
@@ -578,7 +646,8 @@ namespace quic
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
-    if (session != nullptr) {
+    if (session != nullptr)
+    {
       auto sessionobj = Http3WTSession::NewInstance(session);
       retObj->Set(context, sessProp, sessionobj).FromJust();
     }
@@ -646,7 +715,8 @@ namespace quic
       case Http3ProgressReport::ClientWebTransportSupport:
       {
         processClientWebtransportSupport(cur.clientobj);
-      } break;
+      }
+      break;
       case Http3ProgressReport::NewClientSession:
       {
         processNewClientSession(cur.clientobj, cur.session);
@@ -727,7 +797,7 @@ namespace quic
       case Http3ProgressReport::Unref:
       {
         cur.obj->doUnref();
-      } 
+      }
       break;
       };
       if (cur.para)
@@ -811,7 +881,7 @@ namespace quic
   bool Http3EventLoop::startEventLoopInt()
   {
 
-    Ref();                               // do not garbage collect
+    Ref(); // do not garbage collect
     // epoll_server_.set_timeout_in_us(-1); // negative values would mean wait forever
     Nan::AsyncQueueWorker(this);
     return true;
@@ -821,7 +891,6 @@ namespace quic
   {
     Http3EventLoop *obj = Nan::ObjectWrap::Unwrap<Http3EventLoop>(info.Holder());
     // got the object we can now start the server
-   
 
     if (!obj->startEventLoopInt())
     {
@@ -831,7 +900,7 @@ namespace quic
 
   bool Http3EventLoop::shutDownEventLoopInt()
   {
-        // FIXME kill the uv loop
+    // FIXME kill the uv loop
     std::function<void()> task = [this]()
     {
       loop_running_ = false;
@@ -842,7 +911,7 @@ namespace quic
 
   NAN_METHOD(Http3EventLoop::shutDownEventLoop)
   {
-     Http3EventLoop *obj = Nan::ObjectWrap::Unwrap<Http3EventLoop>(info.Holder());
+    Http3EventLoop *obj = Nan::ObjectWrap::Unwrap<Http3EventLoop>(info.Holder());
     // got the object we can now start the server
 
     if (!obj->shutDownEventLoopInt())

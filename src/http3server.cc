@@ -86,6 +86,7 @@ namespace quic
     const int kEpollFlags = kSocketEventReadable | kSocketEventWritable;
 
     eventloop_->getQuicEventLoop()->RegisterSocket(fd_, kEpollFlags, this);
+    eventloop_->SetNonblocking(fd_); // eventuelly should be part of register socket.
     dispatcher_.reset(CreateQuicDispatcher());
     dispatcher_->InitializeWithWriter(new QuicDefaultPacketWriter(fd_));
 
@@ -283,6 +284,7 @@ namespace quic
   {
     QUICHE_DCHECK_EQ(fd, fd_);
     QuicSocketEventMask eventsout = 0;
+    QuicSocketEventMask revents = 0;
 
     if (events & kSocketEventReadable)
     {
@@ -302,6 +304,8 @@ namespace quic
       {
         // Register kSocketEventReadabl event to consume buffered CHLO(s).
         eventsout |= kSocketEventReadable;
+      } else {
+        revents |=  kSocketEventReadable;
       }
     }
     if (events & kSocketEventWritable)
@@ -310,11 +314,17 @@ namespace quic
       if (dispatcher_->HasPendingWrites())
       {
         eventsout |= kSocketEventWritable;
+      } else {
+        revents |= kSocketEventWritable;
       }
     }
     if (eventsout != 0)
     {
-      eventloop_->getQuicEventLoop()->ArtificiallyNotifyEvent(fd_, eventsout);
+      event_loop->ArtificiallyNotifyEvent(fd, eventsout);
+    }
+    if (revents != 0)
+    {
+      event_loop->RearmSocket(fd, revents);
     }
   }
 

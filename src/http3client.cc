@@ -430,8 +430,8 @@ namespace quic
 
         QuicUdpSocketApi api;
         QuicUdpSocketFd fd = api.Create(server_address.host().AddressFamilyToInt(),
-                            /*receive_buffer_size =*/kDefaultSocketReceiveBuffer,
-                            /*send_buffer_size =*/kDefaultSocketReceiveBuffer);
+                                        /*receive_buffer_size =*/kDefaultSocketReceiveBuffer,
+                                        /*send_buffer_size =*/kDefaultSocketReceiveBuffer);
         if (fd == kQuicInvalidSocketFd)
         {
             return false;
@@ -492,6 +492,7 @@ namespace quic
 
         fd_address_map_[fd] = client_address;
         eventloop_->getQuicEventLoop()->RegisterSocket(fd, kEpollFlags, this);
+        eventloop_->SetNonblocking(fd); // eventuelly should be part of register socket.
         return true;
     }
 
@@ -514,7 +515,7 @@ namespace quic
     {
         if (fd != kQuicInvalidSocketFd)
         {
-            eventloop_->getQuicEventLoop()-> UnregisterSocket(fd);
+            eventloop_->getQuicEventLoop()->UnregisterSocket(fd);
             int rc = close(fd);
             QUICHE_DCHECK_EQ(0, rc);
         }
@@ -550,37 +551,6 @@ namespace quic
         }
         connection_in_progress_ = true;
         wait_for_encryption_ = false;
-
-        /*
-                // TODO, we have to use the event loop for this!
-
-                // Attempt multiple connects until the maximum number of client hellos have
-                // been sent.
-                int num_attempts = 0;
-                while (!connected() &&
-                       num_attempts <= QuicCryptoClientStream::kMaxClientHellos)
-                {
-                    StartConnect();
-                    while (EncryptionBeingEstablished())
-                    {
-                        WaitForEvents();
-                    }
-                    ParsedQuicVersion version = UnsupportedQuicVersion();
-                    if (session_ != nullptr && !CanReconnectWithDifferentVersion(&version))
-                    {
-                        // We've successfully created a session but we're not connected, and we
-                        // cannot reconnect with a different version.  Give up trying.
-                        break;
-                    }
-                    num_attempts++;
-                }
-                if (session_ == nullptr)
-                {
-                    QUIC_BUG(quic_bug_10906_1) << "Missing session after Connect";
-                    return;
-                }
-                connect_attempted_ = true;
-                */
     }
 
     bool Http3Client::handleConnecting()
@@ -876,10 +846,11 @@ namespace quic
         return push_promise_data_to_resend_.get() || !open_streams_.empty();
     }
 
-    void Http3Client::OnSocketEvent(QuicEventLoop* event_loop, QuicUdpSocketFd fd,
-                             QuicSocketEventMask events)
+    void Http3Client::OnSocketEvent(QuicEventLoop *event_loop, QuicUdpSocketFd fd,
+                                    QuicSocketEventMask events)
     {
-       QuicSocketEventMask eventsout = 0; // special
+        QuicSocketEventMask eventsout = 0; // special
+        QuicSocketEventMask revents = 0;
         if (events & kSocketEventReadable)
         {
             QUIC_DVLOG(1) << "Read packets on kSocketEventReadable";
@@ -903,6 +874,8 @@ namespace quic
             if (connected() && more_to_read)
             {
                 eventsout |= kSocketEventReadable;
+            } else {
+                revents |= kSocketEventReadable;
             }
         }
         if (connected() && (events & kSocketEventWritable))
@@ -913,14 +886,21 @@ namespace quic
             {
                 eventsout |= kSocketEventWritable;
             }
+        } else {
+             revents |= kSocketEventReadable;
         }
 
         if (handleConnecting())
         {
             eventsout |= kSocketEventReadable; // please visit us again
         }
-        if (eventsout != 0) {
-            eventloop_->getQuicEventLoop()->ArtificiallyNotifyEvent(fd, eventsout);
+        if (eventsout != 0)
+        {
+            event_loop->ArtificiallyNotifyEvent(fd, eventsout);
+        }
+        if (revents != 0)
+        {
+            event_loop->RearmSocket(fd, revents);
         }
         /*  if (event->in_events & EPOLLERR)
           {
