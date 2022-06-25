@@ -30,7 +30,6 @@
 #include "quiche/quic/core/quic_framer.h"
 #include "quiche/quic/core/quic_packet_creator.h"
 #include "quiche/quic/core/quic_packets.h"
-#include "quiche/quic/platform/api/quic_epoll.h"
 #include "quiche/common/quiche_linked_hash_map.h"
 #include "quiche/quic/core/crypto/web_transport_fingerprint_proof_verifier.h"
 
@@ -44,35 +43,26 @@ namespace quic
     class Http3EventLoop;
 
     class Http3Client : public QuicSpdyStream::Visitor,
-                        public QuicEpollCallbackInterface,
+                        public QuicSocketEventListener,
                         public QuicClientPushPromiseIndex::Delegate,
                         public ProcessPacketInterface,
                         public Nan::ObjectWrap,
-                        public LifetimeHelper 
+                        public LifetimeHelper
     {
     public:
         Http3Client(Http3EventLoop *eventloop, QuicSocketAddress server_address,
                     const std::string &server_hostname,
+                    int local_port,
                     std::unique_ptr<ProofVerifier> proof_verifier,
                     std::unique_ptr<SessionCache> session_cache,
-                    std::unique_ptr<QuicConnectionHelperInterface> helper,
-                    int local_port);
+                    std::unique_ptr<QuicConnectionHelperInterface> helper);
 
         ~Http3Client() override;
 
+        // From OnRegistration
 
-        // From EpollCallbackInterface
-        std::string Name() const override { return "Http3Client"; }
-
-        
-        void OnRegistration(QuicEpollServer * /*eps*/,
-                            int /*fd*/,
-                            int /*event_mask*/) override;
-        void OnModification(int /*fd*/, int /*event_mask*/) override;
-        void OnEvent(int /*fd*/, QuicEpollEvent * /*event*/) override;
-        void OnUnregistration(int /*fd*/, bool /*replaced*/) override ;
-
-        void OnShutdown(QuicEpollServer * /*eps*/, int /*fd*/) override;
+        void OnSocketEvent(QuicEventLoop* event_loop, QuicUdpSocketFd fd,
+                             QuicSocketEventMask events) override;
 
         // From ProcessPacketInterface. This will be called for each received
         // packet.
@@ -102,12 +92,12 @@ namespace quic
         // Sends a request containing |headers| and |body| and returns the number of
         // bytes sent (the size of the serialized request headers and body).
         void SendMessageAsync(const spdy::SpdyHeaderBlock &headers,
-                            absl::string_view body);
+                              absl::string_view body);
         // Sends a request containing |headers| and |body| with the fin bit set to
         // |fin| and returns the number of bytes sent (the size of the serialized
         // request headers and body).
         void SendMessageAsync(const spdy::SpdyHeaderBlock &headers,
-                            absl::string_view body, bool fin);
+                              absl::string_view body, bool fin);
 
         void SendConnectivityProbing();
         void Connect();
@@ -153,7 +143,6 @@ namespace quic
         size_t bytes_read() const;
         size_t bytes_written() const;
 
-
         // If the client has at least one UDP socket, return the latest created one.
         // Otherwise, return -1.
         int GetLatestFD() const;
@@ -179,7 +168,7 @@ namespace quic
         const QuicSocketAddress &address() const;
 
         // Returns a newly created QuicSpdyClientStream to callback
-        void CreateClientStream(std::function<void (QuicSpdyClientStream *)> finish);
+        void CreateClientStream(std::function<void(QuicSpdyClientStream *)> finish);
 
         // From QuicSpdyStream::Visitor
         void OnClose(QuicSpdyStream *stream) override;
@@ -196,7 +185,7 @@ namespace quic
         void OnRendezvousResult(QuicSpdyStream *) override;
 
         // Returns nullptr if the maximum number of streams have already been created.
-        //QuicSpdyClientStream *GetOrCreateStream();
+        // QuicSpdyClientStream *GetOrCreateStream();
         // async replacement
         void RunOnStreamMaybeCreateStream(std::function<void(QuicSpdyClientStream *)> finish);
 
@@ -208,7 +197,6 @@ namespace quic
 
         QuicRstStreamErrorCode stream_error() { return stream_error_; }
         QuicErrorCode connection_error() const;
-
 
         // Get the server config map.  Server config must exist.
         const QuicTagValueMap &GetServerConfig();
@@ -253,7 +241,6 @@ namespace quic
 
         static NAN_METHOD(New);
 
-
         static NAN_METHOD(openWTSession);
         static NAN_METHOD(closeClient);
 
@@ -263,8 +250,8 @@ namespace quic
             return my_constructor;
         }
 
-        
-        void doUnref() override {
+        void doUnref() override
+        {
             Unref();
         }
 
@@ -327,7 +314,6 @@ namespace quic
             int64_t response_body_size;
         };
 
-
         // Index of pending promised streams. Must outlive |session_|.
         QuicClientPushPromiseIndex push_promise_index_;
 
@@ -342,7 +328,7 @@ namespace quic
         bool HasActiveRequests();
 
         // Actually clean up |fd|.
-        void CleanUpUDPSocketImpl(int fd);
+        void CleanUpUDPSocketImpl(QuicUdpSocketFd fd);
 
         bool clientInitialize();
 
@@ -518,7 +504,7 @@ namespace quic
         // HTTP/2 trailers from most recent response.
         std::string latest_response_trailers_;
 
-        int max_reads_per_epoll_loop_;
+        int max_reads_per_loop_;
 
         // Point to a QuicPacketReader object on the heap. The reader allocates more
         // space than allowed on the stack.
@@ -531,7 +517,7 @@ namespace quic
         uint32_t num_attempts_connect_;
         bool webtransport_server_support_inform_;
 
-        std::queue<std::function<void (QuicSpdyClientStream *)>> finish_stream_open_;
+        std::queue<std::function<void(QuicSpdyClientStream *)>> finish_stream_open_;
     };
 
 } // namespace quic
