@@ -11,3 +11,4 @@ fingerprints.txt
 certs/out/*
 *.pb.*
 chrome.bat
+certificatecache.json

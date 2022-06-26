@@ -2,13 +2,37 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import { readFileSync } from 'fs'
 import { Http3Server } from '../src/webtransport.js'
 import { runEchoServer } from './testsuite.js'
+import { existsSync, readFileSync, writeFile } from 'node:fs'
+import { generateWebTransportCertificate } from './certificate.js'
 
 
-const crt = readFileSync('certs/out/leaf_cert.pem')
-const privKey = readFileSync('certs/out/leaf_cert.key')
+let certificate = null
+
+if (existsSync('./certificatecache.json')) {
+  certificate = JSON.parse(
+    readFileSync('./certificatecache.json', { encoding: 'utf8', flag: 'r' })
+  )
+}
+
+if (!certificate) {
+  const attrs = [
+    { shortName: 'C', value: 'DE' },
+    { shortName: 'ST', value: 'Berlin' },
+    { shortName: 'L', value: 'Berlin' },
+    { shortName: 'O', value: 'webtransport Test Server' },
+    { shortName: 'CN', value: '127.0.0.1' }
+  ]
+  certificate = await generateWebTransportCertificate(attrs, {
+    days: 13
+  })
+  writeFile('./certificatecache.json', JSON.stringify(certificate),(err)=>{
+    if (err) console.log('write certificate cache error', err)
+  })
+}
+
+console.log('certificate hash ', certificate.fingerprint)
 
 
 
@@ -17,8 +41,8 @@ try {
     port: 8080,
     host: '0.0.0.0',
     secret: 'mysecret',
-    cert: crt,
-    privKey: privKey
+    cert: certificate.cert, 
+    privKey: certificate.private
   })
   
   runEchoServer(http3server)

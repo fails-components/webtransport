@@ -51,15 +51,8 @@ namespace quic
                 stream_->doCanWrite();
             }
 
-            void OnResetStreamReceived(WebTransportStreamError error) override
-            {
-                // Send FIN in response to a stream reset.  We want to test that we can
-                // operate one side of the stream cleanly while the other is reset, thus
-                // replying with a FIN rather than a RESET_STREAM is more appropriate here.
-                lasterror = error;
-                stream_->send_fin_ = true;
-                OnCanWrite();
-            }
+            void OnResetStreamReceived(WebTransportStreamError error) override;
+            
             void OnStopSendingReceived(WebTransportStreamError /*error*/) override;
             
             void OnWriteSideInDataRecvdState() override;
@@ -151,13 +144,37 @@ namespace quic
             }
         }
 
-        static NAN_METHOD(closeStream)
+        static NAN_METHOD(streamFinal)
         {
             Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
             std::function<void()> task = [obj]()
             { obj->send_fin_ = true; 
               obj->tryWrite();
             };
+            obj->eventloop_->Schedule(task);
+        }
+
+        static NAN_METHOD(stopSending)
+        {
+            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
+            int code = 0;
+            v8::Isolate *isolate = info.GetIsolate();
+            unsigned int reason = 0;
+
+            if (!info[0]->IsUndefined())
+            {
+                v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+                v8::Local<v8::Int32> reasonl = info[0]->ToInt32(context).ToLocalChecked();
+                reason = Nan::To<unsigned int>(reasonl).FromJust();
+                
+            }
+
+            std::function<void()> task = [obj,reason]()
+            { if (obj->stream_) {
+                obj->stream_->SendStopSending(reason);
+                obj->eventloop_->informAboutStreamNetworkFinish(obj, NetworkTask::stopSending);
+                }
+             };
             obj->eventloop_->Schedule(task);
         }
 
@@ -177,7 +194,11 @@ namespace quic
             }
 
             std::function<void()> task = [obj,reason]()
-            { if (obj->stream_) obj->stream_->ResetWithUserCode(reason); };
+            { if (obj->stream_) {
+                obj->stream_->ResetWithUserCode(reason); 
+                obj->eventloop_->informAboutStreamNetworkFinish(obj, NetworkTask::resetStream);
+            }
+            };
             obj->eventloop_->Schedule(task);
         }
 
@@ -230,6 +251,11 @@ namespace quic
 
         void writeChunkInt(char *buffer, size_t len, Nan::Persistent<v8::Object> *bufferhandle)
         {
+            if (fin_was_sent_ || send_fin_)
+            {
+                cancelWrite(bufferhandle);
+                return;
+            }
             if (!stream_)
             {
                 cancelWrite(bufferhandle);
@@ -249,6 +275,7 @@ namespace quic
         WebTransportStream *stream_;
         Http3EventLoop *eventloop_;
         bool send_fin_ = false;
+        bool fin_was_sent_ = false;
         bool stop_sending_received_ = false;
         bool pause_reading_ = false;
         std::deque<WChunks> chunks_;
