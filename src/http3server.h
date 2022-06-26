@@ -28,20 +28,19 @@ namespace quic
 {
 
     class Http3EventLoop;
-    
 
     class Http3Server : public QuicSocketEventListener, public Nan::ObjectWrap, public LifetimeHelper
     {
     public:
-        Http3Server(Http3EventLoop * eventloop, std::string host, int port, 
-            std::unique_ptr<ProofSource> proof_source,
-                           const char *secret);
+        Http3Server(Http3EventLoop *eventloop, std::string host, int port,
+                    std::unique_ptr<ProofSource> proof_source,
+                    const char *secret,
+                    QuicConfig config);
 
         Http3Server(const Http3Server &) = delete;
         Http3Server &operator=(const Http3Server &) = delete;
 
         ~Http3Server();
-
 
         bool CreateUDPSocketAndListen(const QuicSocketAddress &address);
 
@@ -60,25 +59,20 @@ namespace quic
 
         static NAN_METHOD(addPath);
 
-        
         static inline Nan::Persistent<v8::Function> &constructor()
         {
             static Nan::Persistent<v8::Function> my_constructor;
             return my_constructor;
         }
 
-        void doUnref() override {
+        void doUnref() override
+        {
             Unref();
         }
-       
-
 
     private:
-
         bool startServerInt();
         bool stopServerInt();
-
-
 
         QuicUdpSocketFd fd_;
         bool overflow_supported_;
@@ -105,10 +99,7 @@ namespace quic
 
         QuicDispatcher *CreateQuicDispatcher();
 
-        Http3EventLoop * eventloop_;
-
-        
-
+        Http3EventLoop *eventloop_;
     };
 
 }

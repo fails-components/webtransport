@@ -13,7 +13,7 @@ const dirname = url.fileURLToPath(new URL('.', import.meta.url))
 let wtpath = '../build/Release/webtransport.node'
 if (
   process.env.NODE_ENV !== 'production' &&
-  existsSync(path.join(dirname,'../build/Debug/webtransport.node'))
+  existsSync(path.join(dirname, '../build/Debug/webtransport.node'))
 ) {
   wtpath = '../build/Debug/webtransport.node'
 }
@@ -42,17 +42,23 @@ class Http3WTStream {
             this.objint.startReading()
           },
           pull: (controller) => {
-            if (this.closed) {
+            if (this.readableclosed) {
               return Promise.resolve()
             }
             this.objint.startReading()
           },
-          cancel: (controller) => {
+          cancel: (reason) => {
             const promise = new Promise((res, rej) => {
-              this.abortres = res
+              this.cancelres = res
             })
+            let code = 0
+            if (reason && reason.code) {
+              if (reason.code < 0) code = 0
+              else if (reason.code > 255) code = 255
+              else code = reason.code
+            }
             this.readableclosed = true
-            this.objint.closeStream()
+            this.objint.stopSending(code)
             return promise
           }
         },
@@ -67,7 +73,7 @@ class Http3WTStream {
             this.parentobj.addSendStream(this.writable, controller)
           },
           write: (chunk, controller) => {
-            if (this.closed) {
+            if (this.writableclosed) {
               return Promise.resolve()
             }
             if (chunk instanceof Uint8Array) {
@@ -82,17 +88,17 @@ class Http3WTStream {
             } else throw new Error('chunk is not of instanceof Uint8Array ')
           },
           close: (controller) => {
-            if (this.closed) {
+            if (this.writableclosed) {
               return Promise.resolve()
             }
-            this.objint.closeStream()
+            this.objint.streamFinal()
             this.pendingoperation = new Promise((res, rej) => {
               this.pendingres = res
             })
             return this.pendingoperation
           },
           abort: (reason) => {
-            if (this.closed) {
+            if (this.writableclosed) {
               return new Promise((res, rej) => {
                 res()
               })
@@ -115,25 +121,44 @@ class Http3WTStream {
     }
   }
 
-  onStreamClosed(args) {
-    if (this.readable && !this.readableclosed) {
-      this.readableController.close()
-      this.readableclosed = true
+  onStreamRecvSignal(args) {
+    // console.log('onStreamRecvSignal', args)
+    // check if transport is closed
+    const parentstate = this.parentobj.state
+    if (parentstate === 'closed' || parentstate === 'failed') return
+    switch (args.nettask) {
+      case 'resetStream':
+        if (this.readable) {
+          this.parentobj.removeReceiveStream(
+            this.readable,
+            this.readableController
+          )
+          this.readableclosed = true
+          this.readableController.error(args.code || 0)
+        } else console.log('stopSending wihtout readable')
+        break
+
+      case 'stopSending':
+        if (this.writable) {
+          this.parentobj.removeSendStream(
+            this.writable,
+            this.writableController
+          )
+
+          this.writableclosed = true
+          this.writableController.error(args.code || 0)
+        } else console.log('stopSending wihtout writable')
+        break
+      default:
+        console.log('unhandled onStreamRecvSignal')
     }
+
     if (this.pendingoperation) {
       const res = this.pendingres
       this.pendingoperation = null
       this.pendingres = null
       res()
     }
-    if (this.writable && args.code !== 0) this.writable.error(args.code || 0)
-    // console.log('stream closed', args)
-    if (this.readable)
-      this.parentobj.removeReceiveStream(this.readable, this.readableController)
-    if (this.writable)
-      this.parentobj.removeSendStream(this.writable, this.writableController)
-
-    this.closed = true
   }
 
   onStreamRead(args) {
@@ -172,6 +197,44 @@ class Http3WTStream {
     }
   }
 
+  onStreamNetworkFinish(args) {
+    // console.log('networkfinish args', args)
+    switch (args.nettask) {
+      case 'stopSending':
+        {
+          if (this.cancelres) {
+            const res = this.cancelres
+            this.cancelres = null
+            res()
+          }
+        }
+        break
+      case 'resetStream':
+        {
+          if (this.abortres) {
+            const res = this.abortres
+            this.abortres = null
+            res()
+          }
+        }
+        break
+
+      case "streamFinal":
+        {
+          if (this.pendingoperation) {
+            const res = this.pendingres
+            this.pendingoperation = null
+            this.pendingres = null
+            res()
+          }
+        } break
+      default:
+        console.log('onStreamNetworkFinish unknown task')
+    }
+    // we could differentiate....
+    
+  }
+
   static callback(args) {
     // console.log('Stream callback called', args)
     if (!args || !args.object || !args.object.jsobj)
@@ -179,9 +242,9 @@ class Http3WTStream {
     const visitor = args.object.jsobj
     if (args.purpose) {
       switch (args.purpose) {
-        case 'StreamClosed':
+        case 'StreamRecvSignal':
           {
-            visitor.onStreamClosed(args)
+            visitor.onStreamRecvSignal(args)
           }
           break
         case 'StreamRead':
@@ -202,6 +265,11 @@ class Http3WTStream {
         case 'StreamReset':
           {
             visitor.onStreamReset(args)
+          }
+          break
+        case 'StreamNetworkFinish':
+          {
+            visitor.onStreamNetworkFinish(args)
           }
           break
         default: {

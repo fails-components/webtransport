@@ -24,15 +24,33 @@ namespace quic
         strobj->eventloop_->informUnref(strobj);
     }
 
-     void Http3WTStream::Visitor::OnWriteSideInDataRecvdState() 
-     {
-         if (stream_->send_fin_)  stream_->eventloop_->informStreamClosed(stream_, lasterror); // may be move below
-     }
+    void Http3WTStream::Visitor::OnWriteSideInDataRecvdState() // called if everything is written to the client and it is closed
+    {
+        if (stream_->send_fin_)
+            stream_->eventloop_->informAboutStreamNetworkFinish(stream_, NetworkTask::streamFinal);
+    }
+
+    void Http3WTStream::Visitor::OnResetStreamReceived(WebTransportStreamError error)
+    {
+        // should this be removed
+        /*
+
+        // Send FIN in response to a stream reset.  We want to test that we can
+        // operate one side of the stream cleanly while the other is reset, thus
+        // replying with a FIN rather than a RESET_STREAM is more appropriate here.
+        stream_->send_fin_ = true;
+        OnCanWrite();*/
+        lasterror = error;
+        stream_->eventloop_->informStreamRecvSignal(stream_, error, NetworkTask::resetStream); // may be move below
+    }
 
     void Http3WTStream::Visitor::OnStopSendingReceived(WebTransportStreamError error)
     {
         stream_->stop_sending_received_ = true;
-        stream_->eventloop_->informStreamClosed(stream_, error); // may be move below
+        stream_->eventloop_->informStreamRecvSignal(stream_, error, NetworkTask::stopSending); // may be move below
+        // we should also finallize the stream, so send a fin
+        stream_->send_fin_ = true;
+        OnCanWrite();
     }
 
     void Http3WTStream::cancelWrite(Nan::Persistent<v8::Object> *handle)
@@ -42,7 +60,8 @@ namespace quic
 
     void Http3WTStream::doCanRead()
     {
-        if (pause_reading_) return ; // back pressure folks!
+        if (pause_reading_)
+            return; // back pressure folks!
         // first figure out if we have readable data
         size_t readable = stream_->ReadableBytes();
         if (readable > 0)
@@ -60,10 +79,11 @@ namespace quic
 
     void Http3WTStream::doCanWrite()
     {
-        if (stop_sending_received_ || pause_reading_)
-        {
-            return;
-        }
+        /* if (/* stop_sending_received_ || * pause_reading_)
+         {
+             return;
+         } */
+        if (fin_was_sent_) return;
 
         while (chunks_.size() > 0)
         {
@@ -85,6 +105,7 @@ namespace quic
         {
             bool success = stream_->SendFin();
             QUICHE_DCHECK(success);
+            fin_was_sent_ = true;
         }
     }
 

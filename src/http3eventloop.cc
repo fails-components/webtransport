@@ -133,8 +133,9 @@ namespace quic
     tplwtsv->SetClassName(Nan::New("Http3WTStream").ToLocalChecked());
     tplwtsv->InstanceTemplate()->SetInternalFieldCount(1);
     Nan::SetPrototypeMethod(tplwtsv, "writeChunk", Http3WTStream::writeChunk);
-    Nan::SetPrototypeMethod(tplwtsv, "closeStream", Http3WTStream::closeStream);
     Nan::SetPrototypeMethod(tplwtsv, "resetStream", Http3WTStream::resetStream);
+    Nan::SetPrototypeMethod(tplwtsv, "stopSending", Http3WTStream::stopSending);
+    Nan::SetPrototypeMethod(tplwtsv, "streamFinal", Http3WTStream::streamFinal);
     Nan::SetPrototypeMethod(tplwtsv, "startReading", Http3WTStream::startReading);
     Nan::SetPrototypeMethod(tplwtsv, "stopReading", Http3WTStream::stopReading);
 
@@ -249,12 +250,13 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::informStreamClosed(Http3WTStream *streamobj, WebTransportStreamError code)
+  void Http3EventLoop::informStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task)
   {
     struct Http3ProgressReport report;
-    report.type = Http3ProgressReport::StreamClosed;
+    report.type = Http3ProgressReport::StreamRecvSignal;
     report.streamobj = streamobj;
-    report.wtscode = code;
+    report.wtscode = error_code;
+    report.nettask = task;
     if (progress_)
       progress_->Send(&report, 1);
   }
@@ -279,6 +281,17 @@ namespace quic
     report.success = success;
     if (progress_)
       progress_->Send(&report, 1);
+  }
+
+  void Http3EventLoop::informAboutStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task)
+  {
+    struct Http3ProgressReport report;
+    report.type = Http3ProgressReport::StreamNetworkFinish;
+    report.streamobj = streamobj;
+    report.nettask = task;
+    if (progress_)
+      progress_->Send(&report, 1);
+
   }
 
   void Http3EventLoop::informAboutStreamReset(Http3WTStream *streamobj)
@@ -469,22 +482,41 @@ namespace quic
     Nan::Call(*cbsession_, 1, argv);
   }
 
-  void Http3EventLoop::processStreamClosed(Http3WTStream *streamobj, WebTransportStreamError code)
+  void Http3EventLoop::processStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task)
   {
     HandleScope scope;
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
-    v8::Local<v8::String> purposeVal = Nan::New("StreamClosed").ToLocalChecked();
+    v8::Local<v8::String> purposeVal = Nan::New("StreamRecvSignal").ToLocalChecked();
     v8::Local<v8::String> codeProp = Nan::New("code").ToLocalChecked();
-    v8::Local<v8::Int32> codeVal = Nan::New(code);
+    v8::Local<v8::Int32> codeVal = Nan::New(error_code);
 
     v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
     v8::Local<v8::Object> objVal = streamobj->handle();
+
+    std::string nettaskstr;
+    switch (task)
+    {
+      case NetworkTask::resetStream: {
+        nettaskstr = "resetStream";
+      } break;
+      case NetworkTask::stopSending: {
+        nettaskstr = "stopSending";
+      } break;
+      case NetworkTask::streamFinal: {
+        nettaskstr = "streamFinal";
+      } break;
+      default: return;
+    };
+
+    v8::Local<v8::String> nettaskProp = Nan::New("nettask").ToLocalChecked();
+    v8::Local<v8::String> nettaskVal = Nan::New(nettaskstr).ToLocalChecked();
 
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
     retObj->Set(context, codeProp, codeVal).FromJust();
     retObj->Set(context, objProp, objVal).FromJust();
+    retObj->Set(context, nettaskProp, nettaskVal).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
     Nan::Call(*cbstream_, 1, argv);
@@ -554,6 +586,44 @@ namespace quic
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
     retObj->Set(context, objProp, objVal).FromJust();
+
+    v8::Local<v8::Value> argv[] = {retObj};
+    Nan::Call(*cbstream_, 1, argv);
+  }
+
+  void Http3EventLoop::processStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task)
+  {
+    HandleScope scope;
+    v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
+    v8::Local<v8::String> purposeVal = Nan::New("StreamNetworkFinish").ToLocalChecked();
+
+    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
+    v8::Local<v8::Object> objVal = streamobj->handle();
+
+    std::string nettaskstr;
+    switch (task)
+    {
+      case NetworkTask::resetStream: {
+        nettaskstr = "resetStream";
+      } break;
+      case NetworkTask::stopSending: {
+        nettaskstr = "stopSending";
+      } break;
+      case NetworkTask::streamFinal: {
+        nettaskstr = "streamFinal";
+      } break;
+      default: return;
+    };
+
+    v8::Local<v8::String> nettaskProp = Nan::New("nettask").ToLocalChecked();
+    v8::Local<v8::String> nettaskVal = Nan::New(nettaskstr).ToLocalChecked();
+
+
+    auto context = GetCurrentContext();
+    v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
+    retObj->Set(context, purposeProp, purposeVal).FromJust();
+    retObj->Set(context, objProp, objVal).FromJust();
+    retObj->Set(context, nettaskProp, nettaskVal).FromJust();
 
     v8::Local<v8::Value> argv[] = {retObj};
     Nan::Call(*cbstream_, 1, argv);
@@ -757,9 +827,9 @@ namespace quic
         processStream(false, false, cur.sessionobj, cur.stream);
       }
       break;
-      case Http3ProgressReport::StreamClosed:
+      case Http3ProgressReport::StreamRecvSignal:
       {
-        processStreamClosed(cur.streamobj, cur.wtscode);
+        processStreamRecvSignal(cur.streamobj, cur.wtscode, cur.nettask);
       }
       break;
       case Http3ProgressReport::StreamRead:
@@ -778,6 +848,10 @@ namespace quic
         processStreamReset(cur.streamobj);
       }
       break;
+      case Http3ProgressReport::StreamNetworkFinish:
+      {
+        processStreamNetworkFinish(cur.streamobj, cur.nettask);
+      } break;
       case Http3ProgressReport::DatagramReceived:
       {
         processDatagramReceived(cur.sessionobj, cur.para);

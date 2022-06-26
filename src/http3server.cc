@@ -26,8 +26,9 @@ namespace quic
   const size_t kNumSessionsToCreatePerSocketEvent = 16;
 
   Http3Server::Http3Server(Http3EventLoop *eventloop, std::string host, int port, std::unique_ptr<ProofSource> proof_source,
-                           const char *secret)
+                           const char *secret, QuicConfig config)
       : port_(port), host_(host), fd_(-1), overflow_supported_(false),
+        config_(config),
         eventloop_(eventloop),
         http3_server_backend_(eventloop),
         packet_reader_(new QuicPacketReader()),
@@ -136,6 +137,8 @@ namespace quic
 
       v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
 
+      
+      QuicConfig sconfig;
       if (!info[0]->IsUndefined())
       {
         v8::MaybeLocal<v8::Object> obj = info[0]->ToObject(context);
@@ -144,6 +147,7 @@ namespace quic
         v8::Local<v8::String> certProp = Nan::New("cert").ToLocalChecked();
         v8::Local<v8::String> hostProp = Nan::New("host").ToLocalChecked();
         v8::Local<v8::String> keyProp = Nan::New("privKey").ToLocalChecked();
+        v8::Local<v8::String> maxconnProp = Nan::New("maxConnections").ToLocalChecked();
         if (!obj.IsEmpty())
         {
           v8::Local<v8::Object> lobj = obj.ToLocalChecked();
@@ -184,6 +188,14 @@ namespace quic
           {
             return Nan::ThrowError("No privKey set for Http3Server");
           }
+           if (Nan::HasOwnProperty(lobj, maxconnProp).FromJust() && !Nan::Get(lobj, keyProp).IsEmpty())
+          {
+            v8::Local<v8::Value> maxconnValue = Nan::Get(lobj, keyProp).ToLocalChecked();
+            int maxconn = Nan::To<int>(maxconnValue).FromJust();
+            sconfig.SetMaxBidirectionalStreamsToSend(maxconn);
+            sconfig.SetMaxUnidirectionalStreamsToSend(maxconn); 
+          }
+          
         }
         // Callback *callback, int port, std::unique_ptr<ProofSource> proof_source,  const char *secret
 
@@ -211,7 +223,7 @@ namespace quic
           return Nan::ThrowError("No eventloop arguments passed to Http3Server");
         }
 
-        Http3Server *object = new Http3Server(eventloop, host, port, std::move(proofsource), secret.c_str());
+        Http3Server *object = new Http3Server(eventloop, host, port, std::move(proofsource), secret.c_str(), sconfig);
         object->Wrap(info.This());
         info.GetReturnValue().Set(info.This());
       }
