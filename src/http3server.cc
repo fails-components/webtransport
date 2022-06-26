@@ -26,11 +26,12 @@ namespace quic
 
   const size_t kNumSessionsToCreatePerSocketEvent = 16;
 
-  Http3Server::Http3Server(Http3EventLoop * eventloop, std::string host, int port, std::unique_ptr<ProofSource> proof_source,
-                           const char *secret)
+  Http3Server::Http3Server(Http3EventLoop *eventloop, std::string host, int port, std::unique_ptr<ProofSource> proof_source,
+                           const char *secret, QuicConfig config)
       : port_(port), host_(host), fd_(-1), overflow_supported_(false),
-       eventloop_(eventloop),
-       http3_server_backend_(eventloop),
+        config_(config),
+        eventloop_(eventloop),
+        http3_server_backend_(eventloop),
         packet_reader_(new QuicPacketReader()),
         packets_dropped_(0),
         version_manager_({ParsedQuicVersion::RFCv1()}),
@@ -46,8 +47,6 @@ namespace quic
   {
     // printf("server destruct %x\n", this);
   }
-
-
 
   bool Http3Server::CreateUDPSocketAndListen(const QuicSocketAddress &address)
   {
@@ -97,7 +96,7 @@ namespace quic
 
   bool Http3Server::stopServerInt()
   {
-    
+
     eventloop_->getEpollServer()->UnregisterFD(fd_);
 
     // if (!silent_close_) {
@@ -105,7 +104,6 @@ namespace quic
     //  to notify clients that they're closing.
     dispatcher_->Shutdown();
     //}
-
 
     close(fd_);
     fd_ = -1;
@@ -127,8 +125,6 @@ namespace quic
         &http3_server_backend_, expected_server_connection_id_length_);
   }
 
-
-
   NAN_METHOD(Http3Server::New)
   {
     if (info.IsConstructCall())
@@ -140,10 +136,10 @@ namespace quic
       std::string privkey;
       std::string host("localhost");
 
-
-
       v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+
       
+      QuicConfig sconfig;
       if (!info[0]->IsUndefined())
       {
         v8::MaybeLocal<v8::Object> obj = info[0]->ToObject(context);
@@ -152,6 +148,7 @@ namespace quic
         v8::Local<v8::String> certProp = Nan::New("cert").ToLocalChecked();
         v8::Local<v8::String> hostProp = Nan::New("host").ToLocalChecked();
         v8::Local<v8::String> keyProp = Nan::New("privKey").ToLocalChecked();
+        v8::Local<v8::String> maxconnProp = Nan::New("maxConnections").ToLocalChecked();
         if (!obj.IsEmpty())
         {
           v8::Local<v8::Object> lobj = obj.ToLocalChecked();
@@ -192,6 +189,14 @@ namespace quic
           {
             return Nan::ThrowError("No privKey set for Http3Server");
           }
+           if (Nan::HasOwnProperty(lobj, maxconnProp).FromJust() && !Nan::Get(lobj, keyProp).IsEmpty())
+          {
+            v8::Local<v8::Value> maxconnValue = Nan::Get(lobj, keyProp).ToLocalChecked();
+            int maxconn = Nan::To<int>(maxconnValue).FromJust();
+            sconfig.SetMaxBidirectionalStreamsToSend(maxconn);
+            sconfig.SetMaxUnidirectionalStreamsToSend(maxconn); 
+          }
+          
         }
         // Callback *callback, int port, std::unique_ptr<ProofSource> proof_source,  const char *secret
 
@@ -207,20 +212,19 @@ namespace quic
         std::unique_ptr<ProofSourceX509> proofsource = ProofSourceX509::Create(chain, std::move(*certprivkey));
         if (proofsource == nullptr)
           return Nan::ThrowError("LoadPemFromStream cert failed for Http3Server");
-        Http3EventLoop * eventloop = nullptr;
+        Http3EventLoop *eventloop = nullptr;
         if (!info[1]->IsUndefined())
         {
           v8::MaybeLocal<v8::Object> obj = info[1]->ToObject(context);
           v8::Local<v8::Object> lobj = obj.ToLocalChecked();
           eventloop = Nan::ObjectWrap::Unwrap<Http3EventLoop>(lobj);
-        } 
-        else 
+        }
+        else
         {
           return Nan::ThrowError("No eventloop arguments passed to Http3Server");
         }
 
-        
-        Http3Server *object = new Http3Server(eventloop, host, port, std::move(proofsource), secret.c_str());
+        Http3Server *object = new Http3Server(eventloop, host, port, std::move(proofsource), secret.c_str(), sconfig);
         object->Wrap(info.This());
         info.GetReturnValue().Set(info.This());
       }
@@ -228,12 +232,11 @@ namespace quic
       {
         return Nan::ThrowError("No arguments passed to Http3Server");
       }
-     
     }
     else
     {
       const int argc = 2;
-      v8::Local<v8::Value> argv[argc] = {info[0],info[1]};
+      v8::Local<v8::Value> argv[argc] = {info[0], info[1]};
       v8::Local<v8::Function> cons = Nan::New(constructor());
       auto instance = Nan::NewInstance(cons, argc, argv);
       if (!instance.IsEmpty())
@@ -335,7 +338,6 @@ namespace quic
       printf("startServerInt failed for Http3Server\n");
     } };
     obj->eventloop_->Schedule(task);
-    
   }
 
   NAN_METHOD(Http3Server::stopServer)
@@ -348,7 +350,6 @@ namespace quic
       printf("stopServerInt failed for Http3Server\n");
     } };
     obj->eventloop_->Schedule(task);
-    
   }
 
   NAN_METHOD(Http3Server::addPath)
@@ -363,7 +364,6 @@ namespace quic
       std::string lpath(*v8::String::Utf8Value(isolate, info[0]->ToString(context).ToLocalChecked()));
       std::function<void()> task = [obj, lpath]()
       {
-
         obj->http3_server_backend_.addPath(lpath);
       };
       obj->eventloop_->Schedule(task);
