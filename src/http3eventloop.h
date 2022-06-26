@@ -87,6 +87,12 @@ namespace quic
         int write_fd_;
         ReadPipeCallback readcb_;
     };
+    enum NetworkTask {
+        resetStream,
+        stopSending,
+        streamFinal
+    };
+
 
     struct Http3ProgressReport
     {
@@ -103,10 +109,11 @@ namespace quic
             IncomUniDiStream,
             OutgoBiDiStream,
             OutgoUniDiStream,
-            StreamClosed,
+            StreamRecvSignal,
             StreamRead,
             StreamWrite,
             StreamReset,
+            StreamNetworkFinish,
             DatagramReceived,
             DatagramSend,
             DatagramBufferFree,
@@ -123,6 +130,7 @@ namespace quic
         union
         {
             WebTransportSessionError wtecode;
+            NetworkTask nettask;
         };
         union
         {
@@ -181,10 +189,11 @@ namespace quic
         void informSessionReady(Http3WTSession *sessionobj);
 
         void informAboutStream(bool incom, bool bidir, Http3WTSession *sessionobj, Http3WTStream *stream);
-        void informStreamClosed(Http3WTStream *streamobj, WebTransportStreamError error_code);
+        void informStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);
         void informAboutStreamRead(Http3WTStream *streamobj, std::string *data, bool fin);
         void informAboutStreamWrite(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, bool success);
         void informAboutStreamReset(Http3WTStream *streamobj);
+        void informAboutStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task);
 
         void informDatagramReceived(Http3WTSession *sessionobj, absl::string_view datagram);
         void informDatagramBufferFree(Nan::Persistent<v8::Object> *bufferhandle);
@@ -226,10 +235,11 @@ namespace quic
         void processSessionReady(Http3WTSession *sessionobj);
 
         void processStream(bool incom, bool bidi, Http3WTSession *sessionobj, Http3WTStream *stream);
-        void processStreamClosed(Http3WTStream *streamobj, WebTransportStreamError error_code);
+        void processStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);
         void processStreamRead(Http3WTStream *streamobj, std::string *data, bool fin);
         void processStreamWrite(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, bool success);
         void processStreamReset(Http3WTStream *streamobj);
+        void processStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task);
 
         void processDatagramReceived(Http3WTSession *sessionobj, std::string *datagram);
         void processDatagramSend(Http3WTSession *sessionobj);
