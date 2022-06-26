@@ -38,9 +38,9 @@ namespace quic
         // Send FIN in response to a stream reset.  We want to test that we can
         // operate one side of the stream cleanly while the other is reset, thus
         // replying with a FIN rather than a RESET_STREAM is more appropriate here.
-        lasterror = error;
         stream_->send_fin_ = true;
         OnCanWrite();*/
+        lasterror = error;
         stream_->eventloop_->informStreamRecvSignal(stream_, error, NetworkTask::resetStream); // may be move below
     }
 
@@ -48,6 +48,9 @@ namespace quic
     {
         stream_->stop_sending_received_ = true;
         stream_->eventloop_->informStreamRecvSignal(stream_, error, NetworkTask::stopSending); // may be move below
+        // we should also finallize the stream, so send a fin
+        stream_->send_fin_ = true;
+        OnCanWrite();
     }
 
     void Http3WTStream::cancelWrite(Nan::Persistent<v8::Object> *handle)
@@ -76,10 +79,11 @@ namespace quic
 
     void Http3WTStream::doCanWrite()
     {
-        if (/* stop_sending_received_ || */ pause_reading_)
-        {
-            return;
-        }
+        /* if (/* stop_sending_received_ || * pause_reading_)
+         {
+             return;
+         } */
+        if (fin_was_sent_) return;
 
         while (chunks_.size() > 0)
         {
@@ -101,6 +105,7 @@ namespace quic
         {
             bool success = stream_->SendFin();
             QUICHE_DCHECK(success);
+            fin_was_sent_ = true;
         }
     }
 

@@ -251,6 +251,11 @@ namespace quic
 
         void writeChunkInt(char *buffer, size_t len, Nan::Persistent<v8::Object> *bufferhandle)
         {
+            if (fin_was_sent_ || send_fin_)
+            {
+                cancelWrite(bufferhandle);
+                return;
+            }
             if (!stream_)
             {
                 cancelWrite(bufferhandle);
@@ -270,6 +275,7 @@ namespace quic
         WebTransportStream *stream_;
         Http3EventLoop *eventloop_;
         bool send_fin_ = false;
+        bool fin_was_sent_ = false;
         bool stop_sending_received_ = false;
         bool pause_reading_ = false;
         std::deque<WChunks> chunks_;
