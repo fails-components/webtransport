@@ -46,6 +46,7 @@ platform/quiche_platform_impl/quiche_logging_impl.h
 platform/quiche_platform_impl/quiche_logging_impl.cc
 platform/quiche_platform_impl/quiche_containers_impl.h
 platform/quiche_platform_impl/quiche_client_stats_impl.h
+platform/quiche_platform_impl/quiche_event_loop_impl.h
 platform/quiche_platform_impl/quiche_bug_tracker_impl.h
 platform/quiche_platform_impl/quiche_iovec_impl.h
 platform/quiche_platform_impl/quiche_mutex_impl.h
@@ -473,6 +474,10 @@ third_party/quiche/quiche/quic/core/http/web_transport_stream_adapter.h
 third_party/quiche/quiche/quic/core/io/quic_event_loop.h
 third_party/quiche/quiche/quic/core/io/quic_poll_event_loop.h
 third_party/quiche/quiche/quic/core/io/quic_poll_event_loop.cc
+third_party/quiche/quiche/quic/core/io/quic_default_event_loop.cc
+third_party/quiche/quiche/quic/core/io/quic_default_event_loop.h
+third_party/quiche/quiche/quic/core/io/socket.h
+third_party/quiche/quiche/quic/core/io/socket_posix.cc
 third_party/quiche/quiche/quic/core/legacy_quic_stream_id_manager.cc
 third_party/quiche/quiche/quic/core/legacy_quic_stream_id_manager.h
 third_party/quiche/quiche/quic/core/packet_number_indexed_queue.h
@@ -645,6 +650,8 @@ third_party/quiche/quiche/quic/core/quic_types.cc
 third_party/quiche/quiche/quic/core/quic_types.h
 third_party/quiche/quiche/quic/core/quic_unacked_packet_map.cc
 third_party/quiche/quiche/quic/core/quic_unacked_packet_map.h
+third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
+third_party/quiche/quiche/quic/core/quic_udp_socket.h
 third_party/quiche/quiche/quic/core/quic_utils.cc
 third_party/quiche/quiche/quic/core/quic_utils.h
 third_party/quiche/quiche/quic/core/quic_version_manager.cc
@@ -678,6 +685,7 @@ third_party/quiche/quiche/quic/platform/api/quic_flag_utils.h
 third_party/quiche/quiche/quic/platform/api/quic_flags.h
 third_party/quiche/quiche/quic/platform/api/quic_ip_address.cc
 third_party/quiche/quiche/quic/platform/api/quic_ip_address.h
+third_party/quiche/quiche/quic/platform/api/quic_ip_address_family.cc
 third_party/quiche/quiche/quic/platform/api/quic_ip_address_family.h
 third_party/quiche/quiche/quic/platform/api/quic_logging.h
 #third_party/quiche/quiche/quic/platform/api/quic_mem_slice.h
