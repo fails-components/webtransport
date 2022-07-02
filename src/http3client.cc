@@ -894,11 +894,11 @@ namespace quic
         {
             eventsout |= kSocketEventReadable; // please visit us again
         }
-        if (eventsout != 0)
+        if (eventsout != 0 && event_loop->SupportsEdgeTriggered())
         {
             event_loop->ArtificiallyNotifyEvent(fd, eventsout);
         }
-        if (revents != 0)
+        if (revents != 0 && !event_loop->SupportsEdgeTriggered())
         {
             event_loop->RearmSocket(fd, revents);
         }
