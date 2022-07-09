@@ -16,64 +16,24 @@
 #include "quiche/quic/core/crypto/proof_source_x509.h"
 #include "quiche/common/platform/api/quiche_reference_counted.h"
 #include "quiche/quic/core/quic_default_clock.h"
+#include "quiche/quic/bindings/quic_libevent.h"
 
 using namespace Nan;
 
 namespace quic
 {
 
+  // hack since the header is faulty
+  QUICHE_NO_EXPORT QuicEventLoopFactory *GetDefaultEventLoop();
+
   static const int kErrorBufferSize = 256;
-
-  WakeUpHelper::WakeUpHelper(Http3EventLoop &eventloop)
-      : eventloop_(eventloop),
-        readcb_(*this),
-        read_fd_(-1),
-        write_fd_(-1)
-  {
-    // from epollserver
-    int pipe_fds[2];
-    if (pipe(pipe_fds) < 0)
-    {
-      // Unfortunately, it is impossible to test any such initialization in
-      // a constructor (as virtual methods do not yet work).
-      // This -could- be solved by moving initialization to an outside
-      // call...
-       int saved_errno = errno;
-       char buf[kErrorBufferSize];
-       QUICHE_LOG(FATAL) << "Error " << saved_errno << " in pipe(): "
-                       << strerror_r(saved_errno, buf, sizeof(buf));
-    }
-    read_fd_ = pipe_fds[0];
-    write_fd_ = pipe_fds[1];
-    eventloop_.getQuicEventLoop()->RegisterSocket(read_fd_, kSocketEventReadable, &readcb_);
-    eventloop_.SetNonblocking(read_fd_); // eventuelly should be part of register socket.
-  }
-
-  WakeUpHelper::~WakeUpHelper()
-  {
-    eventloop_.getQuicEventLoop()->UnregisterSocket(read_fd_);
-    close(read_fd_);
-    close(write_fd_);
-  }
-
-  void WakeUpHelper::Wake()
-  {
-    // from epollserver
-    char data = 'd'; // 'd' is for data.  It's good enough for me.
-    int rv = write(write_fd_, &data, 1);
-  }
-
-  void WakeUpHelper::woken()
-  {
-    eventloop_.OnWoken();
-  }
 
   const size_t kNumSessionsToCreatePerSocketEvent = 16;
 
   Http3EventLoop::Http3EventLoop(Callback *cbeventloop, Callback *cbtransport, Callback *cbstream, Callback *cbsession)
       : AsyncProgressQueueWorker(cbeventloop), cbtransport_(cbtransport),
         progress_(nullptr), cbstream_(cbstream), cbsession_(cbsession),
-        quic_event_loop_(QuicDefaultClock::Get()), whelper_(*this)
+        quic_event_loop_(GetDefaultEventLoop()->Create(QuicDefaultClock::Get()))
   {
   }
 
@@ -156,16 +116,12 @@ namespace quic
     loop_running_ = true;
     while (loop_running_)
     {
-      quic_event_loop_.RunEventLoopOnce(QuicTime::Delta::Infinite()); // figure out the unit
+      quic_event_loop_->RunEventLoopOnce(QuicTime::Delta::Infinite()); // figure out the unit
+      ExecuteScheduledActions();
     }
     printf("event loop exited\n");
     progress_ = nullptr;
     Unref();
-  }
-
-  void Http3EventLoop::OnWoken()
-  {
-    ExecuteScheduledActions();
   }
 
   // originally from the epoll server
@@ -215,8 +171,7 @@ namespace quic
     // QUICHE_DCHECK(!quit_.HasBeenNotified());
     QuicWriterMutexLock lock(&scheduled_actions_lock_);
     scheduled_actions_.push_back(std::move(action));
-    whelper_.Wake(); // wake of the polling loop
-    // epoll_server_.TriggerAsync();
+    dynamic_cast<LibeventQuicEventLoop *>(quic_event_loop_.get())->WakeUp();
   }
 
   void Http3EventLoop::informAboutStream(bool incom, bool bidir, Http3WTSession *sessionobj, Http3WTStream *stream)
@@ -291,7 +246,6 @@ namespace quic
     report.nettask = task;
     if (progress_)
       progress_->Send(&report, 1);
-
   }
 
   void Http3EventLoop::informAboutStreamReset(Http3WTStream *streamobj)
@@ -496,16 +450,23 @@ namespace quic
     std::string nettaskstr;
     switch (task)
     {
-      case NetworkTask::resetStream: {
-        nettaskstr = "resetStream";
-      } break;
-      case NetworkTask::stopSending: {
-        nettaskstr = "stopSending";
-      } break;
-      case NetworkTask::streamFinal: {
-        nettaskstr = "streamFinal";
-      } break;
-      default: return;
+    case NetworkTask::resetStream:
+    {
+      nettaskstr = "resetStream";
+    }
+    break;
+    case NetworkTask::stopSending:
+    {
+      nettaskstr = "stopSending";
+    }
+    break;
+    case NetworkTask::streamFinal:
+    {
+      nettaskstr = "streamFinal";
+    }
+    break;
+    default:
+      return;
     };
 
     v8::Local<v8::String> nettaskProp = Nan::New("nettask").ToLocalChecked();
@@ -603,21 +564,27 @@ namespace quic
     std::string nettaskstr;
     switch (task)
     {
-      case NetworkTask::resetStream: {
-        nettaskstr = "resetStream";
-      } break;
-      case NetworkTask::stopSending: {
-        nettaskstr = "stopSending";
-      } break;
-      case NetworkTask::streamFinal: {
-        nettaskstr = "streamFinal";
-      } break;
-      default: return;
+    case NetworkTask::resetStream:
+    {
+      nettaskstr = "resetStream";
+    }
+    break;
+    case NetworkTask::stopSending:
+    {
+      nettaskstr = "stopSending";
+    }
+    break;
+    case NetworkTask::streamFinal:
+    {
+      nettaskstr = "streamFinal";
+    }
+    break;
+    default:
+      return;
     };
 
     v8::Local<v8::String> nettaskProp = Nan::New("nettask").ToLocalChecked();
     v8::Local<v8::String> nettaskVal = Nan::New(nettaskstr).ToLocalChecked();
-
 
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
@@ -851,7 +818,8 @@ namespace quic
       case Http3ProgressReport::StreamNetworkFinish:
       {
         processStreamNetworkFinish(cur.streamobj, cur.nettask);
-      } break;
+      }
+      break;
       case Http3ProgressReport::DatagramReceived:
       {
         processDatagramReceived(cur.sessionobj, cur.para);

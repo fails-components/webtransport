@@ -120,7 +120,7 @@ namespace quic
         std::unique_ptr<QuicCryptoServerStreamBase::Helper>(
             new QuicSimpleCryptoServerStreamHelper()),
         std::unique_ptr<QuicAlarmFactory>(
-            eventloop_->getQuicEventLoop()->GetAlarmFactory()),
+            eventloop_->getQuicEventLoop()->CreateAlarmFactory()),
         &http3_server_backend_, expected_server_connection_id_length_);
   }
 
@@ -330,11 +330,11 @@ namespace quic
         revents |= kSocketEventWritable;
       }
     }
-    if (eventsout != 0)
+    if (eventsout != 0 && event_loop->SupportsEdgeTriggered())
     {
       event_loop->ArtificiallyNotifyEvent(fd, eventsout);
     }
-    if (revents != 0)
+    if (revents != 0 && !event_loop->SupportsEdgeTriggered())
     {
       event_loop->RearmSocket(fd, revents);
     }

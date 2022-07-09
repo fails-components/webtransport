@@ -97,7 +97,7 @@ namespace quic
           crypto_config_(std::move(proof_verifier), std::move(session_cache)),
           helper_(std::move(helper)),
           eventloop_(eventloop),
-          alarm_factory_(eventloop->getQuicEventLoop()->GetAlarmFactory()),
+          alarm_factory_(eventloop->getQuicEventLoop()->CreateAlarmFactory()),
           supported_versions_({ParsedQuicVersion::RFCv1()}),
           initial_max_packet_length_(0),
           num_sent_client_hellos_(0),
@@ -894,11 +894,11 @@ namespace quic
         {
             eventsout |= kSocketEventReadable; // please visit us again
         }
-        if (eventsout != 0)
+        if (eventsout != 0 && event_loop->SupportsEdgeTriggered())
         {
             event_loop->ArtificiallyNotifyEvent(fd, eventsout);
         }
-        if (revents != 0)
+        if (revents != 0 && !event_loop->SupportsEdgeTriggered())
         {
             event_loop->RearmSocket(fd, revents);
         }
