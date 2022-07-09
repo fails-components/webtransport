@@ -13,8 +13,10 @@
     "test": "node test/test.js",
     "install": "cmake-js build",
     "rebuild": "cmake-js rebuild",
-    "rebuild-debug": "cmake-js rebuild -D -t ClangCL",
-    "build-debug": "cmake-js build -D -t ClangCL"
+    "rebuild-debug": "cmake-js rebuild -D",
+    "build-debug": "cmake-js build -D",
+    "winrebuild-debug": "cmake-js rebuild -D -t ClangCL",
+    "winbuild-debug": "cmake-js build -D -t ClangCL"
   },
   "repository": {
     "type": "git",

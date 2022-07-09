@@ -8,26 +8,29 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(BUILD_TESTING OFF)
 
-IF(MSVC)
-    set(CMAKE_CXX_STANDARD 11)
-ENDIF(MSVC)
 
+IF (WIN32)
+    add_compile_definitions(NOMINMAX)
+ENDIF(WIN32)
 
 set(ABSL_PROPAGATE_CXX_STD ON)
 # include abseil
 add_subdirectory(third_party/abseil-cpp EXCLUDE_FROM_ALL)
 
-# include boring ssl
-IF(MSVC)
-    set(CMAKE_CXX_STANDARD 11)
-#    add_compile_options(/Wv:18)
-ENDIF(MSVC)
 
+# include libevent
+add_subdirectory(third_party/libevent EXCLUDE_FROM_ALL)
+
+IF (WIN32)
+    add_compile_definitions(WIN32_LEAN_AND_MEAN NOGDI)
+ENDIF(WIN32)
+
+# include boring ssl
 add_subdirectory(third_party/boringssl/src EXCLUDE_FROM_ALL)
 
-IF(MSVC)
-    set(CMAKE_CXX_STANDARD 17)
-ENDIF(MSVC)
+#IF(MSVC)
+#    set(CMAKE_CXX_STANDARD 17)
+#ENDIF(MSVC)
 
 # include zlib
 add_subdirectory(third_party/zlib EXCLUDE_FROM_ALL)
@@ -41,8 +44,6 @@ if(DEFINED ENV{PROTOBUFLIBRARIES})
  set(Protobuf_LIBRARIES  $ENV{PROTOBUFLIBRARIES})
  message(STATUS "Set Protobuf_LIBRARIES to environment variable PROTOBUFLIBRARIES")
 endif()
-# include libevent
-add_subdirectory(third_party/libevent EXCLUDE_FROM_ALL)
 
 include(FindProtobuf)
 find_package(Protobuf REQUIRED)
@@ -95,17 +96,44 @@ platform/quiche_platform_impl/quiche_flag_utils_impl.h
 #${CMAKE_CURRENT_BINARY_DIR}/third_party/quiche/quiche/quic/core/proto/crypto_server_config.pb.cc
 #${CMAKE_CURRENT_BINARY_DIR}/third_party/quiche/quiche/quic/core/proto/source_address_token.pb.cc
 # url file
+third_party/googleurl/base/strings/string_util_constants.cc
+third_party/googleurl/base/strings/string_piece.cc
+third_party/googleurl/base/strings/string_piece.h
+third_party/googleurl/base/strings/string_util.cc
+third_party/googleurl/base/strings/string_util.h
+third_party/googleurl/base/strings/utf_string_conversions.cc
+third_party/googleurl/base/strings/utf_string_conversions.h
 third_party/googleurl/url/url_canon.cc
 third_party/googleurl/url/url_canon_internal.cc
 third_party/googleurl/url/url_canon_path.cc
+third_party/googleurl/url/url_canon_query.cc
 third_party/googleurl/url/url_canon_stdstring.cc
+third_party/googleurl/url/url_canon_stdurl.cc
+third_party/googleurl/url/url_canon_filesystemurl.cc
 third_party/googleurl/url/third_party/mozilla/url_parse.h
 third_party/googleurl/url/url_canon.h
+third_party/googleurl/url/url_canon_etc.cc
+third_party/googleurl/url/url_canon_fileurl.cc
 third_party/googleurl/url/url_canon_internal.h
+third_party/googleurl/url/url_canon_mailtourl.cc
+third_party/googleurl/url/url_canon_pathurl.cc
+third_party/googleurl/url/url_canon_path.cc
+third_party/googleurl/url/url_canon_relative.cc
 third_party/googleurl/url/url_canon_stdstring.h
 third_party/googleurl/url/url_parse_internal.h
+third_party/googleurl/url/url_parse_file.cc
 third_party/googleurl/url/url_canon_host.cc
 third_party/googleurl/url/url_canon_ip.cc
+third_party/googleurl/url/url_constants.cc
+third_party/googleurl/url/url_util.cc
+third_party/googleurl/url/url_util.h
+third_party/googleurl/url/gurl.cc
+third_party/googleurl/url/gurl.h
+third_party/googleurl/url/third_party/mozilla/url_parse.cc
+third_party/googleurl/url/third_party/mozilla/url_parse.h
+# third_party/googleurl/url/url_idna_icu.cc
+third_party/googleurl/base/strings/utf_string_conversion_utils.cc
+third_party/googleurl/base/strings/utf_string_conversion_utils.h
 third_party/googleurl/build/buildflag.h
 third_party/googleurl/build/build_config.h
 # normal files
@@ -500,12 +528,9 @@ third_party/quiche/quiche/quic/core/http/web_transport_http3.h
 third_party/quiche/quiche/quic/core/http/web_transport_stream_adapter.cc
 third_party/quiche/quiche/quic/core/http/web_transport_stream_adapter.h
 third_party/quiche/quiche/quic/core/io/quic_event_loop.h
-third_party/quiche/quiche/quic/core/io/quic_poll_event_loop.h
-third_party/quiche/quiche/quic/core/io/quic_poll_event_loop.cc
 third_party/quiche/quiche/quic/core/io/quic_default_event_loop.cc
 third_party/quiche/quiche/quic/core/io/quic_default_event_loop.h
 third_party/quiche/quiche/quic/core/io/socket.h
-third_party/quiche/quiche/quic/core/io/socket_posix.cc
 third_party/quiche/quiche/quic/core/legacy_quic_stream_id_manager.cc
 third_party/quiche/quiche/quic/core/legacy_quic_stream_id_manager.h
 third_party/quiche/quiche/quic/core/packet_number_indexed_queue.h
@@ -678,7 +703,6 @@ third_party/quiche/quiche/quic/core/quic_types.cc
 third_party/quiche/quiche/quic/core/quic_types.h
 third_party/quiche/quiche/quic/core/quic_unacked_packet_map.cc
 third_party/quiche/quiche/quic/core/quic_unacked_packet_map.h
-third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
 third_party/quiche/quiche/quic/core/quic_udp_socket.h
 third_party/quiche/quiche/quic/core/quic_utils.cc
 third_party/quiche/quiche/quic/core/quic_utils.h
@@ -703,7 +727,6 @@ third_party/quiche/quiche/quic/core/uber_quic_stream_id_manager.cc
 third_party/quiche/quiche/quic/core/uber_quic_stream_id_manager.h
 third_party/quiche/quiche/quic/core/uber_received_packet_manager.cc
 third_party/quiche/quiche/quic/core/uber_received_packet_manager.h
-third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
 third_party/quiche/quiche/quic/core/quic_udp_socket.h
 third_party/quiche/quiche/quic/platform/api/quic_bug_tracker.h
 third_party/quiche/quiche/quic/platform/api/quic_client_stats.h
@@ -775,6 +798,12 @@ third_party/quiche/quiche/spdy/core/zero_copy_output_buffer.h
 FILE(TO_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche PROTOMODEL_PATH)
 FILE(TO_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche PROTOBINDING_PATH)
 
+IF (WIN32)
+
+ELSE(WIN32)
+    target_sources(gquiche PRIVATE third_party/quiche/quiche/quic/core/io/socket_posix.cc
+    third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc)
+ENDIF(WIN32)
 
 add_custom_command(
 OUTPUT
@@ -823,11 +852,13 @@ ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/source_add
 set_property(TARGET gquiche PROPERTY CXX_STANDARD 17)
 
 target_include_directories(gquiche
+PUBLIC platform
 PUBLIC third_party/quiche
 PUBLIC third_party/boringssl/src/include
 PUBLIC third_party/abseil-cpp
 PUBLIC third_party/googleurl
-PUBLIC platform
+PUBLIC third_party/libevent/include
+PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/third_party/libevent/include
 PUBLIC .
 PUBLIC ${Protobuf_INCLUDE_DIRS}
 PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
@@ -842,8 +873,9 @@ absl::flat_hash_map
 absl::any 
 absl::synchronization
 absl::time
-${Protobuf_LIBRARIES}
+${PROTOBUF_LIBRARY}
 ssl 
+zlibstatic
 crypto
 event_core
 )
