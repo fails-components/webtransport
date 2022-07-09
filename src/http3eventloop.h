@@ -20,7 +20,7 @@
 #include "quiche/quic/core/quic_dispatcher.h"
 #include "quiche/quic/core/quic_packet_reader.h"
 #include "quiche/quic/platform/api/quic_socket_address.h"
-#include "quiche/quic/core/io/quic_poll_event_loop.h"
+#include "quiche/quic/core/io/quic_default_event_loop.h"
 
 using namespace Nan;
 
@@ -39,55 +39,8 @@ namespace quic
         virtual void doUnref() = 0;
     };
 
-    // may be use a different implementation for posix or windows?
-    // a lot of code taking from the epollserver of libquiche
-    class WakeUpHelper
+    enum NetworkTask
     {
-    public:
-        WakeUpHelper(Http3EventLoop &eventloop);
-
-        ~WakeUpHelper();
-
-        void Wake();
-
-        class ReadPipeCallback : public QuicSocketEventListener
-        {
-        public:
-            ReadPipeCallback(WakeUpHelper &whelper) : whelper_(whelper)
-            {
-            }
-            void OnSocketEvent(QuicEventLoop *event_loop, QuicUdpSocketFd fd,
-                               QuicSocketEventMask events) override
-            {
-                printf("OnSocketEvent\n");
-                int data;
-                char data_read = 1;
-                // Read until the pipe is empty.
-                while (data_read > 0)
-                {
-                    data_read = read(fd, &data, sizeof(data));
-                    whelper_.woken();
-                }
-                event_loop->RearmSocket(fd, kSocketEventReadable);
-            };
-
-        private:
-
-            WakeUpHelper &whelper_;
-        };
-
-    protected:
-        Http3EventLoop &eventloop_;
-        
-        void woken();
-        // copied from epoll server
-        // A pipe owned by the epoll server.  The server will be registered to listen
-        // on read_fd_ and can be woken by Wake() which writes to write_fd_.
-        int read_fd_;
-        int write_fd_;
-        ReadPipeCallback readcb_;
-    };
-    enum NetworkTask {
         resetStream,
         stopSending,
         streamFinal
@@ -169,16 +122,13 @@ namespace quic
         // Server deletion is imminent.  Start cleaning up the epoll server.
         void Destroy() override;
 
-        QuicEventLoop *getQuicEventLoop() { return &quic_event_loop_; };
+        QuicEventLoop *getQuicEventLoop() { return quic_event_loop_.get(); };
 
         void SetNonblocking(int fd); // workaround
 
         // replacement?
         /*void OnSocketEvent(QuicEventLoop* event_loop, QuicUdpSocketFd fd,
                              QuicSocketEventMask events)*/
-
-        // Invoked when the alarm fires.
-        void OnWoken();
 
         void informAboutClientConnected(Http3Client *client, bool success);
         void informClientWebtransportSupport(Http3Client *client);
@@ -223,8 +173,7 @@ namespace quic
             QUIC_GUARDED_BY(scheduled_actions_lock_);
 
         QuicPacketCount packets_dropped_;
-        QuicPollEventLoop quic_event_loop_;
-        WakeUpHelper whelper_;
+        std::unique_ptr<QuicEventLoop> quic_event_loop_;
 
         void processClientConnected(Http3Client *clientobj, bool success);
         void processClientWebtransportSupport(Http3Client *client);

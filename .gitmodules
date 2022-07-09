@@ -13,3 +13,6 @@
 [submodule "third_party/googleurl"]
 	path = third_party/googleurl
 	url = https://quiche.googlesource.com/googleurl
+[submodule "third_party/libevent"]
+	path = third_party/libevent
+	url = https://github.com/libevent/libevent.git

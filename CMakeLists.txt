@@ -18,6 +18,9 @@ add_subdirectory(third_party/boringssl/src EXCLUDE_FROM_ALL)
 # include zlib
 add_subdirectory(third_party/zlib EXCLUDE_FROM_ALL)
 
+# include libevent
+add_subdirectory(third_party/libevent EXCLUDE_FROM_ALL)
+
 include(FindProtobuf)
 find_package(Protobuf REQUIRED)
 
@@ -37,7 +40,7 @@ endif(COMMAND cmake_policy)
 
 
 
-
+add_compile_definitions(QUICHE_ENABLE_LIBEVENT)
 
 add_library(gquiche SHARED 
 #plattform impl
@@ -237,6 +240,8 @@ third_party/quiche/quiche/http2/http2_constants.h
 third_party/quiche/quiche/http2/http2_structures.cc
 third_party/quiche/quiche/http2/http2_structures.h
 #third_party/quiche/quiche/http2/platform/api/http2_macros.h
+third_party/quiche/quiche/quic/bindings/quic_libevent.h
+third_party/quiche/quiche/quic/bindings/quic_libevent.cc
 third_party/quiche/quiche/quic/core/chlo_extractor.cc
 third_party/quiche/quiche/quic/core/chlo_extractor.h
 third_party/quiche/quiche/quic/core/quic_ping_manager.cc
@@ -813,8 +818,12 @@ absl::str_format
 absl::flat_hash_map
 absl::any 
 absl::synchronization
+absl::time
 ${Protobuf_LIBRARIES}
-ssl crypto)
+ssl 
+crypto
+event_core
+)
 
 if(APPLE)
         target_compile_definitions (gquiche PRIVATE __APPLE_USE_RFC_3542)

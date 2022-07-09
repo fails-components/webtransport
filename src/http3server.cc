@@ -120,7 +120,7 @@ namespace quic
         std::unique_ptr<QuicCryptoServerStreamBase::Helper>(
             new QuicSimpleCryptoServerStreamHelper()),
         std::unique_ptr<QuicAlarmFactory>(
-            eventloop_->getQuicEventLoop()->GetAlarmFactory()),
+            eventloop_->getQuicEventLoop()->CreateAlarmFactory()),
         &http3_server_backend_, expected_server_connection_id_length_);
   }
 
