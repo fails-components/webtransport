@@ -20,9 +20,12 @@ Note, the client implementation only supports certificates checking via certific
 It may be possible in the future to also support normal HTTP/3 without much effort, however there is no intention from the author to implement this, since it will not be needed by FAILS. However PR request are welcome and will be supported by advise from the author.
 The package should be considered as a ducttape style solution, until a bullet proof native support of HTTP/3 and WebTransport is provided by node itself.
 
+If you need a ponyfill checkout the sister package [https://github.com/fails-components/webtransport-ponyfill-websocket/](https://github.com/fails-components/webtransport-ponyfill-websocket/),
+that provides a mapping of the Webtransport interfaces to Websocket connections.
 
 
-## Installation and using
+
+## Installation and usage
 You can install the package directly via npm from node.js or github packages:
 
 ```bash
