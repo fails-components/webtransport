@@ -25,9 +25,9 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
         with:
-          submodules: true
+          submodules: recursive
       - name: Install libraries for building
-        run: sudo apt-get install -y clang-9 cmake build-essential perl6 golang  ninja-build protobuf-compiler     
+        run: sudo apt-get install -y clang-9 cmake build-essential perl6 golang  ninja-build     
         
       - name: Set up NodeJS
         uses: actions/setup-node@v1

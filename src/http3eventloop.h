@@ -124,11 +124,6 @@ namespace quic
 
         QuicEventLoop *getQuicEventLoop() { return quic_event_loop_.get(); };
 
-        void SetNonblocking(int fd); // workaround
-
-        // replacement?
-        /*void OnSocketEvent(QuicEventLoop* event_loop, QuicUdpSocketFd fd,
-                             QuicSocketEventMask events)*/
 
         void informAboutClientConnected(Http3Client *client, bool success);
         void informClientWebtransportSupport(Http3Client *client);

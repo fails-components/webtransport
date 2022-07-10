@@ -472,11 +472,9 @@ namespace quic
             break;
         }
 
-        sockaddr_storage addr = client_address.generic_address();
-        int rc = bind(fd, reinterpret_cast<sockaddr *>(&addr), addrlen);
-        if (rc < 0)
+        if (!api.Bind(fd,client_address))
         {
-            QUIC_LOG(ERROR) << "Bind failed: " << strerror(errno)
+            QUIC_LOG(ERROR) << "Bind failed"
                             << " bind_to_address:" << bind_to_address
                             << ", bind_to_port:" << bind_to_port
                             << ", client_address:" << client_address;
@@ -492,7 +490,7 @@ namespace quic
 
         fd_address_map_[fd] = client_address;
         eventloop_->getQuicEventLoop()->RegisterSocket(fd, kEpollFlags, this);
-        eventloop_->SetNonblocking(fd); // eventuelly should be part of register socket.
+        // eventloop_->SetNonblocking(fd); // eventuelly should be part of register socket.
         return true;
     }
 
@@ -516,8 +514,8 @@ namespace quic
         if (fd != kQuicInvalidSocketFd)
         {
             eventloop_->getQuicEventLoop()->UnregisterSocket(fd);
-            int rc = close(fd);
-            QUICHE_DCHECK_EQ(0, rc);
+            QuicUdpSocketApi api;
+            api.Destroy(fd);
         }
     }
 

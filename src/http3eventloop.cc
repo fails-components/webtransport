@@ -124,33 +124,6 @@ namespace quic
     Unref();
   }
 
-  // originally from the epoll server
-  void Http3EventLoop::SetNonblocking(int fd)
-  {
-    int flags = fcntl(fd, F_GETFL, 0);
-    if (flags == -1)
-    {
-      int saved_errno = errno;
-      char buf[kErrorBufferSize];
-      QUIC_LOG(FATAL) << "Error " << saved_errno << " doing fcntl(" << fd
-                      << ", F_GETFL, 0): "
-                      << strerror_r(saved_errno, buf, sizeof(buf));
-    }
-    if (!(flags & O_NONBLOCK))
-    {
-      int saved_flags = flags;
-      flags = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-      if (flags == -1)
-      {
-        // bad.
-        int saved_errno = errno;
-        char buf[kErrorBufferSize];
-        QUIC_LOG(FATAL) << "Error " << saved_errno << " doing fcntl(" << fd
-                        << ", F_SETFL, " << saved_flags
-                        << "): " << strerror_r(saved_errno, buf, sizeof(buf));
-      }
-    }
-  }
 
   void Http3EventLoop::ExecuteScheduledActions()
   {

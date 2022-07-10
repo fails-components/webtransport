@@ -16,3 +16,9 @@
 [submodule "third_party/libevent"]
 	path = third_party/libevent
 	url = https://github.com/libevent/libevent.git
+[submodule "third_party/protobuf"]
+	path = third_party/protobuf
+	url = https://github.com/protocolbuffers/protobuf.git
+[submodule "third_party/icu"]
+	path = third_party/icu
+	url = https://github.com/unicode-org/icu.git

@@ -62,11 +62,7 @@ namespace quic
     overflow_supported_ = socket_api.EnableDroppedPacketCount(fd_);
     socket_api.EnableReceiveTimestamp(fd_);
 
-    sockaddr_storage addr = address.generic_address();
-    // @BENBENZ: fix on mac OSX (was needed or a EINVAL is returned) (from api::Bind in quic_udp_socket_posix.cc)
-    int addr_len = address.host().IsIPv4() ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
-    int rc = bind(fd_, reinterpret_cast<sockaddr *>(&addr), addr_len);
-    if (rc < 0)
+    if (!socket_api.Bind(fd_, address))
     {
       QUIC_LOG(ERROR) << "Bind failed: " << strerror(errno) << "\n";
       return false;
@@ -87,7 +83,7 @@ namespace quic
     const int kEpollFlags = kSocketEventReadable | kSocketEventWritable;
 
     eventloop_->getQuicEventLoop()->RegisterSocket(fd_, kEpollFlags, this);
-    eventloop_->SetNonblocking(fd_); // eventuelly should be part of register socket.
+    // eventloop_->SetNonblocking(fd_); // eventuelly should be part of register socket.
     dispatcher_.reset(CreateQuicDispatcher());
     dispatcher_->InitializeWithWriter(new QuicDefaultPacketWriter(fd_));
 
@@ -105,7 +101,8 @@ namespace quic
     dispatcher_->Shutdown();
     //}
 
-    close(fd_);
+    QuicUdpSocketApi api;
+    api.Destroy(fd_);
     fd_ = -1;
     eventloop_->informUnref(this); // must be done on the other thread...
     return true;
