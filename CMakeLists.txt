@@ -131,6 +131,7 @@ third_party/icu/icu4c/source/common/utypes.cpp
 third_party/icu/icu4c/source/common/uvector.cpp
 third_party/icu/icu4c/source/common/putil.cpp
 )
+target_include_directories(icu PUBLIC third_party/icu/icu4c/source/common)
 IF (WIN32)
     target_sources(icu PRIVATE
     third_party/icu/icu4c/source/common/wintz.cpp
