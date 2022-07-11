@@ -135,8 +135,7 @@ IF (WIN32)
     target_sources(icu PRIVATE
     third_party/icu/icu4c/source/common/wintz.cpp
     )
-    target_compile_definitions(icu 
-
+    target_compile_definitions(icu PRIVATE
     #hack since this function is not currently used
     ICU_DATA_DIR_WINDOWS=""
     )

@@ -466,7 +466,7 @@ absl::StatusOr<absl::Span<char>> Receive(SocketFd fd, absl::Span<char> buffer,
   QUICHE_DCHECK_GE(fd, 0);
   QUICHE_DCHECK(!buffer.empty());
 
-  size_t num_read;
+  SSIZE_T num_read;
   do {
     num_read =
         ::recv(fd, buffer.data(), buffer.size(), /*flags=*/peek ? MSG_PEEK : 0);
@@ -492,7 +492,7 @@ absl::StatusOr<absl::string_view> Send(SocketFd fd, absl::string_view buffer) {
   QUICHE_DCHECK_GE(fd, 0);
   QUICHE_DCHECK(!buffer.empty());
 
-  size_t num_sent;
+  SSIZE_T num_sent;
   do {
     num_sent = ::send(fd, buffer.data(), buffer.size(), /*flags=*/0);
   } while (num_sent < 0 && errno == EINTR);

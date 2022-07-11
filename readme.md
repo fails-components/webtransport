@@ -38,7 +38,7 @@ In case of github packages, please add to your `.npmrc` file
 In this case you need to be authenticated against github.
 
 If you are running the install as root, you need to use `--unsafe-perm` as flag.
-Installing the package requires a full building environment including clang-9, perl6, golang,  ninja-build, icu. See the `Dockerfile` or `Dockerfile.development` for required debian packages. 
+Installing the package requires a full building environment including clang-9, perl6, python, golang,  ninja-build, icu. See the `Dockerfile` or `Dockerfile.development` for required debian packages. 
 This should work for linux and Mac OS X. 
 (You may want to check out the building dependencies (especially for windows) for BoringSSl, zlib, abseil on their respective websites).
 
