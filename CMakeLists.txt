@@ -975,6 +975,10 @@ event_core
 icu
 )
 
+IF (WIN32)
+    target_link_libraries(gquiche icu)
+ENDIF(WIN32)
+
 if(APPLE)
         target_compile_definitions (gquiche PRIVATE __APPLE_USE_RFC_3542)
 endif()
