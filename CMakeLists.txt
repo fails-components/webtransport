@@ -972,7 +972,6 @@ ssl
 zlibstatic
 crypto
 event_core
-icu
 )
 
 IF (WIN32)
