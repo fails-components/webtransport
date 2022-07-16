@@ -336,6 +336,8 @@ namespace quic
 
         bool handleConnecting();
 
+        bool checkSession();
+
         // Read oldest received response and remove it from closed_stream_states_.
         // void ReadNextResponse();
 

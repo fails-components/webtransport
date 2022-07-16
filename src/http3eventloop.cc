@@ -23,6 +23,14 @@ using namespace Nan;
 namespace quic
 {
 
+  
+#ifdef WIN32
+
+bool initSockets();
+bool destroySockets();
+
+#endif
+
   // hack since the header is faulty
   QUICHE_NO_EXPORT QuicEventLoopFactory *GetDefaultEventLoop();
 
@@ -35,6 +43,9 @@ namespace quic
         progress_(nullptr), cbstream_(cbstream), cbsession_(cbsession),
         quic_event_loop_(GetDefaultEventLoop()->Create(QuicDefaultClock::Get()))
   {
+#ifdef WIN32
+    initSockets();
+#endif
   }
 
   Http3EventLoop::~Http3EventLoop()
@@ -43,6 +54,9 @@ namespace quic
     delete cbstream_;
     delete cbsession_;
     delete cbtransport_;
+#ifdef WIN32
+    destroySockets();
+#endif
   }
 
   NAN_MODULE_INIT(Http3EventLoop::Init)
@@ -116,7 +130,8 @@ namespace quic
     loop_running_ = true;
     while (loop_running_)
     {
-      quic_event_loop_->RunEventLoopOnce(QuicTime::Delta::Infinite()); // figure out the unit
+      // Note QuicTime::Delta::Infinite() causes a busy loop.  
+      quic_event_loop_->RunEventLoopOnce(QuicTime::Delta::FromSeconds(5)); 
       ExecuteScheduledActions();
     }
     printf("event loop exited\n");

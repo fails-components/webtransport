@@ -292,12 +292,10 @@ namespace quic
                                   QuicSocketEventMask events)
   {
     QUICHE_DCHECK_EQ(fd, fd_);
-    QuicSocketEventMask eventsout = 0;
-    QuicSocketEventMask revents = 0;
 
     if (events & kSocketEventReadable)
     {
-      QUIC_DVLOG(1) << "kSocketEventReadabl";
+      QUIC_DVLOG(1) << "kSocketEventReadable";
 
       dispatcher_->ProcessBufferedChlos(kNumSessionsToCreatePerSocketEvent);
 
@@ -311,30 +309,28 @@ namespace quic
 
       if (dispatcher_->HasChlosBuffered())
       {
-        // Register kSocketEventReadabl event to consume buffered CHLO(s).
-        eventsout |= kSocketEventReadable;
-      } else {
-        revents |=  kSocketEventReadable;
+        // Register EPOLLIN event to consume buffered CHLO(s).
+        bool success =
+            event_loop->ArtificiallyNotifyEvent(fd, kSocketEventReadable);
+        QUICHE_DCHECK(success);
+      }
+      if (!event_loop->SupportsEdgeTriggered())
+      {
+        bool success = event_loop->RearmSocket(fd, kSocketEventReadable);
+        QUICHE_DCHECK(success);
       }
     }
     if (events & kSocketEventWritable)
     {
       dispatcher_->OnCanWrite();
-      if (dispatcher_->HasPendingWrites())
+      if (!event_loop->SupportsEdgeTriggered() &&
+          dispatcher_->HasPendingWrites())
       {
-        eventsout |= kSocketEventWritable;
-      } else {
-        revents |= kSocketEventWritable;
+        bool success = event_loop->RearmSocket(fd, kSocketEventWritable);
+        QUICHE_DCHECK(success);
       }
     }
-    if (eventsout != 0 && event_loop->SupportsEdgeTriggered())
-    {
-      event_loop->ArtificiallyNotifyEvent(fd, eventsout);
-    }
-    if (revents != 0 && !event_loop->SupportsEdgeTriggered())
-    {
-      event_loop->RearmSocket(fd, revents);
-    }
+    
   }
 
   NAN_METHOD(Http3Server::startServer)

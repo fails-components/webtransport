@@ -306,6 +306,8 @@ namespace quic
             finish(nullptr);
         }
         finish_stream_open_.push(finish);
+
+        checkSession(); // check if it is already available
         /*
         if (VersionHasIetfQuicFrames(session_->transport_version()))
         {
@@ -472,7 +474,7 @@ namespace quic
             break;
         }
 
-        if (!api.Bind(fd,client_address))
+        if (!api.Bind(fd, client_address))
         {
             QUIC_LOG(ERROR) << "Bind failed"
                             << " bind_to_address:" << bind_to_address
@@ -611,6 +613,16 @@ namespace quic
                 recheck = true;
         }
 
+        if (checkSession())
+        {
+            recheck = true;
+        }
+
+        return recheck;
+    }
+
+    bool Http3Client::checkSession()
+    {
         while (finish_stream_open_.size() > 0 && session_->CanOpenNextOutgoingBidirectionalStream())
         {
             auto *stream = static_cast<QuicSpdyClientStream *>(
@@ -647,7 +659,7 @@ namespace quic
             finish_stream_open_.pop();
         }
 
-        return recheck;
+        return finish_stream_open_.size() > 0;
     }
 
     void Http3Client::openWTSessionInt(absl::string_view path)
@@ -847,8 +859,6 @@ namespace quic
     void Http3Client::OnSocketEvent(QuicEventLoop *event_loop, QuicUdpSocketFd fd,
                                     QuicSocketEventMask events)
     {
-        QuicSocketEventMask eventsout = 0; // special
-        QuicSocketEventMask revents = 0;
         if (events & kSocketEventReadable)
         {
             QUIC_DVLOG(1) << "Read packets on kSocketEventReadable";
@@ -871,39 +881,44 @@ namespace quic
             }
             if (connected() && more_to_read)
             {
-                eventsout |= kSocketEventReadable;
-            } else {
-                revents |= kSocketEventReadable;
+                // Register EPOLLIN event to consume buffered CHLO(s).
+                bool success =
+                    event_loop->ArtificiallyNotifyEvent(fd, kSocketEventReadable);
+                QUICHE_DCHECK(success);
+            } 
+            if (!event_loop->SupportsEdgeTriggered())
+            {
+                bool success = event_loop->RearmSocket(fd, kSocketEventReadable);
+                QUICHE_DCHECK(success);
             }
         }
+        bool writeblocked = false;
         if (connected() && (events & kSocketEventWritable))
         {
             writer_->SetWritable();
             session_->connection()->OnCanWrite();
             if (writer_->IsWriteBlocked())
             {
-                eventsout |= kSocketEventWritable;
+                writeblocked = true;           
             }
-        } else {
-             revents |= kSocketEventReadable;
         }
 
         if (handleConnecting())
         {
-            eventsout |= kSocketEventReadable; // please visit us again
+            bool success =
+                event_loop->ArtificiallyNotifyEvent(fd, kSocketEventReadable);
+            QUICHE_DCHECK(success);
         }
-        if (eventsout != 0 && event_loop->SupportsEdgeTriggered())
+        if (writer_->IsWriteBlocked())
         {
-            event_loop->ArtificiallyNotifyEvent(fd, eventsout);
+             writeblocked = true;           
         }
-        if (revents != 0 && !event_loop->SupportsEdgeTriggered())
+        if (!event_loop->SupportsEdgeTriggered() && writeblocked)
         {
-            event_loop->RearmSocket(fd, revents);
+            bool success = event_loop->RearmSocket(fd, kSocketEventWritable);
+            QUICHE_DCHECK(success);
+            
         }
-        /*  if (event->in_events & EPOLLERR)
-          {
-              QUIC_DLOG(INFO) << "Epollerr";
-          } */
     }
 
     void Http3Client::ProcessPacket(
