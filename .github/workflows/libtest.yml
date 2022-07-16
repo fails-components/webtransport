@@ -26,8 +26,8 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Install libraries for building
-        run: sudo apt-get install -y clang-9 cmake build-essential perl6 golang  ninja-build     
+#      - name: Install libraries for building
+#        run: sudo apt-get install -y clang-9 cmake build-essential perl6 golang  ninja-build     
         
       - name: Set up NodeJS
         uses: actions/setup-node@v1
