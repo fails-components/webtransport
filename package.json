@@ -11,12 +11,10 @@
   "scripts": {
     "start": "node test/echoserver.js",
     "test": "node test/test.js",
-    "install": "cmake-js build",
-    "rebuild": "cmake-js rebuild",
-    "rebuild-debug": "cmake-js rebuild -D",
-    "build-debug": "cmake-js build -D",
-    "winrebuild-debug": "cmake-js rebuild -D -t ClangCL",
-    "winbuild-debug": "cmake-js build -D -t ClangCL"
+    "install": "node build.js install",
+    "rebuild": "node build.js rebuild",
+    "rebuild-debug": "node build.js rebuild -D",
+    "build-debug": "node build.js build-debug"
   },
   "repository": {
     "type": "git",

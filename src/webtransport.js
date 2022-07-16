@@ -7,15 +7,20 @@ import { createRequire } from 'module'
 import { ReadableStream, WritableStream } from 'node:stream/web'
 import * as path from 'path'
 import * as url from 'url'
+import { arch, argv, platform } from 'node:process'
+
+const binplatform = platform + '_' + arch
 
 const require = createRequire(import.meta.url)
 const dirname = url.fileURLToPath(new URL('.', import.meta.url))
-let wtpath = '../build/Release/webtransport.node'
+let wtpath = '../build_' + binplatform + '/Release/webtransport.node'
 if (
   process.env.NODE_ENV !== 'production' &&
-  existsSync(path.join(dirname, '../build/Debug/webtransport.node'))
+  existsSync(
+    path.join(dirname, '../build_' + binplatform + '/Debug/webtransport.node')
+  )
 ) {
-  wtpath = '../build/Debug/webtransport.node'
+  wtpath = '../build_' + binplatform + '/Debug/webtransport.node'
 }
 
 const wtrouter = require(wtpath)
@@ -163,6 +168,7 @@ class Http3WTStream {
 
   onStreamRead(args) {
     if (args.data && !this.readableclosed) {
+//      console.log('stream read received', Date.now())
       this.readableController.enqueue(args.data)
       if (this.readableController.desiredSize < 0) this.objint.stopReading()
     }
@@ -331,6 +337,7 @@ class Http3WTSession {
             this.writeDatagramRej.push(rej)
           })
           this.writeDatagramProm.push(ret)
+//          console.log('b4 datagram write', Date.now())
           this.objint.writeDatagram(chunk)
           return ret
         } else throw new Error('chunk is not of type Uint8Array')
@@ -502,6 +509,7 @@ class Http3WTSession {
   }
 
   onDatagramReceived(args) {
+//    console.log('datagram received', Date.now())
     this.incomDatagramController.enqueue(args.datagram)
   }
 
