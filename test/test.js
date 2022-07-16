@@ -17,7 +17,7 @@ async function run() {
       console.log('global event loop gone, everything alright')
       process.exit(0)
     }
-  }, 40 * 1000)
+  }, 50 * 1000)
   console.log('start generating self signed certificate')
 
   const attrs = [
@@ -44,7 +44,6 @@ async function run() {
     cert: certificate.cert, // unclear if it is the correct format
     privKey: certificate.private
   })
-
   runEchoServer(http3server)
   http3server.startServer() // you can call destroy to remove the server
 
