@@ -849,6 +849,10 @@ third_party/quiche/quiche/spdy/core/hpack/hpack_static_table.cc
 third_party/quiche/quiche/spdy/core/hpack/hpack_static_table.h
 third_party/quiche/quiche/spdy/core/http2_frame_decoder_adapter.cc
 third_party/quiche/quiche/spdy/core/http2_frame_decoder_adapter.h
+third_party/quiche/quiche/spdy/core/http2_header_block.cc
+third_party/quiche/quiche/spdy/core/http2_header_block.h
+third_party/quiche/quiche/spdy/core/http2_header_storage.cc
+third_party/quiche/quiche/spdy/core/http2_header_storage.h
 third_party/quiche/quiche/spdy/core/recording_headers_handler.cc
 third_party/quiche/quiche/spdy/core/recording_headers_handler.h
 third_party/quiche/quiche/spdy/core/spdy_alt_svc_wire_format.cc
@@ -860,10 +864,6 @@ third_party/quiche/quiche/spdy/core/spdy_frame_builder.h
 #third_party/quiche/quiche/spdy/core/spdy_frame_reader.h
 third_party/quiche/quiche/spdy/core/spdy_framer.cc
 third_party/quiche/quiche/spdy/core/spdy_framer.h
-third_party/quiche/quiche/spdy/core/spdy_header_block.cc
-third_party/quiche/quiche/spdy/core/spdy_header_block.h
-third_party/quiche/quiche/spdy/core/spdy_header_storage.cc
-third_party/quiche/quiche/spdy/core/spdy_header_storage.h
 third_party/quiche/quiche/spdy/core/spdy_headers_handler_interface.h
 third_party/quiche/quiche/spdy/core/spdy_intrusive_list.h
 third_party/quiche/quiche/spdy/core/spdy_no_op_visitor.cc
