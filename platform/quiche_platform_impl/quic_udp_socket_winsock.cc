@@ -21,7 +21,6 @@
 #if defined(__linux__) && !defined(__ANDROID__)
 #define QUIC_UDP_SOCKET_SUPPORT_TTL 1
 #endif
-#warning TODO WSASTARTUP NOT CALLED
 namespace quic {
 namespace {
 
@@ -52,26 +51,24 @@ const size_t kMinCmsgSpaceForRead =
     + kCmsgSpaceForRecvTimestamp + CMSG_SPACE(sizeof(int))  // TTL
     + kCmsgSpaceForGooglePacketHeader;
 
-
 void SetV4SelfIpInControlMessage(const QuicIpAddress& self_address,
                                  cmsghdr* cmsg) {
   QUICHE_DCHECK(self_address.IsIPv4());
-  WSAMSG* pktinfo = reinterpret_cast<WSAMSG*>(WSA_CMSG_DATA(cmsg));
+  in_pktinfo* pktinfo = reinterpret_cast<in_pktinfo*>(WSA_CMSG_DATA(cmsg));
   memset(pktinfo, 0, sizeof(in_pktinfo));
+  pktinfo->ipi_ifindex = 0;
   std::string address_string = self_address.ToPackedString();
-  pktinfo->Control.len = address_string.length();
-  memcpy(pktinfo->Control.buf, address_string.c_str(),
+  memcpy(&pktinfo->ipi_addr, address_string.c_str(),
          address_string.length());
 }
 
 void SetV6SelfIpInControlMessage(const QuicIpAddress& self_address,
                                  cmsghdr* cmsg) {
   QUICHE_DCHECK(self_address.IsIPv6());
-  WSAMSG* pktinfo = reinterpret_cast<WSAMSG*>(WSA_CMSG_DATA(cmsg));
+  in6_pktinfo* pktinfo = reinterpret_cast<in6_pktinfo*>(WSA_CMSG_DATA(cmsg));
   memset(pktinfo, 0, sizeof(in6_pktinfo));
   std::string address_string = self_address.ToPackedString();
-  pktinfo->Control.len = address_string.length();
-  memcpy(pktinfo->Control.buf, address_string.c_str(), address_string.length());
+  memcpy(&pktinfo->ipi6_addr, address_string.c_str(), address_string.length());
 }
 
 void PopulatePacketInfoFromControlMessage(struct cmsghdr* cmsg,
@@ -182,6 +179,59 @@ bool NextCmsg(WSAMSG* hdr, char* control_buffer, size_t control_buffer_len,
   return true;
 }
 }  // namespace
+
+
+LPFN_WSARECVMSG WSARecvMsg = nullptr;
+LPFN_WSASENDMSG WSASendMsg = nullptr;
+
+WSADATA WSAData;
+
+bool initSockets()
+{
+  int res;
+
+  // Initialize Winsock
+  res = WSAStartup(MAKEWORD(2, 2), &WSAData);
+  if (res != 0)
+  {
+    QUIC_LOG_FIRST_N(ERROR, 100)
+        << "WSAStartup failed: %d\n"
+        << res;
+    return false;
+  }
+
+  SOCKET sock = INVALID_SOCKET;
+  sock = socket(AF_INET, SOCK_DGRAM, 0);
+
+  // should we buffer this somewhere? Does it take time...
+  GUID grv = WSAID_WSARECVMSG;
+  DWORD dwBytesReturned = 0;
+  if (WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &grv, sizeof(grv), &WSARecvMsg, sizeof(WSARecvMsg),
+               &dwBytesReturned, NULL, NULL) != 0)
+  {
+    QUIC_LOG_FIRST_N(ERROR, 100)
+        << "WSARecvMsg is not available ";
+    return false;
+  }
+
+  // should we buffer this somewhere? Does it take time...
+  GUID gsnd = WSAID_WSASENDMSG;
+  if (WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &gsnd, sizeof(gsnd), &WSASendMsg, sizeof(WSASendMsg),
+               &dwBytesReturned, NULL, NULL) != 0)
+  {
+    QUIC_LOG_FIRST_N(ERROR, 100)
+        << "WSASendMsg is not available ";
+    return false;
+  }
+   closesocket(sock);
+   return true;
+}
+
+bool destroySockets()
+{
+  WSACleanup();
+  return true;
+}
 
 QuicUdpSocketFd QuicUdpSocketApi::Create(int address_family,
                                          int receive_buffer_size,
@@ -364,18 +414,7 @@ void QuicUdpSocketApi::ReadPacket(QuicUdpSocketFd fd,
   hdr.Control.buf = control_buffer.buffer;
   hdr.Control.len = control_buffer.buffer_len;
 
-  LPFN_WSARECVMSG WSARecvMsg = nullptr;
 
-  // should we buffer this somewhere? Does it take time...
-  GUID g = WSAID_WSARECVMSG;
-  DWORD dwBytesReturned = 0;
-  if (WSAIoctl(fd, SIO_GET_EXTENSION_FUNCTION_POINTER, &g, sizeof(g), &WSARecvMsg, sizeof(WSARecvMsg),
-               &dwBytesReturned, NULL, NULL) != 0)
-  {
-    QUIC_LOG_FIRST_N(ERROR, 100)
-        << "WSARecvMsg is not available ";    
-    return;
-  }
 
   DWORD bytes_read = 0;
 
@@ -384,7 +423,7 @@ void QuicUdpSocketApi::ReadPacket(QuicUdpSocketFd fd,
     const int error_num = WSAGetLastError();
     if (error_num != WSAEWOULDBLOCK) {
       QUIC_LOG_FIRST_N(ERROR, 100)
-          << "Error reading packet: " << strerror(error_num);
+          << "Error reading packet: " << error_num;
     }
     return;
   }
@@ -518,9 +557,8 @@ size_t QuicUdpSocketApi::ReadMultiplePackets(QuicUdpSocketFd fd,
     result.ok = false;
   }
   for (ReadPacketResult& result : *results) {
-    errno = 0;
     ReadPacket(fd, packet_info_interested, &result);
-    if (!result.ok && errno == EAGAIN) {
+    if (!result.ok && WSAGetLastError() == WSAEWOULDBLOCK) {
       break;
     }
     ++num_packets;
@@ -592,24 +630,13 @@ WriteResult QuicUdpSocketApi::WritePacket(
     *reinterpret_cast<int*>(WSA_CMSG_DATA(cmsg)) = packet_info.ttl();
   }
 #endif
-  LPFN_WSARECVMSG WSASendMsg = nullptr;
 
-  // should we buffer this somewhere? Does it take time...
-  GUID g = WSAID_WSASENDMSG;
-  DWORD dwBytesReturned = 0;
-  if (WSAIoctl(fd, SIO_GET_EXTENSION_FUNCTION_POINTER, &g, sizeof(g), &WSASendMsg, sizeof(WSASendMsg),
-               &dwBytesReturned, NULL, NULL) != 0)
-  {
-    QUIC_LOG_FIRST_N(ERROR, 100)
-        << "WSASendMsg is not available ";    
-    return WriteResult( WRITE_STATUS_ERROR, 666);
-  }
 
   int rc;
   DWORD bytessend;
   do {
-    rc = WSASendMsg(fd, &hdr, 0, nullptr, nullptr);
-  } while (rc == SOCKET_ERROR &&  WSAGetLastError() == WSAEINTR);
+    rc = WSASendMsg(fd, &hdr, 0, &bytessend, nullptr, nullptr);
+  } while (rc == SOCKET_ERROR &&  WSAGetLastError() == WSAEINTR); 
   if (bytessend >= 0) {
     return WriteResult(WRITE_STATUS_OK, bytessend);
   }
