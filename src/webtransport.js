@@ -168,7 +168,7 @@ class Http3WTStream {
 
   onStreamRead(args) {
     if (args.data && !this.readableclosed) {
-//      console.log('stream read received', Date.now())
+      console.log('stream read received', args.data,  Date.now())
       this.readableController.enqueue(args.data)
       if (this.readableController.desiredSize < 0) this.objint.stopReading()
     }
@@ -337,7 +337,7 @@ class Http3WTSession {
             this.writeDatagramRej.push(rej)
           })
           this.writeDatagramProm.push(ret)
-//          console.log('b4 datagram write', Date.now())
+          console.log('b4 datagram write',chunk, Date.now())
           this.objint.writeDatagram(chunk)
           return ret
         } else throw new Error('chunk is not of type Uint8Array')
@@ -509,7 +509,7 @@ class Http3WTSession {
   }
 
   onDatagramReceived(args) {
-//    console.log('datagram received', Date.now())
+    console.log('datagram received', args.datagram, Date.now())
     this.incomDatagramController.enqueue(args.datagram)
   }
 
