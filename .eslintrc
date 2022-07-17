@@ -13,7 +13,8 @@
     "ecmaFeatures": {
       "legacyDecorators": true,
       "jsx": true
-    }
+    },
+   "requireConfigFile": false
   },
   "settings": {
     "react": {
