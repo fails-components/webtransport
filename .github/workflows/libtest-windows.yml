@@ -36,5 +36,7 @@ jobs:
         run: npm install
         
       - name: Run unit tests
-        run: NODE_ENV=production npm test
+        run: | 
+          $env:NODE_ENV="production" 
+          npm test
 
