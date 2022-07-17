@@ -23,7 +23,7 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
         with:
-          submodules: true
+          submodules: recursive
           ref: master
           
       - name: Git Submodule Update Boring SSL

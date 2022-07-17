@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: Automated build and client/server unit tests
+name: Mac OS Automated build and client/server unit tests
 
 # Controls when the workflow will run
 on:
@@ -16,18 +16,16 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
-  build:
+  build-macos:
     # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
         with:
-          submodules: true
-      - name: Install libraries for building
-        run: sudo apt-get install -y clang-9 cmake build-essential perl6 golang  ninja-build protobuf-compiler     
+          submodules: recursive    
         
       - name: Set up NodeJS
         uses: actions/setup-node@v1
@@ -35,7 +33,9 @@ jobs:
           node-version: 16
         
       - name: Install dependencies and build library
-        run: npm install
+        run: |
+          export OPENSSL_ROOT_DIR=$(brew --prefix openssl@1.1)
+          npm install
         
       - name: Run unit tests
         run: NODE_ENV=production npm test

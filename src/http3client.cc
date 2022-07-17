@@ -24,9 +24,10 @@
 #include "quiche/quic/core/http/quic_spdy_client_stream.h"
 #include "quiche/quic/core/http/spdy_utils.h"
 #include "quiche/quic/core/http/web_transport_http3.h"
-#include "quiche/quic/core/quic_epoll_connection_helper.h"
-#include "quiche/quic/core/quic_epoll_alarm_factory.h"
 #include "quiche/quic/core/web_transport_interface.h"
+#include "quiche/quic/core/quic_default_packet_writer.h"
+#include "quiche/quic/core/quic_default_connection_helper.h"
+#include "quiche/quic/core/quic_default_clock.h"
 #include "quiche/quic/core/quic_packet_writer_wrapper.h"
 #include "quiche/quic/core/quic_server_id.h"
 #include "quiche/quic/core/quic_utils.h"
@@ -96,7 +97,7 @@ namespace quic
           crypto_config_(std::move(proof_verifier), std::move(session_cache)),
           helper_(std::move(helper)),
           eventloop_(eventloop),
-          alarm_factory_(new QuicEpollAlarmFactory(eventloop->getEpollServer())),
+          alarm_factory_(eventloop->getQuicEventLoop()->CreateAlarmFactory()),
           supported_versions_({ParsedQuicVersion::RFCv1()}),
           initial_max_packet_length_(0),
           num_sent_client_hellos_(0),
@@ -104,7 +105,7 @@ namespace quic
           connected_or_attempting_connect_(false),
           server_connection_id_length_(kQuicDefaultConnectionIdLength),
           client_connection_id_length_(0),
-          max_reads_per_epoll_loop_(std::numeric_limits<int>::max()),
+          max_reads_per_loop_(std::numeric_limits<int>::max()),
           wait_for_encryption_(false),
           connection_in_progress_(false),
           num_attempts_connect_(0),
@@ -305,6 +306,8 @@ namespace quic
             finish(nullptr);
         }
         finish_stream_open_.push(finish);
+
+        checkSession(); // check if it is already available
         /*
         if (VersionHasIetfQuicFrames(session_->transport_version()))
         {
@@ -426,13 +429,12 @@ namespace quic
         QuicSocketAddress server_address, QuicIpAddress bind_to_address,
         int bind_to_port)
     {
-        eventloop_->getEpollServer()->set_timeout_in_us(50 * 1000);
 
         QuicUdpSocketApi api;
-        int fd = api.Create(server_address.host().AddressFamilyToInt(),
-                            /*receive_buffer_size =*/kDefaultSocketReceiveBuffer,
-                            /*send_buffer_size =*/kDefaultSocketReceiveBuffer);
-        if (fd < 0)
+        QuicUdpSocketFd fd = api.Create(server_address.host().AddressFamilyToInt(),
+                                        /*receive_buffer_size =*/kDefaultSocketReceiveBuffer,
+                                        /*send_buffer_size =*/kDefaultSocketReceiveBuffer);
+        if (fd == kQuicInvalidSocketFd)
         {
             return false;
         }
@@ -472,11 +474,9 @@ namespace quic
             break;
         }
 
-        sockaddr_storage addr = client_address.generic_address();
-        int rc = bind(fd, reinterpret_cast<sockaddr *>(&addr), addrlen);
-        if (rc < 0)
+        if (!api.Bind(fd, client_address))
         {
-            QUIC_LOG(ERROR) << "Bind failed: " << strerror(errno)
+            QUIC_LOG(ERROR) << "Bind failed"
                             << " bind_to_address:" << bind_to_address
                             << ", bind_to_port:" << bind_to_port
                             << ", client_address:" << client_address;
@@ -488,10 +488,11 @@ namespace quic
             QUIC_LOG(ERROR) << "Unable to get self address.  Error: "
                             << strerror(errno);
         }
-        const int kEpollFlags = UV_READABLE | UV_WRITABLE; // there is no analogue to EPOLLET in libuv hopefully not a problem
+        const int kEpollFlags = kSocketEventReadable | kSocketEventWritable; // there is no analogue to EPOLLET in libuv hopefully not a problem
 
         fd_address_map_[fd] = client_address;
-        eventloop_->getEpollServer()->RegisterFD(fd, this, kEpollFlags);
+        eventloop_->getQuicEventLoop()->RegisterSocket(fd, kEpollFlags, this);
+        // eventloop_->SetNonblocking(fd); // eventuelly should be part of register socket.
         return true;
     }
 
@@ -510,13 +511,13 @@ namespace quic
         fd_address_map_.clear();
     }
 
-    void Http3Client::CleanUpUDPSocketImpl(int fd)
+    void Http3Client::CleanUpUDPSocketImpl(QuicUdpSocketFd fd)
     {
-        if (fd > -1)
+        if (fd != kQuicInvalidSocketFd)
         {
-            eventloop_->getEpollServer()->UnregisterFD(fd);
-            int rc = close(fd);
-            QUICHE_DCHECK_EQ(0, rc);
+            eventloop_->getQuicEventLoop()->UnregisterSocket(fd);
+            QuicUdpSocketApi api;
+            api.Destroy(fd);
         }
     }
 
@@ -550,37 +551,6 @@ namespace quic
         }
         connection_in_progress_ = true;
         wait_for_encryption_ = false;
-
-        /*
-                // TODO, we have to use the event loop for this!
-
-                // Attempt multiple connects until the maximum number of client hellos have
-                // been sent.
-                int num_attempts = 0;
-                while (!connected() &&
-                       num_attempts <= QuicCryptoClientStream::kMaxClientHellos)
-                {
-                    StartConnect();
-                    while (EncryptionBeingEstablished())
-                    {
-                        WaitForEvents();
-                    }
-                    ParsedQuicVersion version = UnsupportedQuicVersion();
-                    if (session_ != nullptr && !CanReconnectWithDifferentVersion(&version))
-                    {
-                        // We've successfully created a session but we're not connected, and we
-                        // cannot reconnect with a different version.  Give up trying.
-                        break;
-                    }
-                    num_attempts++;
-                }
-                if (session_ == nullptr)
-                {
-                    QUIC_BUG(quic_bug_10906_1) << "Missing session after Connect";
-                    return;
-                }
-                connect_attempted_ = true;
-                */
     }
 
     bool Http3Client::handleConnecting()
@@ -643,6 +613,16 @@ namespace quic
                 recheck = true;
         }
 
+        if (checkSession())
+        {
+            recheck = true;
+        }
+
+        return recheck;
+    }
+
+    bool Http3Client::checkSession()
+    {
         while (finish_stream_open_.size() > 0 && session_->CanOpenNextOutgoingBidirectionalStream())
         {
             auto *stream = static_cast<QuicSpdyClientStream *>(
@@ -679,7 +659,7 @@ namespace quic
             finish_stream_open_.pop();
         }
 
-        return recheck;
+        return finish_stream_open_.size() > 0;
     }
 
     void Http3Client::openWTSessionInt(absl::string_view path)
@@ -876,23 +856,13 @@ namespace quic
         return push_promise_data_to_resend_.get() || !open_streams_.empty();
     }
 
-    void Http3Client::OnRegistration(QuicEpollServer * /*eps*/,
-                                     int /*fd*/,
-                                     int /*event_mask*/) {}
-    void Http3Client::OnModification(int /*fd*/,
-                                     int /*event_mask*/) {}
-    void Http3Client::OnUnregistration(int /*fd*/,
-                                       bool /*replaced*/) {}
-    void Http3Client::OnShutdown(QuicEpollServer * /*eps*/,
-                                 int /*fd*/) {}
-
-    void Http3Client::OnEvent(int fd, QuicEpollEvent *event)
+    void Http3Client::OnSocketEvent(QuicEventLoop *event_loop, QuicUdpSocketFd fd,
+                                    QuicSocketEventMask events)
     {
-        event->out_ready_mask = 0; // special
-        if (event->in_events & UV_READABLE)
+        if (events & kSocketEventReadable)
         {
-            QUIC_DVLOG(1) << "Read packets on UV_READABLE";
-            int times_to_read = max_reads_per_epoll_loop_;
+            QUIC_DVLOG(1) << "Read packets on kSocketEventReadable";
+            int times_to_read = max_reads_per_loop_;
             bool more_to_read = true;
             QuicPacketCount packets_dropped = 0;
             while (connected() && more_to_read && times_to_read > 0)
@@ -911,27 +881,44 @@ namespace quic
             }
             if (connected() && more_to_read)
             {
-                event->out_ready_mask |= UV_READABLE;
+                // Register EPOLLIN event to consume buffered CHLO(s).
+                bool success =
+                    event_loop->ArtificiallyNotifyEvent(fd, kSocketEventReadable);
+                QUICHE_DCHECK(success);
+            } 
+            if (!event_loop->SupportsEdgeTriggered())
+            {
+                bool success = event_loop->RearmSocket(fd, kSocketEventReadable);
+                QUICHE_DCHECK(success);
             }
         }
-        if (connected() && (event->in_events & UV_WRITABLE))
+        bool writeblocked = false;
+        if (connected() && (events & kSocketEventWritable))
         {
             writer_->SetWritable();
             session_->connection()->OnCanWrite();
             if (writer_->IsWriteBlocked())
             {
-                event->out_ready_mask |= UV_WRITABLE;
+                writeblocked = true;           
             }
         }
 
         if (handleConnecting())
         {
-            event->out_ready_mask |= UV_READABLE; // please visit us again
+            bool success =
+                event_loop->ArtificiallyNotifyEvent(fd, kSocketEventReadable);
+            QUICHE_DCHECK(success);
         }
-        /*  if (event->in_events & EPOLLERR)
-          {
-              QUIC_DLOG(INFO) << "Epollerr";
-          } */
+        if (writer_->IsWriteBlocked())
+        {
+             writeblocked = true;           
+        }
+        if (!event_loop->SupportsEdgeTriggered() && writeblocked)
+        {
+            bool success = event_loop->RearmSocket(fd, kSocketEventWritable);
+            QUICHE_DCHECK(success);
+            
+        }
     }
 
     void Http3Client::ProcessPacket(
@@ -1395,7 +1382,7 @@ namespace quic
             }
 
             std::unique_ptr<QuicConnectionHelperInterface> helper =
-                std::make_unique<QuicEpollConnectionHelper>(eventloop->getEpollServer(), QuicAllocator::SIMPLE);
+                std::make_unique<QuicDefaultConnectionHelper>();
 
             std::unique_ptr<ChromiumWebTransportFingerprintProofVerifier> verifier;
 

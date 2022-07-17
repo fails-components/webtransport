@@ -1,0 +1,46 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Windows Automated build and client/server unit tests
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build-windows:
+    # The type of runner that the job will run on
+    runs-on: windows-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Install missing software
+        run: choco install openssl nasm -yv
+      
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive    
+        
+      - name: Set up NodeJS
+        uses: actions/setup-node@v1
+        with:
+          node-version: 16
+        
+      - name: Install dependencies and build library
+        run: npm install
+        
+      - name: Run unit tests
+        run: | 
+          $env:NODE_ENV="production"
+          $env:OPENSSL_ROOT_DIR="C:/Program Files/OpenSSL"
+          npm test
+

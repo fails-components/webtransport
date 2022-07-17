@@ -1,7 +1,9 @@
 !["FAILS logo"](failslogo.svg)
 # Fancy automated internet lecture system (**FAILS**) - components (Webtransport module)
 
-Tests on master ![master](https://github.com/fails-components/webtransport/actions/workflows/libtest.yml/badge.svg?branch=master)
+Linux tests on master ![master](https://github.com/fails-components/webtransport/actions/workflows/libtest-linux.yml/badge.svg?branch=master)
+
+Windows tests on master ![master](https://github.com/fails-components/webtransport/actions/workflows/libtest-windows.yml/badge.svg?branch=master)
 
 (c) 2022- Marten Richter
 
@@ -38,10 +40,13 @@ In case of github packages, please add to your `.npmrc` file
 In this case you need to be authenticated against github.
 
 If you are running the install as root, you need to use `--unsafe-perm` as flag.
-Installing the package requires a full building environment including clang-9, perl6, golang,  ninja-build and protobuf-compiler and protobuf headers. See the `Dockerfile` or `Dockerfile.development` for required debian packages. 
-This should work for linux and Mac OS X. Windows is currently not supported, since cmake.js only works with msvc and some libraries require clang, I recommend a Docker container instead. Of course,  PR for patches and for compiling instructions and necessary changes are welcome for all possible environments. 
+Installing the package requires a full building environment including clang-9, perl6, python, golang,  ninja-build, icu. See the `Dockerfile` or `Dockerfile.development` for required debian packages. 
+This should work for linux and Mac OS X. 
+(You may want to check out the building dependencies (especially for windows) for BoringSSl, zlib, abseil on their respective websites).
 
-Warning the build time takes more than 10 minutes!
+ Of course,  PR for patches and for compiling instructions and necessary changes are welcome for all possible environments. 
+
+** Warning the build time takes more than 15 minutes, on windows even longer! (Due to the building of the third party libraries). **
 
 In the directory `test` you find a simple echo server code. That answers to a series of WebTransport echos. Furthermore some example browser code and finally a unit test of the library including certificate generation. 
 
