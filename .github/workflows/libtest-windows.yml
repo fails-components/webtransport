@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: Automated build and client/server unit tests windows
+name: Windows Automated build and client/server unit tests
 
 # Controls when the workflow will run
 on:
@@ -37,6 +37,7 @@ jobs:
         
       - name: Run unit tests
         run: | 
-          $env:NODE_ENV="production" 
+          $env:NODE_ENV="production"
+          $env:OPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64"
           npm test
 
