@@ -12,25 +12,40 @@
 #include "src/http3eventloop.h"
 #include "src/http3dispatcher.h"
 #include "src/http3wtsessionvisitor.h"
-#include "quiche/quic/core/quic_epoll_alarm_factory.h"
-#include "quiche/quic/core/quic_epoll_connection_helper.h"
 #include "quiche/quic/tools/quic_simple_crypto_server_stream_helper.h"
-#include "quiche/quic/core/quic_epoll_clock.h"
 #include "quiche/quic/core/crypto/proof_source_x509.h"
 #include "quiche/common/platform/api/quiche_reference_counted.h"
+#include "quiche/quic/core/quic_default_clock.h"
+#include "quiche/quic/bindings/quic_libevent.h"
 
 using namespace Nan;
 
 namespace quic
 {
 
+  
+#ifdef WIN32
+
+bool initSockets();
+bool destroySockets();
+
+#endif
+
+  // hack since the header is faulty
+  QUICHE_NO_EXPORT QuicEventLoopFactory *GetDefaultEventLoop();
+
+  static const int kErrorBufferSize = 256;
+
   const size_t kNumSessionsToCreatePerSocketEvent = 16;
 
   Http3EventLoop::Http3EventLoop(Callback *cbeventloop, Callback *cbtransport, Callback *cbstream, Callback *cbsession)
-      : AsyncProgressQueueWorker(cbeventloop), cbtransport_(cbtransport), 
-        progress_(nullptr), cbstream_(cbstream), cbsession_(cbsession)
+      : AsyncProgressQueueWorker(cbeventloop), cbtransport_(cbtransport),
+        progress_(nullptr), cbstream_(cbstream), cbsession_(cbsession),
+        quic_event_loop_(GetDefaultEventLoop()->Create(QuicDefaultClock::Get()))
   {
-    epoll_server_.SetAsyncCallback(this);
+#ifdef WIN32
+    initSockets();
+#endif
   }
 
   Http3EventLoop::~Http3EventLoop()
@@ -39,6 +54,9 @@ namespace quic
     delete cbstream_;
     delete cbsession_;
     delete cbtransport_;
+#ifdef WIN32
+    destroySockets();
+#endif
   }
 
   NAN_MODULE_INIT(Http3EventLoop::Init)
@@ -112,18 +130,15 @@ namespace quic
     loop_running_ = true;
     while (loop_running_)
     {
-      epoll_server_.WaitForEventsAndExecuteCallbacks();
+      // Note QuicTime::Delta::Infinite() causes a busy loop.  
+      quic_event_loop_->RunEventLoopOnce(QuicTime::Delta::FromSeconds(5)); 
+      ExecuteScheduledActions();
     }
     printf("event loop exited\n");
     progress_ = nullptr;
-    epoll_server_.Shutdown();
     Unref();
   }
 
-  void Http3EventLoop::OnAsyncExecution()
-  {
-    ExecuteScheduledActions();
-  }
 
   void Http3EventLoop::ExecuteScheduledActions()
   {
@@ -144,7 +159,7 @@ namespace quic
     // QUICHE_DCHECK(!quit_.HasBeenNotified());
     QuicWriterMutexLock lock(&scheduled_actions_lock_);
     scheduled_actions_.push_back(std::move(action));
-    epoll_server_.TriggerAsync();
+    dynamic_cast<LibeventQuicEventLoop *>(quic_event_loop_.get())->WakeUp();
   }
 
   void Http3EventLoop::informAboutStream(bool incom, bool bidir, Http3WTSession *sessionobj, Http3WTStream *stream)
@@ -219,7 +234,6 @@ namespace quic
     report.nettask = task;
     if (progress_)
       progress_->Send(&report, 1);
-
   }
 
   void Http3EventLoop::informAboutStreamReset(Http3WTStream *streamobj)
@@ -260,7 +274,7 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::informUnref(LifetimeHelper * obj)
+  void Http3EventLoop::informUnref(LifetimeHelper *obj)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::Unref;
@@ -338,13 +352,13 @@ namespace quic
     delete sdata;
   }
 
-  void Http3EventLoop::processClientConnected(Http3Client * clientobj, bool success)
+  void Http3EventLoop::processClientConnected(Http3Client *clientobj, bool success)
   {
     HandleScope scope;
 
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("ClientConnected").ToLocalChecked();
-   
+
     v8::Local<v8::String> successProp = Nan::New("success").ToLocalChecked();
     v8::Local<v8::Boolean> successVal = Nan::New(success);
 
@@ -359,7 +373,6 @@ namespace quic
 
     v8::Local<v8::Value> argv[] = {retObj};
     Nan::Call(*cbtransport_, 1, argv);
-
   }
 
   void Http3EventLoop::processClientWebtransportSupport(Http3Client *clientobj)
@@ -368,7 +381,7 @@ namespace quic
 
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("ClientWebtransportSupport").ToLocalChecked();
-   
+
     v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
     v8::Local<v8::Object> objVal = clientobj->handle();
 
@@ -379,7 +392,6 @@ namespace quic
 
     v8::Local<v8::Value> argv[] = {retObj};
     Nan::Call(*cbtransport_, 1, argv);
-
   }
 
   void Http3EventLoop::processStream(bool incom, bool bidi, Http3WTSession *sessionobj, Http3WTStream *stream)
@@ -426,16 +438,23 @@ namespace quic
     std::string nettaskstr;
     switch (task)
     {
-      case NetworkTask::resetStream: {
-        nettaskstr = "resetStream";
-      } break;
-      case NetworkTask::stopSending: {
-        nettaskstr = "stopSending";
-      } break;
-      case NetworkTask::streamFinal: {
-        nettaskstr = "streamFinal";
-      } break;
-      default: return;
+    case NetworkTask::resetStream:
+    {
+      nettaskstr = "resetStream";
+    }
+    break;
+    case NetworkTask::stopSending:
+    {
+      nettaskstr = "stopSending";
+    }
+    break;
+    case NetworkTask::streamFinal:
+    {
+      nettaskstr = "streamFinal";
+    }
+    break;
+    default:
+      return;
     };
 
     v8::Local<v8::String> nettaskProp = Nan::New("nettask").ToLocalChecked();
@@ -533,21 +552,27 @@ namespace quic
     std::string nettaskstr;
     switch (task)
     {
-      case NetworkTask::resetStream: {
-        nettaskstr = "resetStream";
-      } break;
-      case NetworkTask::stopSending: {
-        nettaskstr = "stopSending";
-      } break;
-      case NetworkTask::streamFinal: {
-        nettaskstr = "streamFinal";
-      } break;
-      default: return;
+    case NetworkTask::resetStream:
+    {
+      nettaskstr = "resetStream";
+    }
+    break;
+    case NetworkTask::stopSending:
+    {
+      nettaskstr = "stopSending";
+    }
+    break;
+    case NetworkTask::streamFinal:
+    {
+      nettaskstr = "streamFinal";
+    }
+    break;
+    default:
+      return;
     };
 
     v8::Local<v8::String> nettaskProp = Nan::New("nettask").ToLocalChecked();
     v8::Local<v8::String> nettaskVal = Nan::New(nettaskstr).ToLocalChecked();
-
 
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
@@ -632,16 +657,13 @@ namespace quic
     Nan::Call(*cbtransport_, 1, argv);
   }
 
-  
-  void  Http3EventLoop::processNewClientSession(Http3Client *clientobj, Http3WTSession *session)
+  void Http3EventLoop::processNewClientSession(Http3Client *clientobj, Http3WTSession *session)
   {
     HandleScope scope;
 
-    
     v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
     v8::Local<v8::String> purposeVal = Nan::New("Http3WTSessionVisitor").ToLocalChecked();
     v8::Local<v8::String> sessProp = Nan::New("session").ToLocalChecked();
-
 
     v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
     v8::Local<v8::Object> objVal = clientobj->handle();
@@ -649,7 +671,8 @@ namespace quic
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
     retObj->Set(context, purposeProp, purposeVal).FromJust();
-    if (session != nullptr) {
+    if (session != nullptr)
+    {
       auto sessionobj = Http3WTSession::NewInstance(session);
       retObj->Set(context, sessProp, sessionobj).FromJust();
     }
@@ -717,7 +740,8 @@ namespace quic
       case Http3ProgressReport::ClientWebTransportSupport:
       {
         processClientWebtransportSupport(cur.clientobj);
-      } break;
+      }
+      break;
       case Http3ProgressReport::NewClientSession:
       {
         processNewClientSession(cur.clientobj, cur.session);
@@ -782,7 +806,8 @@ namespace quic
       case Http3ProgressReport::StreamNetworkFinish:
       {
         processStreamNetworkFinish(cur.streamobj, cur.nettask);
-      } break;
+      }
+      break;
       case Http3ProgressReport::DatagramReceived:
       {
         processDatagramReceived(cur.sessionobj, cur.para);
@@ -802,7 +827,7 @@ namespace quic
       case Http3ProgressReport::Unref:
       {
         cur.obj->doUnref();
-      } 
+      }
       break;
       };
       if (cur.para)
@@ -886,8 +911,8 @@ namespace quic
   bool Http3EventLoop::startEventLoopInt()
   {
 
-    Ref();                               // do not garbage collect
-    epoll_server_.set_timeout_in_us(-1); // negative values would mean wait forever
+    Ref(); // do not garbage collect
+    // epoll_server_.set_timeout_in_us(-1); // negative values would mean wait forever
     Nan::AsyncQueueWorker(this);
     return true;
   }
@@ -896,7 +921,6 @@ namespace quic
   {
     Http3EventLoop *obj = Nan::ObjectWrap::Unwrap<Http3EventLoop>(info.Holder());
     // got the object we can now start the server
-   
 
     if (!obj->startEventLoopInt())
     {
@@ -906,7 +930,7 @@ namespace quic
 
   bool Http3EventLoop::shutDownEventLoopInt()
   {
-        // FIXME kill the uv loop
+    // FIXME kill the uv loop
     std::function<void()> task = [this]()
     {
       loop_running_ = false;
@@ -917,7 +941,7 @@ namespace quic
 
   NAN_METHOD(Http3EventLoop::shutDownEventLoop)
   {
-     Http3EventLoop *obj = Nan::ObjectWrap::Unwrap<Http3EventLoop>(info.Holder());
+    Http3EventLoop *obj = Nan::ObjectWrap::Unwrap<Http3EventLoop>(info.Holder());
     // got the object we can now start the server
 
     if (!obj->shutDownEventLoopInt())

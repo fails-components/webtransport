@@ -12,10 +12,9 @@
 #include "src/http3wtsessionvisitor.h"
 #include "src/http3eventloop.h"
 #include "quiche/quic/core/quic_default_packet_writer.h"
-#include "quiche/quic/core/quic_epoll_alarm_factory.h"
-#include "quiche/quic/core/quic_epoll_connection_helper.h"
+#include "quiche/quic/core/quic_default_connection_helper.h"
+#include "quiche/quic/core/quic_default_clock.h"
 #include "quiche/quic/tools/quic_simple_crypto_server_stream_helper.h"
-#include "quiche/quic/core/quic_epoll_clock.h"
 #include "quiche/quic/core/crypto/proof_source_x509.h"
 #include "quiche/common/platform/api/quiche_reference_counted.h"
 
@@ -63,11 +62,7 @@ namespace quic
     overflow_supported_ = socket_api.EnableDroppedPacketCount(fd_);
     socket_api.EnableReceiveTimestamp(fd_);
 
-    sockaddr_storage addr = address.generic_address();
-    // @BENBENZ: fix on mac OSX (was needed or a EINVAL is returned) (from api::Bind in quic_udp_socket_posix.cc)
-    int addr_len = address.host().IsIPv4() ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
-    int rc = bind(fd_, reinterpret_cast<sockaddr *>(&addr), addr_len);
-    if (rc < 0)
+    if (!socket_api.Bind(fd_, address))
     {
       QUIC_LOG(ERROR) << "Bind failed: " << strerror(errno) << "\n";
       return false;
@@ -85,9 +80,10 @@ namespace quic
       port_ = address.port();
     }
 
-    const int kEpollFlags = UV_READABLE | UV_WRITABLE; // there is no analogue to EPOLLET in libuv hopefully not a problem
+    const int kEpollFlags = kSocketEventReadable | kSocketEventWritable;
 
-    eventloop_->getEpollServer()->RegisterFD(fd_, this, kEpollFlags);
+    eventloop_->getQuicEventLoop()->RegisterSocket(fd_, kEpollFlags, this);
+    // eventloop_->SetNonblocking(fd_); // eventuelly should be part of register socket.
     dispatcher_.reset(CreateQuicDispatcher());
     dispatcher_->InitializeWithWriter(new QuicDefaultPacketWriter(fd_));
 
@@ -97,7 +93,7 @@ namespace quic
   bool Http3Server::stopServerInt()
   {
 
-    eventloop_->getEpollServer()->UnregisterFD(fd_);
+    eventloop_->getQuicEventLoop()->UnregisterSocket(fd_);
 
     // if (!silent_close_) {
     //  Before we shut down the epoll server, give all active sessions a chance
@@ -105,7 +101,8 @@ namespace quic
     dispatcher_->Shutdown();
     //}
 
-    close(fd_);
+    QuicUdpSocketApi api;
+    api.Destroy(fd_);
     fd_ = -1;
     eventloop_->informUnref(this); // must be done on the other thread...
     return true;
@@ -116,12 +113,11 @@ namespace quic
     http3_server_backend_.setServer(this);
     return new Http3Dispatcher(
         &config_, &crypto_config_, &version_manager_,
-        std::unique_ptr<QuicEpollConnectionHelper>(new QuicEpollConnectionHelper(
-            eventloop_->getEpollServer(), QuicAllocator::BUFFER_POOL)),
+        std::unique_ptr<QuicDefaultConnectionHelper>(new QuicDefaultConnectionHelper()),
         std::unique_ptr<QuicCryptoServerStreamBase::Helper>(
             new QuicSimpleCryptoServerStreamHelper()),
-        std::unique_ptr<QuicEpollAlarmFactory>(
-            new QuicEpollAlarmFactory(eventloop_->getEpollServer())),
+        std::unique_ptr<QuicAlarmFactory>(
+            eventloop_->getQuicEventLoop()->CreateAlarmFactory()),
         &http3_server_backend_, expected_server_connection_id_length_);
   }
 
@@ -292,14 +288,14 @@ namespace quic
     return true;
   }
 
-  void Http3Server::OnEvent(int fd, QuicEpollEvent *event)
+  void Http3Server::OnSocketEvent(QuicEventLoop *event_loop, QuicUdpSocketFd fd,
+                                  QuicSocketEventMask events)
   {
     QUICHE_DCHECK_EQ(fd, fd_);
-    event->out_ready_mask = 0;
 
-    if (event->in_events & UV_READABLE)
+    if (events & kSocketEventReadable)
     {
-      QUIC_DVLOG(1) << "UV_READABLE";
+      QUIC_DVLOG(1) << "kSocketEventReadable";
 
       dispatcher_->ProcessBufferedChlos(kNumSessionsToCreatePerSocketEvent);
 
@@ -307,24 +303,34 @@ namespace quic
       while (more_to_read)
       {
         more_to_read = packet_reader_->ReadAndDispatchPackets(
-            fd_, port_, QuicEpollClock(eventloop_->getEpollServer()), dispatcher_.get(),
+            fd_, port_, *QuicDefaultClock::Get(), dispatcher_.get(),
             overflow_supported_ ? &packets_dropped_ : nullptr);
       }
 
       if (dispatcher_->HasChlosBuffered())
       {
-        // Register UV_READABLE event to consume buffered CHLO(s).
-        event->out_ready_mask |= UV_READABLE;
+        // Register EPOLLIN event to consume buffered CHLO(s).
+        bool success =
+            event_loop->ArtificiallyNotifyEvent(fd, kSocketEventReadable);
+        QUICHE_DCHECK(success);
+      }
+      if (!event_loop->SupportsEdgeTriggered())
+      {
+        bool success = event_loop->RearmSocket(fd, kSocketEventReadable);
+        QUICHE_DCHECK(success);
       }
     }
-    if (event->in_events & UV_WRITABLE)
+    if (events & kSocketEventWritable)
     {
       dispatcher_->OnCanWrite();
-      if (dispatcher_->HasPendingWrites())
+      if (!event_loop->SupportsEdgeTriggered() &&
+          dispatcher_->HasPendingWrites())
       {
-        event->out_ready_mask |= UV_WRITABLE;
+        bool success = event_loop->RearmSocket(fd, kSocketEventWritable);
+        QUICHE_DCHECK(success);
       }
     }
+    
   }
 
   NAN_METHOD(Http3Server::startServer)

@@ -30,7 +30,6 @@
 #include "quiche/quic/core/quic_framer.h"
 #include "quiche/quic/core/quic_packet_creator.h"
 #include "quiche/quic/core/quic_packets.h"
-#include "quiche/quic/platform/api/quic_epoll.h"
 #include "quiche/common/quiche_linked_hash_map.h"
 #include "quiche/quic/core/crypto/web_transport_fingerprint_proof_verifier.h"
 
@@ -44,7 +43,7 @@ namespace quic
     class Http3EventLoop;
 
     class Http3Client : public QuicSpdyStream::Visitor,
-                        public QuicEpollCallbackInterface,
+                        public QuicSocketEventListener,
                         public QuicClientPushPromiseIndex::Delegate,
                         public ProcessPacketInterface,
                         public Nan::ObjectWrap,
@@ -60,17 +59,10 @@ namespace quic
 
         ~Http3Client() override;
 
-        // From EpollCallbackInterface
-        std::string Name() const override { return "Http3Client"; }
+        // From OnRegistration
 
-        void OnRegistration(QuicEpollServer * /*eps*/,
-                            int /*fd*/,
-                            int /*event_mask*/) override;
-        void OnModification(int /*fd*/, int /*event_mask*/) override;
-        void OnEvent(int /*fd*/, QuicEpollEvent * /*event*/) override;
-        void OnUnregistration(int /*fd*/, bool /*replaced*/) override;
-
-        void OnShutdown(QuicEpollServer * /*eps*/, int /*fd*/) override;
+        void OnSocketEvent(QuicEventLoop* event_loop, QuicUdpSocketFd fd,
+                             QuicSocketEventMask events) override;
 
         // From ProcessPacketInterface. This will be called for each received
         // packet.
@@ -336,13 +328,15 @@ namespace quic
         bool HasActiveRequests();
 
         // Actually clean up |fd|.
-        void CleanUpUDPSocketImpl(int fd);
+        void CleanUpUDPSocketImpl(QuicUdpSocketFd fd);
 
         bool clientInitialize();
 
         bool HaveActiveStream();
 
         bool handleConnecting();
+
+        bool checkSession();
 
         // Read oldest received response and remove it from closed_stream_states_.
         // void ReadNextResponse();
@@ -512,7 +506,7 @@ namespace quic
         // HTTP/2 trailers from most recent response.
         std::string latest_response_trailers_;
 
-        int max_reads_per_epoll_loop_;
+        int max_reads_per_loop_;
 
         // Point to a QuicPacketReader object on the heap. The reader allocates more
         // space than allowed on the stack.

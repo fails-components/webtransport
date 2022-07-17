@@ -12,8 +12,6 @@
 #include "src/http3serversession.h"
 
 #include "absl/strings/string_view.h"
-#include "quiche/quic/core/quic_epoll_alarm_factory.h"
-#include "quiche/quic/core/quic_epoll_connection_helper.h"
 
 namespace quic {
 

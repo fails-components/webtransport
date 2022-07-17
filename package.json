@@ -11,10 +11,10 @@
   "scripts": {
     "start": "node test/echoserver.js",
     "test": "node test/test.js",
-    "install": "cmake-js build",
-    "rebuild": "cmake-js rebuild",
-    "rebuild-debug": "cmake-js rebuild -D",
-    "build-debug": "cmake-js build -D"
+    "install": "node build.js install",
+    "rebuild": "node build.js rebuild",
+    "rebuild-debug": "node build.js rebuild -D",
+    "build-debug": "node build.js build-debug"
   },
   "repository": {
     "type": "git",
@@ -37,7 +37,7 @@
   "devDependencies": {
     "@babel/core": "^7.17.10",
     "@babel/eslint-parser": "^7.17.0",
-    "cmake-js": "^6.3.0",
+    "cmake-js": "^6.3.2",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^7.2.0",
     "eslint-config-standard": "^16.0.2",

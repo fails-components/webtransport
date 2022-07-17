@@ -20,7 +20,7 @@
 #include "quiche/quic/core/quic_dispatcher.h"
 #include "quiche/quic/core/quic_packet_reader.h"
 #include "quiche/quic/platform/api/quic_socket_address.h"
-#include "quiche/quic/platform/api/quic_epoll.h"
+#include "quiche/quic/core/io/quic_default_event_loop.h"
 
 using namespace Nan;
 
@@ -31,13 +31,16 @@ namespace quic
     class Http3Client;
     class Http3WTSession;
     class Http3WTStream;
+    class Http3EventLoop;
 
-    class LifetimeHelper {
+    class LifetimeHelper
+    {
     public:
         virtual void doUnref() = 0;
     };
 
-    enum NetworkTask {
+    enum NetworkTask
+    {
         resetStream,
         stopSending,
         streamFinal
@@ -69,13 +72,14 @@ namespace quic
             DatagramBufferFree,
             Unref
         } type;
-        union { // always the originating obj
+        union
+        { // always the originating obj
             Http3WTStream *streamobj;
             Http3WTSession *sessionobj;
             Http3Server *serverobj;
             Http3Client *clientobj;
-            LifetimeHelper * obj;
-        }; 
+            LifetimeHelper *obj;
+        };
         union
         {
             WebTransportSessionError wtecode;
@@ -83,8 +87,8 @@ namespace quic
         };
         union
         {
-            Http3WTStream *stream;       // unowned
-            Http3WTSession *session;     // unowned
+            Http3WTStream *stream;                     // unowned
+            Http3WTSession *session;                   // unowned
             Nan::Persistent<v8::Object> *bufferhandle; // we own it and must delete it if present
             bool fin;
             WebTransportStreamError wtscode;
@@ -97,9 +101,8 @@ namespace quic
         std::string *para = nullptr; // for session, we own it, and must delete it
     };
 
-    class Http3EventLoop :  public epoll_server::LibuvEpollAsyncCallbackInterface,
-                         public AsyncProgressQueueWorker<Http3ProgressReport>, // may be replace char later
-                        public Nan::ObjectWrap
+    class Http3EventLoop : public AsyncProgressQueueWorker<Http3ProgressReport>, // may be replace char later
+                           public Nan::ObjectWrap
     {
     public:
         Http3EventLoop(Callback *cbeventloop, Callback *callback, Callback *cbstream, Callback *cbsession);
@@ -111,7 +114,6 @@ namespace quic
 
         static NAN_MODULE_INIT(Init);
 
-
         void Execute(const AsyncProgressQueueWorker::ExecutionProgress &progress);
 
         // call into javascript, if necessary
@@ -120,11 +122,8 @@ namespace quic
         // Server deletion is imminent.  Start cleaning up the epoll server.
         void Destroy() override;
 
-        QuicEpollServer *getEpollServer() {return &epoll_server_;};
+        QuicEventLoop *getQuicEventLoop() { return quic_event_loop_.get(); };
 
-
-
-        void OnAsyncExecution() override;
 
         void informAboutClientConnected(Http3Client *client, bool success);
         void informClientWebtransportSupport(Http3Client *client);
@@ -145,18 +144,14 @@ namespace quic
         void informDatagramBufferFree(Nan::Persistent<v8::Object> *bufferhandle);
         void informDatagramSend(Http3WTSession *sessionobj);
 
-        void informUnref(LifetimeHelper * obj);
+        void informUnref(LifetimeHelper *obj);
 
         void Schedule(std::function<void()> action);
-
-        int64_t NowInUsec() const {return epoll_server_.NowInUsec();} // remove later
-
 
     private:
         static NAN_METHOD(New);
         static NAN_METHOD(startEventLoop);
         static NAN_METHOD(shutDownEventLoop);
-
 
         static void freeData(char *data, void *hint);
 
@@ -172,16 +167,14 @@ namespace quic
         quiche::QuicheCircularDeque<std::function<void()>> scheduled_actions_
             QUIC_GUARDED_BY(scheduled_actions_lock_);
 
-
         QuicPacketCount packets_dropped_;
-        QuicEpollServer epoll_server_;
+        std::unique_ptr<QuicEventLoop> quic_event_loop_;
 
-        void processClientConnected(Http3Client * clientobj, bool success);
+        void processClientConnected(Http3Client *clientobj, bool success);
         void processClientWebtransportSupport(Http3Client *client);
         void processNewClientSession(Http3Client *client, Http3WTSession *session);
-        
 
-        void processNewSession(Http3Server * serverobj, Http3WTSession *session, const std::string &path);
+        void processNewSession(Http3Server *serverobj, Http3WTSession *session, const std::string &path);
         void processSessionClose(Http3WTSession *sessionobj, uint32_t errorcode, const std::string &path);
         void processSessionReady(Http3WTSession *sessionobj);
 
@@ -201,13 +194,12 @@ namespace quic
 
         const AsyncProgressQueueWorker::ExecutionProgress *progress_;
 
-        Callback *cbstream_; 
-        Callback *cbsession_; 
-        Callback *cbtransport_; 
+        Callback *cbstream_;
+        Callback *cbsession_;
+        Callback *cbtransport_;
 
         bool loop_running_;
     };
-
 }
 
 #endif

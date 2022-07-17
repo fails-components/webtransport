@@ -27,17 +27,14 @@ async function run() {
     { shortName: 'O', value: 'WebTransport Test Server' },
     { shortName: 'CN', value: '127.0.0.1' }
   ]
-  let certificate
 
-  certificate = await generateWebTransportCertificate(attrs, {
+  const certificate = await generateWebTransportCertificate(attrs, {
     days: 13
   })
 
   console.log('start Http3Server and startup echo tests')
   // now ramp up the server
-  let http3server
-
-  http3server = new Http3Server({
+  const http3server = new Http3Server({
     port: 8080,
     host: '127.0.0.1',
     secret: 'mysecret',

@@ -1,5 +1,5 @@
 {
-  "parser": "babel-eslint",
+  "parser": "@babel/eslint-parser",
   "extends": [
     "standard",
     "plugin:prettier/recommended",
@@ -13,7 +13,8 @@
     "ecmaFeatures": {
       "legacyDecorators": true,
       "jsx": true
-    }
+    },
+   "requireConfigFile": false
   },
   "settings": {
     "react": {
