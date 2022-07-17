@@ -25,8 +25,7 @@ jobs:
       - name: Find openssl
         run: |
           ls "C:/"
-          ls "C:/Program Files"
-          exit -1
+          ls "C:/Program Files/OpenSSL"
       
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
@@ -44,6 +43,6 @@ jobs:
       - name: Run unit tests
         run: | 
           $env:NODE_ENV="production"
-          $env:OPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64"
+          $env:OPENSSL_ROOT_DIR="C:/Program Files/OpenSSL"
           npm test
 
