@@ -17,7 +17,7 @@ async function run() {
       console.log('global event loop gone, everything alright')
       process.exit(0)
     }
-  }, 50 * 1000)
+  }, 40 * 1000)
   console.log('start generating self signed certificate')
 
   const attrs = [

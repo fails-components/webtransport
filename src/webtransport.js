@@ -242,47 +242,49 @@ class Http3WTStream {
   }
 
   static callback(args) {
-    // console.log('Stream callback called', args)
-    if (!args || !args.object || !args.object.jsobj)
-      throw new Error('Stream callback without jsobj')
-    const visitor = args.object.jsobj
-    if (args.purpose) {
-      switch (args.purpose) {
-        case 'StreamRecvSignal':
-          {
-            visitor.onStreamRecvSignal(args)
-          }
-          break
-        case 'StreamRead':
-          {
-            if (visitor && args.hasOwnProperty('data')) {
-              visitor.onStreamRead(args)
-            } else {
-              console.log('Stream callback called', visitor, args)
-              throw new Error('Malformed StreamRead')
+    setImmediate(() => {
+      // console.log('Stream callback called', args)
+      if (!args || !args.object || !args.object.jsobj)
+        throw new Error('Stream callback without jsobj')
+      const visitor = args.object.jsobj
+      if (args.purpose) {
+        switch (args.purpose) {
+          case 'StreamRecvSignal':
+            {
+              visitor.onStreamRecvSignal(args)
             }
+            break
+          case 'StreamRead':
+            {
+              if (visitor && args.hasOwnProperty('data')) {
+                visitor.onStreamRead(args)
+              } else {
+                console.log('Stream callback called', visitor, args)
+                throw new Error('Malformed StreamRead')
+              }
+            }
+            break
+          case 'StreamWrite':
+            {
+              visitor.onStreamWrite(args)
+            }
+            break
+          case 'StreamReset':
+            {
+              visitor.onStreamReset(args)
+            }
+            break
+          case 'StreamNetworkFinish':
+            {
+              visitor.onStreamNetworkFinish(args)
+            }
+            break
+          default: {
+            throw new Error('unknown purpose Streamcb')
           }
-          break
-        case 'StreamWrite':
-          {
-            visitor.onStreamWrite(args)
-          }
-          break
-        case 'StreamReset':
-          {
-            visitor.onStreamReset(args)
-          }
-          break
-        case 'StreamNetworkFinish':
-          {
-            visitor.onStreamNetworkFinish(args)
-          }
-          break
-        default: {
-          throw new Error('unknown purpose Streamcb')
         }
-      }
-    } else throw new Error('no purpose Streamcb')
+      } else throw new Error('no purpose Streamcb')
+    })
   }
 }
 
@@ -522,51 +524,53 @@ class Http3WTSession {
   }
 
   static callback(args) {
-    // console.log('Session callback called', args)
-    if (!args || !args.object || !args.object.jsobj)
-      throw new Error('Session callback without jsobj')
-    const visitor = args.object.jsobj
-    if (args.purpose) {
-      switch (args.purpose) {
-        case 'SessionReady':
-          {
-            visitor.onReady()
-          }
-          break
-        case 'SessionClose':
-          {
-            visitor.onClose(args.errorcode, args.error)
-          }
-          break
-        case 'DatagramReceived':
-          {
-            if (visitor && args.hasOwnProperty('datagram'))
-              visitor.onDatagramReceived(args)
-          }
-          break
-        case 'DatagramSend':
-          {
-            if (visitor) visitor.onDatagramSend(args)
-          }
-          break
-        case 'Http3WTStreamVisitor':
-          {
-            if (
-              visitor &&
-              args.hasOwnProperty('bidirectional') &&
-              args.hasOwnProperty('incoming')
-            ) {
-              visitor.onStream(args)
-            } else throw new Error('Malformed Http3WTStreamVisitor')
-          }
-          break
-        default:
-          {
-            throw new Error('unknown purpose Sessioncb')
-          }
-          break
-      }
-    } else throw new Error('no purpose Sessioncb')
+    setImmediate(() => {
+      // console.log('Session callback called', args)
+      if (!args || !args.object || !args.object.jsobj)
+        throw new Error('Session callback without jsobj')
+      const visitor = args.object.jsobj
+      if (args.purpose) {
+        switch (args.purpose) {
+          case 'SessionReady':
+            {
+              visitor.onReady()
+            }
+            break
+          case 'SessionClose':
+            {
+              visitor.onClose(args.errorcode, args.error)
+            }
+            break
+          case 'DatagramReceived':
+            {
+              if (visitor && args.hasOwnProperty('datagram'))
+                visitor.onDatagramReceived(args)
+            }
+            break
+          case 'DatagramSend':
+            {
+              if (visitor) visitor.onDatagramSend(args)
+            }
+            break
+          case 'Http3WTStreamVisitor':
+            {
+              if (
+                visitor &&
+                args.hasOwnProperty('bidirectional') &&
+                args.hasOwnProperty('incoming')
+              ) {
+                visitor.onStream(args)
+              } else throw new Error('Malformed Http3WTStreamVisitor')
+            }
+            break
+          default:
+            {
+              throw new Error('unknown purpose Sessioncb')
+            }
+            break
+        }
+      } else throw new Error('no purpose Sessioncb')
+    })
   }
 }
 
@@ -585,17 +589,19 @@ class Http3WebTransport {
   }
 
   static transportCallback(args) {
-    // console.log('incoming callback transport', args)
-    if (!args || !args.object || !args.object.jsobj)
-      throw new Error('Transport callback without jsobj')
-    const visitor = args.object.jsobj
-    if (args.purpose) {
-      if (visitor.customCallback) {
-        visitor.customCallback(args)
-      } else {
-        throw new Error('unknown purpose')
+    setImmediate(() => {
+      // console.log('incoming callback transport', args)
+      if (!args || !args.object || !args.object.jsobj)
+        throw new Error('Transport callback without jsobj')
+      const visitor = args.object.jsobj
+      if (args.purpose) {
+        if (visitor.customCallback) {
+          visitor.customCallback(args)
+        } else {
+          throw new Error('unknown purpose')
+        }
       }
-    }
+    })
   }
 }
 
