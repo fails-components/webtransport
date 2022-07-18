@@ -418,6 +418,7 @@ namespace quic
         if (!CreateUDPSocketAndBind(server_address_,
                                     bind_to_address_, local_port_))
         {
+            eventloop_->informAboutClientConnected(this, false);
             return false;
         }
 
@@ -1279,6 +1280,7 @@ namespace quic
             std::string privkey;
             std::string hostname = "localhost";
             int local_port = 0;
+            bool forceipv6 = false;
 
             v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
 
@@ -1293,6 +1295,7 @@ namespace quic
                 v8::Local<v8::String> portProp = Nan::New("port").ToLocalChecked();
                 v8::Local<v8::String> hostnameProp = Nan::New("hostname").ToLocalChecked();
                 v8::Local<v8::String> localPortProp = Nan::New("localPort").ToLocalChecked();
+                v8::Local<v8::String> ipv6Prop = Nan::New("forceIpv6").ToLocalChecked();
                 if (!obj.IsEmpty())
                 {
 
@@ -1300,6 +1303,12 @@ namespace quic
                     {
                         v8::Local<v8::Value> poolValue = Nan::Get(lobj, poolProp).ToLocalChecked();
                         allowPooling = Nan::To<bool>(poolValue).FromJust();
+                    }
+
+                    if (Nan::HasOwnProperty(lobj, ipv6Prop).FromJust() && !Nan::Get(lobj, ipv6Prop).IsEmpty())
+                    {
+                        v8::Local<v8::Value> ipv6Value = Nan::Get(lobj, ipv6Prop).ToLocalChecked();
+                        forceipv6 = Nan::To<bool>(ipv6Value).FromJust();
                     }
 
                     if (Nan::HasOwnProperty(lobj, portProp).FromJust() && !Nan::Get(lobj, portProp).IsEmpty())
@@ -1413,24 +1422,18 @@ namespace quic
 
             addrinfo hint;
             memset(&hint, 0, sizeof(hint));
-            hint.ai_family = AF_INET6;
+            hint.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
+            if (forceipv6) hint.ai_family = AF_INET6 ;
             hint.ai_protocol = IPPROTO_UDP;
 
             addrinfo *info_list = nullptr;
             int result = getaddrinfo(hostname.c_str(), port.c_str(), &hint, &info_list);
             if (result != 0)
             {
-                QUIC_LOG(ERROR) << "Failed to look up via ipv6" << hostname << ": "
+                QUIC_LOG(ERROR) << "Failed to look up " << hostname << ": "
                                 << gai_strerror(result);
                 info_list = nullptr;
-                hint.ai_family = AF_INET;
-                int result = getaddrinfo(hostname.c_str(), port.c_str(), &hint, &info_list);
-                if (result != 0)
-                {
-                    QUIC_LOG(ERROR) << "Failed to look up via ipv4" << hostname << ": "
-                                    << gai_strerror(result);
-                    return Nan::ThrowError("URL host lookup failed");
-                }
+                return Nan::ThrowError("URL host lookup failed");
             }
 
             QUICHE_CHECK(info_list != nullptr);
