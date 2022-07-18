@@ -5,6 +5,8 @@ Linux tests on master ![master](https://github.com/fails-components/webtransport
 
 Windows tests on master ![master](https://github.com/fails-components/webtransport/actions/workflows/libtest-windows.yml/badge.svg?branch=master)
 
+Macos tests on master ![master](https://github.com/fails-components/webtransport/actions/workflows/libtest-macos.yml/badge.svg?branch=master)
+
 (c) 2022- Marten Richter
 
 This package is part of FAILS.
