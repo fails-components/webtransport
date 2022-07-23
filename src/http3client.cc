@@ -80,6 +80,11 @@ namespace quic
                QuicUtils::StreamIdDelta(version) * num;
     }
 
+    Http3ClientJS::Http3ClientJS(Http3Client *client) : client_(client)
+    {
+        client->setJS(this);
+    }
+
     Http3Client::Http3Client(Http3EventLoop *eventloop,
                              QuicSocketAddress server_address, const std::string &server_hostname,
                              int local_port,
@@ -101,6 +106,7 @@ namespace quic
           supported_versions_({ParsedQuicVersion::RFCv1()}),
           initial_max_packet_length_(0),
           num_sent_client_hellos_(0),
+          js_(nullptr),
           connection_error_(QUIC_NO_ERROR),
           connected_or_attempting_connect_(false),
           server_connection_id_length_(kQuicDefaultConnectionIdLength),
@@ -139,7 +145,7 @@ namespace quic
 
         CleanUpAllUDPSockets();
 
-        eventloop_->informUnref(this);
+        eventloop_->informUnref(this->getJS());
         return true;
     }
 
@@ -648,7 +654,8 @@ namespace quic
                     {
                         // ok we have our session, do we wait for session ready, no set visitor immediatele
                         Http3WTSession *wtsessionobj =
-                            new Http3WTSession(
+                            new Http3WTSession();
+                        wtsessionobj->init(
                                 static_cast<WebTransportSession *>(wtsession),
                                 eventloop_);
                         eventloop_->informNewClientSession(this, wtsessionobj);
@@ -1269,7 +1276,7 @@ namespace quic
         latest_created_stream_ = nullptr;
     }
 
-    NAN_METHOD(Http3Client::New)
+    NAN_METHOD(Http3ClientJS::New)
     {
         if (info.IsConstructCall())
         {
@@ -1441,19 +1448,20 @@ namespace quic
                                                                             freeaddrinfo);
             address = QuicSocketAddress(info_list->ai_addr, info_list->ai_addrlen);
 
-            Http3Client *object = new Http3Client(eventloop, address, hostname, local_port,
+            Http3Client *objectcl = new Http3Client(eventloop, address, hostname, local_port,
                                                   std::move(verifier), std::move(cache), std::move(helper));
-            object->SetUserAgentID("fails-components/webtransport");
+            objectcl->SetUserAgentID("fails-components/webtransport");
+            Http3ClientJS *object = new Http3ClientJS(objectcl);
             object->Wrap(info.This());
             info.GetReturnValue().Set(info.This());
 
             object->Ref(); // do not garbage collect
 
-            std::function<void()> task = [object]()
+            std::function<void()> task = [objectcl]()
             {
-                object->Connect();
+                objectcl->Connect();
             };
-            object->eventloop_->Schedule(task);
+            objectcl->eventloop_->Schedule(task);
         }
         else
         {
@@ -1465,9 +1473,10 @@ namespace quic
                 info.GetReturnValue().Set(instance.ToLocalChecked());
         }
     }
-    NAN_METHOD(Http3Client::openWTSession)
+    NAN_METHOD(Http3ClientJS::openWTSession)
     {
-        Http3Client *obj = Nan::ObjectWrap::Unwrap<Http3Client>(info.Holder());
+        Http3ClientJS *objjs = Nan::ObjectWrap::Unwrap<Http3ClientJS>(info.Holder());
+        Http3Client *obj = objjs->getObj();
         // got the object we can now start the server
 
         v8::Isolate *isolate = info.GetIsolate();
@@ -1486,9 +1495,10 @@ namespace quic
             return Nan::ThrowError("openWTSession without path");
     }
 
-    NAN_METHOD(Http3Client::closeClient)
+    NAN_METHOD(Http3ClientJS::closeClient)
     {
-        Http3Client *obj = Nan::ObjectWrap::Unwrap<Http3Client>(info.Holder());
+        Http3ClientJS *objjs = Nan::ObjectWrap::Unwrap<Http3ClientJS>(info.Holder());
+        Http3Client *obj = objjs->getObj();
         // got the object we can now start the server
         std::function<void()> task = [obj]()
         {

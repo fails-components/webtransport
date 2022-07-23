@@ -29,8 +29,45 @@ namespace quic
 
     class Http3EventLoop;
 
-    class Http3Server : public QuicSocketEventListener, public Nan::ObjectWrap, public LifetimeHelper
+    class Http3Server;
+
+    class Http3ServerJS : public Nan::ObjectWrap,
+                          public LifetimeHelper
     {
+    public:
+        Http3ServerJS(Http3Server *server);
+
+        Http3Server *getObj()
+        {
+            return server_.get();
+        }
+
+        static NAN_METHOD(New);
+
+        static NAN_METHOD(startServer);
+
+        static NAN_METHOD(stopServer);
+
+        static NAN_METHOD(addPath);
+
+        static inline Nan::Persistent<v8::Function> &constructor()
+        {
+            static Nan::Persistent<v8::Function> my_constructor;
+            return my_constructor;
+        }
+
+        void doUnref() override
+        {
+            Unref();
+        }
+    protected:
+        std::unique_ptr<Http3Server> server_;
+    };
+
+    class Http3Server : public QuicSocketEventListener
+    {        
+        friend class Http3ServerJS;
+
     public:
         Http3Server(Http3EventLoop *eventloop, std::string host, int port,
                     std::unique_ptr<ProofSource> proof_source,
@@ -51,28 +88,15 @@ namespace quic
         void OnSocketEvent(QuicEventLoop* event_loop, QuicUdpSocketFd fd,
                              QuicSocketEventMask events) override;
 
-        static NAN_METHOD(New);
-
-        static NAN_METHOD(startServer);
-
-        static NAN_METHOD(stopServer);
-
-        static NAN_METHOD(addPath);
-
-        static inline Nan::Persistent<v8::Function> &constructor()
-        {
-            static Nan::Persistent<v8::Function> my_constructor;
-            return my_constructor;
-        }
-
-        void doUnref() override
-        {
-            Unref();
-        }
+        
+        Http3ServerJS * getJS() {return js_;};
 
     private:
         bool startServerInt();
         bool stopServerInt();
+
+        void setJS(Http3ServerJS * js) {js_ = js;};
+        Http3ServerJS *js_;
 
         QuicUdpSocketFd fd_;
         bool overflow_supported_;

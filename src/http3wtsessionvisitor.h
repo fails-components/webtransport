@@ -33,14 +33,22 @@ namespace quic
     class Http3WTSession : public Nan::ObjectWrap,  public LifetimeHelper
     {
     public:
-        Http3WTSession(WebTransportSession *session, Http3EventLoop *eventloop)
-            : session_(session), eventloop_(eventloop), ordBidiStreams(0), ordUnidiStreams(0), allocator_(eventloop)
+        Http3WTSession()
+            : ordBidiStreams(0), ordUnidiStreams(0), session_(nullptr), eventloop_(nullptr)
         {
         }
 
         ~Http3WTSession()
         {
             // printf("session destruct %x\n", this);
+        }
+
+        // need to be called immediately after new
+        void init(WebTransportSession *session, Http3EventLoop *eventloop)
+        {
+            session_ = session;
+            eventloop_ = eventloop;
+            allocator_ = std::make_unique<DatagramAllocator>(eventloop);
         }
 
         class Visitor : public WebTransportVisitor
@@ -70,7 +78,8 @@ namespace quic
                     {
                         return;
                     }
-                    Http3WTStream *wtstream = new Http3WTStream(stream, session_->eventloop_);
+                    Http3WTStream *wtstream = new Http3WTStream();
+                    wtstream->init(stream, session_->eventloop_);
                     QUIC_DVLOG(1)
                         << "Http3WTSession received a bidirectional stream "
                         << stream->GetStreamId();
@@ -92,7 +101,8 @@ namespace quic
                     {
                         return;
                     }
-                    Http3WTStream *wtstream = new Http3WTStream(stream, session_->eventloop_);
+                    Http3WTStream *wtstream = new Http3WTStream();
+                    wtstream->init(stream, session_->eventloop_);
                     QUIC_DVLOG(1)
                         << "Http3WTSession received a unidirectional stream";
                     stream->SetVisitor(
@@ -148,7 +158,8 @@ namespace quic
                 QUIC_DVLOG(1)
                     << "Http3WTSessionVisitor opens a bidirectional stream";
                 WebTransportStream *stream = session_->OpenOutgoingBidirectionalStream();
-                Http3WTStream *wtstream = new Http3WTStream(stream, eventloop_);
+                Http3WTStream *wtstream = new Http3WTStream();
+                wtstream->init(stream, eventloop_);
                 stream->SetVisitor(
                     std::make_unique<Http3WTStream::Visitor>(wtstream));
                 eventloop_->informAboutStream(false, true, this, static_cast<Http3WTStream *>(wtstream));
@@ -167,7 +178,8 @@ namespace quic
                 QUIC_DVLOG(1)
                     << "Http3WTSessionVisitor opened a unidirectional stream";
                 WebTransportStream *stream = session_->OpenOutgoingUnidirectionalStream();
-                Http3WTStream *wtstream = new Http3WTStream(stream, eventloop_);
+                Http3WTStream *wtstream = new Http3WTStream();
+                wtstream->init(stream, eventloop_);
                 stream->SetVisitor(
                     std::make_unique<Http3WTStream::Visitor>(wtstream));
 
@@ -321,16 +333,16 @@ namespace quic
                 eventloop_->informDatagramSend(this);
                 return;
             }
-            allocator_.registerBuffer(buffer, bufferhandle);
+            allocator_->registerBuffer(buffer, bufferhandle);
             auto ubuffer = quiche::QuicheUniqueBufferPtr(buffer,
-                                                         quiche::QuicheBufferDeleter(&allocator_));
+                                                         quiche::QuicheBufferDeleter(allocator_.get()));
 
             quiche::QuicheMemSlice slice(quiche::QuicheBuffer(std::move(ubuffer), len));
             session_->SendOrQueueDatagram(std::move(slice));
             eventloop_->informDatagramSend(this);
         }
         WebTransportSession *session_;
-        DatagramAllocator allocator_;
+        std::unique_ptr<DatagramAllocator> allocator_;
         bool echo_stream_opened_ = false;
         Http3EventLoop *eventloop_;
         uint32_t ordBidiStreams;

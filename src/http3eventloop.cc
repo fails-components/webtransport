@@ -70,22 +70,22 @@ bool destroySockets();
     Nan::Set(target, Nan::New("Http3EventLoop").ToLocalChecked(),
              Nan::GetFunction(tpl).ToLocalChecked());
 
-    v8::Local<v8::FunctionTemplate> tplsrv = Nan::New<v8::FunctionTemplate>(Http3Server::New);
+    v8::Local<v8::FunctionTemplate> tplsrv = Nan::New<v8::FunctionTemplate>(Http3ServerJS::New);
     tplsrv->SetClassName(Nan::New("Http3WebTransportServer").ToLocalChecked());
     tplsrv->InstanceTemplate()->SetInternalFieldCount(2);
-    Nan::SetPrototypeMethod(tplsrv, "startServer", Http3Server::startServer);
-    Nan::SetPrototypeMethod(tplsrv, "stopServer", Http3Server::stopServer);
-    Nan::SetPrototypeMethod(tplsrv, "addPath", Http3Server::addPath);
-    Http3Server::constructor().Reset(Nan::GetFunction(tplsrv).ToLocalChecked());
+    Nan::SetPrototypeMethod(tplsrv, "startServer", Http3ServerJS::startServer);
+    Nan::SetPrototypeMethod(tplsrv, "stopServer", Http3ServerJS::stopServer);
+    Nan::SetPrototypeMethod(tplsrv, "addPath", Http3ServerJS::addPath);
+    Http3ServerJS::constructor().Reset(Nan::GetFunction(tplsrv).ToLocalChecked());
     Nan::Set(target, Nan::New("Http3WebTransportServer").ToLocalChecked(),
              Nan::GetFunction(tplsrv).ToLocalChecked());
 
-    v8::Local<v8::FunctionTemplate> tplcl = Nan::New<v8::FunctionTemplate>(Http3Client::New);
+    v8::Local<v8::FunctionTemplate> tplcl = Nan::New<v8::FunctionTemplate>(Http3ClientJS::New);
     tplcl->SetClassName(Nan::New("Http3WebTransportClient").ToLocalChecked());
     tplcl->InstanceTemplate()->SetInternalFieldCount(2);
-    Nan::SetPrototypeMethod(tplcl, "openWTSession", Http3Client::openWTSession);
-    Nan::SetPrototypeMethod(tplcl, "closeClient", Http3Client::closeClient);
-    Http3Client::constructor().Reset(Nan::GetFunction(tplcl).ToLocalChecked());
+    Nan::SetPrototypeMethod(tplcl, "openWTSession", Http3ClientJS::openWTSession);
+    Nan::SetPrototypeMethod(tplcl, "closeClient", Http3ClientJS::closeClient);
+    Http3ClientJS::constructor().Reset(Nan::GetFunction(tplcl).ToLocalChecked());
     Nan::Set(target, Nan::New("Http3WebTransportClient").ToLocalChecked(),
              Nan::GetFunction(tplcl).ToLocalChecked());
 
@@ -363,7 +363,7 @@ bool destroySockets();
     v8::Local<v8::Boolean> successVal = Nan::New(success);
 
     v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
-    v8::Local<v8::Object> objVal = clientobj->handle();
+    v8::Local<v8::Object> objVal = clientobj->getJS()->handle();
 
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
@@ -383,7 +383,7 @@ bool destroySockets();
     v8::Local<v8::String> purposeVal = Nan::New("ClientWebtransportSupport").ToLocalChecked();
 
     v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
-    v8::Local<v8::Object> objVal = clientobj->handle();
+    v8::Local<v8::Object> objVal = clientobj->getJS()->handle();
 
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
@@ -644,7 +644,7 @@ bool destroySockets();
     v8::Local<v8::String> stringPath = Nan::New(path).ToLocalChecked();
 
     v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
-    v8::Local<v8::Object> objVal = serverobj->handle();
+    v8::Local<v8::Object> objVal = serverobj->getJS()->handle();
 
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
@@ -666,7 +666,7 @@ bool destroySockets();
     v8::Local<v8::String> sessProp = Nan::New("session").ToLocalChecked();
 
     v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
-    v8::Local<v8::Object> objVal = clientobj->handle();
+    v8::Local<v8::Object> objVal = clientobj->getJS()->handle();
 
     auto context = GetCurrentContext();
     v8::Local<v8::Object> retObj = Nan::New<v8::Object>();

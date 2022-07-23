@@ -25,6 +25,11 @@ namespace quic
 
   const size_t kNumSessionsToCreatePerSocketEvent = 16;
 
+  Http3ServerJS::Http3ServerJS(Http3Server *server) : server_(server)
+  {
+    server->setJS(this);
+  }
+
   Http3Server::Http3Server(Http3EventLoop *eventloop, std::string host, int port, std::unique_ptr<ProofSource> proof_source,
                            const char *secret, QuicConfig config)
       : port_(port), host_(host), fd_(-1), overflow_supported_(false),
@@ -38,7 +43,8 @@ namespace quic
                        QuicRandom::GetInstance(),
                        std::move(proof_source),
                        KeyExchangeSource::Default()),
-        expected_server_connection_id_length_(kQuicDefaultConnectionIdLength)
+        expected_server_connection_id_length_(kQuicDefaultConnectionIdLength),
+        js_(nullptr)
   {
   }
 
@@ -104,7 +110,7 @@ namespace quic
     QuicUdpSocketApi api;
     api.Destroy(fd_);
     fd_ = -1;
-    eventloop_->informUnref(this); // must be done on the other thread...
+    eventloop_->informUnref(this->getJS()); // must be done on the other thread...
     return true;
   }
 
@@ -121,7 +127,7 @@ namespace quic
         &http3_server_backend_, expected_server_connection_id_length_);
   }
 
-  NAN_METHOD(Http3Server::New)
+  NAN_METHOD(Http3ServerJS::New)
   {
     if (info.IsConstructCall())
     {
@@ -220,7 +226,8 @@ namespace quic
           return Nan::ThrowError("No eventloop arguments passed to Http3Server");
         }
 
-        Http3Server *object = new Http3Server(eventloop, host, port, std::move(proofsource), secret.c_str(), sconfig);
+        Http3Server *objectsv = new Http3Server(eventloop, host, port, std::move(proofsource), secret.c_str(), sconfig);
+        Http3ServerJS *object = new Http3ServerJS(objectsv);
         object->Wrap(info.This());
         info.GetReturnValue().Set(info.This());
       }
@@ -333,11 +340,12 @@ namespace quic
     
   }
 
-  NAN_METHOD(Http3Server::startServer)
+  NAN_METHOD(Http3ServerJS::startServer)
   {
-    Http3Server *obj = Nan::ObjectWrap::Unwrap<Http3Server>(info.Holder());
+    Http3ServerJS *objjs = Nan::ObjectWrap::Unwrap<Http3ServerJS>(info.Holder());
+    Http3Server *obj = objjs->getObj();
     // got the object we can now start the server
-    obj->Ref(); // do not garbage collect
+    objjs->Ref(); // do not garbage collect
     std::function<void()> task = [obj]()
     { if (!obj->startServerInt())
     {
@@ -346,9 +354,10 @@ namespace quic
     obj->eventloop_->Schedule(task);
   }
 
-  NAN_METHOD(Http3Server::stopServer)
+  NAN_METHOD(Http3ServerJS::stopServer)
   {
-    Http3Server *obj = Nan::ObjectWrap::Unwrap<Http3Server>(info.Holder());
+    Http3ServerJS *objjs = Nan::ObjectWrap::Unwrap<Http3ServerJS>(info.Holder());
+    Http3Server *obj = objjs->getObj();
     // got the object we can now start the server
     std::function<void()> task = [obj]()
     { if (!obj->stopServerInt())
@@ -358,9 +367,10 @@ namespace quic
     obj->eventloop_->Schedule(task);
   }
 
-  NAN_METHOD(Http3Server::addPath)
+  NAN_METHOD(Http3ServerJS::addPath)
   {
-    Http3Server *obj = Nan::ObjectWrap::Unwrap<Http3Server>(info.Holder());
+    Http3ServerJS *objjs = Nan::ObjectWrap::Unwrap<Http3ServerJS>(info.Holder());
+    Http3Server *obj = objjs->getObj();
     v8::Isolate *isolate = info.GetIsolate();
     v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
 

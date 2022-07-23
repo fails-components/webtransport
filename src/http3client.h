@@ -41,14 +41,52 @@ namespace quic
     class SessionCache;
     class QuicPacketWriterWrapper;
     class Http3EventLoop;
+    class Http3Client;
+
+    class Http3ClientJS: public Nan::ObjectWrap,
+                        public LifetimeHelper
+    {
+    public:
+
+        Http3ClientJS(Http3Client* client);
+
+            // js stuff
+
+        static NAN_METHOD(New);
+
+        static NAN_METHOD(openWTSession);
+        static NAN_METHOD(closeClient);
+
+        static inline Nan::Persistent<v8::Function> &constructor()
+        {
+            static Nan::Persistent<v8::Function> my_constructor;
+            return my_constructor;
+        }
+
+        void doUnref() override
+        {
+            Unref();
+        }
+
+        Http3Client * getObj()
+        {
+            return client_.get();
+        }
+
+
+    protected:
+
+        std::unique_ptr<Http3Client> client_;
+
+    };
 
     class Http3Client : public QuicSpdyStream::Visitor,
                         public QuicSocketEventListener,
                         public QuicClientPushPromiseIndex::Delegate,
-                        public ProcessPacketInterface,
-                        public Nan::ObjectWrap,
-                        public LifetimeHelper
+                        public ProcessPacketInterface
     {
+        friend class Http3ClientJS;
+
     public:
         Http3Client(Http3EventLoop *eventloop, QuicSocketAddress server_address,
                     const std::string &server_hostname,
@@ -237,23 +275,9 @@ namespace quic
             return latest_created_stream_;
         }
 
-        // js stuff
+        Http3ClientJS * getJS() {return js_;};
 
-        static NAN_METHOD(New);
 
-        static NAN_METHOD(openWTSession);
-        static NAN_METHOD(closeClient);
-
-        static inline Nan::Persistent<v8::Function> &constructor()
-        {
-            static Nan::Persistent<v8::Function> my_constructor;
-            return my_constructor;
-        }
-
-        void doUnref() override
-        {
-            Unref();
-        }
 
     protected:
         Http3Client();
@@ -352,6 +376,9 @@ namespace quic
         void openWTSessionInt(absl::string_view path);
 
         bool closeClientInt();
+
+        void setJS(Http3ClientJS * js) {js_ = js;};
+        Http3ClientJS *js_;
 
         QuicSpdyClientStream *latest_created_stream_;
         std::map<QuicStreamId, QuicSpdyClientStream *> open_streams_;

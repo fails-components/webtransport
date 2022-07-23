@@ -29,8 +29,14 @@ namespace quic
     class Http3WTStream : public Nan::ObjectWrap, public LifetimeHelper
     {
     public:
-        Http3WTStream(WebTransportStream *stream, Http3EventLoop *eventloop)
-            : stream_(stream), eventloop_(eventloop) {}
+        Http3WTStream()
+            : stream_(nullptr), eventloop_(nullptr) {}
+
+        void init(WebTransportStream *stream, Http3EventLoop *eventloop)
+        {
+            stream_= stream;
+            eventloop_ = eventloop;
+        }
 
         ~Http3WTStream(){/*printf("stream destruct %x\n", this);*/};
 

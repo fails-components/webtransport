@@ -69,7 +69,8 @@ namespace quic
     if (paths_.find(path) != paths_.end())
     { // to do handle our web transport paths
       WebTransportResponse response;
-      Http3WTSession * wtsession = new Http3WTSession(session, eventloop_);
+      Http3WTSession * wtsession = new Http3WTSession();
+      wtsession->init(session, eventloop_);
       response.response_headers[":status"] = "200";
       response.visitor =
           std::make_unique<Http3WTSession::Visitor>(wtsession); 
