@@ -31,8 +31,7 @@
   "homepage": "https://github.com/fails-components/webtransport#readme",
   "dependencies": {
     "bindings": "^1.5.0",
-    "nan": "^2.15.0",
-    "node-addon-api": "^4.2.0"
+    "node-addon-api": "^4.3.0"
   },
   "devDependencies": {
     "@babel/core": "^7.17.10",

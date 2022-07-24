@@ -8,6 +8,16 @@
 namespace quic
 {
 
+    Http3WTSession::Visitor::~Visitor()
+    {
+        Http3WTSessionJS *sessobj = session_->getJS();
+        if (sessobj)
+            session_->eventloop_->informUnref(sessobj);
+        else
+            delete session_;
+        session_ = nullptr;
+    }
+
     void Http3WTSession::Visitor::OnSessionClosed(WebTransportSessionError error_code,
                                                 const std::string &error_message)
     {

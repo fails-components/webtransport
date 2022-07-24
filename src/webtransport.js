@@ -91,7 +91,10 @@ class Http3WTStream {
                 this.objint.writeChunk(chunk)
               })
               return this.pendingoperation
-            } else throw new Error('chunk is not of instanceof Uint8Array ')
+            } else {
+              console.log('chunk info:', chunk)
+              throw new Error('chunk is not of instanceof Uint8Array ')
+            }
           },
           close: (controller) => {
             if (this.writableclosed) {
@@ -553,9 +556,9 @@ class Http3WebTransport {
     const eventloop = Http3EventLoop.getGlobalEventLoop(this).eventloopInt
 
     if (purpose === 'server')
-      this.transportInt = wtrouter.Http3WebTransportServer(args, eventloop)
+      this.transportInt = new wtrouter.Http3WebTransportServer(args, eventloop)
     else if (purpose === 'client')
-      this.transportInt = wtrouter.Http3WebTransportClient(args, eventloop)
+      this.transportInt = new wtrouter.Http3WebTransportClient(args, eventloop)
     else throw new Error('unknown purpose')
     this.transportInt.jsobj = this
 
@@ -800,7 +803,7 @@ export class WebTransport {
 class Http3EventLoop {
   static globalLoop = null
   constructor(args) {
-    this.eventloopInt = wtrouter.Http3EventLoop({
+    this.eventloopInt = new wtrouter.Http3EventLoop({
       transportCallback: Http3WebTransport.transportCallback,
       streamCallback: Http3WTStream.callback,
       sessionCallback: Http3WTSession.callback,

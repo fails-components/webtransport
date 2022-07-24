@@ -10,11 +10,13 @@
 #ifndef WT_HTTP3_CLIENT_H
 #define WT_HTTP3_CLIENT_H
 
-#include <nan.h>
+#include <napi.h>
+#include <uv.h>
 
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <queue>
 
 #include "src/http3eventloop.h"
 #include "absl/base/attributes.h"
@@ -43,24 +45,29 @@ namespace quic
     class Http3EventLoop;
     class Http3Client;
 
-    class Http3ClientJS: public Nan::ObjectWrap,
-                        public LifetimeHelper
+    class Http3ClientJS : public Napi::ObjectWrap<Http3ClientJS>,
+                          public LifetimeHelper
     {
     public:
+        Http3ClientJS(const Napi::CallbackInfo &info);
 
-        Http3ClientJS(Http3Client* client);
+        // js stuff
 
-            // js stuff
+        void openWTSession(const Napi::CallbackInfo &info);
+        void closeClient(const Napi::CallbackInfo &info);
 
-        static NAN_METHOD(New);
-
-        static NAN_METHOD(openWTSession);
-        static NAN_METHOD(closeClient);
-
-        static inline Nan::Persistent<v8::Function> &constructor()
+        static void InitExports(Napi::Env env, Napi::Object exports)
         {
-            static Nan::Persistent<v8::Function> my_constructor;
-            return my_constructor;
+            Napi::Function tplcl =
+                ObjectWrap<Http3ClientJS>::DefineClass(env, "Http3WebTransportClient",
+                                                       {
+                                                           Napi::InstanceWrap<Http3ClientJS>::InstanceMethod<&Http3ClientJS::openWTSession>("openWTSession",
+                                                                                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                           Napi::InstanceWrap<Http3ClientJS>::InstanceMethod<&Http3ClientJS::closeClient>("closeClient",
+                                                                                                                                          static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+
+                                                       });
+            exports.Set("Http3WebTransportClient", tplcl);
         }
 
         void doUnref() override
@@ -68,16 +75,13 @@ namespace quic
             Unref();
         }
 
-        Http3Client * getObj()
+        Http3Client *getObj()
         {
             return client_.get();
         }
 
-
     protected:
-
         std::unique_ptr<Http3Client> client_;
-
     };
 
     class Http3Client : public QuicSpdyStream::Visitor,
@@ -99,8 +103,8 @@ namespace quic
 
         // From OnRegistration
 
-        void OnSocketEvent(QuicEventLoop* event_loop, QuicUdpSocketFd fd,
-                             QuicSocketEventMask events) override;
+        void OnSocketEvent(QuicEventLoop *event_loop, QuicUdpSocketFd fd,
+                           QuicSocketEventMask events) override;
 
         // From ProcessPacketInterface. This will be called for each received
         // packet.
@@ -275,9 +279,7 @@ namespace quic
             return latest_created_stream_;
         }
 
-        Http3ClientJS * getJS() {return js_;};
-
-
+        Http3ClientJS *getJS() { return js_; };
 
     protected:
         Http3Client();
@@ -377,7 +379,7 @@ namespace quic
 
         bool closeClientInt();
 
-        void setJS(Http3ClientJS * js) {js_ = js;};
+        void setJS(Http3ClientJS *js) { js_ = js; };
         Http3ClientJS *js_;
 
         QuicSpdyClientStream *latest_created_stream_;

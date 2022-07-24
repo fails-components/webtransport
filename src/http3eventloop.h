@@ -12,7 +12,8 @@
 
 #include <memory>
 
-#include <nan.h>
+#include <napi.h>
+#include <uv.h>
 
 #include "src/http3serverbackend.h"
 #include "quiche/quic/core/crypto/quic_crypto_server_config.h"
@@ -22,7 +23,7 @@
 #include "quiche/quic/platform/api/quic_socket_address.h"
 #include "quiche/quic/core/io/quic_default_event_loop.h"
 
-using namespace Nan;
+using namespace Napi;
 
 namespace quic
 {
@@ -46,8 +47,14 @@ namespace quic
         streamFinal
     };
 
+    struct Http3Constructors
+    {
+        Napi::FunctionReference stream;
+        Napi::FunctionReference session;
 
-    struct Http3ProgressReport
+    };
+
+    class Http3ProgressReport // actually struct would be a better fit but make napi happy
     {
     public:
         enum
@@ -87,9 +94,9 @@ namespace quic
         };
         union
         {
-            Http3WTStream *stream;                     // unowned
-            Http3WTSession *session;                   // unowned
-            Nan::Persistent<v8::Object> *bufferhandle; // we own it and must delete it if present
+            Http3WTStream *stream;               // unowned
+            Http3WTSession *session;             // unowned
+            Napi::ObjectReference *bufferhandle; // we own it and must delete it if present
             bool fin;
             WebTransportStreamError wtscode;
         };
@@ -101,29 +108,63 @@ namespace quic
         std::string *para = nullptr; // for session, we own it, and must delete it
     };
 
-    class Http3EventLoop : public AsyncProgressQueueWorker<Http3ProgressReport>, // may be replace char later
-                           public Nan::ObjectWrap
+    class Http3EventLoop : // may be replace char later
+                           public Napi::ObjectWrap<Http3EventLoop>
     {
+    private:
+        class QueueWorker : public AsyncProgressQueueWorker<Http3ProgressReport>
+        {
+        public:
+            QueueWorker(Http3EventLoop *eventloop, Napi::Function cb) : AsyncProgressQueueWorker(cb),
+                                                                        eventloop_(eventloop)
+            {
+            }
+
+            void Execute(const AsyncProgressQueueWorker::ExecutionProgress &progress)
+            {
+                eventloop_->Execute(progress);
+            }
+
+            void OnProgress(const Http3ProgressReport *data, size_t count) override
+            {
+                eventloop_->HandleProgressCallback(data, count);
+            }
+
+            void OnOK() override
+            {
+                eventloop_->Destroy();
+            }
+
+            void OnError(const Error &e) override
+            {
+                eventloop_->Destroy();
+            }
+
+
+
+        protected:
+            Http3EventLoop *eventloop_;
+        };
+
     public:
-        Http3EventLoop(Callback *cbeventloop, Callback *callback, Callback *cbstream, Callback *cbsession);
+        Http3EventLoop(const Napi::CallbackInfo &info);
 
         Http3EventLoop(const Http3EventLoop &) = delete;
         Http3EventLoop &operator=(const Http3EventLoop &) = delete;
 
         ~Http3EventLoop();
 
-        static NAN_MODULE_INIT(Init);
+        static void Init(Napi::Env env, Napi::Object exports);
 
-        void Execute(const AsyncProgressQueueWorker::ExecutionProgress &progress);
+        void Execute(const AsyncProgressQueueWorker<Http3ProgressReport>::ExecutionProgress &progress);
 
         // call into javascript, if necessary
         void HandleProgressCallback(const Http3ProgressReport *data, size_t count);
 
         // Server deletion is imminent.  Start cleaning up the epoll server.
-        void Destroy() override;
+        void Destroy();
 
         QuicEventLoop *getQuicEventLoop() { return quic_event_loop_.get(); };
-
 
         void informAboutClientConnected(Http3Client *client, bool success);
         void informClientWebtransportSupport(Http3Client *client);
@@ -136,28 +177,31 @@ namespace quic
         void informAboutStream(bool incom, bool bidir, Http3WTSession *sessionobj, Http3WTStream *stream);
         void informStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);
         void informAboutStreamRead(Http3WTStream *streamobj, std::string *data, bool fin);
-        void informAboutStreamWrite(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, bool success);
+        void informAboutStreamWrite(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, bool success);
         void informAboutStreamReset(Http3WTStream *streamobj);
         void informAboutStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task);
 
         void informDatagramReceived(Http3WTSession *sessionobj, absl::string_view datagram);
-        void informDatagramBufferFree(Nan::Persistent<v8::Object> *bufferhandle);
+        void informDatagramBufferFree(Napi::ObjectReference *bufferhandle);
         void informDatagramSend(Http3WTSession *sessionobj);
 
         void informUnref(LifetimeHelper *obj);
 
         void Schedule(std::function<void()> action);
 
+        void startEventLoop(const Napi::CallbackInfo &info);
+        void shutDownEventLoop(const Napi::CallbackInfo &info);
+
     private:
-        static NAN_METHOD(New);
-        static NAN_METHOD(startEventLoop);
-        static NAN_METHOD(shutDownEventLoop);
+        std::unique_ptr<QueueWorker> qw;
 
-        static void freeData(char *data, void *hint);
+        static Napi::Value New(const Napi::CallbackInfo &info);
 
-        static inline Nan::Persistent<v8::Function> &constructor()
+        static void freeData(Napi::Env env, void *data, std::string *hint);
+
+        static inline Napi::FunctionReference &constructor()
         {
-            static Nan::Persistent<v8::Function> my_constructor;
+            static Napi::FunctionReference my_constructor;
             return my_constructor;
         }
 
@@ -181,22 +225,22 @@ namespace quic
         void processStream(bool incom, bool bidi, Http3WTSession *sessionobj, Http3WTStream *stream);
         void processStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);
         void processStreamRead(Http3WTStream *streamobj, std::string *data, bool fin);
-        void processStreamWrite(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, bool success);
+        void processStreamWrite(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, bool success);
         void processStreamReset(Http3WTStream *streamobj);
         void processStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task);
 
         void processDatagramReceived(Http3WTSession *sessionobj, std::string *datagram);
         void processDatagramSend(Http3WTSession *sessionobj);
-        void processDatagramBufferFree(Nan::Persistent<v8::Object> *bufferhandle);
+        void processDatagramBufferFree(Napi::ObjectReference *bufferhandle);
 
-        bool startEventLoopInt();
         bool shutDownEventLoopInt();
 
-        const AsyncProgressQueueWorker::ExecutionProgress *progress_;
+        const AsyncProgressQueueWorker<Http3ProgressReport>::ExecutionProgress *progress_;
 
-        Callback *cbstream_;
-        Callback *cbsession_;
-        Callback *cbtransport_;
+        Napi::FunctionReference cbstream_;
+        Napi::FunctionReference cbsession_;
+        Napi::FunctionReference cbtransport_;
+
 
         bool loop_running_;
     };

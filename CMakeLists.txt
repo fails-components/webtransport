@@ -974,6 +974,14 @@ crypto
 event_core
 )
 
+
+add_definitions(-DNAPI_VERSION=6)
+
+if(MSVC AND CMAKE_JS_NODELIB_DEF AND CMAKE_JS_NODELIB_TARGET)
+  # Generate node.lib
+  execute_process(COMMAND ${CMAKE_AR} /def:${CMAKE_JS_NODELIB_DEF} /out:${CMAKE_JS_NODELIB_TARGET} ${CMAKE_STATIC_LINKER_FLAGS})
+endif()
+
 IF (WIN32)
     target_link_libraries(gquiche icu)
 ENDIF(WIN32)

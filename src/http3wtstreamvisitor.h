@@ -11,7 +11,8 @@
 #ifndef HTTP3_WT_STREAM_VISITOR_H_
 #define HTTP3_WT_STREAM_VISITOR_H_
 
-#include <nan.h>
+#include <napi.h>
+#include <uv.h>
 
 #include <string>
 
@@ -26,16 +27,15 @@ namespace quic
 {
     class Http3EventLoop;
 
-    class Http3WTStream : public Nan::ObjectWrap, public LifetimeHelper
-    {
-    public:
-        Http3WTStream()
-            : stream_(nullptr), eventloop_(nullptr) {}
+    class Http3WTStreamJS;
 
-        void init(WebTransportStream *stream, Http3EventLoop *eventloop)
+    class Http3WTStream
+    {
+        friend Http3WTStreamJS;
+
+    public:
+        Http3WTStream(WebTransportStream *stream, Http3EventLoop *eventloop) : stream_(stream), eventloop_(eventloop)
         {
-            stream_= stream;
-            eventloop_ = eventloop;
         }
 
         ~Http3WTStream(){/*printf("stream destruct %x\n", this);*/};
@@ -58,9 +58,9 @@ namespace quic
             }
 
             void OnResetStreamReceived(WebTransportStreamError error) override;
-            
+
             void OnStopSendingReceived(WebTransportStreamError /*error*/) override;
-            
+
             void OnWriteSideInDataRecvdState() override;
 
             void OnStopReading()
@@ -99,163 +99,85 @@ namespace quic
             }
         }
 
-        void doUnref() override {
-            Unref();
-        }
-
-        // nan stuff
-
-        static NAN_METHOD(startReading)
+        Http3WTStreamJS  *getJS()
         {
-            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
-            if (!info[0]->IsUndefined())
-            {
-                v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-
-                std::function<void()> task = [obj]()
-                { if (!obj->stream_) return; // we do not have to cancel a promise?
-                  obj->tryRead(); };
-                obj->eventloop_->Schedule(task);
-            }
+            return js_;
         }
 
-        static NAN_METHOD(stopReading)
-        {
-            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
-            if (!info[0]->IsUndefined())
-            {
-                v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-
-                std::function<void()> task = [obj]()
-                { obj->doStopReading(); };
-                obj->eventloop_->Schedule(task);
-            }
-        }
-
-        static NAN_METHOD(writeChunk)
-        {
-            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
-            // ok we have to get the buffer
-            if (!info[0]->IsUndefined())
-            {
-                v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-                v8::Local<v8::Object> bufferlocal = info[0]->ToObject(context).ToLocalChecked();
-                Nan::Persistent<v8::Object> *bufferHandle = new Nan::Persistent<v8::Object>(bufferlocal);
-                char *buffer = node::Buffer::Data(bufferlocal);
-                size_t len = node::Buffer::Length(bufferlocal);
-
-                std::function<void()> task = [obj, bufferHandle, buffer, len]()
-                { obj->writeChunkInt(buffer, len, bufferHandle); };
-                obj->eventloop_->Schedule(task);
-            }
-        }
-
-        static NAN_METHOD(streamFinal)
-        {
-            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
-            std::function<void()> task = [obj]()
-            { obj->send_fin_ = true; 
-              obj->tryWrite();
-            };
-            obj->eventloop_->Schedule(task);
-        }
-
-        static NAN_METHOD(stopSending)
-        {
-            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
-            int code = 0;
-            v8::Isolate *isolate = info.GetIsolate();
-            unsigned int reason = 0;
-
-            if (!info[0]->IsUndefined())
-            {
-                v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-                v8::Local<v8::Int32> reasonl = info[0]->ToInt32(context).ToLocalChecked();
-                reason = Nan::To<unsigned int>(reasonl).FromJust();
-                
-            }
-
-            std::function<void()> task = [obj,reason]()
-            { if (obj->stream_) {
-                obj->stream_->SendStopSending(reason);
-                obj->eventloop_->informAboutStreamNetworkFinish(obj, NetworkTask::stopSending);
-                }
-             };
-            obj->eventloop_->Schedule(task);
-        }
-
-        static NAN_METHOD(resetStream)
-        {
-            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
-            int code = 0;
-            v8::Isolate *isolate = info.GetIsolate();
-            unsigned int reason = 0;
-
-            if (!info[0]->IsUndefined())
-            {
-                v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-                v8::Local<v8::Int32> reasonl = info[0]->ToInt32(context).ToLocalChecked();
-                reason = Nan::To<unsigned int>(reasonl).FromJust();
-                
-            }
-
-            std::function<void()> task = [obj,reason]()
-            { if (obj->stream_) {
-                obj->stream_->ResetWithUserCode(reason); 
-                obj->eventloop_->informAboutStreamNetworkFinish(obj, NetworkTask::resetStream);
-            }
-            };
-            obj->eventloop_->Schedule(task);
-        }
-
-        static NAN_METHOD(New)
-        {
-            if (!info.IsConstructCall())
-            {
-                return Nan::ThrowError("Http3WTStream() must be called as a constructor");
-            }
-
-            if (info.Length() != 1 || !info[0]->IsExternal())
-            {
-                return Nan::ThrowError("Http3WTStream() can only be called internally");
-            }
-
-            Http3WTStream *obj = static_cast<Http3WTStream *>(info[0].As<v8::External>()->Value());
-            obj->Wrap(info.This());
-            info.GetReturnValue().Set(info.This());
-        }
-
-        static v8::Local<v8::Object> NewInstance(Http3WTStream *sv)
-        {
-            Nan::EscapableHandleScope scope;
-
-            const unsigned argc = 1;
-            v8::Local<v8::Value> argv[argc] = {Nan::New<v8::External>(sv)};
-            v8::Local<v8::Function> constr = Nan::New<v8::Function>(constructor());
-            v8::Local<v8::Object> instance = Nan::NewInstance(constr, argc, argv).ToLocalChecked();
-
-            sv->Ref();
-
-            return scope.Escape(instance);
-        }
-
-        static inline Nan::Persistent<v8::Function> &constructor()
-        {
-            static Nan::Persistent<v8::Function> myconstr;
-            return myconstr;
-        }
+        void setJS(Http3WTStreamJS  *js) { 
+            js_ = js; 
+        };
 
     protected:
+        // internal functions called by js object
+        void startReadingInt()
+        {
+
+            std::function<void()> task = [this]()
+            { if (!stream_) return; // we do not have to cancel a promise?
+                    tryRead(); };
+            eventloop_->Schedule(task);
+        }
+        void stopReadingInt()
+        {
+            std::function<void()> task = [this]()
+            { doStopReading(); };
+            eventloop_->Schedule(task);
+        }
+
+        void writeChunkIntJS(char *buffer, size_t len, Napi::ObjectReference *bufferhandle)
+        {
+            std::function<void()> task = [this, bufferhandle, buffer, len]()
+            { writeChunkInt(buffer, len, bufferhandle); };
+            eventloop_->Schedule(task);
+        }
+
+        void streamFinalInt()
+        {
+            std::function<void()> task = [this]()
+            {
+                send_fin_ = true;
+                tryWrite();
+            };
+            eventloop_->Schedule(task);
+        }
+
+        void stopSendingInt(unsigned int reason)
+        {
+            std::function<void()> task = [this, reason]()
+            {
+                if (stream_)
+                {
+                    stream_->SendStopSending(reason);
+                    eventloop_->informAboutStreamNetworkFinish(this, NetworkTask::stopSending);
+                }
+            };
+            eventloop_->Schedule(task);
+        }
+
+        void resetStreamInt(unsigned int reason)
+        {
+            std::function<void()> task = [this, reason]()
+            {
+                if (stream_)
+                {
+                    stream_->ResetWithUserCode(reason);
+                    eventloop_->informAboutStreamNetworkFinish(this, NetworkTask::resetStream);
+                }
+            };
+            eventloop_->Schedule(task);
+        }
+
         WebTransportStream *stream() { return stream_; }
 
         struct WChunks
         {
             char *buffer;
             size_t len;
-            Nan::Persistent<v8::Object> *bufferhandle;
+            Napi::ObjectReference *bufferhandle;
         };
 
-        void writeChunkInt(char *buffer, size_t len, Nan::Persistent<v8::Object> *bufferhandle)
+        void writeChunkInt(char *buffer, size_t len, Napi::ObjectReference *bufferhandle)
         {
             if (fin_was_sent_ || send_fin_)
             {
@@ -275,9 +197,12 @@ namespace quic
             tryWrite();
         }
 
-        void cancelWrite(Nan::Persistent<v8::Object> *handle);
+        void cancelWrite(Napi::ObjectReference *handle);
 
     private:
+       
+        Http3WTStreamJS *js_;
+
         WebTransportStream *stream_;
         Http3EventLoop *eventloop_;
         bool send_fin_ = false;
@@ -285,6 +210,109 @@ namespace quic
         bool stop_sending_received_ = false;
         bool pause_reading_ = false;
         std::deque<WChunks> chunks_;
+    };
+
+    class Http3WTStreamJS : public Napi::ObjectWrap<Http3WTStreamJS>, public LifetimeHelper
+    {
+    public:
+        Http3WTStreamJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Http3WTStreamJS>(info)
+        {
+        }
+
+        void init(Http3WTStream *wtstream);
+
+        // nan stuff
+
+        void startReading(const Napi::CallbackInfo &info)
+        {
+            wtstream_->startReadingInt();
+        }
+
+        void stopReading(const Napi::CallbackInfo &info)
+        {
+            wtstream_->stopReadingInt();
+        }
+
+        void writeChunk(const Napi::CallbackInfo &info)
+        {
+            // ok we have to get the buffer
+
+            const Napi::Object bufferlocal = info[0].ToObject();
+            Napi::ObjectReference *bufferhandle = new Napi::ObjectReference();
+            *bufferhandle = Napi::Persistent(bufferlocal);
+
+            char *buffer = bufferlocal.As<Napi::Buffer<char>>().Data();
+            size_t len = bufferlocal.As<Napi::Buffer<char>>().Length();
+
+            wtstream_->writeChunkIntJS(buffer, len, bufferhandle);
+        }
+
+        void streamFinal(const Napi::CallbackInfo &info)
+        {
+            wtstream_->streamFinalInt();
+        }
+
+        void stopSending(const Napi::CallbackInfo &info)
+        {
+            unsigned int reason = 0;
+
+            if (!info[0].IsUndefined())
+            {
+                Napi::Number reasonl = info[0].ToNumber();
+                reason = reasonl.Int32Value();
+            }
+
+            wtstream_->stopSendingInt(reason);
+        }
+
+        void resetStream(const Napi::CallbackInfo &info)
+        {
+            int code = 0;
+            unsigned int reason = 0;
+
+            if (!info[0].IsUndefined())
+            {
+                Napi::Number reasonl = info[0].ToNumber();
+                reason = reasonl.Int32Value();
+            }
+
+            wtstream_->resetStreamInt(reason);
+        }
+
+        static void InitExports(Napi::Env env, Napi::Object exports, Http3Constructors * constr)
+        {
+            Napi::Function tplwtsv =
+                DefineClass(env, "Http3WTStreamVisitor",
+                            {InstanceMethod<&Http3WTStreamJS::writeChunk>("writeChunk",
+                                                                          static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                             InstanceMethod<&Http3WTStreamJS::resetStream>("resetStream",
+                                                                           static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                             InstanceMethod<&Http3WTStreamJS::stopSending>("stopSending", static_cast<napi_property_attributes>(napi_writable | napi_configurable)), InstanceMethod<&Http3WTStreamJS::streamFinal>("streamFinal", static_cast<napi_property_attributes>(napi_writable | napi_configurable)), InstanceMethod<&Http3WTStreamJS::startReading>("startReading", static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                             InstanceMethod<&Http3WTStreamJS::startReading>("startReading",
+                                                                           static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                             InstanceMethod<&Http3WTStreamJS::stopReading>("stopReading",
+                                                                           static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
+            constr->stream  = Napi::Persistent(tplwtsv); 
+            exports.Set("Http3WTStreamVisitor", tplwtsv);
+        }
+
+        void setObj(Http3WTStream *wtstream)
+        {
+            wtstream_ = std::unique_ptr<Http3WTStream>(wtstream);
+        }
+
+        Http3WTStream *getObj()
+        {
+            return wtstream_.get();
+        }
+
+        void doUnref() override
+        {
+            Unref();
+        }
+
+    protected:
+        std::unique_ptr<Http3WTStream> wtstream_;
     };
 }
 
