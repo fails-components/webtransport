@@ -7,6 +7,10 @@
 
 namespace quic
 {
+    void Http3WTStreamJS::init(Http3WTStream * wtstream)
+    {
+        wtstream_ = std::unique_ptr<Http3WTStream>(wtstream);
+    }
 
     Http3WTStream::Visitor::~Visitor()
     {
@@ -19,9 +23,13 @@ namespace quic
 
             stream_->chunks_.pop_front();
         }
-        Http3WTStream *strobj = stream_;
-        stream_->stream_ = nullptr;
-        strobj->eventloop_->informUnref(strobj);
+        Http3WTStreamJS *strobj = stream_->getJS();
+        if (strobj) {
+            stream_->stream_ = nullptr;
+            stream_->eventloop_->informUnref(strobj);
+        } else {
+            delete stream_->stream_;
+        }
     }
 
     void Http3WTStream::Visitor::OnWriteSideInDataRecvdState() // called if everything is written to the client and it is closed
@@ -53,7 +61,7 @@ namespace quic
         OnCanWrite();
     }
 
-    void Http3WTStream::cancelWrite(Nan::Persistent<v8::Object> *handle)
+    void Http3WTStream::cancelWrite(Napi::ObjectReference *handle)
     {
         eventloop_->informAboutStreamWrite(this, handle, false);
     }

@@ -73,6 +73,8 @@
         "typeinfo": "cpp",
         "valarray": "cpp",
         "variant": "cpp",
-        "*.inc": "cpp"
+        "*.inc": "cpp",
+        "strstream": "cpp",
+        "complex": "cpp"
     }
 }

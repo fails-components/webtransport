@@ -101,6 +101,7 @@ namespace quic
           supported_versions_({ParsedQuicVersion::RFCv1()}),
           initial_max_packet_length_(0),
           num_sent_client_hellos_(0),
+          js_(nullptr),
           connection_error_(QUIC_NO_ERROR),
           connected_or_attempting_connect_(false),
           server_connection_id_length_(kQuicDefaultConnectionIdLength),
@@ -139,7 +140,7 @@ namespace quic
 
         CleanUpAllUDPSockets();
 
-        eventloop_->informUnref(this);
+        eventloop_->informUnref(this->getJS());
         return true;
     }
 
@@ -648,7 +649,8 @@ namespace quic
                     {
                         // ok we have our session, do we wait for session ready, no set visitor immediatele
                         Http3WTSession *wtsessionobj =
-                            new Http3WTSession(
+                            new Http3WTSession();
+                        wtsessionobj->init(
                                 static_cast<WebTransportSession *>(wtsession),
                                 eventloop_);
                         eventloop_->informNewClientSession(this, wtsessionobj);
@@ -1269,232 +1271,232 @@ namespace quic
         latest_created_stream_ = nullptr;
     }
 
-    NAN_METHOD(Http3Client::New)
+    Http3ClientJS::Http3ClientJS(const Napi::CallbackInfo &info) : 
+            Napi::ObjectWrap<Http3ClientJS>(info)
     {
-        if (info.IsConstructCall())
+
+        std::string port = "443";
+        bool allowPooling = false;
+        std::vector<WebTransportHash> serverCertificateHashes;
+        std::string privkey;
+        std::string hostname = "localhost";
+        int local_port = 0;
+        bool forceipv6 = false;
+        auto env = info.Env();
+        if (!info[0].IsUndefined())
         {
-            std::string port = "443";
-            v8::Isolate *isolate = info.GetIsolate();
-            bool allowPooling = false;
-            std::vector<WebTransportHash> serverCertificateHashes;
-            std::string privkey;
-            std::string hostname = "localhost";
-            int local_port = 0;
-            bool forceipv6 = false;
-
-            v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-
-            if (!info[0]->IsUndefined())
+            Napi::Object lobj = info[0].ToObject();
+            if (!lobj.IsEmpty())
             {
-                v8::MaybeLocal<v8::Object> obj = info[0]->ToObject(context);
-                v8::Local<v8::Object> lobj = obj.ToLocalChecked();
-                v8::Local<v8::String> poolProp = Nan::New("allowPooling").ToLocalChecked();
-                v8::Local<v8::String> hashProp = Nan::New("serverCertificateHashes").ToLocalChecked();
-                v8::Local<v8::String> algorithmProp = Nan::New("algorithm").ToLocalChecked();
-                v8::Local<v8::String> valueProp = Nan::New("value").ToLocalChecked();
-                v8::Local<v8::String> portProp = Nan::New("port").ToLocalChecked();
-                v8::Local<v8::String> hostnameProp = Nan::New("hostname").ToLocalChecked();
-                v8::Local<v8::String> localPortProp = Nan::New("localPort").ToLocalChecked();
-                v8::Local<v8::String> ipv6Prop = Nan::New("forceIpv6").ToLocalChecked();
-                if (!obj.IsEmpty())
+
+                if (lobj.Has( "allowPooling") && !(lobj).Get("allowPooling").IsEmpty())
                 {
+                    Napi::Value poolValue = (lobj).Get("allowPooling");
+                    allowPooling = poolValue.As<Napi::Boolean>().Value();
+                }
 
-                    if (Nan::HasOwnProperty(lobj, poolProp).FromJust() && !Nan::Get(lobj, poolProp).IsEmpty())
-                    {
-                        v8::Local<v8::Value> poolValue = Nan::Get(lobj, poolProp).ToLocalChecked();
-                        allowPooling = Nan::To<bool>(poolValue).FromJust();
-                    }
+                if (lobj.Has( "forceIpv6") && !(lobj).Get("forceIpv6").IsEmpty())
+                {
+                    Napi::Value ipv6Value = (lobj).Get("forceIpv6");
+                    forceipv6 = ipv6Value.As<Napi::Boolean>().Value();
+                }
 
-                    if (Nan::HasOwnProperty(lobj, ipv6Prop).FromJust() && !Nan::Get(lobj, ipv6Prop).IsEmpty())
-                    {
-                        v8::Local<v8::Value> ipv6Value = Nan::Get(lobj, ipv6Prop).ToLocalChecked();
-                        forceipv6 = Nan::To<bool>(ipv6Value).FromJust();
-                    }
+                if (lobj.Has( "port") && !(lobj).Get("port").IsEmpty())
+                {
+                    Napi::Value portValue = (lobj).Get("port");
+                    port = portValue.ToString().Utf8Value();
+                }
+                else {
+                    Napi::Error::New(env, "no port specified").ThrowAsJavaScriptException();
+                    return ;
+                }
 
-                    if (Nan::HasOwnProperty(lobj, portProp).FromJust() && !Nan::Get(lobj, portProp).IsEmpty())
-                    {
-                        v8::Local<v8::Value> portValue = Nan::Get(lobj, portProp).ToLocalChecked();
-                        port = *v8::String::Utf8Value(isolate, portValue->ToString(context).ToLocalChecked());
-                    }
-                    else
-                        return Nan::ThrowError("no port specified");
+                if (lobj.Has( "hostname") && !(lobj).Get("hostname").IsEmpty())
+                {
+                    Napi::Value hostnameValue = (lobj).Get("hostname");
+                    hostname = hostnameValue.ToString().Utf8Value();
+                }
+                else {
+                    Napi::Error::New(env, "no hostname specified").ThrowAsJavaScriptException();
+                    return ;
+                }
 
-                    if (Nan::HasOwnProperty(lobj, hostnameProp).FromJust() && !Nan::Get(lobj, hostnameProp).IsEmpty())
+                if (lobj.Has( "serverCertificateHashes") && !(lobj).Get("serverCertificateHashes").IsEmpty())
+                {
+                    Napi::Value hashValue = (lobj).Get("serverCertificateHashes");
+                    if (hashValue.IsArray())
                     {
-                        v8::Local<v8::Value> hostnameValue = Nan::Get(lobj, hostnameProp).ToLocalChecked();
-                        hostname = *v8::String::Utf8Value(isolate, hostnameValue->ToString(context).ToLocalChecked());
-                    }
-                    else
-                        return Nan::ThrowError("no hostname specified");
+                        Napi::Array hashArray = hashValue.As<Napi::Array>();
+                        int length = hashArray.Length();
 
-                    if (Nan::HasOwnProperty(lobj, hashProp).FromJust() && !Nan::Get(lobj, hashProp).IsEmpty())
-                    {
-                        v8::Local<v8::Value> hashValue = Nan::Get(lobj, hashProp).ToLocalChecked();
-                        if (hashValue->IsArray())
+                        for (unsigned int i = 0; i < length; i++)
                         {
-                            v8::Local<v8::Array> hashArray = v8::Local<v8::Array>::Cast(hashValue);
-                            int length = hashArray->Length();
-
-                            for (unsigned int i = 0; i < length; i++)
+                            WebTransportHash curhash;
+                            Napi::Value hash = hashArray.Get(i);
+                            Napi::Object hashobj = hash.ToObject();
+                            if (hashobj.Has("value") && !(hashobj).Get("value").IsEmpty())
                             {
-                                WebTransportHash curhash;
-                                v8::Local<v8::Value> hash = hashArray->Get(context, i).ToLocalChecked();
-                                v8::Local<v8::Object> hashobj = Nan::To<v8::Object>(hash).ToLocalChecked();
-                                if (Nan::HasOwnProperty(hashobj, valueProp).FromJust() && !Nan::Get(hashobj, valueProp).IsEmpty())
-                                {
-                                    v8::Local<v8::Object> bufferlocal = Nan::To<v8::Object>(Nan::Get(hashobj, valueProp).ToLocalChecked()).ToLocalChecked();
-                                    char *buffer = node::Buffer::Data(bufferlocal);
-                                    size_t len = node::Buffer::Length(bufferlocal);
-                                    curhash.value = std::string(buffer, len);
-                                }
-                                else
-                                    return Nan::ThrowError("serverCertificateHashes wrong format");
-                                if (Nan::HasOwnProperty(hashobj, algorithmProp).FromJust() && !Nan::Get(hashobj, algorithmProp).IsEmpty())
-                                {
-                                    v8::Local<v8::Value> algorithmValue = Nan::Get(hashobj, algorithmProp).ToLocalChecked();
-                                    curhash.algorithm = *v8::String::Utf8Value(isolate, algorithmValue->ToString(context).ToLocalChecked());
-                                }
-                                else
-                                    return Nan::ThrowError("serverCertificateHashes wrong format");
-                                if (curhash.algorithm.compare(WebTransportHash::kSha256) != 0)
-                                    return Nan::ThrowError("serverCertificateHashes unknown algorithm");
-                                serverCertificateHashes.push_back(curhash);
+                                Napi::Object bufferlocal = (hashobj).Get("value").ToObject();
+                                char *buffer = bufferlocal.As<Napi::Buffer<char>>().Data();
+                                size_t len = bufferlocal.As<Napi::Buffer<char>>().Length();
+                                curhash.value = std::string(buffer, len);
                             }
+                            else {
+                                Napi::Error::New(env, "serverCertificateHashes wrong format").ThrowAsJavaScriptException();
+                                return ;
+                            }
+                            if (hashobj.Has("algorithm") && !(hashobj).Get("algorithm").IsEmpty())
+                            {
+                                Napi::Value algorithmValue = (hashobj).Get("algorithm");
+                                curhash.algorithm = algorithmValue.ToString().Utf8Value();
+                            }
+                            else {
+                                Napi::Error::New(env, "serverCertificateHashes wrong format").ThrowAsJavaScriptException();
+                                return ;
+                            }
+                            if (curhash.algorithm.compare(WebTransportHash::kSha256) != 0) {
+                                Napi::Error::New(env, "serverCertificateHashes unknown algorithm").ThrowAsJavaScriptException();
+                                return ;
+                            }
+                            serverCertificateHashes.push_back(curhash);
                         }
-                        else
-                            return Nan::ThrowError("serverCertificateHashes is not an array");
                     }
-
-                    if (Nan::HasOwnProperty(lobj, localPortProp).FromJust() && !Nan::Get(lobj, localPortProp).IsEmpty())
-                    {
-                        v8::Local<v8::Value> localPortValue = Nan::Get(lobj, localPortProp).ToLocalChecked();
-                        if (localPortValue->IsNumber())
-                            local_port = Nan::To<int>(localPortValue).FromJust();
-                        else
-                            return Nan::ThrowError("localPort is not a number");
+                    else {
+                        Napi::Error::New(env, "serverCertificateHashes is not an array").ThrowAsJavaScriptException();
+                        return ;
                     }
                 }
-            }
 
-            // Callback *callback, int port, std::unique_ptr<ProofSource> proof_source,  const char *secret
-
-            Http3EventLoop *eventloop = nullptr;
-            if (!info[1]->IsUndefined())
-            {
-                v8::MaybeLocal<v8::Object> obj = info[1]->ToObject(context);
-                v8::Local<v8::Object> lobj = obj.ToLocalChecked();
-                eventloop = Nan::ObjectWrap::Unwrap<Http3EventLoop>(lobj);
-            }
-            else
-            {
-                return Nan::ThrowError("No eventloop arguments passed to Http3Client");
-            }
-
-            std::unique_ptr<QuicConnectionHelperInterface> helper =
-                std::make_unique<QuicDefaultConnectionHelper>();
-
-            std::unique_ptr<ChromiumWebTransportFingerprintProofVerifier> verifier;
-
-            if (serverCertificateHashes.size() > 0)
-            {
-                verifier = std::make_unique<ChromiumWebTransportFingerprintProofVerifier>(helper->GetClock(), 14);
-
-                for (auto cur = serverCertificateHashes.begin();
-                     cur != serverCertificateHashes.end(); cur++)
+                if (lobj.Has( "localPort") && !(lobj).Get("localPort").IsEmpty())
                 {
-                    if (!verifier->AddFingerprint(*cur))
-                    {
-                        return Nan::ThrowError("serverCertificateHashes is not valid fingerprint");
+                    Napi::Value localPortValue = (lobj).Get("localPort");
+                    if (localPortValue.IsNumber())
+                        local_port = localPortValue.As<Napi::Number>().Int32Value();
+                    else {
+                        Napi::Error::New(env, "localPort is not a number").ThrowAsJavaScriptException();
+                        return ;
                     }
                 }
             }
-            else
-                return Nan::ThrowError("No supported verification method included");
+        }
 
-            std::unique_ptr<Http3SessionCache> cache;
+        // Callback *callback, int port, std::unique_ptr<ProofSource> proof_source,  const char *secret
 
-            /* Http3Client(Http3EventLoop *eventloop, QuicSocketAddress server_address,
-                const std::string &server_hostname,
-                std::unique_ptr<ProofVerifier> proof_verifier,
-                std::unique_ptr<SessionCache> session_cache);*/
-
-            QuicSocketAddress address;
-
-            addrinfo hint;
-            memset(&hint, 0, sizeof(hint));
-            hint.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
-            if (forceipv6) hint.ai_family = AF_INET6 ;
-            hint.ai_protocol = IPPROTO_UDP;
-
-            addrinfo *info_list = nullptr;
-            int result = getaddrinfo(hostname.c_str(), port.c_str(), &hint, &info_list);
-            if (result != 0)
-            {
-                QUIC_LOG(ERROR) << "Failed to look up " << hostname << ": "
-                                << gai_strerror(result);
-                info_list = nullptr;
-                return Nan::ThrowError("URL host lookup failed");
-            }
-
-            QUICHE_CHECK(info_list != nullptr);
-            std::unique_ptr<addrinfo, void (*)(addrinfo *)> info_list_owned(info_list,
-                                                                            freeaddrinfo);
-            address = QuicSocketAddress(info_list->ai_addr, info_list->ai_addrlen);
-
-            Http3Client *object = new Http3Client(eventloop, address, hostname, local_port,
-                                                  std::move(verifier), std::move(cache), std::move(helper));
-            object->SetUserAgentID("fails-components/webtransport");
-            object->Wrap(info.This());
-            info.GetReturnValue().Set(info.This());
-
-            object->Ref(); // do not garbage collect
-
-            std::function<void()> task = [object]()
-            {
-                object->Connect();
-            };
-            object->eventloop_->Schedule(task);
+        Http3EventLoop *eventloop = nullptr;
+        if (!info[1].IsUndefined())
+        {
+            Napi::Object lobj = info[1].ToObject();
+            eventloop = dynamic_cast<Http3EventLoop *>(Napi::ObjectWrap<Http3EventLoop>::Unwrap(lobj));
         }
         else
         {
-            const int argc = 2;
-            v8::Local<v8::Value> argv[argc] = {info[0], info[1]};
-            v8::Local<v8::Function> cons = Nan::New(constructor());
-            auto instance = Nan::NewInstance(cons, argc, argv);
-            if (!instance.IsEmpty())
-                info.GetReturnValue().Set(instance.ToLocalChecked());
+            Napi::Error::New(env, "No eventloop arguments passed to Http3Client").ThrowAsJavaScriptException();
+            return ;
         }
+
+        std::unique_ptr<QuicConnectionHelperInterface> helper =
+            std::make_unique<QuicDefaultConnectionHelper>();
+
+        std::unique_ptr<ChromiumWebTransportFingerprintProofVerifier> verifier;
+
+        if (serverCertificateHashes.size() > 0)
+        {
+            verifier = std::make_unique<ChromiumWebTransportFingerprintProofVerifier>(helper->GetClock(), 14);
+
+            for (auto cur = serverCertificateHashes.begin();
+                 cur != serverCertificateHashes.end(); cur++)
+            {
+                if (!verifier->AddFingerprint(*cur))
+                {
+                    Napi::Error::New(env, "serverCertificateHashes is not valid fingerprint").ThrowAsJavaScriptException();
+                    return ;
+                }
+            }
+        }
+        else {
+            Napi::Error::New(env, "No supported verification method included").ThrowAsJavaScriptException();
+            return ;
+        }
+
+        std::unique_ptr<Http3SessionCache> cache;
+
+        /* Http3Client(Http3EventLoop *eventloop, QuicSocketAddress server_address,
+            const std::string &server_hostname,
+            std::unique_ptr<ProofVerifier> proof_verifier,
+            std::unique_ptr<SessionCache> session_cache);*/
+
+        QuicSocketAddress address;
+
+        addrinfo hint;
+        memset(&hint, 0, sizeof(hint));
+        hint.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
+        if (forceipv6)
+            hint.ai_family = AF_INET6;
+        hint.ai_protocol = IPPROTO_UDP;
+
+        addrinfo *info_list = nullptr;
+        int result = getaddrinfo(hostname.c_str(), port.c_str(), &hint, &info_list);
+        if (result != 0)
+        {
+            QUIC_LOG(ERROR) << "Failed to look up " << hostname << ": "
+                            << gai_strerror(result);
+            info_list = nullptr;
+            Napi::Error::New(env, "URL host lookup failed").ThrowAsJavaScriptException();
+            return ;
+        }
+
+        QUICHE_CHECK(info_list != nullptr);
+        std::unique_ptr<addrinfo, void (*)(addrinfo *)> info_list_owned(info_list,
+                                                                        freeaddrinfo);
+        address = QuicSocketAddress(info_list->ai_addr, info_list->ai_addrlen);
+
+        client_ = std::make_unique<Http3Client>(eventloop, address, hostname, local_port,
+                                  std::move(verifier), std::move(cache), std::move(helper));
+        client_->SetUserAgentID("fails-components/webtransport");
+
+        client_->setJS(this);
+
+        Ref(); // do not garbage collect
+
+        std::function<void()> task = [this]()
+        {
+            client_->Connect();
+        };
+        client_->eventloop_->Schedule(task);
+        return ;
     }
-    NAN_METHOD(Http3Client::openWTSession)
+
+
+    void Http3ClientJS::openWTSession(const Napi::CallbackInfo& info)
     {
-        Http3Client *obj = Nan::ObjectWrap::Unwrap<Http3Client>(info.Holder());
+        Http3Client *obj = getObj();
         // got the object we can now start the server
 
-        v8::Isolate *isolate = info.GetIsolate();
-        v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-
-        if (!info[0]->IsUndefined())
+        if (!info[0].IsUndefined())
         {
-            std::string lpath(*v8::String::Utf8Value(isolate, info[0]->ToString(context).ToLocalChecked()));
+            std::string lpath(info[0].ToString().Utf8Value());
             std::function<void()> task = [obj, lpath]()
             {
                 obj->openWTSessionInt(lpath);
             };
             obj->eventloop_->Schedule(task);
         }
-        else
-            return Nan::ThrowError("openWTSession without path");
+        else {
+            Napi::Error::New(info.Env(), "openWTSession without path").ThrowAsJavaScriptException();
+            return ;
+        }
     }
 
-    NAN_METHOD(Http3Client::closeClient)
+    void Http3ClientJS::closeClient(const Napi::CallbackInfo& info)
     {
-        Http3Client *obj = Nan::ObjectWrap::Unwrap<Http3Client>(info.Holder());
+        Http3Client *obj = getObj();
         // got the object we can now start the server
         std::function<void()> task = [obj]()
         {
             if (!obj->closeClientInt())
             {
-                return Nan::ThrowError("closeClientInt failed for Http3Client");
+                printf( "closeClientInt failed for Http3Client");
+                return ;
             }
         };
         obj->eventloop_->Schedule(task);
