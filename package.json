@@ -13,7 +13,7 @@
     "test": "node test/test.js",
     "install": "node build.js install",
     "rebuild": "node build.js rebuild",
-    "rebuild-debug": "node build.js rebuild -D",
+    "rebuild-debug": "node build.js rebuild-debug -D",
     "build-debug": "node build.js build-debug"
   },
   "repository": {
