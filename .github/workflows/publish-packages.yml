@@ -60,8 +60,6 @@ jobs:
         arch: [x64]
         include:
           - arch: ia32
-            os: ubuntu-latest
-          - arch: ia32
             os: windows-2019
     runs-on: ${{ matrix.os }}
     permissions:
