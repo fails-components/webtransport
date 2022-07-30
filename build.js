@@ -42,7 +42,7 @@ const extractthirdparty = async () => {
   let tmppath
   let fatal = false
   console.error('Now extracting third party lib code from git....')
-  const destdir = process.cwd() + '/third_party_test'
+  const destdir = process.cwd() + '/third_party'
   let exists = false
   try {
     access(destdir, constants.F_OK)
