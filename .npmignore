@@ -13,5 +13,9 @@ certs/out/*
 *.pb.*
 chrome.bat
 certificatecache.json
+/third_party
+.git*
+.*
+Dockerf*
 archives
 prebuilds

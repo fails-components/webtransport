@@ -28,9 +28,11 @@ add_subdirectory(third_party/abseil-cpp EXCLUDE_FROM_ALL)
 
 
 # include libevent
+SET(EVENT__DISABLE_OPENSSL ON CACHE BOOL "Define if libevent should build without support for OpenSSL encryption")
 add_subdirectory(third_party/libevent EXCLUDE_FROM_ALL)
 
 # include protobuf
+SET(protobuf_WITH_ZLIB OFF CACHE BOOL "Build with zlib support")
 add_subdirectory(third_party/protobuf EXCLUDE_FROM_ALL)
 
 IF (WIN32)
@@ -975,7 +977,7 @@ event_core
 )
 
 
-add_definitions(-DNAPI_VERSION=6)
+add_definitions(-DNAPI_VERSION=${napi_build_version})
 
 if(MSVC AND CMAKE_JS_NODELIB_DEF AND CMAKE_JS_NODELIB_TARGET)
   # Generate node.lib
