@@ -204,7 +204,7 @@ if (argv.length > 2) {
     case 'install': {
       try {
         await extractthirdparty()
-        const pbres = await prebuildInstall(['-r', 'napi', '-d', '-t', '6'])
+        const pbres = await prebuildInstall(['-r', 'napi', '-d', '-t', '6', '--verbose'])
         if (pbres === 0) break // if we do not succeed, we have to build it ourselves
         // TODO setup third party libs
       } catch (error) {
