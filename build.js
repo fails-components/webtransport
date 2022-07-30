@@ -50,7 +50,10 @@ const extractthirdparty = async () => {
   } catch (error) {
     // ok this is ok
   }
-  if (exists) throw new Error('Destination dir already exists: ' + destdir)
+  if (exists) {
+    console.error('Destination dir already exists: ' + destdir + ', skip downloading.')
+    return
+  }
   try {
     console.log('tmpdir', tmpdir())
     tmppath = await mkdtemp(path.join(tmpdir(), 'wtbuild-'))
