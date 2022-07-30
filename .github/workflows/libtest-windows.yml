@@ -23,7 +23,7 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Install missing software
-        run: choco install openssl nasm -yv
+        run: choco install nasm -yv
       
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
@@ -41,6 +41,5 @@ jobs:
       - name: Run unit tests
         run: | 
           $env:NODE_ENV="production"
-          $env:OPENSSL_ROOT_DIR="C:/Program Files/OpenSSL"
           npm test
 
