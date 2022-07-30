@@ -68,6 +68,9 @@ jobs:
       contents: read
       packages: write
     steps:
+     - name: Install missing software for Windows
+       if: ${{ matrix.os }} == 'windows-2019'
+       run: choco install nasm -yv
      - name: Checkout code
        uses: actions/checkout@v2
        with:
