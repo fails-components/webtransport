@@ -6,7 +6,7 @@ name: Third party lib tester
 on:
 
   schedule:
-    - cron: '20 0 * * *'  # every day at midnight
+    - cron: '20 0 * * 6'  # saturday at midnight
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:

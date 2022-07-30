@@ -14,14 +14,15 @@ const binplatform = platform + '_' + arch
 
 const require = createRequire(import.meta.url)
 const dirname = url.fileURLToPath(new URL('.', import.meta.url))
-let wtpath = '../build_' + binplatform + '/Release/webtransport.node'
+let buildpath = '../build_' + binplatform
+if (!existsSync(buildpath)) buildpath = '../build' // use precompiled only if own compilation does not exis
+
+let wtpath = buildpath + '/Release/webtransport.node'
 if (
   process.env.NODE_ENV !== 'production' &&
-  existsSync(
-    path.join(dirname, '../build_' + binplatform + '/Debug/webtransport.node')
-  )
+  existsSync(path.join(dirname, buildpath + '/Debug/webtransport.node'))
 ) {
-  wtpath = '../build_' + binplatform + '/Debug/webtransport.node'
+  wtpath = buildpath + '/Debug/webtransport.node'
 }
 
 const wtrouter = require(wtpath)

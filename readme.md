@@ -9,11 +9,10 @@ Macos tests on master ![master](https://github.com/fails-components/webtransport
 
 (c) 2022- Marten Richter
 
-This package is part of FAILS.
-A web based lecture system developed out of university lectures.
-
 The package provides Webtransport support to node.js .
 
+This package is part of FAILS.
+A web based lecture system developed out of university lectures.
 
 While FAILS as a whole is licensed via GNU Affero GPL version 3.0, this package is licensed under a BSD-style license that can be found in the LICENSE file, while code taken from other projects is still under their respective license (see LICENSE file for details).
 This package is licensed more permissive, since it can be useful outside of the FAILS environment.
@@ -21,7 +20,7 @@ This package is licensed more permissive, since it can be useful outside of the 
 This module is a C++ node binding to libquiche [https://github.com/google/quiche](https://github.com/google/quiche)(note there is a second library with a similar purpose and the same name), which provides besides other network protocols HTTP/3 support.
 This packages currently only provides support for HTTP/3 WebTransport with an interface similar to the browser side (but not all features implemented), for server as well as for client, see `test/test.js`, `test/testsuite.js`, `test/echoclient.js`, `test/echoserver.js`  for examples.
 Note, the client implementation only supports certificates checking via certificateHashes.
-It may be possible in the future to also support normal HTTP/3 without much effort, however there is no intention from the author to implement this, since it will not be needed by FAILS. However PR request are welcome and will be supported by advise from the author.
+It may be possible in the future to also support normal HTTP/3 not so much effort, however there is no intention from the author to implement this, since it will not be needed by FAILS. However PR request are welcome and will be supported by advise from the author.
 The package should be considered as a ducttape style solution, until a bullet proof native support of HTTP/3 and WebTransport is provided by node itself.
 
 If you need a ponyfill checkout the sister package [https://github.com/fails-components/webtransport-ponyfill-websocket/](https://github.com/fails-components/webtransport-ponyfill-websocket/),
@@ -41,12 +40,16 @@ In case of github packages, please add to your `.npmrc` file
 ```
 In this case you need to be authenticated against github.
 
-If you are running the install as root, you need to use `--unsafe-perm` as flag.
-Installing the package requires a full building environment including clang-9, perl6, python, golang,  ninja-build, icu. See the `Dockerfile` or `Dockerfile.development` for required debian packages. 
-This should work for linux and Mac OS X. 
+The package provides prebuild binaries for `windows`, `linux` and `macos` for the platform `x64` and `ia32` (only linux and windows). 
+Other platforms may be possible via crosscompiling in the github actions, if someone needs this, PR are welcome.
+
+Of course you can also build the binary on your system.
+If you are running the compiling install as root, you need to use `--unsafe-perm` as flag.
+Installing the package without prebuild requires a full building environment including clang-9, perl6, python, golang,  ninja-build, icu. See the `Dockerfile` or `Dockerfile.development` for required debian packages. 
+This should work for Windows, linux and Mac OS X. 
 (You may want to check out the building dependencies (especially for windows) for BoringSSl, zlib, abseil on their respective websites).
 
- Of course,  PR for patches and for compiling instructions and necessary changes are welcome for all possible environments. 
+Of course,  PR for patches and for compiling instructions and necessary changes are welcome for all possible environments. 
 
 ** Warning the build time takes more than 15 minutes, on windows even longer! (Due to the building of the third party libraries). **
 
