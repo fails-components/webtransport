@@ -63,25 +63,25 @@ jobs:
       packages: write
     steps:
      - name: Checkout code
-        uses: actions/checkout@v2
-        with:
-          submodules: recursive
+       uses: actions/checkout@v2
+       with:
+        submodules: recursive
 
-      - uses: actions/setup-node@v2
-        with:
-          node-version: 16
-          registry-url: https://npm.pkg.github.com/
+    - uses: actions/setup-node@v2
+      with:
+        node-version: 16
+        registry-url: https://npm.pkg.github.com/
 
-      - name: Install
-        if: version-check.steps.check.outputs.changed == 'true'
-        run: npm ci --ignore-scripts=true
+    - name: Install
+      if: version-check.steps.check.outputs.changed == 'true'
+      run: npm ci --ignore-scripts=true
 
-      - name: Prebuild
-        if: version-check.steps.check.outputs.changed == 'true'
-        env: 
-          BUILDARCH: ${{ matrix.arch }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node build.js prebuild
+    - name: Prebuild
+      if: version-check.steps.check.outputs.changed == 'true'
+      env: 
+        BUILDARCH: ${{ matrix.arch }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: node build.js prebuild
 
 # code is not ready... if anyone needs it, I am open for PR
 #  prebuild-cross:
