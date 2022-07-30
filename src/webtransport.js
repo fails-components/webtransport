@@ -15,7 +15,7 @@ const binplatform = platform + '_' + arch
 const require = createRequire(import.meta.url)
 const dirname = url.fileURLToPath(new URL('.', import.meta.url))
 let buildpath = '../build_' + binplatform
-if (!existsSync(buildpath)) buildpath = '../build' // use precompiled only if own compilation does not exis
+if (!existsSync(path.join(dirname, buildpath))) buildpath = '../build' // use precompiled only if own compilation does not exis
 
 let wtpath = buildpath + '/Release/webtransport.node'
 if (
