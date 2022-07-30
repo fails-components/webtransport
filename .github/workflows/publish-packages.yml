@@ -65,7 +65,7 @@ jobs:
             os: windows-2019
     runs-on: ${{ matrix.os }}
     permissions:
-      contents: read
+      contents: write
       packages: write
     steps:
      - name: Install missing software for Windows
