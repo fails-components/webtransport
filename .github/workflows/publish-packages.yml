@@ -23,6 +23,10 @@ jobs:
 # version check
   version-check:
     runs-on: ubuntu-latest
+    outputs:
+      commit: ${{ steps.check.outputs.commit }}
+      version: ${{ steps.check.outputs.version }}
+      changed: ${{ steps.check.outputs.changed}}
     permissions:
       contents: read
       packages: write
@@ -73,11 +77,11 @@ jobs:
          node-version: 16
          registry-url: https://npm.pkg.github.com/
      - name: Install
-       if: version-check.steps.check.outputs.changed == 'true'
+       if: needs.version-check.steps.check.outputs.changed == 'true'
        run: npm ci --ignore-scripts=true
 
      - name: Prebuild
-       if: version-check.steps.check.outputs.changed == 'true'
+       if: needs.version-check.steps.check.outputs.changed == 'true'
        env: 
          BUILDARCH: ${{ matrix.arch }}
          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -105,11 +109,11 @@ jobs:
 #          registry-url: https://npm.pkg.github.com/
 #
 #      - name: Install
-#        if: version-check.steps.check.outputs.changed == 'true'
+#        if: needs.version-check.steps.check.outputs.changed == 'true'
 #        run: npm ci --ignore-scripts=true
 #
 #      - name: Prebuild
-#        if: version-check.steps.check.outputs.changed == 'true'
+#        if: needs.version-check.steps.check.outputs.changed == 'true'
 #        env: 
 #          BUILDARCH: ${{ matrix.arch }}
 #          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -134,23 +138,23 @@ jobs:
           registry-url: https://npm.pkg.github.com/
 
       - name: Install
-        if: version-check.steps.check.outputs.changed == 'true'
+        if: needs.version-check.steps.check.outputs.changed == 'true'
         run: npm ci --ignore-scripts=true
 
       - run: npm publish --tag stable
-        if: ${{ version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
+        if: ${{ needs.version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm publish --tag next
-        if: ${{ version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
+        if: ${{ needs.version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: npm dist-tag add @fails-components/webtransport@${{ version-check.steps.check.outputs.version }} latest
-        if: ${{ version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
+      - run: npm dist-tag add @fails-components/webtransport@${{ needs.version-check.steps.check.outputs.version }} latest
+        if: ${{ needs.version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: npm dist-tag add @fails-components/webtransport@${{ version-check.steps.check.outputs.version }} latestunstable
-        if: ${{ version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
+      - run: npm dist-tag add @fails-components/webtransport@${{ needs.version-check.steps.check.outputs.version }} latestunstable
+        if: ${{ needs.version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 # steps for npm
@@ -172,23 +176,23 @@ jobs:
           registry-url: https://registry.npmjs.org/
 
       - name: Install
-        if: version-check.steps.check.outputs.changed == 'true'
+        if: needs.version-check.steps.check.outputs.changed == 'true'
         run: npm ci --ignore-scripts=true
 
       - run: npm publish --tag stable
-        if: ${{ version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
+        if: ${{ needs.version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: npm publish --tag next
-        if: ${{ version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
+        if: ${{ needs.version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: npm dist-tag add @fails-components/webtransport@${{ version-check.steps.check.outputs.version }} latest
-        if: ${{ version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
+      - run: npm dist-tag add @fails-components/webtransport@${{ needs.version-check.steps.check.outputs.version }} latest
+        if: ${{ needs.version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: npm dist-tag add @fails-components/webtransport@${{ version-check.steps.check.outputs.version }} latestunstable
-        if: ${{ version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
+      - run: npm dist-tag add @fails-components/webtransport@${{ needs.version-check.steps.check.outputs.version }} latestunstable
+        if: ${{ needs.version-check.steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
