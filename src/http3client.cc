@@ -1446,9 +1446,8 @@ namespace quic
         }
 
         QUICHE_CHECK(info_list != nullptr);
-        std::unique_ptr<addrinfo, void (*)(addrinfo *)> info_list_owned(info_list,
-                                                                        freeaddrinfo);
         address = QuicSocketAddress(info_list->ai_addr, info_list->ai_addrlen);
+        freeaddrinfo(info_list);
 
         client_ = std::make_unique<Http3Client>(eventloop, address, hostname, local_port,
                                   std::move(verifier), std::move(cache), std::move(helper));
