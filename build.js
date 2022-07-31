@@ -219,16 +219,17 @@ if (argv.length > 2) {
           '--verbose'
         ])
         if (pbres === 0) break
+      } catch (error) {
         console.error(
           'No prebuild available, building binary, this may take more than 20 minutes'
         )
+      }
+      try {
         // if we do not succeed, we have to build it ourselves
         await extractthirdparty()
-
-        // TODO setup third party libs
       } catch (error) {
         console.error('Building binary failed: ', error)
-        process.exit(1)
+      
       }
     }
     // eslint-disable-next-line no-fallthrough
