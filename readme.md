@@ -40,8 +40,8 @@ In case of github packages, please add to your `.npmrc` file
 ```
 In this case you need to be authenticated against github.
 
-The package provides prebuild binaries for `windows`, `linux` and `macos` for the platform `x64` and `ia32` (only linux and windows). 
-Other platforms may be possible via crosscompiling in the github actions, if someone needs this, PR are welcome.
+The package provides prebuild binaries for `windows`, `linux` and `macos` for the platform `x64` and `ia32` (only windows). 
+Other platforms may be possible via crosscompiling in the github actions, if someone needs this, PRs are welcome.
 
 Of course you can also build the binary on your system.
 If you are running the compiling install as root, you need to use `--unsafe-perm` as flag.
