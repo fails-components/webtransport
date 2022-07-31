@@ -45,13 +45,15 @@ const extractthirdparty = async () => {
   const destdir = process.cwd() + '/third_party'
   let exists = false
   try {
-    access(destdir, constants.F_OK)
+    await access(destdir, constants.F_OK)
     exists = true
   } catch (error) {
     // ok this is ok
   }
   if (exists) {
-    console.error('Destination dir already exists: ' + destdir + ', skip downloading.')
+    console.error(
+      'Destination dir already exists: ' + destdir + ', skip downloading.'
+    )
     return
   }
   try {
@@ -96,7 +98,7 @@ const extractthirdparty = async () => {
         ],
         { cwd: copath }
       )
-      await await callGit(['submodule', 'update', '--init', sub], {
+      await callGit(['submodule', 'update', '--init', '--recursive', sub], {
         cwd: copath
       })
     }
@@ -148,23 +150,28 @@ const prebuildInstall = async (args) => {
     })
 
     proc.on('close', (code) => {
-      resolve(code)
+      if (code === 0) resolve(code)
+      else reject(code)
       console.log(`child process exited with code ${code}`)
     })
   })
 }
 
 const execbuild = async (args) => {
-  const cmakejs = 'cmake-js'
-  // if (platform === 'win32') cmakejs = 'cmake-js.exe'
-  const proc = spawn(cmakejs, args, {
-    cwd: process.cwd(),
-    stdio: [null, 'inherit', 'inherit'],
-    shell: true
-  })
+  return new Promise((resolve, reject) => {
+    const cmakejs = 'cmake-js'
+    // if (platform === 'win32') cmakejs = 'cmake-js.exe'
+    const proc = spawn(cmakejs, args, {
+      cwd: process.cwd(),
+      stdio: [null, 'inherit', 'inherit'],
+      shell: true
+    })
 
-  proc.on('close', (code) => {
-    console.log(`child process exited with code ${code}`)
+    proc.on('close', (code) => {
+      if (code === 0) resolve(code)
+      else reject(code)
+      console.log(`child process exited with code ${code}`)
+    })
   })
 }
 
@@ -203,9 +210,21 @@ if (argv.length > 2) {
       break
     case 'install': {
       try {
+        const pbres = await prebuildInstall([
+          '-r',
+          'napi',
+          '-d',
+          '-t',
+          '6',
+          '--verbose'
+        ])
+        if (pbres === 0) break
+        console.error(
+          'No prebuild available, building binary, this may take more than 20 minutes'
+        )
+        // if we do not succeed, we have to build it ourselves
         await extractthirdparty()
-        const pbres = await prebuildInstall(['-r', 'napi', '-d', '-t', '6', '--verbose'])
-        if (pbres === 0) break // if we do not succeed, we have to build it ourselves
+
         // TODO setup third party libs
       } catch (error) {
         console.error('Building binary failed: ', error)
@@ -214,16 +233,36 @@ if (argv.length > 2) {
     }
     // eslint-disable-next-line no-fallthrough
     case 'build':
-      execbuild(['build', ...platformargs])
+      try {
+        execbuild(['build', ...platformargs])
+      } catch (error) {
+        console.error('Building binary failed: ', error)
+        process.exit(1)
+      }
       break
     case 'rebuild':
-      execbuild(['rebuild', ...platformargs])
+      try {
+        execbuild(['rebuild', ...platformargs])
+      } catch (error) {
+        console.error('ReBuilding binary failed: ', error)
+        process.exit(1)
+      }
       break
     case 'build-debug':
-      execbuild(['build', '-D', ...platformargs])
+      try {
+        execbuild(['build', '-D', ...platformargs])
+      } catch (error) {
+        console.error('Building binary failed: ', error)
+        process.exit(1)
+      }
       break
     case 'rebuild-debug':
-      execbuild(['rebuild', '-D', ...platformargs])
+      try {
+        execbuild(['rebuild', '-D', ...platformargs])
+      } catch (error) {
+        console.error('ReBuilding binary failed: ', error)
+        process.exit(1)
+      }
       break
     default:
       console.log('unsupported argument ', argv[2])
