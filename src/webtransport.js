@@ -24,6 +24,7 @@ if (
 ) {
   wtpath = buildpath + '/Debug/webtransport.node'
 }
+console.log('load webtransport binary:', wtpath)
 
 const wtrouter = require(wtpath)
 
