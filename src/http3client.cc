@@ -44,6 +44,42 @@ using spdy::Http2HeaderBlock;
 namespace quic
 {
 
+// taken from libquiche
+namespace
+{
+
+    // For level-triggered I/O, we need to manually rearm the kSocketEventWritable
+    // listener whenever the socket gets blocked.
+    class LevelTriggeredPacketWriter : public QuicDefaultPacketWriter
+    {
+    public:
+        explicit LevelTriggeredPacketWriter(int fd, QuicEventLoop *event_loop)
+            : QuicDefaultPacketWriter(fd), event_loop_(event_loop)
+        {
+            QUICHE_DCHECK(!event_loop->SupportsEdgeTriggered());
+        }
+
+        WriteResult WritePacket(const char *buffer, size_t buf_len,
+                                const QuicIpAddress &self_address,
+                                const QuicSocketAddress &peer_address,
+                                PerPacketOptions *options) override
+        {
+            WriteResult result = QuicDefaultPacketWriter::WritePacket(
+                buffer, buf_len, self_address, peer_address, options);
+            if (IsWriteBlockedStatus(result.status))
+            {
+                bool success = event_loop_->RearmSocket(fd(), kSocketEventWritable);
+                QUICHE_DCHECK(success);
+            }
+            return result;
+        }
+
+    private:
+        QuicEventLoop *event_loop_;
+    };
+
+} // namespace
+
     // taken from chromium to behave like the browser
     // A version of WebTransportFingerprintProofVerifier that enforces
     // Chromium-specific policies.
@@ -168,7 +204,7 @@ namespace quic
 
     void Http3Client::SendRequest(const std::string &uri)
     {
-        spdy::SpdyHeaderBlock headers;
+        spdy::Http2HeaderBlock headers;
         if (!PopulateHeaderBlockFromUrl(uri, &headers))
         {
             return;
@@ -178,7 +214,7 @@ namespace quic
 
     void Http3Client::SendRequestAndRstTogether(const std::string &uri)
     {
-        spdy::SpdyHeaderBlock headers;
+        spdy::Http2HeaderBlock headers;
         if (!PopulateHeaderBlockFromUrl(uri, &headers))
         {
             return;
@@ -194,7 +230,7 @@ namespace quic
     }
 
     void Http3Client::GetOrCreateStreamAndSendRequest(
-        const spdy::SpdyHeaderBlock *headers, absl::string_view body, bool fin)
+        const spdy::Http2HeaderBlock *headers, absl::string_view body, bool fin)
     {
         if (headers)
         {
@@ -206,8 +242,8 @@ namespace quic
             if (rv == QUIC_PENDING)
             {
                 // May need to retry request if asynchronous rendezvous fails.
-                std::unique_ptr<spdy::SpdyHeaderBlock> new_headers(
-                    new spdy::SpdyHeaderBlock(headers->Clone()));
+                std::unique_ptr<spdy::Http2HeaderBlock> new_headers(
+                    new spdy::Http2HeaderBlock(headers->Clone()));
                 push_promise_data_to_resend_ = std::make_unique<Http3ClientDataToResend>(
                     std::move(new_headers), body, fin, this);
                 return;
@@ -218,7 +254,7 @@ namespace quic
         bool hasheaders = false;
         if (headers != nullptr)
         {
-            spdy_headers = std::make_shared<spdy::SpdyHeaderBlock>(headers->Clone());
+            spdy_headers = std::make_shared<spdy::Http2HeaderBlock>(headers->Clone());
             hasheaders = true;
         }
 
@@ -252,13 +288,13 @@ namespace quic
             });
     }
 
-    void Http3Client::SendMessageAsync(const spdy::SpdyHeaderBlock &headers,
+    void Http3Client::SendMessageAsync(const spdy::Http2HeaderBlock &headers,
                                        absl::string_view body)
     {
         return SendMessageAsync(headers, body, /*fin=*/true);
     }
 
-    void Http3Client::SendMessageAsync(const spdy::SpdyHeaderBlock &headers,
+    void Http3Client::SendMessageAsync(const spdy::Http2HeaderBlock &headers,
                                        absl::string_view body, bool fin)
     {
         // Always force creation of a stream for SendMessage.
@@ -667,7 +703,7 @@ namespace quic
 
     void Http3Client::openWTSessionInt(absl::string_view path)
     {
-        spdy::SpdyHeaderBlock headers;
+        spdy::Http2HeaderBlock headers;
         headers[":scheme"] = "https";
         headers[":authority"] = "localhost";
         headers[":path"] = path;
@@ -691,7 +727,7 @@ namespace quic
     {
         QUICHE_DCHECK(initialized_);
         QUICHE_DCHECK(!connected());
-        QuicPacketWriter *writer = new QuicDefaultPacketWriter(GetLatestFD());
+        QuicPacketWriter *writer = new LevelTriggeredPacketWriter(GetLatestFD(), eventloop_->getQuicEventLoop());
         ParsedQuicVersion mutual_version = UnsupportedQuicVersion();
         const bool can_reconnect_with_different_version =
             CanReconnectWithDifferentVersion(&mutual_version);
@@ -895,15 +931,10 @@ namespace quic
                 QUICHE_DCHECK(success);
             }
         }
-        bool writeblocked = false;
         if (connected() && (events & kSocketEventWritable))
         {
             writer_->SetWritable();
             session_->connection()->OnCanWrite();
-            if (writer_->IsWriteBlocked())
-            {
-                writeblocked = true;           
-            }
         }
 
         if (handleConnecting())
@@ -911,16 +942,6 @@ namespace quic
             bool success =
                 event_loop->ArtificiallyNotifyEvent(fd, kSocketEventReadable);
             QUICHE_DCHECK(success);
-        }
-        if (writer_->IsWriteBlocked())
-        {
-             writeblocked = true;           
-        }
-        if (!event_loop->SupportsEdgeTriggered() && writeblocked)
-        {
-            bool success = event_loop->RearmSocket(fd, kSocketEventWritable);
-            QUICHE_DCHECK(success);
-            
         }
     }
 
@@ -943,7 +964,7 @@ namespace quic
         return response_headers_complete_;
     }
 
-    const spdy::SpdyHeaderBlock *Http3Client::response_headers() const
+    const spdy::Http2HeaderBlock *Http3Client::response_headers() const
     {
         for (std::pair<QuicStreamId, QuicSpdyClientStream *> stream : open_streams_)
         {
@@ -956,7 +977,7 @@ namespace quic
         return &response_headers_;
     }
 
-    const spdy::SpdyHeaderBlock *Http3Client::preliminary_headers() const
+    const spdy::Http2HeaderBlock *Http3Client::preliminary_headers() const
     {
         for (std::pair<QuicStreamId, QuicSpdyClientStream *> stream : open_streams_)
         {
@@ -971,7 +992,7 @@ namespace quic
         return &preliminary_headers_;
     }
 
-    const spdy::SpdyHeaderBlock &Http3Client::response_trailers() const
+    const spdy::Http2HeaderBlock &Http3Client::response_trailers() const
     {
         return response_trailers_;
     }
@@ -1080,9 +1101,9 @@ namespace quic
     }
 
     bool Http3Client::CheckVary(
-        const spdy::SpdyHeaderBlock & /*client_request*/,
-        const spdy::SpdyHeaderBlock & /*promise_request*/,
-        const spdy::SpdyHeaderBlock & /*promise_response*/)
+        const spdy::Http2HeaderBlock & /*client_request*/,
+        const spdy::Http2HeaderBlock & /*promise_request*/,
+        const spdy::Http2HeaderBlock & /*promise_response*/)
     {
         return true;
     }
@@ -1174,7 +1195,7 @@ namespace quic
     }
 
     Http3Client::Http3ClientDataToResend::Http3ClientDataToResend(
-        std::unique_ptr<spdy::SpdyHeaderBlock> headers, absl::string_view body,
+        std::unique_ptr<spdy::Http2HeaderBlock> headers, absl::string_view body,
         bool fin, Http3Client *client)
         : headers_(std::move(headers)), body_(body), fin_(fin),
           client_(client) {}
@@ -1202,9 +1223,9 @@ namespace quic
     Http3Client::PerStreamState::PerStreamState(
         QuicRstStreamErrorCode stream_error, bool response_complete,
         bool response_headers_complete,
-        const spdy::SpdyHeaderBlock &response_headers,
-        const spdy::SpdyHeaderBlock &preliminary_headers,
-        const std::string &response, const spdy::SpdyHeaderBlock &response_trailers,
+        const spdy::Http2HeaderBlock &response_headers,
+        const spdy::Http2HeaderBlock &preliminary_headers,
+        const std::string &response, const spdy::Http2HeaderBlock &response_trailers,
         uint64_t bytes_read, uint64_t bytes_written, int64_t response_body_size)
         : stream_error(stream_error),
           response_complete(response_complete),
@@ -1220,7 +1241,7 @@ namespace quic
     Http3Client::PerStreamState::~PerStreamState() = default;
 
     bool Http3Client::PopulateHeaderBlockFromUrl(
-        const std::string &uri, spdy::SpdyHeaderBlock *headers)
+        const std::string &uri, spdy::Http2HeaderBlock *headers)
     {
         std::string url;
         if (absl::StartsWith(uri, "https://") || absl::StartsWith(uri, "http://"))
