@@ -718,6 +718,8 @@ third_party/quiche/quiche/quic/core/quic_default_packet_writer.h
 third_party/quiche/quiche/quic/core/quic_default_clock.cc
 third_party/quiche/quiche/quic/core/quic_default_clock.h
 third_party/quiche/quiche/quic/core/quic_default_connection_helper.h
+third_party/quiche/quiche/quic/core/deterministic_connection_id_generator.h
+third_party/quiche/quiche/quic/core/deterministic_connection_id_generator.cc
 third_party/quiche/quiche/quic/core/quic_dispatcher.cc
 third_party/quiche/quiche/quic/core/quic_dispatcher.h
 third_party/quiche/quiche/quic/core/quic_error_codes.cc

@@ -39,7 +39,8 @@ namespace quic
                        std::move(proof_source),
                        KeyExchangeSource::Default()),
         expected_server_connection_id_length_(kQuicDefaultConnectionIdLength),
-        js_(nullptr)
+        js_(nullptr),
+        connection_id_generator_(expected_server_connection_id_length_)
   {
   }
 
@@ -119,7 +120,7 @@ namespace quic
             new QuicSimpleCryptoServerStreamHelper()),
         std::unique_ptr<QuicAlarmFactory>(
             eventloop_->getQuicEventLoop()->CreateAlarmFactory()),
-        &http3_server_backend_, expected_server_connection_id_length_);
+        &http3_server_backend_, expected_server_connection_id_length_, connection_id_generator_);
   }
 
   Http3ServerJS::Http3ServerJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Http3ServerJS>(info)
@@ -149,7 +150,7 @@ namespace quic
         else
         {
           Napi::Error::New(Env(), "No secret set for Http3Server").ThrowAsJavaScriptException();
-          return ;
+          return;
         }
         if (lobj.Has("host") && !(lobj).Get("host").IsEmpty())
         {
@@ -202,7 +203,7 @@ namespace quic
       if (proofsource == nullptr)
       {
         Napi::Error::New(Env(), "LoadPemFromStream cert failed for Http3Server").ThrowAsJavaScriptException();
-        return ;
+        return;
       }
       Http3EventLoop *eventloop = nullptr;
       if (!info[1].IsUndefined())
@@ -213,7 +214,7 @@ namespace quic
       else
       {
         Napi::Error::New(Env(), "No eventloop arguments passed to Http3Server").ThrowAsJavaScriptException();
-        return ;
+        return;
       }
 
       server_ = std::make_unique<Http3Server>(eventloop, host, port, std::move(proofsource), secret.c_str(), sconfig);

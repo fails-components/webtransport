@@ -30,7 +30,8 @@ namespace quic
         std::unique_ptr<QuicCryptoServerStreamBase::Helper> session_helper,
         std::unique_ptr<QuicAlarmFactory> alarm_factory,
         Http3ServerBackend *http3_server_backend,
-        uint8_t expected_server_connection_id_length);
+        uint8_t expected_server_connection_id_length,
+        ConnectionIdGeneratorInterface& generator);
 
     ~Http3Dispatcher() override;
 
