@@ -23,14 +23,16 @@ Http3Dispatcher::Http3Dispatcher(
     std::unique_ptr<QuicCryptoServerStreamBase::Helper> session_helper,
     std::unique_ptr<QuicAlarmFactory> alarm_factory,
     Http3ServerBackend* http3_server_backend,
-    uint8_t expected_server_connection_id_length)
+    uint8_t expected_server_connection_id_length,
+    ConnectionIdGeneratorInterface& generator)
     : QuicDispatcher(config,
                      crypto_config,
                      version_manager,
                      std::move(helper),
                      std::move(session_helper),
                      std::move(alarm_factory),
-                     expected_server_connection_id_length),
+                     expected_server_connection_id_length,
+                     generator),
       http3_server_backend_(http3_server_backend) {}
 
 Http3Dispatcher::~Http3Dispatcher() = default;

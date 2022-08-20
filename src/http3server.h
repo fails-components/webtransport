@@ -18,6 +18,7 @@
 #include "src/http3serverbackend.h"
 #include "src/http3eventloop.h"
 #include "quiche/quic/core/crypto/quic_crypto_server_config.h"
+#include "quiche/quic/core/deterministic_connection_id_generator.h"
 #include "quiche/quic/core/quic_udp_socket.h"
 #include "quiche/quic/core/quic_dispatcher.h"
 #include "quiche/quic/core/quic_packet_reader.h"
@@ -60,7 +61,6 @@ namespace quic
                                                                                          static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
             exports.Set("Http3WebTransportServer", tplsrv);
         }
-
 
         void doUnref() override
         {
@@ -127,6 +127,7 @@ namespace quic
         QuicDispatcher *CreateQuicDispatcher();
 
         Http3EventLoop *eventloop_;
+        DeterministicConnectionIdGenerator connection_id_generator_;
     };
 
 }
