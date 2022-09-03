@@ -62,7 +62,7 @@ namespace quic
       return false;
     }
     auto closer = absl::MakeCleanup([this]
-                                    { close(fd_); });
+                                    { { QuicUdpSocketApi api;api.Destroy(fd_); } });
 
     overflow_supported_ = socket_api.EnableDroppedPacketCount(fd_);
     socket_api.EnableReceiveTimestamp(fd_);

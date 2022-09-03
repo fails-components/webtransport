@@ -482,7 +482,7 @@ namespace quic
         api.EnableReceiveTimestamp(fd);
 
         auto closer = absl::MakeCleanup([fd]
-                                        { close(fd); });
+                                        { QuicUdpSocketApi api;api.Destroy(fd); });
 
         QuicSocketAddress client_address;
         if (bind_to_address.IsInitialized())
