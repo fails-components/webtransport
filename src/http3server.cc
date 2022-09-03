@@ -7,6 +7,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "absl/cleanup/cleanup.h"
 #include "src/http3server.h"
 #include "src/http3dispatcher.h"
 #include "src/http3wtsessionvisitor.h"
@@ -60,6 +61,8 @@ namespace quic
       QUIC_LOG(ERROR) << "CreateSocket() failed: " << strerror(errno);
       return false;
     }
+    auto closer = absl::MakeCleanup([this]
+                                    { close(fd_); });
 
     overflow_supported_ = socket_api.EnableDroppedPacketCount(fd_);
     socket_api.EnableReceiveTimestamp(fd_);
@@ -84,12 +87,16 @@ namespace quic
 
     const int kEpollFlags = kSocketEventReadable | kSocketEventWritable;
 
-    eventloop_->getQuicEventLoop()->RegisterSocket(fd_, kEpollFlags, this);
-    // eventloop_->SetNonblocking(fd_); // eventuelly should be part of register socket.
-    dispatcher_.reset(CreateQuicDispatcher());
-    dispatcher_->InitializeWithWriter(new QuicDefaultPacketWriter(fd_));
+    if (eventloop_->getQuicEventLoop()->RegisterSocket(fd_, kEpollFlags, this))
+    {
+      // eventloop_->SetNonblocking(fd_); // eventuelly should be part of register socket.
+      dispatcher_.reset(CreateQuicDispatcher());
+      dispatcher_->InitializeWithWriter(new QuicDefaultPacketWriter(fd_));
+      std::move(closer).Cancel();
+      return true;
+    }
 
-    return true;
+    return false;
   }
 
   bool Http3Server::stopServerInt()
