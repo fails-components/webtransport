@@ -970,6 +970,7 @@ absl::synchronization
 absl::time
 absl::status
 absl::statusor
+absl::cleanup
 protobuf::libprotobuf
 ssl 
 zlibstatic

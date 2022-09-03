@@ -49,7 +49,7 @@ std::unique_ptr<QuicSession> Http3Dispatcher::CreateQuicSession(
       new QuicConnection(connection_id, self_address, peer_address, helper(),
                          alarm_factory(), writer(),
                          /* owns_writer= */ false, Perspective::IS_SERVER,
-                         ParsedQuicVersionVector{version});
+                         ParsedQuicVersionVector{version}, connection_id_generator());
 
   auto session = std::make_unique<Http3ServerSession>(
       config(), GetSupportedVersions(), connection, this, session_helper(),

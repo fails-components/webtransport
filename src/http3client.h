@@ -29,6 +29,7 @@
 #include "quiche/quic/core/quic_packet_reader.h"
 #include "quiche/quic/platform/api/quic_socket_address.h"
 #include "quiche/quic/core/proto/cached_network_parameters_proto.h"
+#include "quiche/quic/core/deterministic_connection_id_generator.h"
 #include "quiche/quic/core/quic_framer.h"
 #include "quiche/quic/core/quic_packet_creator.h"
 #include "quiche/quic/core/quic_packets.h"
@@ -353,6 +354,8 @@ namespace quic
         // Returns true if the corresponding of this client has active requests.
         bool HasActiveRequests();
 
+        ConnectionIdGeneratorInterface &connection_id_generator();
+
         // Actually clean up |fd|.
         void CleanUpUDPSocketImpl(QuicUdpSocketFd fd);
 
@@ -540,6 +543,9 @@ namespace quic
         // Point to a QuicPacketReader object on the heap. The reader allocates more
         // space than allowed on the stack.
         std::unique_ptr<QuicPacketReader> packet_reader_;
+
+        DeterministicConnectionIdGenerator connection_id_generator_{
+            kQuicDefaultConnectionIdLength};
 
         Http3EventLoop *eventloop_;
         // connection workflow

@@ -19,6 +19,7 @@
 
 #include "absl/strings/match.h"
 #include "absl/strings/string_view.h"
+#include "absl/cleanup/cleanup.h"
 #include "openssl/x509.h"
 #include "quiche/quic/core/crypto/proof_verifier.h"
 #include "quiche/quic/core/http/quic_spdy_client_stream.h"
@@ -44,41 +45,41 @@ using spdy::Http2HeaderBlock;
 namespace quic
 {
 
-// taken from libquiche
-namespace
-{
-
-    // For level-triggered I/O, we need to manually rearm the kSocketEventWritable
-    // listener whenever the socket gets blocked.
-    class LevelTriggeredPacketWriter : public QuicDefaultPacketWriter
+    // taken from libquiche
+    namespace
     {
-    public:
-        explicit LevelTriggeredPacketWriter(int fd, QuicEventLoop *event_loop)
-            : QuicDefaultPacketWriter(fd), event_loop_(event_loop)
-        {
-            QUICHE_DCHECK(!event_loop->SupportsEdgeTriggered());
-        }
 
-        WriteResult WritePacket(const char *buffer, size_t buf_len,
-                                const QuicIpAddress &self_address,
-                                const QuicSocketAddress &peer_address,
-                                PerPacketOptions *options) override
+        // For level-triggered I/O, we need to manually rearm the kSocketEventWritable
+        // listener whenever the socket gets blocked.
+        class LevelTriggeredPacketWriter : public QuicDefaultPacketWriter
         {
-            WriteResult result = QuicDefaultPacketWriter::WritePacket(
-                buffer, buf_len, self_address, peer_address, options);
-            if (IsWriteBlockedStatus(result.status))
+        public:
+            explicit LevelTriggeredPacketWriter(int fd, QuicEventLoop *event_loop)
+                : QuicDefaultPacketWriter(fd), event_loop_(event_loop)
             {
-                bool success = event_loop_->RearmSocket(fd(), kSocketEventWritable);
-                QUICHE_DCHECK(success);
+                QUICHE_DCHECK(!event_loop->SupportsEdgeTriggered());
             }
-            return result;
-        }
 
-    private:
-        QuicEventLoop *event_loop_;
-    };
+            WriteResult WritePacket(const char *buffer, size_t buf_len,
+                                    const QuicIpAddress &self_address,
+                                    const QuicSocketAddress &peer_address,
+                                    PerPacketOptions *options) override
+            {
+                WriteResult result = QuicDefaultPacketWriter::WritePacket(
+                    buffer, buf_len, self_address, peer_address, options);
+                if (IsWriteBlockedStatus(result.status))
+                {
+                    bool success = event_loop_->RearmSocket(fd(), kSocketEventWritable);
+                    QUICHE_DCHECK(success);
+                }
+                return result;
+            }
 
-} // namespace
+        private:
+            QuicEventLoop *event_loop_;
+        };
+
+    } // namespace
 
     // taken from chromium to behave like the browser
     // A version of WebTransportFingerprintProofVerifier that enforces
@@ -480,6 +481,9 @@ namespace
         overflow_supported_ = api.EnableDroppedPacketCount(fd);
         api.EnableReceiveTimestamp(fd);
 
+        auto closer = absl::MakeCleanup([fd]
+                                        { QuicUdpSocketApi api;api.Destroy(fd); });
+
         QuicSocketAddress client_address;
         if (bind_to_address.IsInitialized())
         {
@@ -528,10 +532,13 @@ namespace
         }
         const int kEpollFlags = kSocketEventReadable | kSocketEventWritable; // there is no analogue to EPOLLET in libuv hopefully not a problem
 
-        fd_address_map_[fd] = client_address;
-        eventloop_->getQuicEventLoop()->RegisterSocket(fd, kEpollFlags, this);
-        // eventloop_->SetNonblocking(fd); // eventuelly should be part of register socket.
-        return true;
+        if (eventloop_->getQuicEventLoop()->RegisterSocket(fd, kEpollFlags, this))
+        {
+            fd_address_map_[fd] = client_address;
+            std::move(closer).Cancel();
+            return true;
+        }
+        return false;
     }
 
     void Http3Client::CleanUpUDPSocket(int fd)
@@ -687,8 +694,8 @@ namespace
                         Http3WTSession *wtsessionobj =
                             new Http3WTSession();
                         wtsessionobj->init(
-                                static_cast<WebTransportSession *>(wtsession),
-                                eventloop_);
+                            static_cast<WebTransportSession *>(wtsession),
+                            eventloop_);
                         eventloop_->informNewClientSession(this, wtsessionobj);
                         auto visitor = std::make_unique<Http3WTSession::Visitor>(wtsessionobj);
                         wtsession->SetVisitor(std::move(visitor));
@@ -753,7 +760,7 @@ namespace
 
         session_ = std::make_unique<Http3ClientSession>(
             config_, client_supported_versions, new QuicConnection(newconnid, QuicSocketAddress(), server_address_, helper_.get(), alarm_factory_.get(), writer,
-                                                                   /* owns_writer= */ false, Perspective::IS_CLIENT, client_supported_versions),
+                                                                   /* owns_writer= */ false, Perspective::IS_CLIENT, client_supported_versions, connection_id_generator_),
             server_id_, &crypto_config_,
             &push_promise_index_, false /*drop_response_body_*/, true /* enable_web_transport */);
 
@@ -924,7 +931,7 @@ namespace
                 bool success =
                     event_loop->ArtificiallyNotifyEvent(fd, kSocketEventReadable);
                 QUICHE_DCHECK(success);
-            } 
+            }
             if (!event_loop->SupportsEdgeTriggered())
             {
                 bool success = event_loop->RearmSocket(fd, kSocketEventReadable);
@@ -1292,8 +1299,7 @@ namespace
         latest_created_stream_ = nullptr;
     }
 
-    Http3ClientJS::Http3ClientJS(const Napi::CallbackInfo &info) : 
-            Napi::ObjectWrap<Http3ClientJS>(info)
+    Http3ClientJS::Http3ClientJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Http3ClientJS>(info)
     {
 
         std::string port = "443";
@@ -1310,39 +1316,41 @@ namespace
             if (!lobj.IsEmpty())
             {
 
-                if (lobj.Has( "allowPooling") && !(lobj).Get("allowPooling").IsEmpty())
+                if (lobj.Has("allowPooling") && !(lobj).Get("allowPooling").IsEmpty())
                 {
                     Napi::Value poolValue = (lobj).Get("allowPooling");
                     allowPooling = poolValue.As<Napi::Boolean>().Value();
                 }
 
-                if (lobj.Has( "forceIpv6") && !(lobj).Get("forceIpv6").IsEmpty())
+                if (lobj.Has("forceIpv6") && !(lobj).Get("forceIpv6").IsEmpty())
                 {
                     Napi::Value ipv6Value = (lobj).Get("forceIpv6");
                     forceipv6 = ipv6Value.As<Napi::Boolean>().Value();
                 }
 
-                if (lobj.Has( "port") && !(lobj).Get("port").IsEmpty())
+                if (lobj.Has("port") && !(lobj).Get("port").IsEmpty())
                 {
                     Napi::Value portValue = (lobj).Get("port");
                     port = portValue.ToString().Utf8Value();
                 }
-                else {
+                else
+                {
                     Napi::Error::New(env, "no port specified").ThrowAsJavaScriptException();
-                    return ;
+                    return;
                 }
 
-                if (lobj.Has( "hostname") && !(lobj).Get("hostname").IsEmpty())
+                if (lobj.Has("hostname") && !(lobj).Get("hostname").IsEmpty())
                 {
                     Napi::Value hostnameValue = (lobj).Get("hostname");
                     hostname = hostnameValue.ToString().Utf8Value();
                 }
-                else {
+                else
+                {
                     Napi::Error::New(env, "no hostname specified").ThrowAsJavaScriptException();
-                    return ;
+                    return;
                 }
 
-                if (lobj.Has( "serverCertificateHashes") && !(lobj).Get("serverCertificateHashes").IsEmpty())
+                if (lobj.Has("serverCertificateHashes") && !(lobj).Get("serverCertificateHashes").IsEmpty())
                 {
                     Napi::Value hashValue = (lobj).Get("serverCertificateHashes");
                     if (hashValue.IsArray())
@@ -1362,40 +1370,45 @@ namespace
                                 size_t len = bufferlocal.As<Napi::Buffer<char>>().Length();
                                 curhash.value = std::string(buffer, len);
                             }
-                            else {
+                            else
+                            {
                                 Napi::Error::New(env, "serverCertificateHashes wrong format").ThrowAsJavaScriptException();
-                                return ;
+                                return;
                             }
                             if (hashobj.Has("algorithm") && !(hashobj).Get("algorithm").IsEmpty())
                             {
                                 Napi::Value algorithmValue = (hashobj).Get("algorithm");
                                 curhash.algorithm = algorithmValue.ToString().Utf8Value();
                             }
-                            else {
+                            else
+                            {
                                 Napi::Error::New(env, "serverCertificateHashes wrong format").ThrowAsJavaScriptException();
-                                return ;
+                                return;
                             }
-                            if (curhash.algorithm.compare(WebTransportHash::kSha256) != 0) {
+                            if (curhash.algorithm.compare(WebTransportHash::kSha256) != 0)
+                            {
                                 Napi::Error::New(env, "serverCertificateHashes unknown algorithm").ThrowAsJavaScriptException();
-                                return ;
+                                return;
                             }
                             serverCertificateHashes.push_back(curhash);
                         }
                     }
-                    else {
+                    else
+                    {
                         Napi::Error::New(env, "serverCertificateHashes is not an array").ThrowAsJavaScriptException();
-                        return ;
+                        return;
                     }
                 }
 
-                if (lobj.Has( "localPort") && !(lobj).Get("localPort").IsEmpty())
+                if (lobj.Has("localPort") && !(lobj).Get("localPort").IsEmpty())
                 {
                     Napi::Value localPortValue = (lobj).Get("localPort");
                     if (localPortValue.IsNumber())
                         local_port = localPortValue.As<Napi::Number>().Int32Value();
-                    else {
+                    else
+                    {
                         Napi::Error::New(env, "localPort is not a number").ThrowAsJavaScriptException();
-                        return ;
+                        return;
                     }
                 }
             }
@@ -1412,7 +1425,7 @@ namespace
         else
         {
             Napi::Error::New(env, "No eventloop arguments passed to Http3Client").ThrowAsJavaScriptException();
-            return ;
+            return;
         }
 
         std::unique_ptr<QuicConnectionHelperInterface> helper =
@@ -1430,13 +1443,14 @@ namespace
                 if (!verifier->AddFingerprint(*cur))
                 {
                     Napi::Error::New(env, "serverCertificateHashes is not valid fingerprint").ThrowAsJavaScriptException();
-                    return ;
+                    return;
                 }
             }
         }
-        else {
+        else
+        {
             Napi::Error::New(env, "No supported verification method included").ThrowAsJavaScriptException();
-            return ;
+            return;
         }
 
         std::unique_ptr<Http3SessionCache> cache;
@@ -1463,7 +1477,7 @@ namespace
                             << gai_strerror(result);
             info_list = nullptr;
             Napi::Error::New(env, "URL host lookup failed").ThrowAsJavaScriptException();
-            return ;
+            return;
         }
 
         QUICHE_CHECK(info_list != nullptr);
@@ -1471,7 +1485,7 @@ namespace
         freeaddrinfo(info_list);
 
         client_ = std::make_unique<Http3Client>(eventloop, address, hostname, local_port,
-                                  std::move(verifier), std::move(cache), std::move(helper));
+                                                std::move(verifier), std::move(cache), std::move(helper));
         client_->SetUserAgentID("fails-components/webtransport");
 
         client_->setJS(this);
@@ -1483,11 +1497,10 @@ namespace
             client_->Connect();
         };
         client_->eventloop_->Schedule(task);
-        return ;
+        return;
     }
 
-
-    void Http3ClientJS::openWTSession(const Napi::CallbackInfo& info)
+    void Http3ClientJS::openWTSession(const Napi::CallbackInfo &info)
     {
         Http3Client *obj = getObj();
         // got the object we can now start the server
@@ -1501,13 +1514,14 @@ namespace
             };
             obj->eventloop_->Schedule(task);
         }
-        else {
+        else
+        {
             Napi::Error::New(info.Env(), "openWTSession without path").ThrowAsJavaScriptException();
-            return ;
+            return;
         }
     }
 
-    void Http3ClientJS::closeClient(const Napi::CallbackInfo& info)
+    void Http3ClientJS::closeClient(const Napi::CallbackInfo &info)
     {
         Http3Client *obj = getObj();
         // got the object we can now start the server
@@ -1515,8 +1529,8 @@ namespace
         {
             if (!obj->closeClientInt())
             {
-                printf( "closeClientInt failed for Http3Client");
-                return ;
+                printf("closeClientInt failed for Http3Client");
+                return;
             }
         };
         obj->eventloop_->Schedule(task);
