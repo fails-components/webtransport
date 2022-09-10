@@ -258,6 +258,10 @@ third_party/quiche/quiche/common/quiche_data_reader.h
 third_party/quiche/quiche/common/quiche_data_writer.cc
 third_party/quiche/quiche/common/quiche_data_writer.h
 third_party/quiche/quiche/common/quiche_endian.h
+third_party/quiche/quiche/common/quiche_ip_address.cc
+third_party/quiche/quiche/common/quiche_ip_address.h
+third_party/quiche/quiche/common/quiche_ip_address_family.cc
+third_party/quiche/quiche/common/quiche_ip_address_family.h
 third_party/quiche/quiche/common/quiche_linked_hash_map.h
 third_party/quiche/quiche/common/quiche_mem_slice_storage.h
 third_party/quiche/quiche/common/quiche_mem_slice_storage.cc
@@ -821,10 +825,6 @@ third_party/quiche/quiche/quic/platform/api/quic_export.h
 third_party/quiche/quiche/quic/platform/api/quic_exported_stats.h
 third_party/quiche/quiche/quic/platform/api/quic_flag_utils.h
 third_party/quiche/quiche/quic/platform/api/quic_flags.h
-third_party/quiche/quiche/quic/platform/api/quic_ip_address.cc
-third_party/quiche/quiche/quic/platform/api/quic_ip_address.h
-third_party/quiche/quiche/quic/platform/api/quic_ip_address_family.cc
-third_party/quiche/quiche/quic/platform/api/quic_ip_address_family.h
 third_party/quiche/quiche/quic/platform/api/quic_logging.h
 #third_party/quiche/quiche/quic/platform/api/quic_mem_slice.h
 #third_party/quiche/quiche/quic/platform/api/quic_mem_slice_storage.cc
