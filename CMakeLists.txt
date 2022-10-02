@@ -252,6 +252,8 @@ third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_io
 third_party/quiche/quiche/common/print_elements.h
 third_party/quiche/quiche/common/quiche_buffer_allocator.cc
 third_party/quiche/quiche/common/quiche_buffer_allocator.h
+third_party/quiche/quiche/common/quiche_crypto_logging.cc
+third_party/quiche/quiche/common/quiche_crypto_logging.h
 third_party/quiche/quiche/common/quiche_circular_deque.h
 third_party/quiche/quiche/common/quiche_data_reader.cc
 third_party/quiche/quiche/common/quiche_data_reader.h
