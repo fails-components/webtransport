@@ -252,6 +252,8 @@ third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_io
 third_party/quiche/quiche/common/print_elements.h
 third_party/quiche/quiche/common/quiche_buffer_allocator.cc
 third_party/quiche/quiche/common/quiche_buffer_allocator.h
+third_party/quiche/quiche/common/quiche_crypto_logging.cc
+third_party/quiche/quiche/common/quiche_crypto_logging.h
 third_party/quiche/quiche/common/quiche_circular_deque.h
 third_party/quiche/quiche/common/quiche_data_reader.cc
 third_party/quiche/quiche/common/quiche_data_reader.h
@@ -265,6 +267,8 @@ third_party/quiche/quiche/common/quiche_ip_address_family.h
 third_party/quiche/quiche/common/quiche_linked_hash_map.h
 third_party/quiche/quiche/common/quiche_mem_slice_storage.h
 third_party/quiche/quiche/common/quiche_mem_slice_storage.cc
+third_party/quiche/quiche/common/quiche_random.cc
+third_party/quiche/quiche/common/quiche_random.h
 third_party/quiche/quiche/common/quiche_text_utils.cc
 third_party/quiche/quiche/common/quiche_text_utils.h
 third_party/quiche/quiche/common/simple_buffer_allocator.cc
@@ -508,8 +512,6 @@ third_party/quiche/quiche/quic/core/crypto/quic_encrypter.cc
 third_party/quiche/quiche/quic/core/crypto/quic_encrypter.h
 third_party/quiche/quiche/quic/core/crypto/quic_hkdf.cc
 third_party/quiche/quiche/quic/core/crypto/quic_hkdf.h
-third_party/quiche/quiche/quic/core/crypto/quic_random.cc
-third_party/quiche/quiche/quic/core/crypto/quic_random.h
 third_party/quiche/quiche/quic/core/crypto/tls_client_connection.cc
 third_party/quiche/quiche/quic/core/crypto/tls_client_connection.h
 third_party/quiche/quiche/quic/core/crypto/tls_connection.cc
