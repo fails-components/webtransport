@@ -278,6 +278,21 @@ namespace quic
       freeaddrinfo(servinfo);
     }
 
+    const uint32_t kInitialSessionFlowControlWindow = 1 * 1024 * 1024; // 1 MB
+    const uint32_t kInitialStreamFlowControlWindow = 64 * 1024;        // 64 KB
+    if (config_.GetInitialStreamFlowControlWindowToSend() ==
+        kDefaultFlowControlSendWindow)
+    {
+      config_.SetInitialStreamFlowControlWindowToSend(
+          kInitialStreamFlowControlWindow);
+    }
+    if (config_.GetInitialSessionFlowControlWindowToSend() ==
+        kDefaultFlowControlSendWindow)
+    {
+      config_.SetInitialSessionFlowControlWindowToSend(
+          kInitialSessionFlowControlWindow);
+    }
+
     QuicSocketAddress address(ipaddress, port_);
     if (!CreateUDPSocketAndListen(address))
       return false; // move to this class
