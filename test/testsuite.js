@@ -123,7 +123,7 @@ export async function echoTestsConnection(transport) {
   refArray1.set(data2, data1.length)
 
   const resultArray1 = new Uint8Array(i)
-  console.log("TEST 1: start")
+  console.log('TEST 1: start')
 
   while (true && i > 0) {
     const { done, value } = await reader.read()
@@ -155,8 +155,8 @@ export async function echoTestsConnection(transport) {
   testArraysEqual(refArray1, resultArray1)
 
   console.log('webtransport sending bidistream success')
-  console.log("TEST 1: finish")
-  console.log("TEST 2: start")
+  console.log('TEST 1: finish')
+  console.log('TEST 2: start')
   const bidiReader = transport.incomingBidirectionalStreams.getReader()
   const incombidi = await bidiReader.read()
   if (incombidi.value) {
@@ -204,9 +204,9 @@ export async function echoTestsConnection(transport) {
     }
     testArraysEqual(refArray2, resultArray2)
   }
-  console.log("TEST 2: finish")
+  console.log('TEST 2: finish')
 
-  console.log("TEST 3: start")
+  console.log('TEST 3: start')
   console.log('now unidirectional tests')
   const unidioutstream = await transport.createUnidirectionalStream()
   const unidiwrite = unidioutstream.getWriter()
@@ -262,8 +262,8 @@ export async function echoTestsConnection(transport) {
       throw new Error('incoming unidi stream test failed')
     }
   }
-  console.log("TEST 3: finish")
-  console.log("TEST 4: start")
+  console.log('TEST 3: finish')
+  console.log('TEST 4: start')
   console.log('finally test datagrams')
   const datawrite = await transport.datagrams.writable.getWriter()
   const data7 = new Uint8Array([83, 84, 85])
@@ -300,6 +300,6 @@ export async function echoTestsConnection(transport) {
     throw new Error('datagram stream test failed')
   }
   console.log('test datagrams finished')
-  console.log("TEST 4: finish")
+  console.log('TEST 4: finish')
   console.log('start close stream tests')
 }
