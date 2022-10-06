@@ -191,6 +191,20 @@ namespace quic
           sconfig.SetMaxBidirectionalStreamsToSend(maxconn);
           sconfig.SetMaxUnidirectionalStreamsToSend(maxconn);
         }
+
+        if (lobj.Has("initialStreamFlowControlWindow") && !(lobj).Get("initialStreamFlowControlWindow").IsEmpty())
+        {
+          Napi::Value initialStreamFlowControlWindowValue = (lobj).Get("initialStreamFlowControlWindow");
+          int initialStreamFlowControlWindow = initialStreamFlowControlWindowValue.As<Napi::Number>().Int32Value();
+          sconfig.SetInitialStreamFlowControlWindowToSend(initialStreamFlowControlWindow);
+        }
+
+        if (lobj.Has("initialSessionFlowControlWindow") && !(lobj).Get("initialSessionFlowControlWindow").IsEmpty())
+        {
+          Napi::Value initialSessionFlowControlWindowValue = (lobj).Get("initialSessionFlowControlWindow");
+          int initialSessionFlowControlWindow = initialSessionFlowControlWindowValue.As<Napi::Number>().Int32Value();
+          sconfig.SetInitialSessionFlowControlWindowToSend(initialSessionFlowControlWindow);
+        }
       }
       // Callback *callback, int port, std::unique_ptr<ProofSource> proof_source,  const char *secret
 
