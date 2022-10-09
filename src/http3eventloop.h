@@ -120,6 +120,11 @@ namespace quic
             {
             }
 
+            ~QueueWorker()
+            {
+                eventloop_->removeQw();
+            }
+
             void Execute(const AsyncProgressQueueWorker::ExecutionProgress &progress)
             {
                 eventloop_->Execute(progress);
@@ -193,7 +198,19 @@ namespace quic
         void shutDownEventLoop(const Napi::CallbackInfo &info);
 
     private:
-        std::unique_ptr<QueueWorker> qw;
+        QueueWorker *qw_;
+
+        bool checkQw() {
+            if (!qw_) {
+                Napi::Error::New(Env(), "Queueworker gone").ThrowAsJavaScriptException();
+                return false;
+            }
+            return true;
+        }
+
+        void removeQw() {
+            qw_ = nullptr;
+        }
 
         static Napi::Value New(const Napi::CallbackInfo &info);
 
