@@ -303,12 +303,13 @@ namespace quic
 
   void Http3EventLoop::processClientConnected(Http3Client *clientobj, bool success)
   {
-    HandleScope scope(qw->Env());
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
     auto client = clientobj->getJS();
 
     Napi::Object objVal = client->Value();
 
-    Napi::Object retObj = Napi::Object::New(qw->Env());
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "ClientConnected");
     retObj.Set("success", success);
     retObj.Set("object", objVal);
@@ -318,12 +319,13 @@ namespace quic
 
   void Http3EventLoop::processClientWebtransportSupport(Http3Client *clientobj)
   {
-    HandleScope scope(qw->Env());
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
 
     auto client = clientobj->getJS();
     Napi::Object objVal = client->Value();
 
-    Napi::Object retObj = Napi::Object::New(qw->Env());
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "ClientWebtransportSupport");
     retObj.Set("object", objVal);
 
@@ -332,9 +334,10 @@ namespace quic
 
   void Http3EventLoop::processStream(bool incom, bool bidi, Http3WTSession *sessionobj, Http3WTStream *stream)
   {
-    HandleScope scope(qw->Env());
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
 
-    Http3Constructors *constr = qw->Env().GetInstanceData<Http3Constructors>();
+    Http3Constructors *constr = qw_->Env().GetInstanceData<Http3Constructors>();
     Napi::Object strobj = constr->stream.New({});
     Http3WTStreamJS *strjs = Napi::ObjectWrap<Http3WTStreamJS>::Unwrap(strobj);
     strjs->setObj(stream);
@@ -343,7 +346,7 @@ namespace quic
 
     Napi::Object objVal = sessionobj->getJS()->Value();
 
-    Napi::Object retObj = Napi::Object::New(qw->Env());
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "Http3WTStreamVisitor");
     retObj.Set("stream", strobj);
     retObj.Set("incoming", incom);
@@ -355,7 +358,8 @@ namespace quic
 
   void Http3EventLoop::processStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task)
   {
-    HandleScope scope(qw->Env());
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
     auto stream = streamobj->getJS();
     if (!stream)
       return;
@@ -383,7 +387,7 @@ namespace quic
       return;
     };
 
-    Napi::Object retObj = Napi::Object::New(qw->Env());
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "StreamRecvSignal");
     retObj.Set("code", error_code);
     retObj.Set("object", objVal);
@@ -394,12 +398,13 @@ namespace quic
 
   void Http3EventLoop::processStreamRead(Http3WTStream *streamobj, std::string *data, bool fin)
   {
-    HandleScope scope(qw->Env());
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
 
     Napi::Object dataVal =
-        Napi::Uint8Array::New(qw->Env(),
+        Napi::Uint8Array::New(qw_->Env(),
                               data->length(),
-                              Napi::ArrayBuffer::New(qw->Env(), &(*data)[0], data->length(),
+                              Napi::ArrayBuffer::New(qw_->Env(), &(*data)[0], data->length(),
                                                      freeData, data),
                               0);
 
@@ -408,7 +413,7 @@ namespace quic
       return;
     Napi::Object objVal = stream->Value();
 
-    Napi::Object retObj = Napi::Object::New(qw->Env());
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "StreamRead");
     retObj.Set("fin", fin);
     retObj.Set("data", dataVal);
@@ -419,7 +424,8 @@ namespace quic
 
   void Http3EventLoop::processStreamWrite(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, bool success)
   {
-    HandleScope scope(qw->Env());
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
 
     auto stream = streamobj->getJS();
     if (!stream)
@@ -429,7 +435,7 @@ namespace quic
     bufferhandle->Unref(); // release the outgoing buffer
     delete bufferhandle;   // free the handle object
 
-    Napi::Object retObj = Napi::Object::New(qw->Env());
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "StreamWrite");
     retObj.Set("success", success);
     retObj.Set("object", objVal);
@@ -439,7 +445,8 @@ namespace quic
 
   void Http3EventLoop::processStreamReset(Http3WTStream *streamobj)
   {
-    HandleScope scope(qw->Env());
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
 
     auto stream = streamobj->getJS();
     if (!stream)
@@ -447,7 +454,7 @@ namespace quic
 
     Napi::Object objVal = stream->Value();
 
-    Napi::Object retObj = Napi::Object::New(qw->Env());
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "StreamReset");
     retObj.Set("object", objVal);
 
@@ -456,7 +463,8 @@ namespace quic
 
   void Http3EventLoop::processStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task)
   {
-    HandleScope scope(qw->Env());
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
 
     auto stream = streamobj->getJS();
     if (!stream)
@@ -485,7 +493,7 @@ namespace quic
       return;
     };
 
-    Napi::Object retObj = Napi::Object::New(qw->Env());
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "StreamNetworkFinish");
     retObj.Set("object", objVal);
     retObj.Set("nettask", nettaskstr);
@@ -501,11 +509,12 @@ namespace quic
 
   void Http3EventLoop::processDatagramReceived(Http3WTSession *sessionobj, std::string *datagram)
   {
-    HandleScope scope(qw->Env());
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
     Napi::Object datagramVal =
-        Napi::Uint8Array::New(qw->Env(),
+        Napi::Uint8Array::New(qw_->Env(),
                               datagram->length(),
-                              Napi::ArrayBuffer::New(qw->Env(), &(*datagram)[0], datagram->length(),
+                              Napi::ArrayBuffer::New(qw_->Env(), &(*datagram)[0], datagram->length(),
                                                      freeData, datagram),
                               0);
 
@@ -514,7 +523,7 @@ namespace quic
       return;
     Napi::Object objVal = session->Value();
 
-    Napi::Object retObj = Napi::Object::New(qw->Env());
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "DatagramReceived");
     retObj.Set("datagram", datagramVal);
     retObj.Set("object", objVal);
@@ -524,13 +533,14 @@ namespace quic
 
   void Http3EventLoop::processDatagramSend(Http3WTSession *sessionobj)
   {
-    HandleScope scope(qw->Env());
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
     auto session = sessionobj->getJS();
     if (!session)
       return;
     Napi::Object objVal = session->Value();
 
-    Napi::Object retObj = Napi::Object::New(qw->Env());
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "DatagramSend");
     retObj.Set("object", objVal);
 
@@ -539,9 +549,10 @@ namespace quic
 
   void Http3EventLoop::processNewSession(Http3Server *serverobj, Http3WTSession *session, const std::string &path)
   {
-    HandleScope scope(qw->Env());
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
 
-    Http3Constructors *constr = qw->Env().GetInstanceData<Http3Constructors>();
+    Http3Constructors *constr = qw_->Env().GetInstanceData<Http3Constructors>();
     Napi::Object sessionobj = constr->session.New({});
     Http3WTSessionJS *sessionjs = Napi::ObjectWrap<Http3WTSessionJS>::Unwrap(sessionobj);
     sessionjs->setObj(session);
@@ -550,7 +561,7 @@ namespace quic
 
     Napi::Object objVal = serverobj->getJS()->Value();
 
-    Napi::Object retObj = Napi::Object::New(qw->Env());
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "Http3WTSessionVisitor");
     retObj.Set("session", sessionobj);
     retObj.Set("path", path);
@@ -561,13 +572,14 @@ namespace quic
 
   void Http3EventLoop::processNewClientSession(Http3Client *clientobj, Http3WTSession *session)
   {
-    HandleScope scope(qw->Env());
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
 
-    Napi::Object retObj = Napi::Object::New(qw->Env());
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "Http3WTSessionVisitor");
     if (session != nullptr)
     {
-      Http3Constructors *constr = qw->Env().GetInstanceData<Http3Constructors>();
+      Http3Constructors *constr = qw_->Env().GetInstanceData<Http3Constructors>();
       Napi::Object sessionobj = constr->session.New({});
       Http3WTSessionJS *sessionjs = Napi::ObjectWrap<Http3WTSessionJS>::Unwrap(sessionobj);
       sessionjs->setObj(session);
@@ -584,13 +596,14 @@ namespace quic
 
   void Http3EventLoop::processSessionReady(Http3WTSession *sessionobj)
   {
-    HandleScope scope(qw->Env());
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
     auto session = sessionobj->getJS();
     if (!session)
       return;
     Napi::Object objVal = session->Value();
 
-    Napi::Object retObj = Napi::Object::New(qw->Env());
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "SessionReady");
     retObj.Set("object", objVal);
 
@@ -599,7 +612,8 @@ namespace quic
 
   void Http3EventLoop::processSessionClose(Http3WTSession *sessionobj, uint32_t errorcode, const std::string &error)
   {
-    HandleScope scope(qw->Env());
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
 
     auto session = sessionobj->getJS();
     if (!session)
@@ -607,7 +621,7 @@ namespace quic
 
     Napi::Object objVal = session->Value();
 
-    Napi::Object retObj = Napi::Object::New(qw->Env());
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "SessionClose");
     retObj.Set("error", error);
     retObj.Set("errorcode", errorcode);
@@ -749,11 +763,12 @@ namespace quic
       if (lobj.Has("eventloopCallback") && (lobj).Get("eventloopCallback").IsFunction())
       {
         Napi::Function cbeventloop = lobj.Get("eventloopCallback").As<Napi::Function>();
-        qw = std::make_unique<QueueWorker>(this, cbeventloop);
+        qw_ = new QueueWorker(this, cbeventloop);
       }
       else
       {
         Napi::Error::New(Env(), "No eventloop callback").ThrowAsJavaScriptException();
+        qw_ = nullptr;
         return;
       }
 
@@ -799,7 +814,8 @@ namespace quic
     // got the object we can now start the server
     Ref(); // do not garbage collect
     // epoll_server_.set_timeout_in_us(-1); // negative values would mean wait forever
-    qw->Queue(); // from asyncprogressqueue worker
+    if (!checkQw()) return;
+    qw_->Queue(); // from asyncprogressqueue worker
   }
 
   void Http3EventLoop::shutDownEventLoop(const Napi::CallbackInfo &info)
