@@ -72,17 +72,14 @@ namespace quic
             return; // back pressure folks!
         // first figure out if we have readable data
         size_t readable = stream_->ReadableBytes();
-        if (readable > 0)
-        {
-            // ok create a string obj to hold the data
-            std::string *data = new std::string();
-            data->resize(readable);
-            WebTransportStream::ReadResult result = stream_->Read(&(*data)[0], readable);
-            data->resize(result.bytes_read);
-            QUIC_DVLOG(1) << "Attempted reading on WebTransport bidirectional stream "
-                          << ", bytes read: " << result.bytes_read;
-            eventloop_->informAboutStreamRead(this, data, result.fin);
-        }
+        // ok create a string obj to hold the data
+        std::string *data = new std::string();
+        data->resize(readable);
+        WebTransportStream::ReadResult result = stream_->Read(&(*data)[0], readable);
+        data->resize(result.bytes_read);
+        QUIC_DVLOG(1) << "Attempted reading on WebTransport bidirectional stream "
+                       << ", bytes read: " << result.bytes_read;
+        eventloop_->informAboutStreamRead(this, data, result.fin);
     }
 
     void Http3WTStream::doCanWrite()

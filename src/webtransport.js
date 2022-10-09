@@ -173,14 +173,21 @@ class Http3WTStream {
   }
 
   onStreamRead(args) {
-    if (args.data && !this.readableclosed) {
+    if (args.data && args.data.length && !this.readableclosed) {
       // console.log('stream read received', args.data, Date.now())
       this.readableController.enqueue(args.data)
       if (this.readableController.desiredSize < 0) this.objint.stopReading()
     }
     if (args.fin) {
-      this.readableController.close()
-      this.readableclosed = true
+      if (this.cancelres) {
+        const res = this.cancelres
+        this.cancelres = null
+        res()
+      }
+      if (!this.readableclosed) {
+        this.readableController.close()
+        this.readableclosed = true
+      }
     }
   }
 
@@ -218,6 +225,7 @@ class Http3WTStream {
           this.cancelres = null
           res()
         }
+        this.stopSendingRecv = true
         break
       case 'resetStream':
         if (this.abortres) {
