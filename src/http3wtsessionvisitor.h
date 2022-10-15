@@ -222,7 +222,7 @@ namespace quic
         void closeInt(int code, std::string &reason)
         {
             std::function<void()> task = [this, code, reason]()
-            { session_->CloseSession(code, reason); };
+            { if (session_) session_->CloseSession(code, reason); };
             eventloop_->Schedule(task);
         }
 
