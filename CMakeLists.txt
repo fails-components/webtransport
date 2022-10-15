@@ -740,8 +740,6 @@ third_party/quiche/quiche/quic/core/quic_idle_network_detector.h
 third_party/quiche/quiche/quic/core/quic_interval.h
 third_party/quiche/quiche/quic/core/quic_interval_deque.h
 third_party/quiche/quiche/quic/core/quic_interval_set.h
-third_party/quiche/quiche/quic/core/quic_legacy_version_encapsulator.cc
-third_party/quiche/quiche/quic/core/quic_legacy_version_encapsulator.h
 third_party/quiche/quiche/quic/core/quic_lru_cache.h
 third_party/quiche/quiche/quic/core/quic_mtu_discovery.cc
 third_party/quiche/quiche/quic/core/quic_mtu_discovery.h
