@@ -954,13 +954,17 @@ PUBLIC third_party/boringssl/src/include
 PUBLIC third_party/abseil-cpp
 PUBLIC third_party/googleurl
 PUBLIC third_party/libevent/include
-PUBLIC third_party/icu/icu4c/source/common
 PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/third_party/libevent/include
 PUBLIC .
 PUBLIC ${Protobuf_INCLUDE_DIRS}
 PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
 PUBLIC ${CMAKE_JS_INC}
 )
+
+IF (WIN32)
+    target_include_directories(gquiche PUBLIC third_party/icu/icu4c/source/common)
+ENDIF(WIN32)
+
 target_link_libraries(gquiche 
 absl::base 
 absl::int128
