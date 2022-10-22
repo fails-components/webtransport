@@ -20,7 +20,7 @@ set(protobuf_BUILD_PROTOC_BINARIES ON)
 
 IF( NOT WIN32)
     IF(APPLE)
-        ICU_ROOT="/usr/local/opt/icu4c"
+        SET(ICU_ROOT "/usr/local/opt/icu4c")
     ENDIF(APPLE)
     find_package(ICU COMPONENTS uc i18n REQUIRED)
 ENDIF(NOT WIN32)
