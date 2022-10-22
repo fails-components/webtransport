@@ -31,15 +31,11 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: 16
-
-      - name: Install libraries
-        run: brew install icu4c
-        
       - name: Install dependencies
         run: npm install
 
       - name: Build library
-        run: npm run build
+        run: ICU_ROOT=/opt/homebrew/opt/icu4c npm run build
         
       - name: Run unit tests
         run: NODE_ENV=production npm test
