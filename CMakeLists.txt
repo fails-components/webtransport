@@ -19,7 +19,7 @@ set(BUILD_TESTING OFF)
 set(protobuf_BUILD_PROTOC_BINARIES ON)
 
 IF( NOT WIN32)
-    find_package(ICU)
+    find_package(ICU 61.0 COMPONENTS uc i18n REQUIRED)
 ENDIF(NOT WIN32)
 
 IF (WIN32)
@@ -971,7 +971,8 @@ PUBLIC ${CMAKE_JS_INC}
 IF (WIN32)
     target_include_directories(gquiche PUBLIC third_party/icu/icu4c/source/common)
 ELSE(WIN32)
-    target_include_directories(gquiche PUBLIC ICU_INCLUDE_DIR)
+    include_directories(gquiche PUBLIC ${ICU_INCLUDE_DIRS})
+    target_link_libraries(gquiche ICU::uc ICU::i18n)
 ENDIF(WIN32)
 
 target_link_libraries(gquiche 
