@@ -135,7 +135,10 @@ third_party/icu/icu4c/source/common/uvector.cpp
 third_party/icu/icu4c/source/common/putil.cpp
 third_party/icu/icu4c/source/extra/uconv/uconv.cpp
 )
-target_include_directories(icu PUBLIC third_party/icu/icu4c/source/common)
+target_include_directories(icu
+PUBLIC third_party/icu/icu4c/source/common
+PUBLIC third_party/icu/icu4c/source/i18n
+)
 IF (WIN32)
     target_sources(icu PRIVATE
     third_party/icu/icu4c/source/common/wintz.cpp
@@ -954,6 +957,8 @@ PUBLIC third_party/abseil-cpp
 PUBLIC third_party/googleurl
 PUBLIC third_party/libevent/include
 PUBLIC third_party/icu/icu4c/source/common
+PUBLIC third_party/icu/icu4c/source/i18n
+PUBLIC third_party/icu/icu4c/source/extra/uconv
 PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/third_party/libevent/include
 PUBLIC .
 PUBLIC ${Protobuf_INCLUDE_DIRS}
