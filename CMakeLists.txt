@@ -18,6 +18,10 @@ set(BUILD_TESTING OFF)
 
 set(protobuf_BUILD_PROTOC_BINARIES ON)
 
+IF( NOT WIN32)
+    find_package(ICU)
+ENDIF(NOT WIN32)
+
 IF (WIN32)
     add_compile_definitions(NOMINMAX)
 ENDIF(WIN32)
@@ -68,76 +72,78 @@ endif(COMMAND cmake_policy)
 
 add_compile_definitions(QUICHE_ENABLE_LIBEVENT)
 
+
+IF (WIN32)
+
 add_library(icu STATIC 
 #icu
-third_party/icu/icu4c/source/common/appendable.cpp
-third_party/icu/icu4c/source/common/bytestream.cpp
-third_party/icu/icu4c/source/common/bytesinkutil.cpp
-third_party/icu/icu4c/source/common/bytestrie.cpp
-third_party/icu/icu4c/source/common/bmpset.cpp
-third_party/icu/icu4c/source/common/charstr.cpp
-third_party/icu/icu4c/source/common/cmemory.cpp
-third_party/icu/icu4c/source/common/cstring.cpp
-third_party/icu/icu4c/source/common/edits.cpp
-third_party/icu/icu4c/source/common/locavailable.cpp
-third_party/icu/icu4c/source/common/localebuilder.cpp
-third_party/icu/icu4c/source/common/locid.cpp
-third_party/icu/icu4c/source/common/locmap.cpp
-third_party/icu/icu4c/source/common/loclikely.cpp
-third_party/icu/icu4c/source/common/loadednormalizer2impl.cpp
-third_party/icu/icu4c/source/common/normalizer2.cpp
-third_party/icu/icu4c/source/common/normalizer2impl.cpp
-third_party/icu/icu4c/source/common/patternprops.cpp
-third_party/icu/icu4c/source/common/propname.cpp
-third_party/icu/icu4c/source/common/punycode.cpp
-third_party/icu/icu4c/source/common/resource.cpp
-third_party/icu/icu4c/source/common/stringpiece.cpp
-third_party/icu/icu4c/source/common/uarrsort.cpp
-third_party/icu/icu4c/source/common/ubidi_props.cpp
-third_party/icu/icu4c/source/common/uchar.cpp
-third_party/icu/icu4c/source/common/ucmndata.cpp
-third_party/icu/icu4c/source/common/ucln_cmn.cpp
-third_party/icu/icu4c/source/common/ucptrie.cpp
-third_party/icu/icu4c/source/common/ucol_swp.cpp
-third_party/icu/icu4c/source/common/udata.cpp
-third_party/icu/icu4c/source/common/udatamem.cpp
-third_party/icu/icu4c/source/common/udataswp.cpp
-third_party/icu/icu4c/source/common/uenum.cpp
-third_party/icu/icu4c/source/common/uhash.cpp
-third_party/icu/icu4c/source/common/uloc.cpp
-third_party/icu/icu4c/source/common/uloc_tag.cpp
-third_party/icu/icu4c/source/common/uloc_keytype.cpp
-third_party/icu/icu4c/source/common/umapfile.cpp
-third_party/icu/icu4c/source/common/umath.cpp
-third_party/icu/icu4c/source/common/umutablecptrie.cpp
-third_party/icu/icu4c/source/common/umutex.cpp
-third_party/icu/icu4c/source/common/unistr.cpp
-third_party/icu/icu4c/source/common/unifilt.cpp
-third_party/icu/icu4c/source/common/unifunct.cpp
-third_party/icu/icu4c/source/common/unisetspan.cpp
-third_party/icu/icu4c/source/common/ustring.cpp
-third_party/icu/icu4c/source/common/ustrtrns.cpp
-third_party/icu/icu4c/source/common/ustrenum.cpp
-third_party/icu/icu4c/source/common/uscript_props.cpp
-third_party/icu/icu4c/source/common/util.cpp
-third_party/icu/icu4c/source/common/uts46.cpp
-third_party/icu/icu4c/source/common/uobject.cpp
-third_party/icu/icu4c/source/common/uinvchar.cpp
-third_party/icu/icu4c/source/common/uresbund.cpp
-third_party/icu/icu4c/source/common/uresdata.cpp
-third_party/icu/icu4c/source/common/uniset.cpp
-third_party/icu/icu4c/source/common/utf_impl.cpp
-third_party/icu/icu4c/source/common/utrace.cpp
-third_party/icu/icu4c/source/common/utrie2.cpp
-third_party/icu/icu4c/source/common/utrie_swap.cpp
-third_party/icu/icu4c/source/common/utypes.cpp
-third_party/icu/icu4c/source/common/uvector.cpp
-third_party/icu/icu4c/source/common/putil.cpp
-)
-target_include_directories(icu
-PUBLIC third_party/icu/icu4c/source/common
-)
-IF (WIN32)
+    third_party/icu/icu4c/source/common/appendable.cpp
+    third_party/icu/icu4c/source/common/bytestream.cpp
+    third_party/icu/icu4c/source/common/bytesinkutil.cpp
+    third_party/icu/icu4c/source/common/bytestrie.cpp
+    third_party/icu/icu4c/source/common/bmpset.cpp
+    third_party/icu/icu4c/source/common/charstr.cpp
+    third_party/icu/icu4c/source/common/cmemory.cpp
+    third_party/icu/icu4c/source/common/cstring.cpp
+    third_party/icu/icu4c/source/common/edits.cpp
+    third_party/icu/icu4c/source/common/locavailable.cpp
+    third_party/icu/icu4c/source/common/localebuilder.cpp
+    third_party/icu/icu4c/source/common/locid.cpp
+    third_party/icu/icu4c/source/common/locmap.cpp
+    third_party/icu/icu4c/source/common/loclikely.cpp
+    third_party/icu/icu4c/source/common/loadednormalizer2impl.cpp
+    third_party/icu/icu4c/source/common/normalizer2.cpp
+    third_party/icu/icu4c/source/common/normalizer2impl.cpp
+    third_party/icu/icu4c/source/common/patternprops.cpp
+    third_party/icu/icu4c/source/common/propname.cpp
+    third_party/icu/icu4c/source/common/punycode.cpp
+    third_party/icu/icu4c/source/common/resource.cpp
+    third_party/icu/icu4c/source/common/stringpiece.cpp
+    third_party/icu/icu4c/source/common/uarrsort.cpp
+    third_party/icu/icu4c/source/common/ubidi_props.cpp
+    third_party/icu/icu4c/source/common/uchar.cpp
+    third_party/icu/icu4c/source/common/ucmndata.cpp
+    third_party/icu/icu4c/source/common/ucln_cmn.cpp
+    third_party/icu/icu4c/source/common/ucptrie.cpp
+    third_party/icu/icu4c/source/common/ucol_swp.cpp
+    third_party/icu/icu4c/source/common/udata.cpp
+    third_party/icu/icu4c/source/common/udatamem.cpp
+    third_party/icu/icu4c/source/common/udataswp.cpp
+    third_party/icu/icu4c/source/common/uenum.cpp
+    third_party/icu/icu4c/source/common/uhash.cpp
+    third_party/icu/icu4c/source/common/uloc.cpp
+    third_party/icu/icu4c/source/common/uloc_tag.cpp
+    third_party/icu/icu4c/source/common/uloc_keytype.cpp
+    third_party/icu/icu4c/source/common/umapfile.cpp
+    third_party/icu/icu4c/source/common/umath.cpp
+    third_party/icu/icu4c/source/common/umutablecptrie.cpp
+    third_party/icu/icu4c/source/common/umutex.cpp
+    third_party/icu/icu4c/source/common/unistr.cpp
+    third_party/icu/icu4c/source/common/unifilt.cpp
+    third_party/icu/icu4c/source/common/unifunct.cpp
+    third_party/icu/icu4c/source/common/unisetspan.cpp
+    third_party/icu/icu4c/source/common/ustring.cpp
+    third_party/icu/icu4c/source/common/ustrtrns.cpp
+    third_party/icu/icu4c/source/common/ustrenum.cpp
+    third_party/icu/icu4c/source/common/uscript_props.cpp
+    third_party/icu/icu4c/source/common/util.cpp
+    third_party/icu/icu4c/source/common/uts46.cpp
+    third_party/icu/icu4c/source/common/uobject.cpp
+    third_party/icu/icu4c/source/common/uinvchar.cpp
+    third_party/icu/icu4c/source/common/uresbund.cpp
+    third_party/icu/icu4c/source/common/uresdata.cpp
+    third_party/icu/icu4c/source/common/uniset.cpp
+    third_party/icu/icu4c/source/common/utf_impl.cpp
+    third_party/icu/icu4c/source/common/utrace.cpp
+    third_party/icu/icu4c/source/common/utrie2.cpp
+    third_party/icu/icu4c/source/common/utrie_swap.cpp
+    third_party/icu/icu4c/source/common/utypes.cpp
+    third_party/icu/icu4c/source/common/uvector.cpp
+    third_party/icu/icu4c/source/common/putil.cpp
+    )
+    target_include_directories(icu
+    PUBLIC third_party/icu/icu4c/source/common
+    )
     target_sources(icu PRIVATE
     third_party/icu/icu4c/source/common/wintz.cpp
     )
@@ -145,13 +151,14 @@ IF (WIN32)
     #hack since this function is not currently used
     ICU_DATA_DIR_WINDOWS=""
     )
-ENDIF(WIN32)
 
-target_compile_definitions(icu 
-PRIVATE U_DEFINE_FALSE_AND_TRUE=1
-U_STATIC_IMPLEMENTATION
-U_COMMON_IMPLEMENTATION
-)
+    target_compile_definitions(icu 
+    PRIVATE U_DEFINE_FALSE_AND_TRUE=1
+    U_STATIC_IMPLEMENTATION
+    U_COMMON_IMPLEMENTATION
+    )
+
+ENDIF(WIN32)
 
 add_library(gquiche STATIC 
 #plattform impl
@@ -963,6 +970,8 @@ PUBLIC ${CMAKE_JS_INC}
 
 IF (WIN32)
     target_include_directories(gquiche PUBLIC third_party/icu/icu4c/source/common)
+ELSE(WIN32)
+    target_include_directories(gquiche PUBLIC ICU_INCLUDE_DIR)
 ENDIF(WIN32)
 
 target_link_libraries(gquiche 
