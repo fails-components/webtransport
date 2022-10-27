@@ -8,14 +8,15 @@
     "node": ">=16"
   },
   "type": "module",
+  "types": "./dist/src/webtransport.d.ts",
   "scripts": {
     "start": "node test/echoserver.js",
     "test": "node test/test.js",
-    "install": "node build.js install",
-    "build": "node build.js build",
-    "rebuild": "node build.js rebuild",
-    "rebuild-debug": "node build.js rebuild-debug -D",
-    "build-debug": "node build.js build-debug"
+    "install": "node build.js install && tsc",
+    "build": "node build.js build && tsc",
+    "rebuild": "node build.js rebuild && tsc",
+    "rebuild-debug": "node build.js rebuild-debug -D && tsc",
+    "build-debug": "node build.js build-debug && tsc"
   },
   "repository": {
     "type": "git",
@@ -38,6 +39,7 @@
   "devDependencies": {
     "@babel/core": "^7.17.10",
     "@babel/eslint-parser": "^7.17.0",
+    "@types/node": "^18.11.5",
     "cmake-js": "^6.3.2",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^7.2.0",
@@ -48,7 +50,8 @@
     "eslint-plugin-promise": "^4.3.1",
     "eslint-plugin-standard": "^4.1.0",
     "node-forge": "^1.3.1",
-    "prettier": "^2.4.1"
+    "prettier": "^2.4.1",
+    "typescript": "^4.8.4"
   },
   "binary": {
     "napi_versions": [

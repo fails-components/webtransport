@@ -10,6 +10,43 @@ import * as path from 'path'
 import * as url from 'url'
 import { arch, platform } from 'node:process'
 
+/**
+ * @typedef {import('stream/web').WritableStreamDefaultController} WritableStreamDefaultController
+ *
+ * @typedef {import('./dom').WebTransportBidirectionalStream} WebTransportBidirectionalStream
+ * @typedef {import('./dom').WebTransportSendStream} WebTransportSendStream
+ * @typedef {import('./dom').WebTransportCloseInfo} WebTransportCloseInfo
+ *
+ * @typedef {import('./types').NativeHttp3WTStream} NativeHttp3WTStream
+ * @typedef {import('./types').NativeHttp3WTSession} NativeHttp3WTSession
+ * @typedef {import('./types').NetTask} NetTask
+ *
+ * WebTransport stream events
+ * @typedef {import('./types').WebTransportStreamEventHandler} WebTransportStreamEventHandler
+ * @typedef {import('./types').StreamRecvSignalEvent} StreamRecvSignalEvent
+ * @typedef {import('./types').StreamReadEvent} StreamReadEvent
+ * @typedef {import('./types').StreamWriteEvent} StreamWriteEvent
+ * @typedef {import('./types').StreamResetEvent} StreamResetEvent
+ * @typedef {import('./types').StreamNetworkFinishEvent} StreamNetworkFinishEvent
+ *
+ * WebTransport session events
+ * @typedef {import('./types').WebTransportSessionEventHandler} WebTransportSessionEventHandler
+ * @typedef {import('./types').SessionReadyEvent} SessionReadyEvent
+ * @typedef {import('./types').SessionCloseEvent} SessionCloseEvent
+ * @typedef {import('./types').DatagramReceivedEvent} DatagramReceivedEvent
+ * @typedef {import('./types').DatagramSendEvent} DatagramSendEvent
+ * @typedef {import('./types').NewStreamEvent} NewStreamEvent
+ *
+ * Http3Client events
+ * @typedef {import('./types').Http3ClientEventHandler} Http3ClientEventHandler
+ * @typedef {import('./types').ClientConnectedEvent} ClientConnectedEvent
+ * @typedef {import('./types').ClientWebtransportSupportEvent} ClientWebtransportSupportEvent
+ * @typedef {import('./types').Http3WTSessionVisitorEvent} Http3WTSessionVisitorEvent
+ *
+ * Public API
+ * @typedef {import('./types').WebTransportSession} WebTransportSession
+ */
+
 const binplatform = platform + '_' + arch
 
 const require = createRequire(import.meta.url)
@@ -29,6 +66,14 @@ console.log('load webtransport binary:', wtpath)
 const wtrouter = require(wtpath)
 
 class Http3WTStream {
+  /**
+   * @param {object} args
+   * @param {NativeHttp3WTStream} args.object
+   * @param {Http3WTSession} args.parentobj
+   * @param {object} args.transport
+   * @param {boolean} args.bidirectional
+   * @param {boolean} args.incoming
+   */
   constructor(args) {
     this.objint = args.object
     this.objint.jsobj = this
@@ -38,6 +83,7 @@ class Http3WTStream {
     this.incoming = args.incoming
     this.closed = false
 
+    /** @type {Promise<void> | null} */
     this.pendingoperation = null
     this.pendingres = null
 
@@ -46,6 +92,7 @@ class Http3WTStream {
         {
           start: (controller) => {
             this.readableController = controller
+            // @ts-expect-error this.readable could be undefined
             this.parentobj.addReceiveStream(this.readable, controller)
             this.objint.startReading()
           },
@@ -56,6 +103,7 @@ class Http3WTStream {
             this.objint.startReading()
           },
           cancel: (reason) => {
+            /** @type {Promise<void>} */
             const promise = new Promise((resolve, reject) => {
               this.cancelres = resolve
             })
@@ -78,6 +126,7 @@ class Http3WTStream {
         {
           start: (controller) => {
             this.writableController = controller
+            // @ts-expect-error this.writable could be undefined
             this.parentobj.addSendStream(this.writable, controller)
           },
           write: (chunk, controller) => {
@@ -98,7 +147,7 @@ class Http3WTStream {
               throw new Error('chunk is not of instanceof Uint8Array ')
             }
           },
-          close: (controller) => {
+          close: () => {
             if (this.writableclosed) {
               return Promise.resolve()
             }
@@ -120,6 +169,7 @@ class Http3WTStream {
               else if (reason.code > 255) code = 255
               else code = reason.code
             }
+            /** @type {Promise<void>} */
             const promise = new Promise((resolve, reject) => {
               this.abortres = resolve
             })
@@ -130,8 +180,19 @@ class Http3WTStream {
         { highWaterMark: 4 }
       )
     }
+
+    /** @type {(() => void) | null} */
+    this.cancelres = null
+    /** @type {(() => void) | null} */
+    this.pendingres = null
+    /** @type {(() => void) | null} */
+    this.abortres = null
   }
 
+  /**
+   * @param {import('./types').StreamRecvSignalEvent} args
+   * @returns {void}
+   */
   onStreamRecvSignal(args) {
     // console.log('onStreamRecvSignal', args)
     // check if transport is closed
@@ -168,15 +229,21 @@ class Http3WTStream {
       const res = this.pendingres
       this.pendingoperation = null
       this.pendingres = null
-      res()
+      if (res != null) {
+        res()
+      }
     }
   }
 
+  /**
+   * @param {StreamReadEvent} args
+   * @returns {void}
+   */
   onStreamRead(args) {
     if (args.data && args.data.length && !this.readableclosed) {
       // console.log('stream read received', args.data, Date.now())
       this.readableController.enqueue(args.data)
-      if (this.readableController.desiredSize < 0) this.objint.stopReading()
+      if (this.readableController.desiredSize != null && this.readableController.desiredSize < 0) this.objint.stopReading()
     }
     if (args.fin) {
       if (this.cancelres) {
@@ -191,16 +258,24 @@ class Http3WTStream {
     }
   }
 
+  /**
+   * @param {StreamWriteEvent} args
+   */
   onStreamWrite(args) {
     // we ignore success
     if (this.pendingoperation) {
       const res = this.pendingres
       this.pendingoperation = null
       this.pendingres = null
-      res()
+      if (res != null) {
+        res()
+      }
     }
   }
 
+  /**
+   * @param {StreamResetEvent} args
+   */
   onStreamReset(args) {
     if (this.abortres) {
       this.abortres()
@@ -216,6 +291,9 @@ class Http3WTStream {
     }
   }
 
+  /**
+   * @param {StreamNetworkFinishEvent} args
+   */
   onStreamNetworkFinish(args) {
     // console.log('networkfinish args', args)
     switch (args.nettask) {
@@ -241,7 +319,9 @@ class Http3WTStream {
           const res = this.pendingres
           this.pendingoperation = null
           this.pendingres = null
-          res()
+          if (res != null) {
+            res()
+          }
         }
         break
       default:
@@ -250,6 +330,9 @@ class Http3WTStream {
     // we could differentiate....
   }
 
+  /**
+   * @param {StreamRecvSignalEvent | StreamReadEvent | StreamWriteEvent | StreamResetEvent | StreamNetworkFinishEvent} args
+   */
   static callback(args) {
     // console.log('Stream callback called', args)
     if (!args || !args.object || !args.object.jsobj)
@@ -286,19 +369,36 @@ class Http3WTStream {
   }
 }
 
+/**
+ * @implements {WebTransportSessionEventHandler}
+ * @implements {WebTransportSession}
+ */
 class Http3WTSession {
+  /**
+   * @param {object} args
+   * @param {import('./types').NativeHttp3WTSession} [args.object]
+   * @param {Http3Server | Http3Client} args.parentobj
+   */
   constructor(args) {
     if (args.object) {
       this.objint = args.object
       this.objint.jsobj = this
     }
     this.parentobj = args.parentobj
+    /** @type {import('./types').WebTransportSessionState} */
     this.state = 'connected'
 
+    /** @type {((value?: any) => void) | null | undefined} */
+    this.readyResolve = null
+    /** @type {(() => void) | null | undefined} */
+    this.closeHook = null
+
+    /** @type {Promise<void>} */
     this.ready = new Promise((resolve, reject) => {
       this.readyResolve = resolve
       this.readyReject = reject
     }).catch(() => {}) // add default handler if no one cares
+    /** @type {Promise<WebTransportCloseInfo>} */
     this.closed = new Promise((resolve, reject) => {
       this.closedResolve = resolve
       this.closedReject = reject
@@ -316,50 +416,74 @@ class Http3WTSession {
       }
     })
 
-    this.datagrams = {}
-    this.datagrams.readable = new ReadableStream({
-      start: (controller) => {
-        this.incomDatagramController = controller
-      }
-    })
+    /** @type {Array<() => void>} */
     this.writeDatagramRes = []
+    /** @type {Array<() => void>} */
     this.writeDatagramRej = []
+    /** @type {Array<Promise<void>>} */
     this.writeDatagramProm = []
-    this.datagrams.writable = new WritableStream({
-      start: (controller) => {
-        this.outgoDatagramController = controller
-      },
-      write: (chunk, controller) => {
-        if (this.state === 'closed') throw new Error('Session is closed')
-        if (chunk instanceof Uint8Array) {
-          const ret = new Promise((resolve, reject) => {
-            this.writeDatagramRes.push(resolve)
-            this.writeDatagramRej.push(reject)
-          })
-          this.writeDatagramProm.push(ret)
-          // console.log('b4 datagram write', chunk, Date.now())
-          this.objint.writeDatagram(chunk)
-          return ret
-        } else throw new Error('chunk is not of type Uint8Array')
-      },
-      close: (controller) => {
-        // do nothing
-      }
-    })
 
+    this.datagrams = {
+      readable: new ReadableStream({
+        start: (controller) => {
+          this.incomDatagramController = controller
+        }
+      }),
+      writable: new WritableStream({
+        start: (controller) => {
+          this.outgoDatagramController = controller
+        },
+        write: (chunk, controller) => {
+          if (this.state === 'closed') throw new Error('Session is closed')
+          if (chunk instanceof Uint8Array) {
+            /** @type {Promise<void>} */
+            const ret = new Promise((resolve, reject) => {
+              this.writeDatagramRes.push(resolve)
+              this.writeDatagramRej.push(reject)
+            })
+            this.writeDatagramProm.push(ret)
+            // console.log('b4 datagram write', chunk, Date.now())
+            if (this.objint == null) {
+              throw new Error('this.objint is not set')
+            }
+            this.objint.writeDatagram(chunk)
+            return ret
+          } else throw new Error('chunk is not of type Uint8Array')
+        },
+        close: () => {
+          // do nothing
+        }
+      }),
+      maxDatagramSize: 0,
+      incomingMaxAge: 0,
+      outgoingMaxAge: 0,
+      incomingHighWaterMark: 0,
+      outgoingHighWaterMark: 0
+    }
+
+    /** @type {Array<(stream: WebTransportBidirectionalStream) => void>} */
     this.resolveBiDi = []
+    /** @type {Array<(stream: WebTransportSendStream) => void>} */
     this.resolveUniDi = []
+    /** @type {Array<(err?: Error) => void>} */
     this.rejectBiDi = []
+    /** @type {Array<(err?: Error) => void>} */
     this.rejectUniDi = []
 
     this.sendStreams = new Set()
     this.receiveStreams = new Set()
+    /** @type {Set<Http3WTStream>} */
     this.streamObjs = new Set()
 
+    /** @type {Set<WritableStreamDefaultController>} */
     this.sendStreamsController = new Set()
+    /** @type {Set<ReadableStreamDefaultController>} */
     this.receiveStreamsController = new Set()
   }
 
+  /**
+   * @param {NativeHttp3WTSession} object
+   */
   setSessionObj(object) {
     if (object) {
       this.objint = object
@@ -377,35 +501,64 @@ class Http3WTSession {
     }
   }
 
+  /**
+   * @param {Http3WTStream} stream
+   */
   addStreamObj(stream) {
     this.streamObjs.add(stream)
   }
 
+  /**
+   * @param {Http3WTStream} stream
+   */
   removeStreamObj(stream) {
     this.streamObjs.delete(stream)
   }
 
+  /**
+   * @param {WritableStream} stream
+   * @param {WritableStreamDefaultController} controller
+   */
   addSendStream(stream, controller) {
     this.sendStreams.add(stream)
     this.sendStreamsController.add(controller)
   }
 
+  /**
+   * @param {WritableStream} stream
+   * @param {WritableStreamDefaultController} controller
+   */
   removeSendStream(stream, controller) {
     this.sendStreams.delete(stream)
     this.sendStreamsController.delete(controller)
   }
 
+  /**
+   * @param {ReadableStream} stream
+   * @param {ReadableStreamDefaultController} controller
+   */
   addReceiveStream(stream, controller) {
     this.receiveStreams.add(stream)
     this.receiveStreamsController.add(controller)
   }
 
+  /**
+   * @param {ReadableStream} stream
+   * @param {ReadableStreamDefaultController} controller
+   */
   removeReceiveStream(stream, controller) {
     this.receiveStreams.delete(stream)
     this.receiveStreamsController.delete(controller)
   }
 
+  /**
+   * @returns {Promise<WebTransportBidirectionalStream>}
+   */
   createBidirectionalStream() {
+    if (this.objint == null) {
+      throw new Error('this.objint not set')
+    }
+    /** @type {Promise<WebTransportBidirectionalStream>} */
     const prom = new Promise((resolve, reject) => {
       this.resolveBiDi.push(resolve)
       this.rejectBiDi.push(reject)
@@ -414,7 +567,14 @@ class Http3WTSession {
     return prom
   }
 
+  /**
+   *@returns {Promise<WebTransportSendStream>}
+   */
   createUnidirectionalStream() {
+    if (this.objint == null) {
+      throw new Error('this.objint not set')
+    }
+    /** @type {Promise<WebTransportSendStream>} */
     const prom = new Promise((resolve, reject) => {
       this.resolveUniDi.push(resolve)
       this.rejectUniDi.push(reject)
@@ -423,13 +583,19 @@ class Http3WTSession {
     return prom
   }
 
+  /**
+   * @param {object} [closeInfo]
+   * @param {number} closeInfo.closeCode
+   * @param {string} closeInfo.reason
+   * @returns {void}
+   */
   close(closeInfo) {
     // console.log('closeinfo', closeInfo)
     if (this.state === 'closed' || this.state === 'failed') return
     if (this.objint) {
       this.objint.close({
-        code: closeInfo.closeCode,
-        reason: closeInfo.reason.substring(0, 1023)
+        code: closeInfo?.closeCode ?? 0,
+        reason: closeInfo?.reason.substring(0, 1023) ?? ''
       })
     }
   }
@@ -439,7 +605,10 @@ class Http3WTSession {
     delete this.readyResolve
   }
 
-  onClose(errorcode, error) {
+  /**
+   * @param {SessionCloseEvent} args
+   */
+  onClose(args) {
     delete this.objint // not valid any more
     // console.log('onClose')
     for (const rej of this.rejectBiDi) rej()
@@ -459,8 +628,8 @@ class Http3WTSession {
     // this.outgoDatagramController.error(errorcode)
     this.state = 'closed'
 
-    this.sendStreamsController.forEach((ele) => ele.error(errorcode))
-    this.receiveStreamsController.forEach((ele) => ele.error(errorcode))
+    this.sendStreamsController.forEach((ele) => ele.error(args.errorcode))
+    this.receiveStreamsController.forEach((ele) => ele.error(args.errorcode))
     this.streamObjs.forEach((ele) => (ele.readableclosed = true))
 
     this.sendStreams.clear()
@@ -469,13 +638,16 @@ class Http3WTSession {
     this.receiveStreamsController.clear()
     this.streamObjs.clear()
 
-    if (this.closedResolve) this.closedResolve(errorcode)
+    if (this.closedResolve) this.closedResolve(args.errorcode)
     if (this.closeHook) {
       this.closeHook()
       delete this.closeHook
     }
   }
 
+  /**
+   * @param {NewStreamEvent} args
+   */
   onStream(args) {
     const strobj = new Http3WTStream({
       object: args.stream,
@@ -497,31 +669,66 @@ class Http3WTSession {
           throw new Error('Got bidirectional stream without asking for it')
         this.rejectBiDi.shift()
         const curres = this.resolveBiDi.shift()
-        curres(strobj)
+
+        if (curres != null && strobj.readable != null && strobj.writable != null) {
+          curres({
+            readable: strobj.readable,
+            writable: strobj.writable
+          })
+        }
       } else {
         if (this.resolveUniDi.length === 0)
           throw new Error('Got unidirectional stream without asking for it')
         this.rejectUniDi.shift()
         const curres = this.resolveUniDi.shift()
-        curres(strobj.writable)
+
+        if (curres != null && strobj.writable != null) {
+          /** @type {WebTransportSendStream} */
+          // @ts-expect-error `getStats` property is missing from WritableStream
+          // we add it on the next line
+          const sendStream = strobj.writable
+          sendStream.getStats = () => {
+            return Promise.resolve({
+              timestamp: 0,
+              bytesWritten: 0n,
+              bytesSent: 0n,
+              bytesAcknowledged: 0n
+            })
+          }
+
+          curres(sendStream)
+        }
       }
     }
   }
 
+  /**
+   * @param {DatagramReceivedEvent} args
+   */
   onDatagramReceived(args) {
     // console.log('datagram received', args.datagram, Date.now())
     this.incomDatagramController.enqueue(args.datagram)
   }
 
+  /**
+   * @param {DatagramSendEvent} args
+   */
   onDatagramSend(args) {
     if (this.state === 'closed') return
     this.writeDatagramRej.shift()
     this.writeDatagramProm.shift()
     const res = this.writeDatagramRes.shift()
-    res()
+
+    if (res != null) {
+      res()
+    }
   }
 
+  /**
+   * @param {SessionReadyEvent | SessionCloseEvent | DatagramReceivedEvent | DatagramSendEvent | NewStreamEvent} args
+   */
   static callback(args) {
+    console.log('Session callback called', args)
     // console.log('Session callback called', args)
     if (!args || !args.object || !args.object.jsobj)
       throw new Error('Session callback without jsobj')
@@ -529,10 +736,10 @@ class Http3WTSession {
     if (args.purpose) {
       switch (args.purpose) {
         case 'SessionReady':
-          visitor.onReady()
+          visitor.onReady(args)
           break
         case 'SessionClose':
-          visitor.onClose(args.errorcode, args.error)
+          visitor.onClose(args)
           break
         case 'DatagramReceived':
           if (visitor && args.hasOwnProperty('datagram'))
@@ -555,9 +762,40 @@ class Http3WTSession {
       }
     } else throw new Error('no purpose Sessioncb')
   }
+
+  getStats() {
+    return Promise.resolve({
+      timestamp: 0,
+      bytesSent: 0n,
+      packetsSent: 0n,
+      packetsLost: 0n,
+      numOutgoingStreamsCreated: 0,
+      numIncomingStreamsCreated: 0,
+      bytesReceived: 0n,
+      packetsReceived: 0n,
+      smoothedRtt: 0,
+      rttVariation: 0,
+      minRtt: 0,
+      datagrams: {
+        timestamp: 0,
+        expiredOutgoing: 0n,
+        droppedIncoming: 0n,
+        lostOutgoing: 0n
+      }
+    })
+  }
+
+  /** @returns {import('./dom').WebTransportReliabilityMode} */
+  get reliability () {
+    return 'reliable-only'
+  }
 }
 
 class Http3WebTransport {
+  /**
+   * @param {*} args
+   * @param {'server' | 'client'} purpose
+   */
   constructor(args, purpose) {
     const eventloop = Http3EventLoop.getGlobalEventLoop(this).eventloopInt
 
@@ -571,6 +809,13 @@ class Http3WebTransport {
     this.sessions = {}
   }
 
+  /**
+   * @typedef {object} TransportCallbackEvent
+   * @property {{ jsobj: { customCallback: (args: any) => void }}} object
+   * @property {string} purpose
+   *
+   * @param {TransportCallbackEvent} args
+   */
   static transportCallback(args) {
     // console.log('incoming callback transport', args)
     if (!args || !args.object || !args.object.jsobj)
@@ -587,9 +832,17 @@ class Http3WebTransport {
 }
 
 export class Http3Server extends Http3WebTransport {
+  /**
+   *
+   * @param {*} args
+   */
   constructor(args) {
     super(args, 'server')
+
+    /** @type {Record<string, ReadableStream>} */
     this.sessionStreams = {}
+
+    /** @type {Record<string, ReadableStreamController<any>>} */
     this.sessionController = {}
   }
 
@@ -606,9 +859,13 @@ export class Http3Server extends Http3WebTransport {
     this.stopped = true
   }
 
+  /**
+   * @param {string} path
+   * @returns {ReadableStream<WebTransportSession>}
+   */
   sessionStream(path) {
     if (path in this.sessionStreams) {
-      return this.sessionsStreams[path]
+      return this.sessionStreams[path]
     }
     this.sessionStreams[path] = new ReadableStream({
       start: async (controller) => {
@@ -619,6 +876,15 @@ export class Http3Server extends Http3WebTransport {
     return this.sessionStreams[path]
   }
 
+  /**
+   * @typedef {object} Http3WTSessionVisitor
+   * @property {'Http3WTSessionVisitor'} purpose
+   * @property {any} object
+   * @property {NativeHttp3WTSession} session
+   * @property {string} path
+   *
+   * @param {Http3WTSessionVisitor} args
+   */
   customCallback(args) {
     // console.log('incoming callback server', args)
     if (args.purpose) {
@@ -644,16 +910,31 @@ export class Http3Server extends Http3WebTransport {
   }
 }
 
+/**
+ * @implements {Http3ClientEventHandler}
+ */
 class Http3Client extends Http3WebTransport {
+  /**
+   * @param {*} args
+   */
   constructor(args) {
     super(args, 'client')
 
+    /** @type {{ resolve: (value?: any) => void, reject: (err?: Error) => void} | null | undefined} */
+    this.sessionProm = null
+
+    /** @type {Promise<void> | undefined} */
     this.sessionobj = new Promise((resolve, reject) => {
       this.sessionProm = { resolve, reject }
     }).catch(() => {}) // add default handler if no one cares
+    /** @type {Http3WTSession | null | undefined} */
     this.sessionobjint = null
     this.closeHookSession = this.closeHookSession.bind(this)
 
+    /** @type {{ resolve: (value?: any) => void, reject: (err?: Error) => void} | null | undefined} */
+    this.webtransportProm = null
+    /** @type {{ resolve: (value?: any) => void, reject: (err?: Error) => void} | null | undefined} */
+    this.quicconnectedProm = null
     this.handleConnection()
   }
 
@@ -661,7 +942,6 @@ class Http3Client extends Http3WebTransport {
     this.quicconnected = new Promise((resolve, reject) => {
       this.quicconnectedProm = { resolve, reject }
     }).catch(() => {}) // add default handler if no one cares
-
     this.webtransport = new Promise((resolve, reject) => {
       this.webtransportProm = { resolve, reject }
     }).catch(() => {}) // add default handler if no one cares
@@ -682,6 +962,11 @@ class Http3Client extends Http3WebTransport {
     }
   }
 
+  /**
+   * @param {Http3WTSession} sessionobj
+   * @param {string} path
+   * @returns
+   */
   async createWTSession(sessionobj, path) {
     // TODO
     try {
@@ -706,39 +991,63 @@ class Http3Client extends Http3WebTransport {
     this.stopped = true
   }
 
+  /**
+   * @param {ClientConnectedEvent} args
+   */
+  onClientConnected (args) {
+    if (this.quicconnectedProm) {
+      if (args.success) this.quicconnectedProm.resolve()
+      else
+        this.quicconnectedProm.reject(
+          new Error('Connecting quic client failed')
+        )
+    } else throw new Error('Client connected with no pending promise')
+  }
+
+  /**
+   * @param {ClientWebtransportSupportEvent} args
+   */
+  onClientWebTransportSupport (args) {
+    if (this.webtransportProm) {
+      this.webtransportProm.resolve()
+      delete this.webtransportProm
+    }
+  }
+
+  /**
+   * @param {Http3WTSessionVisitorEvent} args
+   */
+  onHttp3WTSessionVisitor (args) {
+    // create Http3 Visitor
+    if (args.session && this.sessionProm && this.sessionobjint) {
+      this.sessionobjint.setSessionObj(args.session)
+      args.session.jsobj.closeHook = this.closeHookSession
+      delete this.sessionobjint
+      this.sessionProm.resolve(args.session)
+      delete this.sessionProm
+    } else {
+      throw new Error(
+        'Http3WTSessionVisitor no object session or nor sessionprom'
+      )
+    }
+  }
+
+  /**
+   * @param {ClientConnectedEvent | ClientWebtransportSupportEvent | Http3WTSessionVisitorEvent} args
+   */
   customCallback(args) {
     // console.log('incoming callback custom client', args)
     if (args.purpose) {
       switch (args.purpose) {
         case 'ClientConnected':
-          if (this.quicconnectedProm) {
-            if (args.success) this.quicconnectedProm.resolve()
-            else
-              this.quicconnectedProm.reject(
-                new Error('Connecting quic client failed')
-              )
-          } else throw new Error('Client connected with no pending promise')
+          this.onClientConnected(args)
           break
         case 'ClientWebtransportSupport':
-          if (this.webtransportProm) {
-            this.webtransportProm.resolve()
-            delete this.webtransportProm
-          }
+          this.onClientWebTransportSupport(args)
           break
         case 'Http3WTSessionVisitor':
-          // create Http3 Visitor
-          if (args.session && this.sessionProm && this.sessionobjint) {
-            this.sessionobjint.setSessionObj(args.session)
-            args.session.jsobj.closeHook = this.closeHookSession
-            delete this.sessionobjint
-            this.sessionProm.resolve(args.session)
-            delete this.sessionProm
-          } else
-            throw new Error(
-              'Http3WTSessionVisitor no object session or nor sessionprom'
-            )
+          this.onHttp3WTSessionVisitor(args)
           break
-
         default: {
           throw new Error('unknown purpose')
         }
@@ -747,16 +1056,27 @@ class Http3Client extends Http3WebTransport {
   }
 }
 
+/**
+ * @typedef {import('./dom').WebTransport} WebTransportInterface
+ *
+ * @implements {WebTransportInterface}
+ */
 export class WebTransport {
+  /**
+   * @param {string} url
+   * @param {import('./dom').WebTransportOptions} [args]
+   */
   constructor(url, args) {
     if (!url) throw new Error('no URL supplied')
     const ourl = (this.urlint = new URL(url))
 
-    if (ourl.protocol !== 'https:')
-      return new Error('URL is not supported for webtransport')
+    if (ourl.protocol !== 'https:') {
+      throw new Error('URL is not supported for webtransport')
+    }
+
     const hostname = ourl.hostname
     let port = ourl.port
-    if (port === '') port = 443
+    if (port === '') port = '443'
 
     this.client = new Http3Client({ hostname, port, ...args })
 
@@ -791,6 +1111,9 @@ export class WebTransport {
     }
   }
 
+  /**
+   * @param {WebTransportCloseInfo} [closeinfo]
+   */
   close(closeinfo) {
     return this.sessionint.close(closeinfo)
   }
@@ -802,10 +1125,42 @@ export class WebTransport {
   createUnidirectionalStream() {
     return this.sessionint.createUnidirectionalStream()
   }
+
+  getStats() {
+    return Promise.resolve({
+      timestamp: 0,
+      bytesSent: 0n,
+      packetsSent: 0n,
+      packetsLost: 0n,
+      numOutgoingStreamsCreated: 0,
+      numIncomingStreamsCreated: 0,
+      bytesReceived: 0n,
+      packetsReceived: 0n,
+      smoothedRtt: 0,
+      rttVariation: 0,
+      minRtt: 0,
+      datagrams: {
+        timestamp: 0,
+        expiredOutgoing: 0n,
+        droppedIncoming: 0n,
+        lostOutgoing: 0n
+      }
+    })
+  }
+
+  /** @returns {import('./dom').WebTransportReliabilityMode} */
+  get reliability () {
+    return 'reliable-only'
+  }
 }
 
 class Http3EventLoop {
-  static globalLoop = null
+  /** @type {Http3EventLoop | null} */
+  static globalLoop = Http3EventLoop.createGlobalEventLoop()
+
+  /**
+   * @param {*} [args]
+   */
   constructor(args) {
     this.eventloopInt = new wtrouter.Http3EventLoop({
       transportCallback: Http3WebTransport.transportCallback,
@@ -849,19 +1204,27 @@ class Http3EventLoop {
     console.log('final eventloop callback called')
   }
 
+  /**
+   * @returns {Http3EventLoop}
+   */
   static createGlobalEventLoop() {
     if (!Http3EventLoop.globalLoop) {
       Http3EventLoop.globalLoop = new Http3EventLoop()
       Http3EventLoop.globalLoop.startEventLoop()
       console.log('createGlobalEventLoop')
     }
+    return Http3EventLoop.globalLoop
   }
 
+  /**
+   * @param {any} object
+   * @returns {Http3EventLoop}
+   */
   static getGlobalEventLoop(object) {
     if (!object) throw new Error('getGlobalEventLoop without reference object')
-    if (!Http3EventLoop.globalLoop) Http3EventLoop.createGlobalEventLoop()
-    Http3EventLoop.globalLoop.refObjects.add(new WeakRef(object))
-    return Http3EventLoop.globalLoop
+    const loop = Http3EventLoop.globalLoop ?? Http3EventLoop.createGlobalEventLoop()
+    loop.refObjects.add(new WeakRef(object))
+    return loop
   }
 }
 
