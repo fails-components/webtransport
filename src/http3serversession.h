@@ -107,7 +107,7 @@ namespace quic
     {
       if (ShouldNegotiateWebTransport())
       {
-        return HttpDatagramSupport::kDraft04And09;
+        return HttpDatagramSupport::kRfcAndDraft04;
       }
       return QuicServerSessionBase::LocalHttpDatagramSupport();
     }
