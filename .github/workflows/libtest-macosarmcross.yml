@@ -30,6 +30,7 @@ jobs:
       - name: Install icu libs
       # snippet from https://github.com/Homebrew/discussions/discussions/2843
         run: | 
+          ls -la /opt/homebrew
           mkdir -p /opt/homebrew && curl -L https://github.com/Homebrew/brew/tarball/master | tar xz --strip 1 -C /opt/homebrew 
           alias arm-brew='/opt/homebrew/bin/brew'
           response=$(arm-brew fetch --force --bottle-tag=arm64_big_sur icu4c | grep "Downloaded to")
