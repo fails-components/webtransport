@@ -157,6 +157,23 @@ const prebuildInstall = async (args) => {
   })
 }
 
+const buildTypes = async () => {
+  return new Promise((resolve, reject) => {
+    const tsc = 'tsc'
+    const proc = spawn(tsc, {
+      cwd: process.cwd(),
+      stdio: [null, 'inherit', 'inherit'],
+      shell: true
+    })
+
+    proc.on('close', (code) => {
+      if (code === 0) resolve(code)
+      else reject(code)
+      console.log(`child process exited with code ${code}`)
+    })
+  })
+}
+
 const execbuild = async (args) => {
   return new Promise((resolve, reject) => {
     const cmakejs = 'cmake-js'
@@ -191,7 +208,7 @@ if (argv.length > 2) {
   switch (argv[2]) {
     case 'prebuild':
       try {
-        prebuild([
+        await prebuild([
           '-t',
           '6',
           '-r',
@@ -229,13 +246,13 @@ if (argv.length > 2) {
         await extractthirdparty()
       } catch (error) {
         console.error('Building binary failed: ', error)
-      
       }
     }
     // eslint-disable-next-line no-fallthrough
     case 'build':
       try {
-        execbuild(['build', ...platformargs])
+        await execbuild(['build', ...platformargs])
+        await buildTypes()
       } catch (error) {
         console.error('Building binary failed: ', error)
         process.exit(1)
@@ -243,7 +260,8 @@ if (argv.length > 2) {
       break
     case 'rebuild':
       try {
-        execbuild(['rebuild', ...platformargs])
+        await execbuild(['rebuild', ...platformargs])
+        await buildTypes()
       } catch (error) {
         console.error('ReBuilding binary failed: ', error)
         process.exit(1)
@@ -251,7 +269,8 @@ if (argv.length > 2) {
       break
     case 'build-debug':
       try {
-        execbuild(['build', '-D', ...platformargs])
+        await execbuild(['build', '-D', ...platformargs])
+        await buildTypes()
       } catch (error) {
         console.error('Building binary failed: ', error)
         process.exit(1)
@@ -259,7 +278,8 @@ if (argv.length > 2) {
       break
     case 'rebuild-debug':
       try {
-        execbuild(['rebuild', '-D', ...platformargs])
+        await execbuild(['rebuild', '-D', ...platformargs])
+        await buildTypes()
       } catch (error) {
         console.error('ReBuilding binary failed: ', error)
         process.exit(1)

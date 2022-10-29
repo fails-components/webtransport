@@ -12,11 +12,12 @@
   "scripts": {
     "start": "node test/echoserver.js",
     "test": "node test/test.js",
-    "install": "node build.js install && tsc",
-    "build": "node build.js build && tsc",
-    "rebuild": "node build.js rebuild && tsc",
-    "rebuild-debug": "node build.js rebuild-debug -D && tsc",
-    "build-debug": "node build.js build-debug && tsc"
+    "install": "node build.js install",
+    "build": "node build.js build",
+    "rebuild": "node build.js rebuild",
+    "rebuild-debug": "node build.js rebuild-debug -D",
+    "build-debug": "node build.js build-debug",
+    "types": "tsc"
   },
   "repository": {
     "type": "git",
