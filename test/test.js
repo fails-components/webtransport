@@ -32,6 +32,10 @@ async function run() {
     days: 13
   })
 
+  if (certificate == null) {
+    throw new Error('Certificate generation failed')
+  }
+
   console.log('start Http3Server and startup echo tests')
   // now ramp up the server
   const http3server = new Http3Server({
@@ -52,6 +56,7 @@ async function run() {
 
   const url = 'https://127.0.0.1:8080/echo'
 
+  /** @type {import('../src/dom').WebTransport | null} */
   let client = new WebTransport(url, {
     serverCertificateHashes: [{ algorithm: 'sha-256', value: certificate.hash }]
   })
