@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 import { echoTestsConnection } from './testsuite.js'
-import { WebTransport  } from '../src/webtransport.js'
+import { WebTransport  } from '../lib/index.js'
 
 /**
  * @param {{ hostname: string, port: number }} args
