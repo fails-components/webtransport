@@ -31,11 +31,11 @@ export interface WebTransportCloseInfo {
 export interface WebTransportDatagramDuplexStream {
   readable: ReadableStream<Uint8Array>
   writable: WritableStream<Uint8Array>
-  readonly maxDatagramSize: number
-  incomingMaxAge?: number
-  outgoingMaxAge?: number
-  incomingHighWaterMark: number
-  outgoingHighWaterMark: number
+  // readonly maxDatagramSize: number
+  // incomingMaxAge?: number
+  // outgoingMaxAge?: number
+  // incomingHighWaterMark: number
+  // outgoingHighWaterMark: number
 }
 
 export interface WebTransportBidirectionalStream {
@@ -76,9 +76,9 @@ export interface WebTransportOptions {
 }
 
 export interface WebTransport {
-  getStats: () => Promise<WebTransportStats>
+  // getStats: () => Promise<WebTransportStats>
   readonly ready: Promise<void>
-  readonly reliability: WebTransportReliabilityMode
+  // readonly reliability: WebTransportReliabilityMode
   readonly closed: Promise<WebTransportCloseInfo>
   close: (closeInfo?: WebTransportCloseInfo) => void
   readonly datagrams: WebTransportDatagramDuplexStream

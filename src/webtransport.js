@@ -453,12 +453,7 @@ class Http3WTSession {
         close: () => {
           // do nothing
         }
-      }),
-      maxDatagramSize: 0,
-      incomingMaxAge: 0,
-      outgoingMaxAge: 0,
-      incomingHighWaterMark: 0,
-      outgoingHighWaterMark: 0
+      })
     }
 
     /** @type {Array<(stream: WebTransportBidirectionalStream) => void>} */
@@ -760,33 +755,6 @@ class Http3WTSession {
           throw new Error('unknown purpose Sessioncb')
       }
     } else throw new Error('no purpose Sessioncb')
-  }
-
-  getStats() {
-    return Promise.resolve({
-      timestamp: 0,
-      bytesSent: 0n,
-      packetsSent: 0n,
-      packetsLost: 0n,
-      numOutgoingStreamsCreated: 0,
-      numIncomingStreamsCreated: 0,
-      bytesReceived: 0n,
-      packetsReceived: 0n,
-      smoothedRtt: 0,
-      rttVariation: 0,
-      minRtt: 0,
-      datagrams: {
-        timestamp: 0,
-        expiredOutgoing: 0n,
-        droppedIncoming: 0n,
-        lostOutgoing: 0n
-      }
-    })
-  }
-
-  /** @returns {import('./dom').WebTransportReliabilityMode} */
-  get reliability () {
-    return 'reliable-only'
   }
 }
 
@@ -1123,33 +1091,6 @@ export class WebTransport {
 
   createUnidirectionalStream() {
     return this.sessionint.createUnidirectionalStream()
-  }
-
-  getStats() {
-    return Promise.resolve({
-      timestamp: 0,
-      bytesSent: 0n,
-      packetsSent: 0n,
-      packetsLost: 0n,
-      numOutgoingStreamsCreated: 0,
-      numIncomingStreamsCreated: 0,
-      bytesReceived: 0n,
-      packetsReceived: 0n,
-      smoothedRtt: 0,
-      rttVariation: 0,
-      minRtt: 0,
-      datagrams: {
-        timestamp: 0,
-        expiredOutgoing: 0n,
-        droppedIncoming: 0n,
-        lostOutgoing: 0n
-      }
-    })
-  }
-
-  /** @returns {import('./dom').WebTransportReliabilityMode} */
-  get reliability () {
-    return 'reliable-only'
   }
 }
 
