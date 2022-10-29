@@ -186,7 +186,10 @@ if (argv.length > 2) {
   const pbargs = []
   const pbargspre = []
   if (platform === 'win32') pbargs.push('-t', 'ClangCL') 
-  if (env.BUILDARCH) pbargspre.push('--arch', env.BUILDARCH)
+  if (env.BUILDARCH) {
+    pbargspre.push('--arch', env.BUILDARCH)
+    platformargs.push('--arch', env.BUILDARCH)
+  }
   if (env.GH_TOKEN) pbargspre.push('--u', env.GH_TOKEN)
 
   switch (argv[2]) {
