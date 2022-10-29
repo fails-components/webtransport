@@ -18,6 +18,10 @@ set(BUILD_TESTING OFF)
 
 set(protobuf_BUILD_PROTOC_BINARIES ON)
 
+IF(APPLE)
+  set(MACOSX_DEPLOYMENT_TARGET "10.7")
+ENDIF(APPLE)
+
 IF( NOT WIN32)
     IF(APPLE)
         SET(ICU_ROOT "/usr/local/opt/icu4c")
