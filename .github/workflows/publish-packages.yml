@@ -56,8 +56,7 @@ jobs:
     needs: version-check
     strategy:
       matrix: 
-# macos-latest is macos-10, since we need macos-11
-        os: [ubuntu-latest, windows-2019, macos-11 ]
+        os: [ubuntu-latest, windows-2019, macos-latest ]
         arch: [x64]
         include:
           - arch: ia32
