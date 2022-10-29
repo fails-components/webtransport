@@ -188,18 +188,10 @@ if (argv.length > 2) {
   const pbargspre = []
   if (platform === 'win32') pbargs.push('-t', 'ClangCL') 
   if (platform === 'darwin' && arch === 'arm64') {
-    pbiargs.push('--arch', 'x86_64;arm64') // switch to universal binaries
-  }
-  if (platform === 'darwin' && (arch === 'arm64' || arch === 'x64')) {
-    if (!env.BUILDARCH) pbargspre.push('--arch', 'x86_64;arm64')
-    platformargs.unshift('--arch', 'x86_64;arm64')
+    pbiargs.push('--arch', 'x86_64') // switch to universal binaries
   }
   if (env.BUILDARCH) pbargspre.push('--arch', env.BUILDARCH)
   if (env.GH_TOKEN) pbargspre.push('--u', env.GH_TOKEN)
-  console.log('buildoptions debug1', pbargs )
-  console.log('buildoptions debug2', pbiargs )
-  console.log('buildoptions debug3', pbargspre )
-  console.log('buildoptions debug4', platformargs )
 
   switch (argv[2]) {
     case 'prebuild':
