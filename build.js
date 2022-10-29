@@ -194,6 +194,10 @@ if (argv.length > 2) {
   }
   if (env.BUILDARCH) pbargspre.push('--arch', env.BUILDARCH)
   if (env.GH_TOKEN) pbargspre.push('--u', env.GH_TOKEN)
+  console.log('buildoptions debug1', pbargs )
+  console.log('buildoptions debug2', pbiargs )
+  console.log('buildoptions debug3', pbargspre )
+  console.log('buildoptions debug4', platformargs )
 
   switch (argv[2]) {
     case 'prebuild':
