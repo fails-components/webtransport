@@ -44,7 +44,7 @@ SET(protobuf_WITH_ZLIB OFF CACHE BOOL "Build with zlib support")
 SET(protobuf_BUILD_TESTS OFF CACHE BOOL "Build tests")
 add_subdirectory(third_party/protobuf EXCLUDE_FROM_ALL)
 IF(APPLE)
-    set_target_properties(protobuf PROPERTIES CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for Mac OS X" FORCE )
+    set_target_properties(protoc PROPERTIES CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for Mac OS X" FORCE )
 ENDIF(APPLE)
 
 IF (WIN32)
