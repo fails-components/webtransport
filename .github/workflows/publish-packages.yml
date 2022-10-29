@@ -61,6 +61,8 @@ jobs:
         include:
           - arch: ia32
             os: windows-2019
+          - arch: arm64
+            os: macos-latest
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write

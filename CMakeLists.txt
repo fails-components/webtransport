@@ -909,6 +909,10 @@ ELSE(WIN32)
     )
 ENDIF(WIN32)
 
+IF(APPLE)
+    set_target_properties(protobuf::protoc PROPERTIES CMAKE_OSX_ARCHITECTURES ${CMAKE_HOST_SYSTEM_PROCESSOR})
+ENDIF(APPLE)
+
 add_custom_command(
 OUTPUT
 ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/cached_network_parameters.pb.h
