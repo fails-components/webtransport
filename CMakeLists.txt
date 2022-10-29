@@ -40,6 +40,9 @@ SET(EVENT__DISABLE_OPENSSL ON CACHE BOOL "Define if libevent should build withou
 add_subdirectory(third_party/libevent EXCLUDE_FROM_ALL)
 
 # include protobuf
+IF(APPLE)
+    set_target_properties(protobuf PROPERTIES CMAKE_OSX_ARCHITECTURES x86_64 arm64 CACHE STRING "Build architectures for Mac OS X" FORCE )
+ENDIF(APPLE)
 SET(protobuf_WITH_ZLIB OFF CACHE BOOL "Build with zlib support")
 SET(protobuf_BUILD_TESTS OFF CACHE BOOL "Build tests")
 add_subdirectory(third_party/protobuf EXCLUDE_FROM_ALL)
@@ -909,9 +912,6 @@ ELSE(WIN32)
     )
 ENDIF(WIN32)
 
-IF(APPLE)
-    set_target_properties(protobuf::protoc PROPERTIES CMAKE_OSX_ARCHITECTURES ${CMAKE_HOST_SYSTEM_PROCESSOR})
-ENDIF(APPLE)
 
 add_custom_command(
 OUTPUT
