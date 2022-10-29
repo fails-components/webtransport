@@ -189,6 +189,8 @@ if (argv.length > 2) {
   if (platform === 'win32') pbargs.push('-t', 'ClangCL') 
   if (platform === 'darwin' && arch === 'arm64') {
     pbiargs.push('--arch', 'x86_64;arm64') // switch to universal binaries
+  }
+  if (platform === 'darwin' && (arch === 'arm64' || arch === 'x64')) {
     if (!env.BUILDARCH) pbargspre.push('--arch', 'x86_64;arm64')
     platformargs.push('--arch', 'x86_64;arm64')
   }
