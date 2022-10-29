@@ -728,7 +728,6 @@ class Http3WTSession {
    * @param {SessionReadyEvent | SessionCloseEvent | DatagramReceivedEvent | DatagramSendEvent | NewStreamEvent} args
    */
   static callback(args) {
-    console.log('Session callback called', args)
     // console.log('Session callback called', args)
     if (!args || !args.object || !args.object.jsobj)
       throw new Error('Session callback without jsobj')
