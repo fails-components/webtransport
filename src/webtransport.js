@@ -1156,7 +1156,7 @@ export class WebTransport {
 
 class Http3EventLoop {
   /** @type {Http3EventLoop | null} */
-  static globalLoop = Http3EventLoop.createGlobalEventLoop()
+  static globalLoop = null
 
   /**
    * @param {*} [args]
@@ -1222,7 +1222,7 @@ class Http3EventLoop {
    */
   static getGlobalEventLoop(object) {
     if (!object) throw new Error('getGlobalEventLoop without reference object')
-    const loop = Http3EventLoop.globalLoop ?? Http3EventLoop.createGlobalEventLoop()
+    const loop = Http3EventLoop.createGlobalEventLoop()
     loop.refObjects.add(new WeakRef(object))
     return loop
   }
