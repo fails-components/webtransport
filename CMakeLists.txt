@@ -42,12 +42,12 @@ add_subdirectory(third_party/libevent EXCLUDE_FROM_ALL)
 # include protobuf
 SET(protobuf_WITH_ZLIB OFF CACHE BOOL "Build with zlib support")
 SET(protobuf_BUILD_TESTS OFF CACHE BOOL "Build tests")
+add_subdirectory(third_party/protobuf EXCLUDE_FROM_ALL)
 IF(APPLE)
     set_target_properties(protoc PROPERTIES CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for Mac OS X" FORCE )
     set_target_properties(libprotoc PROPERTIES CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for Mac OS X" FORCE )
     set_target_properties(libprotobuf PROPERTIES CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for Mac OS X" FORCE )
 ENDIF(APPLE)
-add_subdirectory(third_party/protobuf EXCLUDE_FROM_ALL)
 
 IF (WIN32)
     add_compile_definitions(WIN32_LEAN_AND_MEAN NOGDI)
