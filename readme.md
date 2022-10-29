@@ -40,23 +40,46 @@ In case of github packages, please add to your `.npmrc` file
 ```
 In this case you need to be authenticated against github.
 
-The package provides prebuild binaries for `windows`, `linux` and `macos` for the platform `x64` and `ia32` (only windows). 
+The package provides prebuild binaries for `windows`, `linux` and `macos` for the platform `x64` and `ia32` (only windows).
 Other platforms may be possible via crosscompiling in the github actions, if someone needs this, PRs are welcome.
 
 Of course you can also build the binary on your system.
 If you are running the compiling install as root, you need to use `--unsafe-perm` as flag.
-Installing the package without prebuild requires a full building environment including clang-9, perl6, python, golang,  ninja-build, icu. See the `Dockerfile` or `Dockerfile.development` for required debian packages. 
-This should work for Windows, linux and Mac OS X. 
+Installing the package without prebuild requires a full building environment including clang-9, perl6, python, golang,  ninja-build, icu. See the `Dockerfile` or `Dockerfile.development` for required debian packages.
+This should work for Windows, linux and Mac OS X.
 (You may want to check out the building dependencies (especially for windows) for BoringSSl, zlib, abseil on their respective websites).
 
-Of course,  PR for patches and for compiling instructions and necessary changes are welcome for all possible environments. 
+Of course,  PR for patches and for compiling instructions and necessary changes are welcome for all possible environments.
 
 ** Warning the build time takes more than 15 minutes, on windows even longer! (Due to the building of the third party libraries). **
 
-In the directory `test` you find a simple echo server code. That answers to a series of WebTransport echos. Furthermore some example browser code and finally a unit test of the library including certificate generation. 
+In the directory `test` you find a simple echo server code. That answers to a series of WebTransport echos. Furthermore some example browser code and finally a unit test of the library including certificate generation.
 
 When testing remember you might need to start chromium based browser with certain flags to accept your http/3 certificate with errors, e.g.:
 ```
 chrome --ignore-certificate-errors-spki-list=FINGERPRINTOFYOURCERTIFICATE --ignore-certificate-errors --v=2 --enable-logging=stderr --origin-to-force-quic-on=192.168.1.50:8080
 ```
 of course replace IP and fingerprint of your certificate accordingly.
+
+## Specification divergence
+
+This module implements parts of the [WebTransport spec](https://datatracker.ietf.org/doc/html/draft-vvv-webtransport-quic-00) but not all of it.
+
+The types from the [W3C Working Draft](https://www.w3.org/TR/webtransport/) have been added to [src/dom.ts] but some fields are commented out.
+
+These fields are unimplemented by this module at this time. Some may be implemented in the future, others are legacy fields that may be removed from the spec. PRs are welcome!
+
+They are:
+
+### WebTransport
+
+* [getStats()](https://www.w3.org/TR/webtransport/#dom-webtransport-getstats)
+* [reliability](https://www.w3.org/TR/webtransport/#dom-webtransport-reliability)
+
+### WebTransportDatagramDuplexStream
+
+* [maxDatagramSize](https://www.w3.org/TR/webtransport/#dom-webtransportdatagramduplexstream-maxdatagramsize)
+* [incomingMaxAge](https://www.w3.org/TR/webtransport/#dom-webtransportdatagramduplexstream-incomingmaxage)
+* [outgoingMaxAge](https://www.w3.org/TR/webtransport/#dom-webtransportdatagramduplexstream-outgoingmaxage)
+* [incomingHighWaterMark](https://www.w3.org/TR/webtransport/#dom-webtransportdatagramduplexstream-incominghighwatermark)
+* [outgoingHighWaterMark](https://www.w3.org/TR/webtransport/#dom-webtransportdatagramduplexstream-outgoinghighwatermark)

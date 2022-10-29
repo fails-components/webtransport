@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+/**
+ * @param {import('../src/dom').WebTransport} session
+ */
 export async function incomingBidirectionalEchoTest(session) {
   try {
     const bidiReader = session.incomingBidirectionalStreams.getReader()
@@ -24,6 +27,9 @@ export async function incomingBidirectionalEchoTest(session) {
   }
 }
 
+/**
+ * @param {import('../src/dom').WebTransport} session
+ */
 export async function outgoingBidirectionalEchoTest(session) {
   try {
     const mybidistream = await session.createBidirectionalStream()
@@ -33,6 +39,9 @@ export async function outgoingBidirectionalEchoTest(session) {
   }
 }
 
+/**
+ * @param {import('../src/dom').WebTransport} session
+ */
 export async function unidirectionalEchoTest(session) {
   try {
     const unidiReader = session.incomingUnidirectionalStreams.getReader()
@@ -56,6 +65,9 @@ export async function unidirectionalEchoTest(session) {
   }
 }
 
+/**
+ * @param {import('../src/dom').WebTransport} session
+ */
 export async function datagramEchoTest(session) {
   try {
     session.datagrams.readable.pipeTo(session.datagrams.writable)
@@ -64,6 +76,9 @@ export async function datagramEchoTest(session) {
   }
 }
 
+/**
+ * @param {import('../src/webtransport').Http3Server} server
+ */
 export async function runEchoServer(server) {
   try {
     const sessionStream = await server.sessionStream('/echo')
@@ -99,6 +114,10 @@ export async function runEchoServer(server) {
   }
 }
 
+/**
+ * @param {ArrayLike<any>} array1
+ * @param {ArrayLike<any>} array2
+ */
 function testArraysEqual(array1, array2) {
   if (array1.length !== array2.length)
     throw new Error('Array not equal in length')
@@ -107,6 +126,9 @@ function testArraysEqual(array1, array2) {
   }
 }
 
+/**
+ * @param {import('../src/dom').WebTransport} transport
+ */
 export async function echoTestsConnection(transport) {
   // some echo tests for testing the webtransport library, not for production
   const stream = await transport.createBidirectionalStream()
