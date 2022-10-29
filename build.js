@@ -192,7 +192,7 @@ if (argv.length > 2) {
   }
   if (platform === 'darwin' && (arch === 'arm64' || arch === 'x64')) {
     if (!env.BUILDARCH) pbargspre.push('--arch', 'x86_64;arm64')
-    platformargs.push('--arch', 'x86_64;arm64')
+    platformargs.unshift('--arch', 'x86_64;arm64')
   }
   if (env.BUILDARCH) pbargspre.push('--arch', env.BUILDARCH)
   if (env.GH_TOKEN) pbargspre.push('--u', env.GH_TOKEN)
