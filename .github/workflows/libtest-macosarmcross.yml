@@ -27,9 +27,9 @@ jobs:
         with:
           submodules: recursive   
 
-      -name: Install icu libs
+      - name: Install icu libs
       # snippet from https://github.com/Homebrew/discussions/discussions/2843
-       run: | 
+        run: | 
           setopt sh_word_split
           mkdir -p /opt/homebrew && curl -L https://github.com/Homebrew/brew/tarball/master | tar xz --strip 1 -C /opt/homebrew 
           alias arm-brew='/opt/homebrew/bin/brew'
