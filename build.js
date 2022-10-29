@@ -184,12 +184,8 @@ if (argv.length > 2) {
   ]
   if (platform === 'win32') platformargs.push('-t', 'ClangCL')
   const pbargs = []
-  const pbiargs = []
   const pbargspre = []
   if (platform === 'win32') pbargs.push('-t', 'ClangCL') 
-  if (platform === 'darwin' && arch === 'arm64') {
-    pbiargs.push('--arch', 'x86_64') // switch to universal binaries
-  }
   if (env.BUILDARCH) pbargspre.push('--arch', env.BUILDARCH)
   if (env.GH_TOKEN) pbargspre.push('--u', env.GH_TOKEN)
 
@@ -221,8 +217,7 @@ if (argv.length > 2) {
           '-d',
           '-t',
           '6',
-          '--verbose',
-          ...pbiargs
+          '--verbose'
         ])
         if (pbres === 0) break
       } catch (error) {

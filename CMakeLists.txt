@@ -8,14 +8,6 @@ cmake_policy(SET CMP0091 NEW)
     set(protobuf_MSVC_STATIC_RUNTIME ON)
 #ENDIF(MSVC)
 
-IF(APPLE)
-  message(STATUS "turn on darwin multiarch")
-  set(MACOSX_DEPLOYMENT_TARGET 10.7)
-  set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
-ENDIF(APPLE)
-
-message("CMAKE_OSX_ARCHITECTURES: ${CMAKE_OSX_ARCHITECTURES}")
-
 project (webtransport)
 
 
