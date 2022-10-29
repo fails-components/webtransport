@@ -1221,7 +1221,7 @@ class Http3EventLoop {
    */
   static getGlobalEventLoop(object) {
     if (!object) throw new Error('getGlobalEventLoop without reference object')
-    const loop = Http3EventLoop.createGlobalEventLoop()
+    const loop = Http3EventLoop.globalLoop ?? Http3EventLoop.createGlobalEventLoop()
     loop.refObjects.add(new WeakRef(object))
     return loop
   }
