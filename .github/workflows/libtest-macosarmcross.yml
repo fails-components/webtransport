@@ -40,6 +40,7 @@ jobs:
           ../armhomebrew/bin/brew install ${parsed[2]}
           echo "Step4"
           echo "icu4c will be in $(../armhomebrew/bin/brew --prefix)/opt/icu4c"
+          echo "LOCALHOMEWBREWICU="$(../armhomebrew/bin/brew --prefix)/opt/icu4c" >> $GITHUB_ENV
         
       - name: Set up NodeJS
         uses: actions/setup-node@v1
@@ -49,7 +50,7 @@ jobs:
         run: npm install
 
       - name: Build library
-        run: BUILDARCH=arm64 LOCALHOMEWBREWICU="$(../armhomebrew/bin/brew --prefix)/opt/icu4c" npm run build
+        run: BUILDARCH=arm64 npm run build
         
 #      - name: Run unit tests
 #       run: NODE_ENV=production npm test
