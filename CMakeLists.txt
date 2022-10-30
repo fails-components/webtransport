@@ -18,9 +18,22 @@ set(BUILD_TESTING OFF)
 
 set(protobuf_BUILD_PROTOC_BINARIES ON)
 
+
 IF( NOT WIN32)
     IF(APPLE)
-        SET(ICU_ROOT "/usr/local/opt/icu4c")
+        IF(DEFINED ENV{LOCALHOMEWBREWICU})
+            MESSAGE(STATUS "Local homebrew icu detected")
+            MESSAGE(STATUS $ENV{LOCALHOMEWBREWICU})
+            SET(ICU_ROOT $ENV{LOCALHOMEWBREWICU})
+        ELSE()
+            IF(CMAKE_OSX_ARCHITECTURES MATCHES "x86_64")
+                MESSAGE(STATUS "set icu root local")
+                SET(ICU_ROOT "/usr/local/opt/icu4c")
+            ELSE()
+                MESSAGE(STATUS "set icu root homebrew")
+                SET(ICU_ROOT "/opt/homebrew/icu4c")
+            ENDIF()
+        ENDIF()
     ENDIF(APPLE)
     find_package(ICU COMPONENTS uc i18n REQUIRED)
 ENDIF(NOT WIN32)
@@ -42,6 +55,9 @@ add_subdirectory(third_party/libevent EXCLUDE_FROM_ALL)
 SET(protobuf_WITH_ZLIB OFF CACHE BOOL "Build with zlib support")
 SET(protobuf_BUILD_TESTS OFF CACHE BOOL "Build tests")
 add_subdirectory(third_party/protobuf EXCLUDE_FROM_ALL)
+IF(APPLE)
+    set_target_properties(protoc libprotoc libprotobuf PROPERTIES OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for Mac OS X" FORCE )
+ENDIF(APPLE)
 
 IF (WIN32)
     add_compile_definitions(WIN32_LEAN_AND_MEAN NOGDI)
@@ -907,6 +923,7 @@ ELSE(WIN32)
     third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
     )
 ENDIF(WIN32)
+
 
 add_custom_command(
 OUTPUT
