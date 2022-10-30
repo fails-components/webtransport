@@ -201,10 +201,14 @@ if (argv.length > 2) {
   ]
   if (platform === 'win32') platformargs.push('-t', 'ClangCL')
   const pbargs = []
-  if (platform === 'win32') pbargs.push('-t', 'ClangCL')
   const pbargspre = []
-  if (env.BUILDARCH) pbargspre.push('--arch', env.BUILDARCH)
+  if (platform === 'win32') pbargs.push('-t', 'ClangCL') 
+  if (env.BUILDARCH) {
+    pbargspre.push('--arch', env.BUILDARCH)
+    platformargs.push('--arch', env.BUILDARCH)
+  }
   if (env.GH_TOKEN) pbargspre.push('--u', env.GH_TOKEN)
+
   switch (argv[2]) {
     case 'prebuild':
       try {
