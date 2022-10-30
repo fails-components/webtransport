@@ -148,8 +148,7 @@ namespace quic
           connection_in_progress_(false),
           num_attempts_connect_(0),
           webtransport_server_support_inform_(false),
-          connection_debug_visitor_(nullptr),
-          connection_walltime_(QuicTime::Infinite())
+          connection_debug_visitor_(nullptr)
     {
         set_server_address(server_address);
         Initialize();
@@ -596,8 +595,27 @@ namespace quic
             server_id_ = QuicServerId(override_sni_, address().port(), false);
         }
         connection_in_progress_ = true;
-        connection_walltime_ = eventloop_->getQuicEventLoop()->GetClock()->ApproximateNow() + QuicTime::Delta::FromSeconds(4);
         wait_for_encryption_ = false;
+        // schedule alarm
+
+        std::unique_ptr<QuicAlarmFactory> aFac =
+            eventloop_->getQuicEventLoop()->CreateAlarmFactory();
+        timeoutAlarm_ =
+            absl::WrapUnique(aFac->CreateAlarm(this));
+        const QuicTime timeout = eventloop_->getQuicEventLoop()->GetClock()->Now() + QuicTime::Delta::FromSeconds(4);
+        timeoutAlarm_->Set(timeout);
+    }
+
+    void Http3Client::OnAlarm()
+    {
+        // used for time out of the connection
+        if (connection_in_progress_)
+        {
+            // time out
+            connection_in_progress_ = false;
+            connect_attempted_ = true;
+            eventloop_->informAboutClientConnected(this, false);
+        }
     }
 
     bool Http3Client::handleConnecting()
@@ -647,13 +665,6 @@ namespace quic
                     num_attempts_connect_++;
                     recheck = true;
                 }
-            }
-            if (connection_in_progress_ &&
-                (eventloop_->getQuicEventLoop()->GetClock()->ApproximateNow() - connection_walltime_) > QuicTime::Delta::Zero())
-            {
-                connection_in_progress_ = false;
-                connect_attempted_ = true;
-                eventloop_->informAboutClientConnected(this, false);
             }
         }
         if (webtransport_server_support_inform_ && connected())
