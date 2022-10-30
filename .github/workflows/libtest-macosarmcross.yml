@@ -39,6 +39,7 @@ jobs:
           echo "Step3 install ${parsed[2]}"
           ../armhomebrew/bin/brew install ${parsed[2]}
           echo "Step4"
+          ../armhomebrew/bin/brew info ${parsed[2]}
           ls -la ../armhomebrew
           ls -la ../armhomebrew/icu4c
         
