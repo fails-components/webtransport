@@ -5,7 +5,7 @@
 // this file runs various tests
 
 import { generateWebTransportCertificate } from './certificate.js'
-import { Http3Server, WebTransport, testcheck } from '../src/webtransport.js'
+import { Http3Server, WebTransport, testcheck } from '../lib/index.js'
 import { echoTestsConnection, runEchoServer } from './testsuite.js'
 
 async function run() {
@@ -70,7 +70,7 @@ async function run() {
 
   const url = 'https://127.0.0.1:8080/echo'
 
-  /** @type {import('../src/dom').WebTransport | null} */
+  /** @type {import('../lib/dom').WebTransport | null} */
   let client = new WebTransport(url, {
     serverCertificateHashes: [{ algorithm: 'sha-256', value: certificate.hash }]
   })
