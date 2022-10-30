@@ -85,7 +85,7 @@ jobs:
           ../armhomebrew/bin/brew install ${parsed[2]}
           echo "Step4"
           echo "icu4c will be in $(../armhomebrew/bin/brew --prefix)/opt/icu4c"
-          echo "LOCALHOMEWBREWICU=\"$(../armhomebrew/bin/brew --prefix)/opt/icu4c\"" >> $GITHUB_ENV
+          echo "LOCALHOMEWBREWICU=$(../armhomebrew/bin/brew --prefix)/opt/icu4c" >> $GITHUB_ENV
      - name: Checkout code
        uses: actions/checkout@v2
        with:
@@ -103,7 +103,6 @@ jobs:
        env: 
          BUILDARCH: ${{ matrix.arch }}
          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-         LOCALHOMEWBREWICU: ${{ env.LOCALHOMEWBREWICU }}
        run: node build.js prebuild
 
 # code is not ready... if anyone needs it, I am open for PR
