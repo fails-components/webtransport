@@ -34,7 +34,7 @@
       "resolveJsonModule": true
   },
   "include": [
-      "src",
+      "lib",
       "test"
   ]
 }
