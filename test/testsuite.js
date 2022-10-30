@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 /**
- * @param {import('../src/dom').WebTransport} session
+ * @param {import('../lib/dom').WebTransport} session
  */
 export async function incomingBidirectionalEchoTest(session) {
   try {
@@ -28,7 +28,7 @@ export async function incomingBidirectionalEchoTest(session) {
 }
 
 /**
- * @param {import('../src/dom').WebTransport} session
+ * @param {import('../lib/dom').WebTransport} session
  */
 export async function outgoingBidirectionalEchoTest(session) {
   try {
@@ -40,7 +40,7 @@ export async function outgoingBidirectionalEchoTest(session) {
 }
 
 /**
- * @param {import('../src/dom').WebTransport} session
+ * @param {import('../lib/dom').WebTransport} session
  */
 export async function unidirectionalEchoTest(session) {
   try {
@@ -66,7 +66,7 @@ export async function unidirectionalEchoTest(session) {
 }
 
 /**
- * @param {import('../src/dom').WebTransport} session
+ * @param {import('../lib/dom').WebTransport} session
  */
 export async function datagramEchoTest(session) {
   try {
@@ -77,7 +77,7 @@ export async function datagramEchoTest(session) {
 }
 
 /**
- * @param {import('../src/webtransport').Http3Server} server
+ * @param {import('../lib').Http3Server} server
  */
 export async function runEchoServer(server) {
   try {
@@ -127,7 +127,7 @@ function testArraysEqual(array1, array2) {
 }
 
 /**
- * @param {import('../src/dom').WebTransport} transport
+ * @param {import('../lib/dom').WebTransport} transport
  */
 export async function echoTestsConnection(transport) {
   // some echo tests for testing the webtransport library, not for production

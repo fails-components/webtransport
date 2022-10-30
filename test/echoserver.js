@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import { Http3Server } from '../src/webtransport.js'
+import { Http3Server } from '../lib/index.js'
 import { runEchoServer } from './testsuite.js'
 import { existsSync, readFileSync, writeFile } from 'node:fs'
 import { generateWebTransportCertificate } from './certificate.js'
@@ -41,10 +41,10 @@ try {
     port: 8080,
     host: '0.0.0.0',
     secret: 'mysecret',
-    cert: certificate.cert, 
+    cert: certificate.cert,
     privKey: certificate.private
   })
-  
+
   runEchoServer(http3server)
   http3server.startServer() // you can call destroy to remove the server
 } catch (error) {
