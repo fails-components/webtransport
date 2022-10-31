@@ -10,24 +10,28 @@
 export async function readStream (readable, expected) {
   const reader = readable.getReader()
 
-  /** @type {T[]} */
-  const output = []
+  try {
+    /** @type {T[]} */
+    const output = []
 
-  while (true) {
-    const { done, value } = await reader.read()
+    while (true) {
+      const { done, value } = await reader.read()
 
-    if (done) {
-      break
+      if (done) {
+        break
+      }
+
+      if (value != null) {
+        output.push(value)
+      }
+
+      if (expected != null && output.length === expected) {
+        break
+      }
     }
 
-    if (value != null) {
-      output.push(value)
-    }
-
-    if (expected != null && output.length === expected) {
-      break
-    }
+    return output
+  } finally {
+    reader.releaseLock()
   }
-
-  return output
 }
