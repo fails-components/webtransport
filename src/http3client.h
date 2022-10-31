@@ -87,8 +87,7 @@ namespace quic
     class Http3Client : public QuicSpdyStream::Visitor,
                         public QuicSocketEventListener,
                         public QuicClientPushPromiseIndex::Delegate,
-                        public ProcessPacketInterface,
-                        public QuicAlarm::Delegate
+                        public ProcessPacketInterface
     {
         friend class Http3ClientJS;
 
@@ -112,12 +111,6 @@ namespace quic
         void ProcessPacket(const QuicSocketAddress &self_address,
                            const QuicSocketAddress &peer_address,
                            const QuicReceivedPacket &packet) override;
-
-        // From QuicAlarm::Delegate
-        QuicConnectionContext *GetConnectionContext() override { return nullptr;};
-
-        // Invoked when the alarm fires.
-        void OnAlarm() override;
 
         // Sets the |user_agent_id| of the |client_|.
         void SetUserAgentID(const std::string &user_agent_id);
@@ -559,7 +552,6 @@ namespace quic
         bool connection_in_progress_;
         uint32_t num_attempts_connect_;
         bool webtransport_server_support_inform_;
-        std::unique_ptr<QuicAlarm> timeoutAlarm_;
 
         std::queue<std::function<void(QuicSpdyClientStream *)>> finish_stream_open_;
     };

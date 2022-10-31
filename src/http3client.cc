@@ -157,7 +157,6 @@ namespace quic
     Http3Client::~Http3Client()
     {
         // printf("client destruct %x\n", this);
-        timeoutAlarm_->PermanentCancel();
     }
 
     bool Http3Client::closeClientInt()
@@ -197,10 +196,6 @@ namespace quic
         {
             config_.SetBytesForConnectionIdToSend(0);
         }
-        std::unique_ptr<QuicAlarmFactory> aFac =
-            eventloop_->getQuicEventLoop()->CreateAlarmFactory();
-        timeoutAlarm_ =
-            absl::WrapUnique(aFac->CreateAlarm(this));
     }
 
     void Http3Client::SetUserAgentID(const std::string &user_agent_id)
@@ -601,21 +596,6 @@ namespace quic
         }
         connection_in_progress_ = true;
         wait_for_encryption_ = false;
-        // schedule alarm
-        const QuicTime timeout = eventloop_->getQuicEventLoop()->GetClock()->Now() + QuicTime::Delta::FromSeconds(4);
-        timeoutAlarm_->Set(timeout);
-    }
-
-    void Http3Client::OnAlarm()
-    {
-        // used for time out of the connection
-        if (connection_in_progress_)
-        {
-            // time out
-            connection_in_progress_ = false;
-            connect_attempted_ = true;
-            eventloop_->informAboutClientConnected(this, false);
-        }
     }
 
     bool Http3Client::handleConnecting()
