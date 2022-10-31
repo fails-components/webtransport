@@ -65,7 +65,7 @@ of course replace IP and fingerprint of your certificate accordingly.
 
 This module implements parts of the [WebTransport spec](https://datatracker.ietf.org/doc/html/draft-vvv-webtransport-quic-00) but not all of it.
 
-The types from the [W3C Working Draft](https://www.w3.org/TR/webtransport/) have been added to [src/dom.ts] but some fields are commented out.
+The types from the [W3C Working Draft](https://www.w3.org/TR/webtransport/) have been added to [lib/dom.ts](https://github.com/fails-components/webtransport/blob/master/lib/dom.ts) but some fields are commented out.
 
 These fields are unimplemented by this module at this time. Some may be implemented in the future, others are legacy fields that may be removed from the spec. PRs are welcome!
 
