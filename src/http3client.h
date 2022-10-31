@@ -11,7 +11,6 @@
 #define WT_HTTP3_CLIENT_H
 
 #include <napi.h>
-#include <uv.h>
 
 #include <cstdint>
 #include <memory>
@@ -549,6 +548,7 @@ namespace quic
 
         Http3EventLoop *eventloop_;
         // connection workflow
+        QuicTime connection_walltime_;
         bool wait_for_encryption_;
         bool connection_in_progress_;
         uint32_t num_attempts_connect_;

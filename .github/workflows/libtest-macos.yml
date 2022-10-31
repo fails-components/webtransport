@@ -36,6 +36,9 @@ jobs:
 
       - name: Build library
         run: npm run build
+
+      - name: Test architecture
+        run: lipo -info build_darwin_x64/Release/webtransport.node
         
       - name: Run unit tests
         run: NODE_ENV=production npm test

@@ -61,6 +61,8 @@ jobs:
         include:
           - arch: ia32
             os: windows-2019
+          - arch: arm64
+            os: macos-latest
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -69,6 +71,21 @@ jobs:
      - name: Install missing software for Windows
        if: runner.os == 'Windows'
        run: choco install nasm -yv
+    # modified snippet from https://github.com/Homebrew/discussions/discussions/2843
+     - name: Install icu for Mac Arm cross compile
+       if: ${{ (matrix.arch == 'arm64') && (matrix.os == 'macos-latest')}}
+       run: | 
+          mkdir -p ../armhomebrew && curl -L https://github.com/Homebrew/brew/tarball/master | tar xz --strip 1 -C ../armhomebrew 
+          echo "Step1 finished"
+          #../armhomebrew/bin/brew fetch --force --bottle-tag=arm64_big_sur icu4c | grep "Downloaded to"
+          response=$(../armhomebrew/bin/brew fetch --force --bottle-tag=arm64_big_sur icu4c | grep "Downloaded to")
+          echo "Step2 finished with response $response"
+          parsed=($response)  
+          echo "Step3 install ${parsed[2]}"
+          ../armhomebrew/bin/brew install ${parsed[2]}
+          echo "Step4"
+          echo "icu4c will be in $(../armhomebrew/bin/brew --prefix)/opt/icu4c"
+          echo "LOCALHOMEWBREWICU=$(../armhomebrew/bin/brew --prefix)/opt/icu4c" >> $GITHUB_ENV
      - name: Checkout code
        uses: actions/checkout@v2
        with:
@@ -86,6 +103,7 @@ jobs:
        env: 
          BUILDARCH: ${{ matrix.arch }}
          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+         LOCALHOMEWBREWICU: ${{ env.LOCALHOMEWBREWICU }}
        run: node build.js prebuild
 
 # code is not ready... if anyone needs it, I am open for PR
