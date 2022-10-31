@@ -69,6 +69,9 @@ namespace quic
             IncomUniDiStream,
             OutgoBiDiStream,
             OutgoUniDiStream,
+            ServerError,
+            ServerClose,
+            ServerListening,
             StreamRecvSignal,
             StreamRead,
             StreamWrite,
@@ -179,6 +182,10 @@ namespace quic
         void informSessionClosed(Http3WTSession *sessionobj, WebTransportSessionError error_code, absl::string_view error_message);
         void informSessionReady(Http3WTSession *sessionobj);
 
+        void informHttp3ServerListening(Http3Server *serverobj);
+        void informHttp3ServerClose(Http3Server *serverobj);
+        void informHttp3ServerError(Http3Server *serverobj);
+
         void informAboutStream(bool incom, bool bidir, Http3WTSession *sessionobj, Http3WTStream *stream);
         void informStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);
         void informAboutStreamRead(Http3WTStream *streamobj, std::string *data, bool fin);
@@ -238,6 +245,10 @@ namespace quic
         void processNewSession(Http3Server *serverobj, Http3WTSession *session, const std::string &path);
         void processSessionClose(Http3WTSession *sessionobj, uint32_t errorcode, const std::string &path);
         void processSessionReady(Http3WTSession *sessionobj);
+
+        void processHttp3ServerListening(Http3Server *serverobj);
+        void processHttp3ServerClose(Http3Server *serverobj);
+        void processHttp3ServerError(Http3Server *serverobj);
 
         void processStream(bool incom, bool bidi, Http3WTSession *sessionobj, Http3WTStream *stream);
         void processStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);

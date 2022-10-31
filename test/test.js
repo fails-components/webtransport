@@ -4,7 +4,7 @@
 
 // this file runs various tests
 
-import { generateWebTransportCertificate } from './certificate.js'
+import { generateWebTransportCertificate } from './fixtures/certificate.js'
 import { Http3Server, WebTransport, testcheck } from '../lib/index.js'
 import { echoTestsConnection, runEchoServer } from './testsuite.js'
 

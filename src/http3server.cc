@@ -93,9 +93,12 @@ namespace quic
       dispatcher_.reset(CreateQuicDispatcher());
       dispatcher_->InitializeWithWriter(new QuicDefaultPacketWriter(fd_));
       std::move(closer).Cancel();
+
+      eventloop_->informHttp3ServerListening(this);
       return true;
     }
 
+    eventloop_->informHttp3ServerError(this);
     return false;
   }
 
@@ -113,6 +116,7 @@ namespace quic
     QuicUdpSocketApi api;
     api.Destroy(fd_);
     fd_ = -1;
+    eventloop_->informHttp3ServerClose(this);
     eventloop_->informUnref(this->getJS()); // must be done on the other thread...
     return true;
   }
@@ -398,4 +402,17 @@ namespace quic
     }
   }
 
+  Napi::Value Http3ServerJS::port(const Napi::CallbackInfo &info)
+  {
+    Http3Server *obj = getObj();
+
+    return Napi::Number::New(info.Env(), obj->port_);
+  }
+
+  Napi::Value Http3ServerJS::host(const Napi::CallbackInfo &info)
+  {
+    Http3Server *obj = getObj();
+
+    return Napi::String::New(info.Env(), obj->host_);
+  }
 }
