@@ -18,6 +18,20 @@ async function run() {
       process.exit(0)
     }
   }, 40 * 1000)
+
+  console.log('try connecting to server that does not exist')
+  let badClient = new WebTransport('https://127.0.0.1:49823/echo', {
+    serverCertificateHashes: [{ algorithm: 'sha-256', value: Buffer.from('a589bf4f98a0158aa890328d5d3f519b9e2a5b1e61b09eb10b7a9be0e79bf148', 'hex') }]
+  })
+  await badClient.ready
+    .then(() => {
+      console.error('Successfully connected to a non-running server?!')
+      process.exit(1)
+    })
+    .catch(() => {
+      console.log('Did not connect to non-running server')
+    })
+
   console.log('start generating self signed certificate')
 
   const attrs = [
