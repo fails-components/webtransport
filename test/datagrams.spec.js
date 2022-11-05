@@ -50,6 +50,7 @@ describe('datagrams', function () {
   })
 
   it('client sends datagrams to the server', async () => {
+    this.timeout(200)
     // server context - waits for the client to connect and pipes their datagrams back to them
     Promise.resolve().then(async () => {
       const session = await getReaderValue(server.sessionStream(SERVER_PATH))
@@ -85,6 +86,7 @@ describe('datagrams', function () {
   })
 
   it('receives datagrams from the server', async () => {
+    this.timeout(200)
     /** @type {Deferred<Uint8Array[]>} */
     const serverData = defer()
     const input = [
