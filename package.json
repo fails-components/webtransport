@@ -18,7 +18,8 @@
     "rebuild": "node build.js rebuild",
     "rebuild-debug": "node build.js rebuild-debug -D",
     "build-debug": "node build.js build-debug",
-    "types": "tsc"
+    "types": "tsc",
+    "lint": "eslint lib test"
   },
   "repository": {
     "type": "git",
@@ -42,10 +43,12 @@
     "@babel/core": "^7.17.10",
     "@babel/eslint-parser": "^7.17.0",
     "@types/chai": "^4.3.3",
+    "@types/dirty-chai": "^2.0.2",
     "@types/mocha": "^10.0.0",
     "@types/node": "^18.11.5",
     "chai": "^4.3.6",
     "cmake-js": "^6.3.2",
+    "dirty-chai": "^2.0.1",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^7.2.0",
     "eslint-config-standard": "^16.0.2",

@@ -1,10 +1,9 @@
-
 /**
  * @template T
  * @param {ReadableStream<T>} readableStream
  * @returns {Promise<T>}
  */
-export async function getReaderValue (readableStream) {
+export async function getReaderValue(readableStream) {
   const reader = readableStream.getReader()
 
   try {

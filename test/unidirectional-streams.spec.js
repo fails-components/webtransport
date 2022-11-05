@@ -1,4 +1,5 @@
-/* eslint-disable no-undef */
+/* eslint-env mocha */
+
 import { createServer } from './fixtures/server.js'
 import { getReaderValue } from './fixtures/reader-value.js'
 import { WebTransport } from '../lib/index.js'
