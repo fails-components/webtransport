@@ -24,7 +24,7 @@ describe('datagrams', function () {
   let url
 
   beforeEach(async () => {
-    ({ server, certificate } = await createServer())
+    ;({ server, certificate } = await createServer())
     server.startServer()
     await server.ready
 
@@ -59,10 +59,12 @@ describe('datagrams', function () {
 
     // client context - connects to the server, sends some datagrams and reads the response
     client = new WebTransport(`${url}${SERVER_PATH}`, {
-      serverCertificateHashes: [{
-        algorithm: 'sha-256',
-        value: certificate.hash
-      }]
+      serverCertificateHashes: [
+        {
+          algorithm: 'sha-256',
+          value: certificate.hash
+        }
+      ]
     })
     await client.ready
 
@@ -75,7 +77,10 @@ describe('datagrams', function () {
     await writeStream(client.datagrams.writable, input)
 
     const output = await readStream(client.datagrams.readable, input.length)
-    expect(output).to.deep.equal(input, 'Did not receive the same bytes we sent')
+    expect(output).to.deep.equal(
+      input,
+      'Did not receive the same bytes we sent'
+    )
   })
 
   it('receives datagrams from the server', async () => {
@@ -102,10 +107,12 @@ describe('datagrams', function () {
 
     // client context - pipes the server's datagrams back to them
     client = new WebTransport(`${url}${SERVER_PATH}`, {
-      serverCertificateHashes: [{
-        algorithm: 'sha-256',
-        value: certificate.hash
-      }]
+      serverCertificateHashes: [
+        {
+          algorithm: 'sha-256',
+          value: certificate.hash
+        }
+      ]
     })
     await client.ready
 
@@ -113,6 +120,9 @@ describe('datagrams', function () {
     await client.datagrams.readable.pipeTo(client.datagrams.writable)
 
     const received = await serverData.promise
-    expect(received).to.deep.equal(input, 'Did not receive the same bytes we sent')
+    expect(received).to.deep.equal(
+      input,
+      'Did not receive the same bytes we sent'
+    )
   })
 })
