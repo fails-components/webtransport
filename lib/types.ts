@@ -171,3 +171,11 @@ export type WebTransportSessionState = 'connected' | 'closed' | 'failed'
 export interface WebTransportSession extends WebTransport {
   state: WebTransportSessionState
 }
+
+export interface Http3ServerInit {
+  port: number
+  host: string
+  secret: string
+  cert: string
+  privKey: string
+}
