@@ -40,3 +40,6 @@ jobs:
         
       - name: Run unit tests
         run: NODE_ENV=production npm test
+
+      - name: Run old unit tests
+        run: NODE_ENV=production npm run oldtest

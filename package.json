@@ -12,6 +12,7 @@
   "scripts": {
     "start": "node test/echoserver.js",
     "test": "mocha test/*.spec.js",
+    "oldtest": "node test/test.js",
     "install": "node build.js install",
     "build": "node build.js build",
     "rebuild": "node build.js rebuild",

@@ -17,8 +17,7 @@ async function run() {
       console.log('global event loop gone, everything alright')
       process.exit(0)
     }
-  }, 40 * 1000)
-
+  }, 50 * 1000)
   console.log('try connecting to server that does not exist')
   const badClient = new WebTransport('https://127.0.0.1:49823/echo', {
     serverCertificateHashes: [
