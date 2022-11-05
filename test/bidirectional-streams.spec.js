@@ -46,7 +46,6 @@ describe('bidirectional streams', function () {
     if (client != null) {
       client.close()
     }
-    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     if (server != null) {
       server.stopServer()
@@ -55,7 +54,7 @@ describe('bidirectional streams', function () {
   })
 
   it('sends and receives data over an outgoing bidirectional stream', async () => {
-    this.timeout(2000)
+    this.timeout(200)
     // server context - waits for the client to open a bidi stream and pipes it back to them
     Promise.resolve().then(async () => {
       const session = await getReaderValue(server.sessionStream(SERVER_PATH))
@@ -94,7 +93,7 @@ describe('bidirectional streams', function () {
   })
 
   it('sends and receives data over an incoming bidirectional stream', async () => {
-    this.timeout(2000)
+    this.timeout(200)
     /** @type {Deferred<Uint8Array[]>} */
     const serverData = defer()
     const input = [

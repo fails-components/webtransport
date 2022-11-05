@@ -50,6 +50,7 @@ describe('unidirectional streams', function () {
   })
 
   it('sends data over an outgoing unidirectional stream', async () => {
+    this.timeout(200)
     /** @type {Deferred<Uint8Array[]>} */
     const serverData = defer()
 
@@ -90,6 +91,7 @@ describe('unidirectional streams', function () {
   })
 
   it('receives data over an incoming unidirectional stream', async () => {
+    this.timeout(200)
     const input = [
       Uint8Array.from([0, 1, 2, 3, 4]),
       Uint8Array.from([5, 6, 7, 8, 9]),
