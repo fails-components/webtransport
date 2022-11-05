@@ -94,11 +94,11 @@ namespace quic
       dispatcher_->InitializeWithWriter(new QuicDefaultPacketWriter(fd_));
       std::move(closer).Cancel();
 
-      eventloop_->informHttp3ServerListening(this);
+      eventloop_->informServerStatus(this, NetListening);
       return true;
     }
 
-    eventloop_->informHttp3ServerError(this);
+    eventloop_->informServerStatus(this, NetError);
     return false;
   }
 
@@ -116,7 +116,7 @@ namespace quic
     QuicUdpSocketApi api;
     api.Destroy(fd_);
     fd_ = -1;
-    eventloop_->informHttp3ServerClose(this);
+    eventloop_->informServerStatus(this, NetClose);
     eventloop_->informUnref(this->getJS()); // must be done on the other thread...
     return true;
   }

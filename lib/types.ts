@@ -141,22 +141,18 @@ export interface Http3ServerListeningEvent {
 /**
  * The Http3 server has stopped listening on the specified port
  */
- export interface Http3ServerCloseEvent {
-  purpose: 'Http3ServerClose'
+ export interface ServerStatusEvent {
+  purpose: 'ServerStatus',
+  status: 'error' | 'listening' | 'close'
 }
 
-/**
- * The Http3 server failed to listen on the specified port
- */
-export interface Http3ServerErrorEvent {
-  purpose: 'Http3ServerError'
-}
 
 export interface Http3ServerEventHandler {
   onHttp3WTSessionVisitor: (evt: Http3WTServerSessionVisitorEvent) => void
-  onHttp3ServerError: (evt: Http3ServerErrorEvent) => void
-  onHttp3ServerListening: (evt: Http3ServerListeningEvent) => void
-  onHttp3ServerClose: (evt: Http3ServerCloseEvent) => void
+  onServerError: () => void
+  onServerListening: () => void
+  onServerClose: () => void
+  onServerStatus: (evt: ServerStatusEvent) => void
 }
 
 /**

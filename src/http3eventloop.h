@@ -47,6 +47,13 @@ namespace quic
         streamFinal
     };
 
+    enum NetworkStatus
+    {
+        NetError,
+        NetClose,
+        NetListening
+    };
+
     struct Http3Constructors
     {
         Napi::FunctionReference stream;
@@ -69,9 +76,7 @@ namespace quic
             IncomUniDiStream,
             OutgoBiDiStream,
             OutgoUniDiStream,
-            ServerError,
-            ServerClose,
-            ServerListening,
+            ServerStatus,
             StreamRecvSignal,
             StreamRead,
             StreamWrite,
@@ -94,6 +99,7 @@ namespace quic
         {
             WebTransportSessionError wtecode;
             NetworkTask nettask;
+            NetworkStatus status;
         };
         union
         {
@@ -108,7 +114,7 @@ namespace quic
             bool success;
         };
 
-        std::string *para = nullptr; // for session, we own it, and must delete it
+        std::string *para = nullptr; // for session and others, we own it, and must delete it
     };
 
     class Http3EventLoop : // may be replace char later
@@ -182,9 +188,7 @@ namespace quic
         void informSessionClosed(Http3WTSession *sessionobj, WebTransportSessionError error_code, absl::string_view error_message);
         void informSessionReady(Http3WTSession *sessionobj);
 
-        void informHttp3ServerListening(Http3Server *serverobj);
-        void informHttp3ServerClose(Http3Server *serverobj);
-        void informHttp3ServerError(Http3Server *serverobj);
+        void informServerStatus(Http3Server *serverobj, NetworkStatus status);
 
         void informAboutStream(bool incom, bool bidir, Http3WTSession *sessionobj, Http3WTStream *stream);
         void informStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);
@@ -246,9 +250,7 @@ namespace quic
         void processSessionClose(Http3WTSession *sessionobj, uint32_t errorcode, const std::string &path);
         void processSessionReady(Http3WTSession *sessionobj);
 
-        void processHttp3ServerListening(Http3Server *serverobj);
-        void processHttp3ServerClose(Http3Server *serverobj);
-        void processHttp3ServerError(Http3Server *serverobj);
+        void processServerStatus(Http3Server *serverobj, NetworkStatus status);
 
         void processStream(bool incom, bool bidi, Http3WTSession *sessionobj, Http3WTStream *stream);
         void processStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);
