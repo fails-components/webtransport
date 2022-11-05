@@ -126,6 +126,48 @@ export interface Http3ClientEventHandler {
   onHttp3WTSessionVisitor: (evt: Http3WTSessionVisitorEvent) => void
 }
 
+export interface Http3WTServerSessionVisitorEvent extends Http3WTSessionVisitorEvent {
+  path: string
+  object: any
+}
+
+/**
+ * The Http3 server is listening on the specified port
+ */
+export interface Http3ServerListeningEvent {
+  purpose: 'Http3ServerListening'
+}
+
+/**
+ * The Http3 server has stopped listening on the specified port
+ */
+ export interface Http3ServerCloseEvent {
+  purpose: 'Http3ServerClose'
+}
+
+/**
+ * The Http3 server failed to listen on the specified port
+ */
+export interface Http3ServerErrorEvent {
+  purpose: 'Http3ServerError'
+}
+
+export interface Http3ServerEventHandler {
+  onHttp3WTSessionVisitor: (evt: Http3WTServerSessionVisitorEvent) => void
+  onHttp3ServerError: (evt: Http3ServerErrorEvent) => void
+  onHttp3ServerListening: (evt: Http3ServerListeningEvent) => void
+  onHttp3ServerClose: (evt: Http3ServerCloseEvent) => void
+}
+
+/**
+ * A defered promise with the value T
+ */
+export interface Deferred<T = unknown> {
+  promise: Promise<T>
+  resolve: (value?: T) => void
+  reject: (reason?: any) => void
+}
+
 export type WebTransportSessionState = 'connected' | 'closed' | 'failed'
 
 export interface WebTransportSession extends WebTransport {

@@ -295,6 +295,33 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
+  void Http3EventLoop::informHttp3ServerListening(Http3Server *serverobj)
+  {
+    struct Http3ProgressReport report;
+    report.type = Http3ProgressReport::ServerListening;
+    report.serverobj = serverobj;
+    if (progress_)
+      progress_->Send(&report, 1);
+  }
+
+  void Http3EventLoop::informHttp3ServerClose(Http3Server *serverobj)
+  {
+    struct Http3ProgressReport report;
+    report.type = Http3ProgressReport::ServerClose;
+    report.serverobj = serverobj;
+    if (progress_)
+      progress_->Send(&report, 1);
+  }
+
+  void Http3EventLoop::informHttp3ServerError(Http3Server *serverobj)
+  {
+    struct Http3ProgressReport report;
+    report.type = Http3ProgressReport::ServerError;
+    report.serverobj = serverobj;
+    if (progress_)
+      progress_->Send(&report, 1);
+  }
+
   void Http3EventLoop::freeData(Napi::Env env, void *data, std::string *hint)
   {
     // ok free data is actually using a string object
@@ -631,6 +658,48 @@ namespace quic
     cbsession_.Call({retObj});
   }
 
+  void Http3EventLoop::processHttp3ServerListening(Http3Server *serverobj)
+  {
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
+
+    Napi::Object objVal = serverobj->getJS()->Value();
+
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "Http3ServerListening");
+    retObj.Set("object", objVal);
+
+    cbtransport_.Call({retObj});
+  }
+
+  void Http3EventLoop::processHttp3ServerClose(Http3Server *serverobj)
+  {
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
+
+    Napi::Object objVal = serverobj->getJS()->Value();
+
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "Http3ServerClose");
+    retObj.Set("object", objVal);
+
+    cbtransport_.Call({retObj});
+  }
+
+  void Http3EventLoop::processHttp3ServerError(Http3Server *serverobj)
+  {
+    if (!checkQw()) return;
+    HandleScope scope(qw_->Env());
+
+    Napi::Object objVal = serverobj->getJS()->Value();
+
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "Http3ServerError");
+    retObj.Set("object", objVal);
+
+    cbtransport_.Call({retObj});
+  }
+
   void Http3EventLoop::HandleProgressCallback(const Http3ProgressReport *data, size_t count)
   {
     for (int i = 0; i < count; i++)
@@ -686,6 +755,21 @@ namespace quic
       case Http3ProgressReport::OutgoUniDiStream:
       {
         processStream(false, false, cur.sessionobj, cur.stream);
+      }
+      break;
+      case Http3ProgressReport::ServerError:
+      {
+        processHttp3ServerError(cur.serverobj);
+      }
+      break;
+      case Http3ProgressReport::ServerClose:
+      {
+        processHttp3ServerClose(cur.serverobj);
+      }
+      break;
+      case Http3ProgressReport::ServerListening:
+      {
+        processHttp3ServerListening(cur.serverobj);
       }
       break;
       case Http3ProgressReport::StreamRecvSignal:
