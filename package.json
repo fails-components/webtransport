@@ -18,6 +18,8 @@
     "rebuild": "node build.js rebuild",
     "rebuild-debug": "node build.js rebuild-debug -D",
     "build-debug": "node build.js build-debug",
+    "build-universal": "node build.js build-universal",
+    "rebuild-universal": "node build.js rebuild-universal",
     "types": "tsc"
   },
   "repository": {

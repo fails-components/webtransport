@@ -31,7 +31,7 @@ IF( NOT WIN32)
                 SET(ICU_ROOT "/usr/local/opt/icu4c")
             ELSE()
                 MESSAGE(STATUS "set icu root homebrew")
-                SET(ICU_ROOT "/opt/homebrew/icu4c")
+                SET(ICU_ROOT "/usr/local/opt/icu4c")
             ENDIF()
         ENDIF()
     ENDIF(APPLE)
@@ -82,7 +82,7 @@ endif(COMMAND cmake_policy)
 
 
 
-#protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS 
+#protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
 #third_party/quiche/quiche/quic/core/proto/cached_network_parameters.proto
 #third_party/quiche/quiche/quic/core/proto/crypto_server_config.proto
 #third_party/quiche/quiche/quic/core/proto/source_address_token.proto)
@@ -94,7 +94,7 @@ add_compile_definitions(QUICHE_ENABLE_LIBEVENT)
 
 IF (WIN32)
 
-add_library(icu STATIC 
+add_library(icu STATIC
 #icu
     third_party/icu/icu4c/source/common/appendable.cpp
     third_party/icu/icu4c/source/common/bytestream.cpp
@@ -171,7 +171,7 @@ add_library(icu STATIC
     ICU_DATA_DIR_WINDOWS=""
     )
 
-    target_compile_definitions(icu 
+    target_compile_definitions(icu
     PRIVATE U_DEFINE_FALSE_AND_TRUE=1
     U_STATIC_IMPLEMENTATION
     U_COMMON_IMPLEMENTATION
@@ -179,7 +179,7 @@ add_library(icu STATIC
 
 ENDIF(WIN32)
 
-add_library(gquiche STATIC 
+add_library(gquiche STATIC
 #plattform impl
 platform/quiche_platform_impl/quiche_export_impl.h
 platform/quiche_platform_impl/quiche_logging_impl.h
@@ -937,7 +937,7 @@ DEPENDS protobuf::protoc ${filename} ${CMAKE_CURRENT_SOURCE_DIR}/third_party/qui
 ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/crypto_server_config.proto
 ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/source_address_token.proto
 COMMAND protobuf::protoc --proto_path=${PROTOMODEL_PATH} --cpp_out=${PROTOBINDING_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/cached_network_parameters.proto
-COMMAND protobuf::protoc --proto_path=${PROTOMODEL_PATH} --cpp_out=${PROTOBINDING_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/crypto_server_config.proto 
+COMMAND protobuf::protoc --proto_path=${PROTOMODEL_PATH} --cpp_out=${PROTOBINDING_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/crypto_server_config.proto
 COMMAND protobuf::protoc --proto_path=${PROTOMODEL_PATH} --cpp_out=${PROTOBINDING_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/source_address_token.proto
 )
 
@@ -957,10 +957,10 @@ ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/source_add
 #  LANGUAGE
 #    cpp
 #  GENERATE_EXTENSIONS
-#    .pb.h 
+#    .pb.h
 #    .pb.cc
 #  OUT_VAR PROTO_SRCS
-#  IMPORT_DIRS 
+#  IMPORT_DIRS
 #    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche"
 #  PROTOC_OUT_DIR
 #    ${CMAKE_CURRENT_SOURCE_DIR}
@@ -995,20 +995,20 @@ ELSE(WIN32)
     target_link_libraries(gquiche ICU::uc ICU::i18n)
 ENDIF(WIN32)
 
-target_link_libraries(gquiche 
-absl::base 
+target_link_libraries(gquiche
+absl::base
 absl::int128
-absl::strings 
+absl::strings
 absl::str_format
 absl::flat_hash_map
-absl::any 
+absl::any
 absl::synchronization
 absl::time
 absl::status
 absl::statusor
 absl::cleanup
 protobuf::libprotobuf
-ssl 
+ssl
 zlibstatic
 crypto
 event_core
@@ -1038,7 +1038,7 @@ file(GLOB SOURCE_FILES "src/*.cc" "src/*.h")
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES} ${CMAKE_JS_SRC})
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
-target_include_directories(${PROJECT_NAME} 
+target_include_directories(${PROJECT_NAME}
 PUBLIC third_party/boringssl/src/include
 PUBLIC ${CMAKE_JS_INC})
 target_link_libraries(${PROJECT_NAME} gquiche ssl zlibstatic crypto  ${CMAKE_JS_LIB} )

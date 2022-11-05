@@ -1,12 +1,12 @@
 import { arch, argv, env, platform } from 'node:process'
 import { spawn } from 'node:child_process'
-import { rename, mkdtemp, rm, access } from 'node:fs/promises'
+import { rename, mkdtemp, rm, access, mkdir } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import path from 'node:path'
 import pkg from './package.json' assert { type: 'json' }
 import { tmpdir } from 'node:os'
 
-const binplatform = platform + '_' + arch
+const binplatform = platform + '_' + (process.env.BUILDARCH || arch)
 
 console.log(
   'Webtransport binary handler: We are working on platform ',
@@ -192,6 +192,41 @@ const execbuild = async (args) => {
   })
 }
 
+const execBuildjs = async (args, opts) => {
+  await exec('node', ['build.js', ...args], {
+    ...opts,
+    cwd: process.cwd(),
+    stdio: [null, 'inherit', 'inherit'],
+    shell: true
+  })
+}
+
+const linkBinaries = async (arches) => {
+  // make output dir
+  await mkdir(`build_darwin_universal/Release`, {
+    recursive: true
+  })
+  // link binaries
+  await exec('lipo', [
+    '-create',
+    ...arches.map(arch => `build_darwin_${arch}/Release/webtransport.node`),
+    '-output',
+    `build_darwin_universal/Release/webtransport.node`
+  ])
+}
+
+const exec = async (command, args, opts) => {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(command, args, opts)
+
+    proc.on('close', (code) => {
+      if (code === 0) resolve(code)
+      else reject(code)
+      console.log(`child process exited with code ${code}`)
+    })
+  })
+}
+
 if (argv.length > 2) {
   const target = pkg.binary.napi_versions
   const platformargs = [
@@ -202,7 +237,7 @@ if (argv.length > 2) {
   if (platform === 'win32') platformargs.push('-t', 'ClangCL')
   const pbargs = []
   const pbargspre = []
-  if (platform === 'win32') pbargs.push('-t', 'ClangCL') 
+  if (platform === 'win32') pbargs.push('-t', 'ClangCL')
   if (env.BUILDARCH) {
     pbargspre.push('--arch', env.BUILDARCH)
     platformargs.push('--arch', env.BUILDARCH)
@@ -289,6 +324,40 @@ if (argv.length > 2) {
         process.exit(1)
       }
       break
+    case 'build-universal':
+      try {
+        const arches = ['x86_64', 'arm64']
+        for (const arch of arches) {
+          await execBuildjs(['build'], {
+            env: {
+              ...process.env,
+              BUILDARCH: arch
+            }
+          })
+        }
+        await linkBinaries(arches)
+      } catch (error) {
+        console.error('building universal binary failed: ', error)
+        process.exit(1)
+      }
+      break
+    case 'rebuild-universal':
+        try {
+          const arches = ['x86_64', 'arm64']
+          for (const arch of arches) {
+            await execBuildjs(['rebuild'], {
+              env: {
+                ...process.env,
+                BUILDARCH: arch
+              }
+            })
+          }
+          await linkBinaries(arches)
+        } catch (error) {
+          console.error('rebuilding universal binary failed: ', error)
+          process.exit(1)
+        }
+        break
     default:
       console.log('unsupported argument ', argv[2])
       break
