@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import { createServer } from './fixtures/server.js'
 import { getReaderValue } from './fixtures/reader-value.js'
 import { WebTransport } from '../lib/index.js'

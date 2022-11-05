@@ -1,4 +1,3 @@
-
 /**
  * Read a stream contents to the end and return it
  *
@@ -7,7 +6,7 @@
  * @param {number} [expected]
  * @returns
  */
-export async function readStream (readable, expected) {
+export async function readStream(readable, expected) {
   const reader = readable.getReader()
 
   try {

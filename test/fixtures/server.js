@@ -1,7 +1,7 @@
 import { generateWebTransportCertificate } from './certificate.js'
 import { Http3Server } from '../../lib/index.js'
 
-export async function createServer () {
+export async function createServer() {
   const attrs = [
     { shortName: 'C', value: 'DE' },
     { shortName: 'ST', value: 'Berlin' },
@@ -36,7 +36,7 @@ export async function createServer () {
  * @param {import('../../lib/server.js').Http3Server} server
  * @param {string} path
  */
- export async function getServerSession (server, path) {
+export async function getServerSession(server, path) {
   const sessionStream = await server.sessionStream(path)
   const sessionReader = sessionStream.getReader()
 

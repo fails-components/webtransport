@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import { createServer } from './fixtures/server.js'
 import { getReaderValue } from './fixtures/reader-value.js'
 import { WebTransport } from '../lib/index.js'
@@ -11,7 +12,7 @@ import { defer } from '../lib/utils.js'
  * @typedef {import('../lib/types').Deferred<T>} Deferred<T>
  */
 
-const SERVER_PATH = '/unidirectional-streams'
+const SERVER_PATH = '/bidirectional-streams'
 
 describe('bidirectional streams', function () {
   /** @type {import('../lib/server').Http3Server} */
@@ -23,7 +24,11 @@ describe('bidirectional streams', function () {
   /** @type {string} */
   let url
 
+  this.timeout(30000) // this can vary depending on the setup and is not an error
+  // but it smells like a work around regarding a deeper problem
+
   beforeEach(async () => {
+    this.timeout(2000)
     ;({ server, certificate } = await createServer())
     server.startServer()
     await server.ready
@@ -41,6 +46,7 @@ describe('bidirectional streams', function () {
     if (client != null) {
       client.close()
     }
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     if (server != null) {
       server.stopServer()
@@ -49,6 +55,7 @@ describe('bidirectional streams', function () {
   })
 
   it('sends and receives data over an outgoing bidirectional stream', async () => {
+    this.timeout(2000)
     // server context - waits for the client to open a bidi stream and pipes it back to them
     Promise.resolve().then(async () => {
       const session = await getReaderValue(server.sessionStream(SERVER_PATH))
@@ -87,6 +94,7 @@ describe('bidirectional streams', function () {
   })
 
   it('sends and receives data over an incoming bidirectional stream', async () => {
+    this.timeout(2000)
     /** @type {Deferred<Uint8Array[]>} */
     const serverData = defer()
     const input = [
