@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import { createServer } from './fixtures/server.js'
 import { getReaderValue } from './fixtures/reader-value.js'
 import { WebTransport } from '../lib/index.js'
@@ -24,7 +25,7 @@ describe('datagrams', function () {
   let url
 
   beforeEach(async () => {
-    ({ server, certificate } = await createServer())
+    ;({ server, certificate } = await createServer())
     server.startServer()
     await server.ready
 
@@ -49,6 +50,7 @@ describe('datagrams', function () {
   })
 
   it('client sends datagrams to the server', async () => {
+    this.timeout(200)
     // server context - waits for the client to connect and pipes their datagrams back to them
     Promise.resolve().then(async () => {
       const session = await getReaderValue(server.sessionStream(SERVER_PATH))
@@ -59,10 +61,12 @@ describe('datagrams', function () {
 
     // client context - connects to the server, sends some datagrams and reads the response
     client = new WebTransport(`${url}${SERVER_PATH}`, {
-      serverCertificateHashes: [{
-        algorithm: 'sha-256',
-        value: certificate.hash
-      }]
+      serverCertificateHashes: [
+        {
+          algorithm: 'sha-256',
+          value: certificate.hash
+        }
+      ]
     })
     await client.ready
 
@@ -75,10 +79,14 @@ describe('datagrams', function () {
     await writeStream(client.datagrams.writable, input)
 
     const output = await readStream(client.datagrams.readable, input.length)
-    expect(output).to.deep.equal(input, 'Did not receive the same bytes we sent')
+    expect(output).to.deep.equal(
+      input,
+      'Did not receive the same bytes we sent'
+    )
   })
 
   it('receives datagrams from the server', async () => {
+    this.timeout(200)
     /** @type {Deferred<Uint8Array[]>} */
     const serverData = defer()
     const input = [
@@ -102,10 +110,12 @@ describe('datagrams', function () {
 
     // client context - pipes the server's datagrams back to them
     client = new WebTransport(`${url}${SERVER_PATH}`, {
-      serverCertificateHashes: [{
-        algorithm: 'sha-256',
-        value: certificate.hash
-      }]
+      serverCertificateHashes: [
+        {
+          algorithm: 'sha-256',
+          value: certificate.hash
+        }
+      ]
     })
     await client.ready
 
@@ -113,6 +123,9 @@ describe('datagrams', function () {
     await client.datagrams.readable.pipeTo(client.datagrams.writable)
 
     const received = await serverData.promise
-    expect(received).to.deep.equal(input, 'Did not receive the same bytes we sent')
+    expect(received).to.deep.equal(
+      input,
+      'Did not receive the same bytes we sent'
+    )
   })
 })

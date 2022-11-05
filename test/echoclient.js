@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 import { echoTestsConnection } from './testsuite.js'
-import { WebTransport  } from '../lib/index.js'
+import { WebTransport } from '../lib/index.js'
 
 /**
  * @param {{ hostname: string, port: number }} args
@@ -14,12 +14,10 @@ async function startClientTests(args, hashes) {
   console.log('startconnection')
   const hashargs = {
     ...hashes,
-    serverCertificateHashes: hashes.serverCertificateHashes.map(
-      (el) => ({
-        algorithm: el.algorithm,
-        value: Buffer.from(el.value.split(':').map((el) => parseInt(el, 16)))
-      })
-    )
+    serverCertificateHashes: hashes.serverCertificateHashes.map((el) => ({
+      algorithm: el.algorithm,
+      value: Buffer.from(el.value.split(':').map((el) => parseInt(el, 16)))
+    }))
   }
   // eslint-disable-next-line no-undef
   console.log('hashagrs', hashargs)

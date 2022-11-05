@@ -5,8 +5,8 @@
 import { Http3Server } from '../lib/index.js'
 import { runEchoServer } from './testsuite.js'
 import { existsSync, readFileSync, writeFile } from 'node:fs'
+// @ts-ignore
 import { generateWebTransportCertificate } from './fixtures/certificate.js'
-
 
 let certificate = null
 
@@ -27,14 +27,12 @@ if (!certificate) {
   certificate = await generateWebTransportCertificate(attrs, {
     days: 13
   })
-  writeFile('./certificatecache.json', JSON.stringify(certificate),(err)=>{
+  writeFile('./certificatecache.json', JSON.stringify(certificate), (err) => {
     if (err) console.log('write certificate cache error', err)
   })
 }
 
 console.log('certificate hash ', certificate.fingerprint)
-
-
 
 try {
   const http3server = new Http3Server({
