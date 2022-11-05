@@ -50,9 +50,6 @@ namespace quic
 
         void addPath(const Napi::CallbackInfo &info);
 
-        Napi::Value port(const Napi::CallbackInfo &info);
-
-        Napi::Value host(const Napi::CallbackInfo &info);
 
         static void InitExports(Napi::Env env, Napi::Object exports)
         {
@@ -62,9 +59,7 @@ namespace quic
                                                  InstanceMethod<&Http3ServerJS::stopServer>("stopServer",
                                                                                             static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                                  InstanceMethod<&Http3ServerJS::addPath>("addPath",
-                                                                                         static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                                                 InstanceAccessor("port", &Http3ServerJS::port, nullptr, napi_enumerable),
-                                                 InstanceAccessor("host", &Http3ServerJS::host, nullptr, napi_enumerable)});
+                                                                                         static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
             exports.Set("Http3WebTransportServer", tplsrv);
         }
 
@@ -99,6 +94,13 @@ namespace quic
                            QuicSocketEventMask events) override;
 
         Http3ServerJS *getJS() { return js_; };
+
+        ServerStatusDetails *getStatusDetails() {
+             ServerStatusDetails* details = new ServerStatusDetails();
+             details->host = host_;
+             details->port = port_;
+             return details;
+        }
 
     private:
         bool startServerInt();

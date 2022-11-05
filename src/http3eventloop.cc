@@ -295,12 +295,13 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::informServerStatus(Http3Server *serverobj, NetworkStatus status)
+  void Http3EventLoop::informServerStatus(Http3Server *serverobj, NetworkStatus status, ServerStatusDetails* details)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::ServerStatus;
     report.serverobj = serverobj;
     report.status = status;
+    report.details = details;
     if (progress_)
       progress_->Send(&report, 1);
   }
@@ -641,7 +642,7 @@ namespace quic
     cbsession_.Call({retObj});
   }
 
-  void Http3EventLoop::processServerStatus(Http3Server *serverobj, NetworkStatus status)
+  void Http3EventLoop::processServerStatus(Http3Server *serverobj, NetworkStatus status, ServerStatusDetails * details)
   {
     if (!checkQw()) return;
     HandleScope scope(qw_->Env());
@@ -651,7 +652,12 @@ namespace quic
     Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "ServerStatus");
     retObj.Set("object", objVal);
+    Napi::Number portVal = Napi::Number::New(qw_->Env(), details->port);
+    retObj.Set("port", portVal);
+    Napi::String hostVal = Napi::String::New(qw_->Env(), details->host);
+    retObj.Set("host", hostVal);
 
+    delete details; // we own it and must throw it away
     switch (status)
     {
       case NetError: {
@@ -730,7 +736,8 @@ namespace quic
       break;
       case Http3ProgressReport::ServerStatus:
       {
-        processServerStatus(cur.serverobj, cur.status);
+        processServerStatus(cur.serverobj, cur.status, cur.details);
+        cur.para = nullptr; // take ownership of the data
       }
       break;
       case Http3ProgressReport::StreamRecvSignal:

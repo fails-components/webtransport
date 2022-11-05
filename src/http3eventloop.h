@@ -61,6 +61,11 @@ namespace quic
 
     };
 
+    struct ServerStatusDetails {
+        std::string host;
+        int port;
+    };
+
     class Http3ProgressReport // actually struct would be a better fit but make napi happy
     {
     public:
@@ -113,8 +118,11 @@ namespace quic
         {
             bool success;
         };
+        union {
 
-        std::string *para = nullptr; // for session and others, we own it, and must delete it
+            std::string *para = nullptr; // for session and others, we own it, and must delete it
+            ServerStatusDetails * details;
+        };
     };
 
     class Http3EventLoop : // may be replace char later
@@ -188,7 +196,7 @@ namespace quic
         void informSessionClosed(Http3WTSession *sessionobj, WebTransportSessionError error_code, absl::string_view error_message);
         void informSessionReady(Http3WTSession *sessionobj);
 
-        void informServerStatus(Http3Server *serverobj, NetworkStatus status);
+        void informServerStatus(Http3Server *serverobj, NetworkStatus status, ServerStatusDetails* details);
 
         void informAboutStream(bool incom, bool bidir, Http3WTSession *sessionobj, Http3WTStream *stream);
         void informStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);
@@ -250,7 +258,7 @@ namespace quic
         void processSessionClose(Http3WTSession *sessionobj, uint32_t errorcode, const std::string &path);
         void processSessionReady(Http3WTSession *sessionobj);
 
-        void processServerStatus(Http3Server *serverobj, NetworkStatus status);
+        void processServerStatus(Http3Server *serverobj, NetworkStatus status, ServerStatusDetails * details);
 
         void processStream(bool incom, bool bidi, Http3WTSession *sessionobj, Http3WTStream *stream);
         void processStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);
