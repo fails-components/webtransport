@@ -71,9 +71,22 @@ jobs:
      - name: Install missing software for Windows
        if: runner.os == 'Windows'
        run: choco install nasm -yv
+     - name: Debug CI/CD pipeline
+       run: |
+          echo ${{matrix.arch}}
+          echo ${{matrix.os}}
+          echo ${{matrix.arch == 'arm64'}}
+          echo ${{matrix.os == 'macos-latest'}}
+          echo ${{ matrix.arch == 'arm64' && matrix.os == 'macos-latest' }}
+          echo ${{matrix.arch == 'x64'}}
+          echo ${{ matrix.arch == 'x64' && matrix.os == 'macos-latest' }}
+     - name: Set icu for Mac x64 cross compile
+       if: matrix.arch == 'x64' && matrix.os == 'macos-latest'
+       run: |
+         echo "LOCALHOMEWBREWICU=/usr/local/opt/icu4c" >> $GITHUB_ENV
     # modified snippet from https://github.com/Homebrew/discussions/discussions/2843
      - name: Install icu for Mac Arm cross compile
-       if: ${{ (matrix.arch == 'arm64') && (matrix.os == 'macos-latest')}}
+       if: matrix.arch == 'arm64' && matrix.os == 'macos-latest'
        run: | 
           mkdir -p ../armhomebrew && curl -L https://github.com/Homebrew/brew/tarball/master | tar xz --strip 1 -C ../armhomebrew 
           echo "Step1 finished"
