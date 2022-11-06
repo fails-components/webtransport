@@ -1,8 +1,9 @@
-/* eslint-disable no-undef */
-import { expect } from 'chai'
+/* eslint-env mocha */
+
+import { expect } from './fixtures/chai.js'
 import { Http3EventLoop } from '../lib/event-loop.js'
 
-describe('event-loop', () => {
+describe.skip('event-loop', () => {
   beforeEach(() => {
     if (Http3EventLoop.globalLoop != null) {
       // shut down loop, otherwise we have to wait for
@@ -12,12 +13,12 @@ describe('event-loop', () => {
   })
 
   it('should start and stop the event loop', () => {
-    expect(Http3EventLoop.globalLoop).to.be.null
+    expect(Http3EventLoop.globalLoop).to.be.null()
 
     Http3EventLoop.createGlobalEventLoop()
-    expect(Http3EventLoop.globalLoop).to.not.be.null
+    expect(Http3EventLoop.globalLoop).to.not.be.null()
 
     Http3EventLoop.globalLoop?.shutdownEventLoop()
-    expect(Http3EventLoop.globalLoop).to.be.null
+    expect(Http3EventLoop.globalLoop).to.be.null()
   })
 })

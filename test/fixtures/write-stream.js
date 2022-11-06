@@ -1,4 +1,3 @@
-
 /**
  * Write contents to a stream and close it
  *
@@ -7,7 +6,7 @@
  * @param {T[]} input
  * @returns
  */
- export async function writeStream (writable, input) {
+export async function writeStream(writable, input) {
   const writer = writable.getWriter()
 
   for (const buf of input) {

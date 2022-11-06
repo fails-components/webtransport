@@ -25,19 +25,22 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
         with:
-          submodules: recursive    
-        
+          submodules: recursive
+
       - name: Set up NodeJS
         uses: actions/setup-node@v1
         with:
           node-version: 16
-        
+
       - name: Install dependencies
         run: npm install
 
       - name: Build library
         run: npm run build
-        
+
+      - name: Lint files
+        run: npm run lint
+
       - name: Run unit tests
         run: NODE_ENV=production npm test
 

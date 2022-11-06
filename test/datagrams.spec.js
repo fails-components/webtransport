@@ -1,8 +1,9 @@
-/* eslint-disable no-undef */
+/* eslint-env mocha */
+
 import { createServer } from './fixtures/server.js'
 import { getReaderValue } from './fixtures/reader-value.js'
 import { WebTransport } from '../lib/index.js'
-import { expect } from 'chai'
+import { expect } from './fixtures/chai.js'
 import { readStream } from './fixtures/read-stream.js'
 import { writeStream } from './fixtures/write-stream.js'
 import { defer } from '../lib/utils.js'
