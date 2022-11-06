@@ -80,9 +80,9 @@ jobs:
           echo ${{ matrix.arch == 'arm64' && matrix.os == 'macos-latest' }}
           echo ${{matrix.arch == 'x64'}}
           echo ${{ matrix.arch == 'x64' && matrix.os == 'macos-latest' }}
-    - name: Set icu for Mac x64 cross compile
-      if: matrix.arch == 'x64' && matrix.os == 'macos-latest'
-      run: |
+     - name: Set icu for Mac x64 cross compile
+       if: matrix.arch == 'x64' && matrix.os == 'macos-latest'
+       run: |
          echo "LOCALHOMEWBREWICU=\"/usr/local/opt/icu4c\"" >> $GITHUB_ENV
     # modified snippet from https://github.com/Homebrew/discussions/discussions/2843
      - name: Install icu for Mac Arm cross compile
