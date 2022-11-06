@@ -71,6 +71,13 @@ jobs:
      - name: Install missing software for Windows
        if: runner.os == 'Windows'
        run: choco install nasm -yv
+     - name: Debug CI/CD pipeline
+       run: |
+          echo ${{matrix.arch}}
+          echo ${{matrix.os}}
+          echo ${{matrix.arch == 'arm64'}}
+          echo ${{matrix.os == 'macos-latest'}}
+          echo ${{ (matrix.arch == 'arm64') && (matrix.os == 'macos-latest') }}
     # modified snippet from https://github.com/Homebrew/discussions/discussions/2843
      - name: Install icu for Mac Arm cross compile
        if: ${{ (matrix.arch == 'arm64') && (matrix.os == 'macos-latest')}}
