@@ -992,7 +992,7 @@ IF (WIN32)
     target_include_directories(gquiche PUBLIC third_party/icu/icu4c/source/common)
 ELSE(WIN32)
     include_directories(gquiche PUBLIC ${ICU_INCLUDE_DIRS})
-    target_link_libraries(gquiche ICU::uc ICU::i18n)
+    target_link_libraries(gquiche STATIC ICU::uc ICU::i18n)
 ENDIF(WIN32)
 
 target_link_libraries(gquiche 
