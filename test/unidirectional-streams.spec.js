@@ -125,4 +125,56 @@ describe('unidirectional streams', function () {
       'Did not receive the same bytes we sent'
     )
   })
+
+  it('handles fin when paused due to backpressure', async function () {
+    this.timeout(10000)
+
+    /** @type {Deferred<ReadableStream>} */
+    const serverStream = defer()
+
+    Promise.resolve().then(async () => {
+      const session = await getReaderValue(server.sessionStream(SERVER_PATH))
+      const stream = await getReaderValue(session.incomingUnidirectionalStreams)
+
+      serverStream.resolve(stream)
+    })
+
+    client = new WebTransport(`${url}${SERVER_PATH}`, {
+      serverCertificateHashes: [
+        {
+          algorithm: 'sha-256',
+          value: certificate.hash
+        }
+      ]
+    })
+    await client.ready
+
+    const clientStream = await client.createUnidirectionalStream()
+
+    const input = [
+      Uint8Array.from([0, 1, 2, 3, 4]),
+      Uint8Array.from([5, 6, 7, 8, 9]),
+      Uint8Array.from([10, 11, 12, 13, 14]),
+      Uint8Array.from([15, 16, 17, 18, 19]),
+      Uint8Array.from([20, 21, 22, 23, 24])
+    ]
+
+    const writer = clientStream.getWriter()
+
+    for (const buf of input) {
+      await writer.write(buf)
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    await writer.close()
+
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    const received = await readStream(await serverStream.promise)
+    expect(received).to.deep.equal(
+      input,
+      'Did not receive the same bytes we sent'
+    )
+  })
 })
