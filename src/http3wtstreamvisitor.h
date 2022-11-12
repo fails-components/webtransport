@@ -93,8 +93,9 @@ namespace quic
         void tryRead()
         {
             pause_reading_ = false;
-            if (stream_ && stream_->ReadableBytes() > 0)
+            if (stream_ && ((stream_->ReadableBytes() > 0) || can_read_pending_))
             {
+                can_read_pending_ = false;
                 doCanRead();
             }
         }
@@ -209,6 +210,7 @@ namespace quic
         bool fin_was_sent_ = false;
         bool stop_sending_received_ = false;
         bool pause_reading_ = false;
+        bool can_read_pending_ = false;
         std::deque<WChunks> chunks_;
     };
 

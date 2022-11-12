@@ -69,7 +69,10 @@ namespace quic
     void Http3WTStream::doCanRead()
     {
         if (pause_reading_)
+        {
+            can_read_pending_ = true;
             return; // back pressure folks!
+        }
         // first figure out if we have readable data
         size_t readable = stream_->ReadableBytes();
         // ok create a string obj to hold the data
