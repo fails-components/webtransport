@@ -23,6 +23,32 @@ namespace quic
   class Http3Server;
   class Http3EventLoop;
 
+  template <typename T>
+  class JSlikePromise {
+  public:
+    void finally(std::function<void(T*)> func) 
+    {
+      T *res = result.get() ;
+      if (res != nullptr) func(res);
+      else finallys.push_back(func);
+    }
+
+    void resolve(std::unique_ptr<T> res)
+    {
+      if (result.get() != nullptr) return;//throw std::runtime_error("Promise already settled");
+      result = std::move(res);
+      for (auto finally : finallys) {
+        finally(result.get());
+      }
+      finallys.clear();
+    }
+
+  protected:
+    std::unique_ptr<T> result;
+    std::list<std::function<void(T*)>> finallys;
+  };
+
+
   // This interface implements the functionality to fetch a response
   // from the backend (such as cache, http-proxy etc) to serve
   // requests received by a Quic Server
@@ -36,6 +62,9 @@ namespace quic
       std::unique_ptr<WebTransportVisitor> visitor;
     };
 
+    using WebTransportRespPromise = JSlikePromise<WebTransportResponse>;
+    using WebTransportRespPromisePtr = std::shared_ptr<WebTransportRespPromise>;
+
     Http3ServerBackend(Http3EventLoop *eventloop) : eventloop_(eventloop),
      server_(nullptr) {}
 
@@ -43,7 +72,7 @@ namespace quic
 
     void setServer(Http3Server *server) { server_ = server; }
 
-    WebTransportResponse ProcessWebTransportRequest(
+    WebTransportRespPromisePtr ProcessWebTransportRequest(
         const spdy::Http2HeaderBlock & /*request_headers*/,
         WebTransportSession * /*session*/);
     bool SupportsWebTransport() { return true; }

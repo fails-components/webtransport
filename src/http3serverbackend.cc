@@ -45,42 +45,48 @@ namespace quic
   }
   */
 
-  Http3ServerBackend::WebTransportResponse
+  Http3ServerBackend::WebTransportRespPromisePtr
   Http3ServerBackend::ProcessWebTransportRequest(
       const spdy::Http2HeaderBlock &request_headers,
       WebTransportSession *session)
   {
+    WebTransportRespPromisePtr promise 
+            = std::make_shared<WebTransportRespPromise>();
     if (!SupportsWebTransport())
     {
-      WebTransportResponse response;
-      response.response_headers[":status"] = "400";
-      return response;
+      std::unique_ptr<WebTransportResponse> response = std::make_unique<WebTransportResponse>();
+      response->response_headers[":status"] = "400";
+      promise->resolve(std::move(response));
+      return promise;
     }
 
     auto path_it = request_headers.find(":path");
     if (path_it == request_headers.end())
     {
-      WebTransportResponse response;
-      response.response_headers[":status"] = "400";
-      return response;
+      std::unique_ptr<WebTransportResponse> response = std::make_unique<WebTransportResponse>();
+      response->response_headers[":status"] = "400";
+      promise->resolve(std::move(response));
+      return promise;
     }
     std::string path(path_it->second);
 
     if (paths_.find(path) != paths_.end())
     { // to do handle our web transport paths
-      WebTransportResponse response;
+      std::unique_ptr<WebTransportResponse> response = std::make_unique<WebTransportResponse>();
       Http3WTSession * wtsession = new Http3WTSession();
       wtsession->init(session, eventloop_);
-      response.response_headers[":status"] = "200";
-      response.visitor =
+      response->response_headers[":status"] = "200";
+      response->visitor =
           std::make_unique<Http3WTSession::Visitor>(wtsession); 
       eventloop_->informAboutNewSession(server_, static_cast<Http3WTSession *>(wtsession), path);
-      return response;
+      promise->resolve(std::move(response));
+      return promise;
     }
 
-    WebTransportResponse response;
-    response.response_headers[":status"] = "404";
-    return response;
+    std::unique_ptr<WebTransportResponse> response = std::make_unique<WebTransportResponse>();
+    response->response_headers[":status"] = "404";
+    promise->resolve(std::move(response));
+    return promise;
   }
 
   Http3ServerBackend::~Http3ServerBackend()

@@ -103,6 +103,8 @@ namespace quic
     spdy::Http2HeaderBlock request_headers_;
     int64_t content_length_;
     std::string body_;
+    // promises not fullfilled from js side or c++ side
+    std::set<Http3ServerBackend::WebTransportRespPromisePtr> pending_proms_;
 
   private:
     uint64_t generate_bytes_length_;

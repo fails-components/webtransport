@@ -59,6 +59,13 @@ namespace quic
   Http3ServerStream::~Http3ServerStream()
   {
     // http3_server_backend_->CloseBackendResponseStream(this);
+    for (auto prom: pending_proms_)
+    {
+      std::unique_ptr<Http3ServerBackend::WebTransportResponse> response = 
+            std::make_unique<Http3ServerBackend::WebTransportResponse>();
+      response->response_headers[":status"] = "500"; // internal server error, probably implementation on js side
+      prom->resolve(std::move(response));
+    }
   }
 
   void Http3ServerStream::OnInitialHeadersComplete(
@@ -211,22 +218,28 @@ namespace quic
 
     if (web_transport() != nullptr)
     {
-      Http3ServerBackend::WebTransportResponse response =
+      // to do synchronize lifetime of object, so maybe store promises
+      Http3ServerBackend::WebTransportRespPromisePtr response =
           http3_server_backend_->ProcessWebTransportRequest(
               request_headers_, web_transport());
-      if (response.response_headers[":status"] == "200")
+      pending_proms_.insert(response);
+      response->finally([this, response](Http3ServerBackend::WebTransportResponse *resp)
+                       { 
+      pending_proms_.erase(response);
+      if (resp->response_headers[":status"] == "200")
       {
-        WriteHeaders(std::move(response.response_headers), false, nullptr);
-        if (response.visitor != nullptr)
+        WriteHeaders(std::move(resp->response_headers), false, nullptr);
+        if (resp->visitor != nullptr)
         {
-          web_transport()->SetVisitor(std::move(response.visitor));
+          web_transport()->SetVisitor(std::move(resp->visitor));
         }
         web_transport()->HeadersReceived(request_headers_);
       }
       else
       {
-        WriteHeaders(std::move(response.response_headers), true, nullptr);
+        WriteHeaders(std::move(resp->response_headers), true, nullptr);
       }
+      return; });
       return;
     }
 
