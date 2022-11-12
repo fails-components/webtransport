@@ -400,5 +400,116 @@ namespace quic
       };
       obj->eventloop_->Schedule(task);
     }
+    else
+      return Napi::Error::New(Env(), "No path set for addPath").ThrowAsJavaScriptException();
+  }
+
+  void Http3ServerJS::finishSessionRequest(const Napi::CallbackInfo &info)
+  {
+    Http3Server *obj = getObj();
+
+    if (!info[0].IsUndefined())
+    {
+      // needs two properties
+      int status = -1;
+      std::string path = "";
+      Napi::Object lobj = info[0].ToObject();
+      if (!lobj.IsEmpty())
+      {
+        if (lobj.Has("status") && !(lobj).Get("status").IsEmpty())
+        {
+          Napi::Value statusValue = (lobj).Get("status");
+          status = statusValue.As<Napi::Number>().Int32Value();
+        }
+        else
+          return Napi::Error::New(Env(), "No status code passed for finishSessionRequest").ThrowAsJavaScriptException();
+
+        if (lobj.Has("path") && !(lobj).Get("path").IsEmpty())
+        {
+          Napi::Value pathValue = (lobj).Get("path");
+          path = pathValue.ToString().Utf8Value();
+        }
+        else
+          return Napi::Error::New(Env(), "No status code passed for finishSessionRequest").ThrowAsJavaScriptException();
+        WebTransportSession *session = nullptr;
+        if (lobj.Has("session") && !(lobj).Get("session").IsEmpty())
+        {
+          Napi::Value sessionVal = (lobj).Get("session");
+          if (!sessionVal.IsExternal())
+            return Napi::Error::New(Env(), "Session is not external for finishSessionRequest").ThrowAsJavaScriptException();
+          Napi::External<WebTransportSession> sessionExt = sessionVal.As<Napi::External<WebTransportSession>>();
+          session = sessionExt.Data();
+        }
+        else
+          return Napi::Error::New(Env(), "No session passed for finishSessionRequest").ThrowAsJavaScriptException();
+
+        if (lobj.Has("promise") && !(lobj).Get("promise").IsEmpty())
+        {
+          Napi::Value promiseVal = (lobj).Get("promise");
+          if (!promiseVal.IsExternal())
+            return Napi::Error::New(Env(), "Promise is not external for finishSessionRequest").ThrowAsJavaScriptException();
+          Napi::External<Http3ServerBackend::WebTransportRespPromisePtr> promise = promiseVal.As<Napi::External<Http3ServerBackend::WebTransportRespPromisePtr>>();
+
+          Http3ServerBackend::WebTransportRespPromisePtr *prom = promise.Data();
+          Napi::Reference<Napi::Value> *headerValue = nullptr;
+          if (status == 200)
+          {
+
+            if (lobj.Has("header") && !(lobj).Get("header").IsEmpty())
+            {
+              napi_ref ref;
+              napi_status status = napi_create_reference(Env(), lobj.Get("header"), 1, &ref);
+              NAPI_THROW_IF_FAILED(Env(), status, Reference<Napi::Value>());
+              headerValue = new Napi::Reference<Napi::Value>(Env(), ref);
+            }
+            else
+              return Napi::Error::New(Env(), "No status code passed for finishSessionRequest").ThrowAsJavaScriptException();
+          }
+          std::function<void()> task = [status, prom, path, headerValue, session, obj, this]()
+          {
+            if (status != 200)
+            {
+              std::unique_ptr<Http3ServerBackend::WebTransportResponse> response = std::make_unique<Http3ServerBackend::WebTransportResponse>();
+              response->response_headers[":status"] = std::to_string(status);
+              (*prom)->resolve(std::move(response));
+            }
+            else
+            {
+              std::unique_ptr<Http3ServerBackend::WebTransportResponse> response = std::make_unique<Http3ServerBackend::WebTransportResponse>();
+              response->response_headers[":status"] = std::to_string(status);
+              Http3WTSession *wtsession = new Http3WTSession();
+              wtsession->init(session, obj->eventloop_);
+              response->visitor =
+                  std::make_unique<Http3WTSession::Visitor>(wtsession);
+              obj->eventloop_->informAboutNewSession(obj, static_cast<Http3WTSession *>(wtsession), path, headerValue);
+              (*prom)->resolve(std::move(response));
+            }
+          };
+          obj->eventloop_->Schedule(task);
+        }
+        else
+          return Napi::Error::New(Env(), "No promise passed for finishSessionRequest").ThrowAsJavaScriptException();
+      }
+      else
+        return Napi::Error::New(Env(), "No object passed for finishSessionRequest").ThrowAsJavaScriptException();
+    }
+  }
+
+  void Http3ServerJS::setJSRequestHandler(const Napi::CallbackInfo &info)
+  {
+    Http3Server *obj = getObj();
+
+    if (!info[0].IsUndefined())
+    {
+
+      bool hashandler = info[0].ToBoolean();
+      std::function<void()> task = [obj, hashandler]()
+      {
+        obj->http3_server_backend_.setJSHandler(hashandler);
+      };
+      obj->eventloop_->Schedule(task);
+    }
+    else
+      return Napi::Error::New(Env(), "No bool set for setJSRequestHandler").ThrowAsJavaScriptException();
   }
 }
