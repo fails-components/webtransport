@@ -129,6 +129,14 @@ export interface Http3ClientEventHandler {
 export interface Http3WTServerSessionVisitorEvent extends Http3WTSessionVisitorEvent {
   path: string
   object: any
+  header?: any
+}
+
+export interface ServerSessionRequestEvent {
+  purpose: 'SessionRequest'
+  header: Object
+  promise: any
+  session: any
 }
 
 /**

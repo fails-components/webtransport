@@ -24,20 +24,25 @@ namespace quic
   class Http3EventLoop;
 
   template <typename T>
-  class JSlikePromise {
+  class JSlikePromise
+  {
   public:
-    void finally(std::function<void(T*)> func) 
+    void finally(std::function<void(T *)> func)
     {
-      T *res = result.get() ;
-      if (res != nullptr) func(res);
-      else finallys.push_back(func);
+      T *res = result.get();
+      if (res != nullptr)
+        func(res);
+      else
+        finallys.push_back(func);
     }
 
     void resolve(std::unique_ptr<T> res)
     {
-      if (result.get() != nullptr) return;//throw std::runtime_error("Promise already settled");
+      if (result.get() != nullptr)
+        return; // throw std::runtime_error("Promise already settled");
       result = std::move(res);
-      for (auto finally : finallys) {
+      for (auto finally : finallys)
+      {
         finally(result.get());
       }
       finallys.clear();
@@ -45,9 +50,8 @@ namespace quic
 
   protected:
     std::unique_ptr<T> result;
-    std::list<std::function<void(T*)>> finallys;
+    std::list<std::function<void(T *)>> finallys;
   };
-
 
   // This interface implements the functionality to fetch a response
   // from the backend (such as cache, http-proxy etc) to serve
@@ -66,11 +70,12 @@ namespace quic
     using WebTransportRespPromisePtr = std::shared_ptr<WebTransportRespPromise>;
 
     Http3ServerBackend(Http3EventLoop *eventloop) : eventloop_(eventloop),
-     server_(nullptr) {}
+                                                    server_(nullptr), jshandlerequesthandler_(false) {}
 
     ~Http3ServerBackend();
 
     void setServer(Http3Server *server) { server_ = server; }
+    void setJSHandler(bool on) { jshandlerequesthandler_ = on; }
 
     WebTransportRespPromisePtr ProcessWebTransportRequest(
         const spdy::Http2HeaderBlock & /*request_headers*/,
@@ -82,8 +87,9 @@ namespace quic
     void addPath(std::string path) { paths_.insert(path); }
 
   protected:
-    Http3Server *server_; // unowned
+    Http3Server *server_;       // unowned
     Http3EventLoop *eventloop_; // unowned
+    bool jshandlerequesthandler_;
     std::set<std::string> paths_;
   };
 

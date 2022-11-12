@@ -59,10 +59,10 @@ namespace quic
   Http3ServerStream::~Http3ServerStream()
   {
     // http3_server_backend_->CloseBackendResponseStream(this);
-    for (auto prom: pending_proms_)
+    for (auto prom : pending_proms_)
     {
-      std::unique_ptr<Http3ServerBackend::WebTransportResponse> response = 
-            std::make_unique<Http3ServerBackend::WebTransportResponse>();
+      std::unique_ptr<Http3ServerBackend::WebTransportResponse> response =
+          std::make_unique<Http3ServerBackend::WebTransportResponse>();
       response->response_headers[":status"] = "500"; // internal server error, probably implementation on js side
       prom->resolve(std::move(response));
     }
@@ -224,7 +224,7 @@ namespace quic
               request_headers_, web_transport());
       pending_proms_.insert(response);
       response->finally([this, response](Http3ServerBackend::WebTransportResponse *resp)
-                       { 
+                        { 
       pending_proms_.erase(response);
       if (resp->response_headers[":status"] == "200")
       {

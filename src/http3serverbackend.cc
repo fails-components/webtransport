@@ -26,7 +26,6 @@
 #include "quiche/common/platform/api/quiche_file_utils.h"
 #include "quiche/common/quiche_text_utils.h"
 
-
 using spdy::Http2HeaderBlock;
 
 namespace quic
@@ -50,8 +49,7 @@ namespace quic
       const spdy::Http2HeaderBlock &request_headers,
       WebTransportSession *session)
   {
-    WebTransportRespPromisePtr promise 
-            = std::make_shared<WebTransportRespPromise>();
+    WebTransportRespPromisePtr promise = std::make_shared<WebTransportRespPromise>();
     if (!SupportsWebTransport())
     {
       std::unique_ptr<WebTransportResponse> response = std::make_unique<WebTransportResponse>();
@@ -73,13 +71,22 @@ namespace quic
     if (paths_.find(path) != paths_.end())
     { // to do handle our web transport paths
       std::unique_ptr<WebTransportResponse> response = std::make_unique<WebTransportResponse>();
-      Http3WTSession * wtsession = new Http3WTSession();
+      Http3WTSession *wtsession = new Http3WTSession();
       wtsession->init(session, eventloop_);
       response->response_headers[":status"] = "200";
       response->visitor =
-          std::make_unique<Http3WTSession::Visitor>(wtsession); 
-      eventloop_->informAboutNewSession(server_, static_cast<Http3WTSession *>(wtsession), path);
+          std::make_unique<Http3WTSession::Visitor>(wtsession);
+      eventloop_->informAboutNewSession(server_, static_cast<Http3WTSession *>(wtsession), path, nullptr);
       promise->resolve(std::move(response));
+      return promise;
+    }
+    else if (jshandlerequesthandler_)
+    {
+      // first step pass header block along, due to thread safety, we need to copy
+      spdy::Http2HeaderBlock *reqheadcopy = new Http2HeaderBlock(request_headers.Clone());
+
+      // second step inform the js side
+      eventloop_->informAboutNewSessionRequest(server_, session, reqheadcopy, promise);
       return promise;
     }
 
