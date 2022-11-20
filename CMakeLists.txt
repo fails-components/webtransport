@@ -19,25 +19,6 @@ set(BUILD_TESTING OFF)
 set(protobuf_BUILD_PROTOC_BINARIES ON)
 
 
-IF( NOT WIN32)
-    IF(APPLE)
-        IF(DEFINED ENV{LOCALHOMEWBREWICU})
-            MESSAGE(STATUS "Local homebrew icu detected")
-            MESSAGE(STATUS $ENV{LOCALHOMEWBREWICU})
-            SET(ICU_ROOT $ENV{LOCALHOMEWBREWICU})
-        ELSE()
-            IF(CMAKE_OSX_ARCHITECTURES MATCHES "x86_64")
-                MESSAGE(STATUS "set icu root local")
-                SET(ICU_ROOT "/usr/local/opt/icu4c")
-            ELSE()
-                MESSAGE(STATUS "set icu root homebrew")
-                SET(ICU_ROOT "/opt/homebrew/icu4c")
-            ENDIF()
-        ENDIF()
-        set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-    ENDIF(APPLE)
-    find_package(ICU COMPONENTS uc i18n REQUIRED)
-ENDIF(NOT WIN32)
 
 IF (WIN32)
     add_compile_definitions(NOMINMAX)
@@ -92,8 +73,6 @@ endif(COMMAND cmake_policy)
 
 add_compile_definitions(QUICHE_ENABLE_LIBEVENT)
 
-
-IF (WIN32)
 
 add_library(icu STATIC 
 #icu
@@ -160,10 +139,11 @@ add_library(icu STATIC
     third_party/icu/icu4c/source/common/utypes.cpp
     third_party/icu/icu4c/source/common/uvector.cpp
     third_party/icu/icu4c/source/common/putil.cpp
-    )
-    target_include_directories(icu
+)
+target_include_directories(icu
     PUBLIC third_party/icu/icu4c/source/common
-    )
+)
+if (WIN32)
     target_sources(icu PRIVATE
     third_party/icu/icu4c/source/common/wintz.cpp
     )
@@ -171,14 +151,18 @@ add_library(icu STATIC
     #hack since this function is not currently used
     ICU_DATA_DIR_WINDOWS=""
     )
-
-    target_compile_definitions(icu 
-    PRIVATE U_DEFINE_FALSE_AND_TRUE=1
-    U_STATIC_IMPLEMENTATION
-    U_COMMON_IMPLEMENTATION
+else()
+# fix data problem
+    target_sources(icu PRIVATE
+    platform/icufix/fakedata.cpp
     )
+endif()
 
-ENDIF(WIN32)
+target_compile_definitions(icu 
+PRIVATE U_DEFINE_FALSE_AND_TRUE=1
+U_STATIC_IMPLEMENTATION
+U_COMMON_IMPLEMENTATION
+)
 
 add_library(gquiche STATIC 
 #plattform impl
@@ -989,12 +973,8 @@ PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
 PUBLIC ${CMAKE_JS_INC}
 )
 
-IF (WIN32)
-    target_include_directories(gquiche PUBLIC third_party/icu/icu4c/source/common)
-ELSE(WIN32)
-    include_directories(gquiche PUBLIC ${ICU_INCLUDE_DIRS})
-    target_link_libraries(gquiche ICU::uc ICU::i18n)
-ENDIF(WIN32)
+
+target_include_directories(gquiche PUBLIC third_party/icu/icu4c/source/common)
 
 target_link_libraries(gquiche 
 absl::base 
@@ -1023,9 +1003,9 @@ if(MSVC AND CMAKE_JS_NODELIB_DEF AND CMAKE_JS_NODELIB_TARGET)
   execute_process(COMMAND ${CMAKE_AR} /def:${CMAKE_JS_NODELIB_DEF} /out:${CMAKE_JS_NODELIB_TARGET} ${CMAKE_STATIC_LINKER_FLAGS})
 endif()
 
-IF (WIN32)
-    target_link_libraries(gquiche icu)
-ENDIF(WIN32)
+
+target_link_libraries(gquiche icu)
+
 
 if(APPLE)
         target_compile_definitions (gquiche PRIVATE __APPLE_USE_RFC_3542)
