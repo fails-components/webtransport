@@ -1,6 +1,6 @@
 import { arch, argv, env, platform } from 'node:process'
 import { spawn } from 'node:child_process'
-import { rename, mkdtemp, rm, access } from 'node:fs/promises'
+import { cp, rename, mkdtemp, rm, access } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import path from 'node:path'
 import pkg from './package.json' assert { type: 'json' }
@@ -105,9 +105,16 @@ const extractthirdparty = async () => {
     try {
       await rm(destdir, { recursive: true, maxRetries: 10 })
     } catch (err) {
-      console.log('destdir does not exist: ', err)
+      console.log('destdir does not exist (only warning, ignore): ', err)
     }
-    await rename(path.join(copath, '/third_party'), destdir)
+    try {
+      await rename(path.join(copath, '/third_party'), destdir)
+    } catch (error) {
+      console.log('renmae tmp dir failed:', error)
+      console.log('copy instead start... (can take a while)...')
+      await cp(path.join(copath, '/third_party'), destdir, {recursive: true})
+      console.log('copy instead finished')
+    }
   } catch (error) {
     console.error('failed to get third party code from git', error)
     fatal = true
@@ -287,6 +294,14 @@ if (argv.length > 2) {
       } catch (error) {
         console.error('ReBuilding binary failed: ', error)
         process.exit(1)
+      }
+      break
+    case 'extract-thirdparty':
+      try {
+        // if we do not succeed, we have to build it ourselves
+        await extractthirdparty()
+      } catch (error) {
+        console.error('Extract third party failed: ', error)
       }
       break
     default:
