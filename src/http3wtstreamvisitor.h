@@ -34,7 +34,7 @@ namespace quic
         friend Http3WTStreamJS;
 
     public:
-        Http3WTStream(WebTransportStream *stream, Http3EventLoop *eventloop) : stream_(stream), eventloop_(eventloop)
+        Http3WTStream(WebTransportStream *stream, Http3EventLoop *eventloop) : stream_(stream), eventloop_(eventloop), js_(nullptr)
         {
         }
 
@@ -108,6 +108,10 @@ namespace quic
         void setJS(Http3WTStreamJS  *js) { 
             js_ = js; 
         };
+
+        bool gone() {
+            return !stream_;
+        }
 
     protected:
         // internal functions called by js object
