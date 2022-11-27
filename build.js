@@ -110,7 +110,7 @@ const extractthirdparty = async () => {
     try {
       await rename(path.join(copath, '/third_party'), destdir)
     } catch (error) {
-      console.log('renmae tmp dir failed:', error)
+      console.log('rename tmp dir failed:', error)
       console.log('copy instead start... (can take a while)...')
       await cp(path.join(copath, '/third_party'), destdir, {recursive: true})
       console.log('copy instead finished')
