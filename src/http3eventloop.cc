@@ -363,12 +363,11 @@ namespace quic
     if (!checkQw())
       return;
     HandleScope scope(qw_->Env());
-
     Http3Constructors *constr = qw_->Env().GetInstanceData<Http3Constructors>();
     Napi::Object strobj = constr->stream.New({});
     Http3WTStreamJS *strjs = Napi::ObjectWrap<Http3WTStreamJS>::Unwrap(strobj);
     strjs->setObj(stream);
-    strjs->Ref();
+    if (!stream->gone()) strjs->Ref();
     stream->setJS(strjs);
 
     Napi::Object objVal = sessionobj->getJS()->Value();

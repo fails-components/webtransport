@@ -28,7 +28,7 @@ namespace quic
             stream_->stream_ = nullptr;
             stream_->eventloop_->informUnref(strobj);
         } else {
-            delete stream_->stream_;
+            stream_->stream_ = nullptr;
         }
     }
 
