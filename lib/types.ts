@@ -174,7 +174,8 @@ export interface Deferred<T = unknown> {
   reject: (reason?: any) => void
 }
 
-export type WebTransportSessionState = 'connected' | 'closed' | 'failed'
+// https://www.w3.org/TR/webtransport/#dom-webtransport-state-slot
+export type WebTransportSessionState = 'connecting' | 'connected' | 'closed' | 'failed'
 
 export interface WebTransportSession extends WebTransport {
   state: WebTransportSessionState

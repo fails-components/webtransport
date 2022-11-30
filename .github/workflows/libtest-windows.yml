@@ -24,29 +24,29 @@ jobs:
     steps:
       - name: Install missing software
         run: choco install nasm -yv
-      
+
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
         with:
-          submodules: recursive    
-        
+          submodules: recursive
+
       - name: Set up NodeJS
         uses: actions/setup-node@v1
         with:
           node-version: 16
-        
+
       - name: Install dependencies
         run: npm install
 
       - name: Build library
         run: npm run build
-        
-      - name: Run unit tests
-        run: | 
+
+      - name: Run node unit tests
+        run: |
           $env:NODE_ENV="production"
-          npm test
+          npm run test:node
 
       - name: Run old unit tests
-        run: | 
+        run: |
           $env:NODE_ENV="production"
           npm run oldtest

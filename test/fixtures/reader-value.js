@@ -22,3 +22,28 @@ export async function getReaderValue(readableStream) {
     reader.releaseLock()
   }
 }
+
+/**
+ * @template T
+ * @param {ReadableStream<T>} readableStream
+ * @returns {AsyncGenerator<T>}
+ */
+export async function* getReaderStream(readableStream) {
+  const reader = readableStream.getReader()
+
+  try {
+    const { done, value } = await reader.read()
+
+    if (done) {
+      return
+    }
+
+    if (!value) {
+      throw new Error('Stream value was undefined')
+    }
+
+    yield value
+  } finally {
+    reader.releaseLock()
+  }
+}

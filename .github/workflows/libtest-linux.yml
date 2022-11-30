@@ -41,8 +41,11 @@ jobs:
       - name: Build library
         run: npm run build
 
-      - name: Run unit tests
-        run: NODE_ENV=production npm test
+      - name: Run node unit tests
+        run: NODE_ENV=production npm run test:node
+
+      - name: Run browser unit tests
+        run: NODE_ENV=production npm run test:chromium
 
       - name: Run old unit tests
         run: NODE_ENV=production npm run oldtest
