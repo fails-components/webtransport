@@ -51,7 +51,7 @@ export interface  WebTransportSendStreamStats {
 }
 
 export interface WebTransportSendStream extends WritableStream<Uint8Array> {
-  getStats: () => Promise<WebTransportSendStreamStats>
+  //getStats: () => Promise<WebTransportSendStreamStats>
 }
 
 export interface WebTransportReceiveStreamStats {
@@ -61,7 +61,7 @@ export interface WebTransportReceiveStreamStats {
 }
 
 export interface WebTransportReceiveStream extends ReadableStream<Uint8Array> {
-  getStats: () => Promise<WebTransportReceiveStreamStats>
+  //getStats: () => Promise<WebTransportReceiveStreamStats>
 }
 
 export interface WebTransportHash {
@@ -73,6 +73,16 @@ export interface WebTransportOptions {
   allowPooling?: boolean
   requireUnreliable?: boolean
   serverCertificateHashes?: WebTransportHash[]
+
+  /**
+   * Nonstandard option - when a new connection is opened, how long to wait for the quic handshake to complete in ms before rejecting
+   */
+  quicConnectTimeout?: number
+
+   /**
+    * Nonstandard option - when a new connection is opened, how long to wait for the webtransport handshake to complete in ms before rejecting
+    */
+  webTransportConnectTimeout?: number
 }
 
 export interface WebTransport {

@@ -1,3 +1,4 @@
+// @ts-ignore
 import { execa } from 'execa'
 import { createServer } from './fixtures/server.js'
 

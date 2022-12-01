@@ -44,7 +44,7 @@ describe('bidirectional streams', function () {
     const stream = await client.createBidirectionalStream()
     await writeStream(stream.writable, KNOWN_BYTES)
 
-    const output = await readStream(stream.readable)
+    const output = await readStream(stream.readable, KNOWN_BYTES.length)
     expect(ui8.concat(KNOWN_BYTES)).to.deep.equal(
       ui8.concat(output),
       'Did not receive the same bytes we sent'

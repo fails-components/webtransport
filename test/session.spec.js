@@ -66,7 +66,9 @@ describe('session', function () {
           algorithm: 'sha-256',
           value: readCertHash(process.env.CERT_HASH)
         }
-      ]
+      ],
+      quicConnectTimeout: 100,
+      webTransportConnectTimeout: 100
     })
 
     const [closedResult, readyResult] = await Promise.all([
@@ -111,6 +113,31 @@ describe('session', function () {
         {
           algorithm: 'sha-256',
           value: readCertHash(process.env.CERT_HASH + ':DE:AD:BE:EF')
+        }
+      ]
+    })
+
+    const [closedResult, readyResult] = await Promise.all([
+      client.closed.catch((err) => err),
+      client.ready.catch((err) => err)
+    ])
+
+    expect(closedResult)
+      .to.be.a('WebTransportError')
+      .with.property('message', 'Opening handshake failed.')
+    expect(readyResult)
+      .to.be.a('WebTransportError')
+      .with.property('message', 'Opening handshake failed.')
+  })
+
+  it('should error when connecting with the wrong certificate', async () => {
+    client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
+      serverCertificateHashes: [
+        {
+          algorithm: 'sha-256',
+          value: readCertHash(
+            'DE:AD:BE:EF:' + process.env.CERT_HASH?.substring(12)
+          )
         }
       ]
     })

@@ -61,7 +61,7 @@ describe('unidirectional streams', function () {
     await client.ready
 
     const stream = await getReaderValue(client.incomingUnidirectionalStreams)
-    const output = await readStream(stream)
+    const output = await readStream(stream, KNOWN_BYTES.length)
     expect(ui8.concat(KNOWN_BYTES)).to.deep.equal(
       ui8.concat(output),
       'Did not receive the same bytes we sent'
@@ -89,11 +89,13 @@ describe('unidirectional streams', function () {
     const writer = clientStream.getWriter()
 
     for (const buf of KNOWN_BYTES) {
+      await writer.ready
       await writer.write(buf)
     }
 
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
+    await writer.ready
     await writer.close()
 
     // the remote will close the session cleanly if everything was ok

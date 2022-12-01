@@ -15,5 +15,6 @@ export async function writeStream(writable, input) {
   }
 
   await writer.ready
-  await writer.close()
+  await writer.releaseLock()
+  await writable.close()
 }
