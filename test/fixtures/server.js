@@ -170,8 +170,6 @@ export async function createServer() {
               session.incomingUnidirectionalStreams
             )
 
-            await new Promise((resolve) => setTimeout(resolve, 1000))
-
             const received = await readStream(stream, KNOWN_BYTES.length)
 
             // if we did not get expected data, close the session with a reason
