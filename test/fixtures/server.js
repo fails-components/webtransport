@@ -201,27 +201,17 @@ export async function createServer() {
   }
 }
 
-/**
- * @param {import('../../lib/server.js').Http3Server} server
- * @param {string} path
- */
-export async function getServerSession(server, path) {
-  const sessionStream = await server.sessionStream(path)
-  const sessionReader = sessionStream.getReader()
+const { server, certificate } = await createServer()
+server.startServer()
+await server.ready
 
-  try {
-    const { done, value } = await sessionReader.read()
+const address = server.address()
 
-    if (done) {
-      throw new Error('Server is gone')
-    }
-
-    if (!value) {
-      throw new Error('Session was undefined')
-    }
-
-    return value
-  } finally {
-    sessionReader.releaseLock()
-  }
+if (address == null) {
+  throw new Error('Could not determine server address')
 }
+
+console.info(JSON.stringify({
+  address: `https://${address.host}:${address.port}`,
+  certificate: certificate.fingerprint
+}, null, 2))

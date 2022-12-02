@@ -203,3 +203,9 @@ export interface Http3ClientInit extends Http3WebTransportInit {
   forceIpv6?: boolean
   localPort?: number
 }
+
+export interface Logger {
+  (formatter: any, ...args: any[]): void
+  error: (formatter: any, ...args: any[]) => void
+  trace: (formatter: any, ...args: any[]) => void
+}

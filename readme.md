@@ -127,3 +127,23 @@ Disable headless mode to watch tests run in Chromium:
 ```console
 $ npm run test:chromium -- --debug
 ```
+
+### Logging
+
+This module uses the [debug](https://www.npmjs.com/package/debug) module for logging.
+
+To enable logging, specify the `DEBUG` environmental variable:
+
+```console
+$ DEBUG=webtransport* node my-script.js
+// debug output
+```
+
+#### Trace logging
+
+To enable detailed output, additionally set the `DEBUG_TRACE` environmental variable:
+
+```console
+$ DEBUG=webtransport* DEBUG_TRACE=true node my-script.js
+// lots of debug output
+```
