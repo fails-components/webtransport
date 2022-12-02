@@ -21,7 +21,7 @@
     "rebuild-debug": "node build.js rebuild-debug -D",
     "build-debug": "node build.js build-debug",
     "types": "tsc",
-    "lint": "eslint lib test"
+    "lint": "eslint lib test old_test"
   },
   "repository": {
     "type": "git",
