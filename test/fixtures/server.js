@@ -42,12 +42,16 @@ export async function createServer() {
           for await (const session of getReaderStream(
             server.sessionStream('/bidirectional_client_initiated_echo')
           )) {
-            const bidiStream = await getReaderValue(
-              session.incomingBidirectionalStreams
-            )
+            try {
+              const bidiStream = await getReaderValue(
+                session.incomingBidirectionalStreams
+              )
 
-            // redirect input to output
-            await bidiStream.readable.pipeTo(bidiStream.writable)
+              // redirect input to output
+              await bidiStream.readable.pipeTo(bidiStream.writable)
+            } catch {
+              // in some tests the client closes the stream
+            }
           }
         },
 

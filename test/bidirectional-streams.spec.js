@@ -17,7 +17,7 @@ import { KNOWN_BYTES } from './fixtures/known-bytes.js'
 describe('bidirectional streams', function () {
   // FIXME: sometimes there are seemingly arbitrary 5s delays in
   // communicating with the server under node.js
-  this.timeout(10000)
+  this.timeout(30000)
 
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
