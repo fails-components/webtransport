@@ -212,7 +212,13 @@ if (address == null) {
 }
 
 // tell the calling process how to contact us
-console.info(JSON.stringify({
-  address: `https://${address.host}:${address.port}`,
-  certificate: certificate.fingerprint
-}, null, 2))
+console.info(
+  JSON.stringify(
+    {
+      address: `https://${address.host}:${address.port}`,
+      certificate: certificate.fingerprint
+    },
+    null,
+    2
+  )
+)

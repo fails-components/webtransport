@@ -4,7 +4,7 @@ import { execa } from 'execa'
  * Run server as separate process so we can kill it without
  * getting stuck waiting for the custom event loop to end.
  */
-async function startServer () {
+async function startServer() {
   return new Promise((resolve, reject) => {
     const server = execa('node', ['./test/fixtures/server.js'])
     server.stdout?.on('data', (data) => {
@@ -17,7 +17,7 @@ async function startServer () {
       })
     })
 
-    server.catch(err => reject(err))
+    server.catch((err) => reject(err))
   })
 }
 
@@ -45,21 +45,16 @@ try {
     ]
   } else if (env === 'chromium') {
     command = 'playwright-test'
-    args = [
-      './test/*.spec.js',
-      ...process.argv.slice(3)
-    ]
+    args = ['./test/*.spec.js', ...process.argv.slice(3)]
   }
 
-  const tests = execa(command, args,
-    {
-      env: {
-        DEBUG_COLORS: process.env.CI ? '' : 'true',
-        CERT_HASH: certificate,
-        SERVER_URL: address
-      }
+  const tests = execa(command, args, {
+    env: {
+      DEBUG_COLORS: process.env.CI ? '' : 'true',
+      CERT_HASH: certificate,
+      SERVER_URL: address
     }
-  )
+  })
   tests.stderr?.on('data', (data) => {
     process.stdout.write(data)
   })
@@ -80,7 +75,7 @@ try {
     success = false
   }
 } finally {
-  procs.forEach(proc => proc.kill('SIGKILL'))
+  procs.forEach((proc) => proc.kill('SIGKILL'))
 
   if (!success) {
     process.exit(1)
