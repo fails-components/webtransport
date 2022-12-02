@@ -5,8 +5,8 @@ import { expect } from './fixtures/chai.js'
 import { readStream } from './fixtures/read-stream.js'
 import { writeStream } from './fixtures/write-stream.js'
 import { readCertHash } from './fixtures/read-cert-hash.js'
-import * as ui8 from 'uint8arrays'
 import { KNOWN_BYTES } from './fixtures/known-bytes.js'
+import { pTimeout } from './fixtures/p-timeout.js'
 
 /**
  * @template T
@@ -25,14 +25,17 @@ describe('datagrams', function () {
 
   it('client sends datagrams to the server', async () => {
     // client context - connects to the server, sends some datagrams and reads the response
-    client = new WebTransport(`${process.env.SERVER_URL}/datagrams_send`, {
-      serverCertificateHashes: [
-        {
-          algorithm: 'sha-256',
-          value: readCertHash(process.env.CERT_HASH)
-        }
-      ]
-    })
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/datagrams_client_send`,
+      {
+        serverCertificateHashes: [
+          {
+            algorithm: 'sha-256',
+            value: readCertHash(process.env.CERT_HASH)
+          }
+        ]
+      }
+    )
     await client.ready
 
     await writeStream(client.datagrams.writable, KNOWN_BYTES)
@@ -46,24 +49,27 @@ describe('datagrams', function () {
 
   it('receives datagrams from the server', async () => {
     // client context - pipes the server's datagrams back to them
-    client = new WebTransport(`${process.env.SERVER_URL}/datagrams_receive`, {
-      serverCertificateHashes: [
-        {
-          algorithm: 'sha-256',
-          value: readCertHash(process.env.CERT_HASH)
-        }
-      ]
-    })
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/datagrams_server_send`,
+      {
+        serverCertificateHashes: [
+          {
+            algorithm: 'sha-256',
+            value: readCertHash(process.env.CERT_HASH)
+          }
+        ]
+      }
+    )
     await client.ready
 
-    const received = await readStream(
-      client.datagrams.readable,
-      KNOWN_BYTES.length
+    // datagram transport is unreliable, at least one message should make it through
+    const expected = 1
+
+    const received = await pTimeout(
+      readStream(client.datagrams.readable, expected),
+      1000
     )
 
-    expect(ui8.concat(KNOWN_BYTES)).to.deep.equal(
-      ui8.concat(received),
-      'Data did not match'
-    )
+    expect(received).to.have.lengthOf(expected)
   })
 })

@@ -22,7 +22,7 @@ describe('unidirectional streams', function () {
   it('sends data over an outgoing unidirectional stream', async () => {
     // client context - connects to the server, opens a bidi stream, sends some data and reads the response
     client = new WebTransport(
-      `${process.env.SERVER_URL}/unidirectional_remote_send`,
+      `${process.env.SERVER_URL}/unidirectional_client_send`,
       {
         serverCertificateHashes: [
           {
@@ -48,7 +48,7 @@ describe('unidirectional streams', function () {
   it('receives data over an incoming unidirectional stream', async () => {
     // client context - waits for the server to open a bidi stream then pipes it back to them
     client = new WebTransport(
-      `${process.env.SERVER_URL}/unidirectional_local_send`,
+      `${process.env.SERVER_URL}/unidirectional_server_send`,
       {
         serverCertificateHashes: [
           {
@@ -72,7 +72,7 @@ describe('unidirectional streams', function () {
     this.timeout(10000)
 
     client = new WebTransport(
-      `${process.env.SERVER_URL}/unidirectional_delay_before_reading`,
+      `${process.env.SERVER_URL}/unidirectional_client_delay_before_close`,
       {
         serverCertificateHashes: [
           {

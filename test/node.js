@@ -15,7 +15,12 @@ if (address == null) {
 try {
   const proc = execa(
     'mocha',
-    ['./test/*.spec.js', './test/*.node.js', ...process.argv.slice(2)],
+    [
+      process.env.CI ? '--no-colors' : '--colors',
+      './test/*.spec.js',
+      './test/*.node.js',
+      ...process.argv.slice(2)
+    ],
     {
       env: {
         CERT_HASH: certificate.fingerprint,
@@ -31,6 +36,11 @@ try {
   })
 
   await proc
+} catch (/** @type {any} */ err) {
+  if (err.command == null) {
+    // was not an execa error
+    throw err
+  }
 } finally {
   server.stopServer()
   await server.closed

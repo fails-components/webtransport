@@ -29,7 +29,7 @@ describe('bidirectional streams', function () {
   it('sends and receives data over an outgoing bidirectional stream', async () => {
     // client context - connects to the server, opens a bidi stream, sends some data and reads the response
     client = new WebTransport(
-      `${process.env.SERVER_URL}/bidirectional_echo_remote`,
+      `${process.env.SERVER_URL}/bidirectional_client_initiated_echo`,
       {
         serverCertificateHashes: [
           {
@@ -56,7 +56,7 @@ describe('bidirectional streams', function () {
 
     // client context - waits for the server to open a bidi stream then pipes it back to them
     client = new WebTransport(
-      `${process.env.SERVER_URL}/bidirectional_echo_local`,
+      `${process.env.SERVER_URL}/bidirectional_server_initiated_echo`,
       {
         serverCertificateHashes: [
           {

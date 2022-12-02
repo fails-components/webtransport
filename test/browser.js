@@ -30,6 +30,11 @@ try {
   })
 
   await proc
+} catch (/** @type {any} */ err) {
+  if (err.command == null) {
+    // was not an execa error
+    throw err
+  }
 } finally {
   server.stopServer()
   await server.closed

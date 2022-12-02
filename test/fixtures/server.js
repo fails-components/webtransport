@@ -1,5 +1,6 @@
 import { generateWebTransportCertificate } from './certificate.js'
 import { Http3Server } from '../../lib/index.js'
+import { pTimeout } from './p-timeout.js'
 import { getReaderStream, getReaderValue } from './reader-value.js'
 import { writeStream } from './write-stream.js'
 import { readStream } from './read-stream.js'
@@ -39,7 +40,7 @@ export async function createServer() {
         // echo server, initiated by remote
         async () => {
           for await (const session of getReaderStream(
-            server.sessionStream('/bidirectional_echo_remote')
+            server.sessionStream('/bidirectional_client_initiated_echo')
           )) {
             const bidiStream = await getReaderValue(
               session.incomingBidirectionalStreams
@@ -53,7 +54,7 @@ export async function createServer() {
         // echo server, initiated by local
         async () => {
           for await (const session of getReaderStream(
-            server.sessionStream('/bidirectional_echo_local')
+            server.sessionStream('/bidirectional_server_initiated_echo')
           )) {
             const stream = await session.createBidirectionalStream()
 
@@ -73,6 +74,44 @@ export async function createServer() {
             } else {
               session.close()
             }
+          }
+        },
+
+        // echo datagrams, initiated by remote
+        async () => {
+          for await (const session of getReaderStream(
+            server.sessionStream('/datagrams_client_send')
+          )) {
+            // datagram transport is unreliable, at least one message should make it through
+            const expected = 1
+
+            try {
+              const received = await pTimeout(
+                readStream(session.datagrams.readable, expected),
+                1000
+              )
+
+              // if we did not get the data we sent, close the session with a reason
+              if (received.length !== expected) {
+                throw new Error('Did not receive enough bytes')
+              }
+
+              session.close()
+            } catch (/** @type {any} */ err) {
+              session.close({
+                closeCode: 500,
+                reason: err.message
+              })
+            }
+          }
+        },
+
+        // echo datagrams, initiated by local
+        async () => {
+          for await (const session of getReaderStream(
+            server.sessionStream('/datagrams_server_send')
+          )) {
+            await writeStream(session.datagrams.writable, KNOWN_BYTES)
           }
         },
 
@@ -97,41 +136,10 @@ export async function createServer() {
           }
         },
 
-        // echo datagrams, initiated by remote
-        async () => {
-          for await (const session of getReaderStream(
-            server.sessionStream('/datagrams_send')
-          )) {
-            const received = await readStream(
-              session.datagrams.readable,
-              KNOWN_BYTES.length
-            )
-
-            // if we did not get the data we sent, close the session with a reason
-            if (!ui8.equals(ui8.concat(KNOWN_BYTES), ui8.concat(received))) {
-              session.close({
-                closeCode: 500,
-                reason: 'data did not match'
-              })
-            } else {
-              session.close()
-            }
-          }
-        },
-
-        // echo datagrams, initiated by local
-        async () => {
-          for await (const session of getReaderStream(
-            server.sessionStream('/datagrams_receive')
-          )) {
-            await writeStream(session.datagrams.writable, KNOWN_BYTES)
-          }
-        },
-
         // send data over unidirectional stream, initiated by remote
         async () => {
           for await (const session of getReaderStream(
-            server.sessionStream('/unidirectional_remote_send')
+            server.sessionStream('/unidirectional_client_send')
           )) {
             const stream = await getReaderValue(
               session.incomingUnidirectionalStreams
@@ -153,7 +161,7 @@ export async function createServer() {
         // send data over unidirectional stream, initiated by local
         async () => {
           for await (const session of getReaderStream(
-            server.sessionStream('/unidirectional_local_send')
+            server.sessionStream('/unidirectional_server_send')
           )) {
             const stream = await session.createUnidirectionalStream()
 
@@ -164,7 +172,7 @@ export async function createServer() {
         // delays reading from stream after writing, initiated by remote
         async () => {
           for await (const session of getReaderStream(
-            server.sessionStream('/unidirectional_delay_before_reading')
+            server.sessionStream('/unidirectional_client_delay_before_close')
           )) {
             const stream = await getReaderValue(
               session.incomingUnidirectionalStreams
