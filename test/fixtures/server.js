@@ -111,7 +111,24 @@ export async function createServer() {
           for await (const session of getReaderStream(
             server.sessionStream('/datagrams_server_send')
           )) {
-            await writeStream(session.datagrams.writable, KNOWN_BYTES)
+            const writer = session.datagrams.writable.getWriter()
+            let closed = false
+
+            // write datagrams until the client receives one and closes the connection
+            Promise.resolve().then(async () => {
+              // eslint-disable-next-line no-unmodified-loop-condition
+              while (!closed) {
+                try {
+                  await writer.ready
+                  await writer.write(Uint8Array.from([0, 1, 2, 3, 4]))
+                } catch {
+                  // the session can be closed while we are writing
+                }
+              }
+            })
+
+            await session.closed
+            closed = true
           }
         },
 
@@ -120,7 +137,7 @@ export async function createServer() {
           for await (const session of getReaderStream(
             server.sessionStream('/session_close')
           )) {
-            await session.close()
+            session.close()
           }
         },
 
@@ -129,7 +146,7 @@ export async function createServer() {
           for await (const session of getReaderStream(
             server.sessionStream('/session_close_with_reason')
           )) {
-            await session.close({
+            session.close({
               closeCode: 7,
               reason: 'this is the reason'
             })
@@ -169,14 +186,18 @@ export async function createServer() {
           }
         },
 
-        // delays reading from stream after writing, initiated by remote
+        // delays reading from stream after client writes
         async () => {
           for await (const session of getReaderStream(
-            server.sessionStream('/unidirectional_client_delay_before_close')
+            server.sessionStream('/unidirectional_server_delay_before_read')
           )) {
             const stream = await getReaderValue(
               session.incomingUnidirectionalStreams
             )
+
+            // wait before we read from the stream, should trigger backpressure
+            // on the client
+            await new Promise((resolve) => setTimeout(resolve, 1000))
 
             const received = await readStream(stream, KNOWN_BYTES.length)
 

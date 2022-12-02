@@ -72,7 +72,7 @@ describe('unidirectional streams', function () {
     this.timeout(10000)
 
     client = new WebTransport(
-      `${process.env.SERVER_URL}/unidirectional_client_delay_before_close`,
+      `${process.env.SERVER_URL}/unidirectional_server_delay_before_read`,
       {
         serverCertificateHashes: [
           {
@@ -93,7 +93,7 @@ describe('unidirectional streams', function () {
       await writer.write(buf)
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
     await writer.ready
     await writer.close()

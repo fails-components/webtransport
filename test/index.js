@@ -6,15 +6,28 @@ import { execa } from 'execa'
  */
 async function startServer() {
   return new Promise((resolve, reject) => {
+    let foundAddress = false
+
     const server = execa('node', ['./test/fixtures/server.js'])
     server.stdout?.on('data', (data) => {
-      const { address, certificate } = JSON.parse(data.toString())
+      if (!foundAddress) {
+        foundAddress = true
 
-      resolve({
-        server,
-        address,
-        certificate
-      })
+        const { address, certificate } = JSON.parse(data.toString())
+
+        resolve({
+          server,
+          address,
+          certificate
+        })
+
+        return
+      }
+
+      process.stdout.write(data)
+    })
+    server.stderr?.on('data', (data) => {
+      process.stdout.write(data)
     })
 
     server.catch((err) => reject(err))

@@ -3,9 +3,7 @@
 import WebTransport from './fixtures/webtransport.js'
 import { expect } from './fixtures/chai.js'
 import { readStream } from './fixtures/read-stream.js'
-import { writeStream } from './fixtures/write-stream.js'
 import { readCertHash } from './fixtures/read-cert-hash.js'
-import { KNOWN_BYTES } from './fixtures/known-bytes.js'
 import { pTimeout } from './fixtures/p-timeout.js'
 
 /**
@@ -38,9 +36,24 @@ describe('datagrams', function () {
     )
     await client.ready
 
-    await writeStream(client.datagrams.writable, KNOWN_BYTES)
+    const writer = client.datagrams.writable.getWriter()
+    let closed = false
+
+    // write datagrams until the server receives one and closes the connection
+    Promise.resolve().then(async () => {
+      // eslint-disable-next-line no-unmodified-loop-condition
+      while (!closed) {
+        try {
+          await writer.ready
+          await writer.write(Uint8Array.from([0, 1, 2, 3, 4]))
+        } catch {
+          // the session can be closed while we are writing
+        }
+      }
+    })
 
     const result = await client.closed
+    closed = true
 
     // should receive the default close info
     expect(result).to.have.property('reason', '')
