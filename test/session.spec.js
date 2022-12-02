@@ -10,9 +10,9 @@ import { expect } from './fixtures/chai.js'
  */
 
 describe('session', function () {
-  // FIXME: connection timeouts are hard-coded, these should be parameters then
-  // they can be set to something short and this timeout extension can be removed
-  this.timeout(30000)
+  // FIXME: sometimes there are seemingly arbitrary 5s delays in
+  // communicating with the server under node.js
+  this.timeout(10000)
 
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
