@@ -5,7 +5,6 @@
 import { Http3Server } from '../lib/index.js'
 import { runEchoServer } from './testsuite.js'
 import { existsSync, readFileSync, writeFile } from 'node:fs'
-// @ts-ignore
 import { generateWebTransportCertificate } from '../test/fixtures/certificate.js'
 
 let certificate = null
