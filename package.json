@@ -12,8 +12,8 @@
   "scripts": {
     "start": "node test/echoserver.js",
     "test": "npm run test:node && npm run test:chromium",
-    "test:node": "node test/node.js",
-    "test:chromium": "node test/browser.js",
+    "test:node": "node test/index.js node",
+    "test:chromium": "node test/index.js chromium",
     "oldtest": "node old_test/test.js",
     "install": "node build.js install",
     "build": "node build.js build",
@@ -37,7 +37,9 @@
   },
   "homepage": "https://github.com/fails-components/webtransport#readme",
   "dependencies": {
+    "@types/debug": "^4.1.7",
     "bindings": "^1.5.0",
+    "debug": "^4.3.4",
     "node-addon-api": "^4.3.0",
     "prebuild-install": "^7.1.1"
   },

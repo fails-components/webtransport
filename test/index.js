@@ -1,5 +1,9 @@
 import { execa } from 'execa'
 
+/**
+ * Run server as separate process so we can kill it without
+ * getting stuck waiting for the custom event loop to end.
+ */
 async function startServer () {
   return new Promise((resolve, reject) => {
     const server = execa('node', ['./test/fixtures/server.js'])
@@ -19,6 +23,7 @@ async function startServer () {
 
 /** @type {import('execa').ExecaChildProcess[]} */
 const procs = []
+let success = true
 
 try {
   const { server, address, certificate } = await startServer()
@@ -71,12 +76,13 @@ try {
     throw err
   }
 
-  console.info('caught error', err)
-
-  if (err.exitCode != null && err.exitCode !== 0) {
-    console.info('catch exit with code', err.exitCode)
-    process.exit(err.exitCode)
+  if (err.failed || err.timedOut || err.isCancelled || err.isKilled) {
+    success = false
   }
 } finally {
   procs.forEach(proc => proc.kill('SIGKILL'))
+
+  if (!success) {
+    process.exit(1)
+  }
 }

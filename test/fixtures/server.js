@@ -211,6 +211,7 @@ if (address == null) {
   throw new Error('Could not determine server address')
 }
 
+// tell the calling process how to contact us
 console.info(JSON.stringify({
   address: `https://${address.host}:${address.port}`,
   certificate: certificate.fingerprint
