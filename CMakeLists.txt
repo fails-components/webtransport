@@ -285,6 +285,8 @@ third_party/quiche/quiche/common/quiche_random.h
 third_party/quiche/quiche/common/quiche_text_utils.cc
 third_party/quiche/quiche/common/quiche_text_utils.h
 third_party/quiche/quiche/common/simple_buffer_allocator.cc
+third_party/quiche/quiche/common/structured_headers.h
+third_party/quiche/quiche/common/structured_headers.cc
 third_party/quiche/quiche/http2/adapter/data_source.h
 third_party/quiche/quiche/http2/adapter/event_forwarder.cc
 third_party/quiche/quiche/http2/adapter/event_forwarder.h
