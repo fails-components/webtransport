@@ -931,8 +931,7 @@ namespace quic
                 bool success =
                     event_loop->ArtificiallyNotifyEvent(fd, kSocketEventReadable);
                 QUICHE_DCHECK(success);
-            }
-            if (!event_loop->SupportsEdgeTriggered())
+            } else if (!event_loop->SupportsEdgeTriggered())
             {
                 bool success = event_loop->RearmSocket(fd, kSocketEventReadable);
                 QUICHE_DCHECK(success);
