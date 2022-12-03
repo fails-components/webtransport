@@ -9,5 +9,9 @@
        "args": [
           "/workspaces/webtransport/test/test.js"
        ]
+      /* "args": ["node_modules/.bin/_mocha",
+         "test/bidirectional-streams.spec.js"
+ //         "/workspaces/webtransport/test/test.js"
+       ] */
     }]
   }
