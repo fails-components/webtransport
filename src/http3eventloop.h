@@ -33,6 +33,7 @@ namespace quic
     class Http3WTSession;
     class Http3WTStream;
     class Http3EventLoop;
+    class WebTransportRespPromise;
 
     class LifetimeHelper
     {
@@ -47,28 +48,44 @@ namespace quic
         streamFinal
     };
 
+    enum NetworkStatus
+    {
+        NetError,
+        NetClose,
+        NetListening
+    };
+
     struct Http3Constructors
     {
         Napi::FunctionReference stream;
         Napi::FunctionReference session;
+    };
 
+    struct ServerStatusDetails
+    {
+        std::string host;
+        int port;
     };
 
     class Http3ProgressReport // actually struct would be a better fit but make napi happy
     {
     public:
+        using WebTransportRespPromise = JSlikePromise<Http3ServerBackend::WebTransportResponse>;
+        using WebTransportRespPromisePtr = std::shared_ptr<Http3ServerBackend::WebTransportRespPromise>;
         enum
         {
             ClientConnected,
             ClientWebTransportSupport,
             NewClientSession,
             NewSession,
+            NewSessionRequest,
             SessionReady,
             SessionClosed,
             IncomBiDiStream,
             IncomUniDiStream,
             OutgoBiDiStream,
             OutgoUniDiStream,
+            ServerStatus,
             StreamRecvSignal,
             StreamRead,
             StreamWrite,
@@ -91,21 +108,29 @@ namespace quic
         {
             WebTransportSessionError wtecode;
             NetworkTask nettask;
+            NetworkStatus status;
+            WebTransportSession *webtsession;
         };
         union
         {
             Http3WTStream *stream;               // unowned
             Http3WTSession *session;             // unowned
+            spdy::Http2HeaderBlock *headerblock; // we own it and must delete it after return from js
             Napi::ObjectReference *bufferhandle; // we own it and must delete it if present
             bool fin;
             WebTransportStreamError wtscode;
         };
         union
         {
-            bool success;
+            std::string *para = nullptr; // for session and others, we own it, and must delete it
+            ServerStatusDetails *details;
         };
-
-        std::string *para = nullptr; // for session, we own it, and must delete it
+        union
+        {
+            bool success;
+            WebTransportRespPromisePtr *promise;
+            Napi::Reference<Napi::Value> *header;
+        };
     };
 
     class Http3EventLoop : // may be replace char later
@@ -145,8 +170,6 @@ namespace quic
                 eventloop_->Destroy();
             }
 
-
-
         protected:
             Http3EventLoop *eventloop_;
         };
@@ -175,9 +198,15 @@ namespace quic
         void informClientWebtransportSupport(Http3Client *client);
         void informNewClientSession(Http3Client *client, Http3WTSession *session);
 
-        void informAboutNewSession(Http3Server *server, Http3WTSession *session, absl::string_view path);
+        using WebTransportRespPromise = JSlikePromise<Http3ServerBackend::WebTransportResponse>;
+        using WebTransportRespPromisePtr = std::shared_ptr<Http3ServerBackend::WebTransportRespPromise>;
+
+        void informAboutNewSessionRequest(Http3Server *server, WebTransportSession *session, spdy::Http2HeaderBlock *reqheadcopy, WebTransportRespPromisePtr promise);
+        void informAboutNewSession(Http3Server *server, Http3WTSession *session, absl::string_view path, Napi::Reference<Napi::Value> *header);
         void informSessionClosed(Http3WTSession *sessionobj, WebTransportSessionError error_code, absl::string_view error_message);
         void informSessionReady(Http3WTSession *sessionobj);
+
+        void informServerStatus(Http3Server *serverobj, NetworkStatus status, ServerStatusDetails *details);
 
         void informAboutStream(bool incom, bool bidir, Http3WTSession *sessionobj, Http3WTStream *stream);
         void informStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);
@@ -200,15 +229,18 @@ namespace quic
     private:
         QueueWorker *qw_;
 
-        bool checkQw() {
-            if (!qw_) {
+        bool checkQw()
+        {
+            if (!qw_)
+            {
                 Napi::Error::New(Env(), "Queueworker gone").ThrowAsJavaScriptException();
                 return false;
             }
             return true;
         }
 
-        void removeQw() {
+        void removeQw()
+        {
             qw_ = nullptr;
         }
 
@@ -235,9 +267,12 @@ namespace quic
         void processClientWebtransportSupport(Http3Client *client);
         void processNewClientSession(Http3Client *client, Http3WTSession *session);
 
-        void processNewSession(Http3Server *serverobj, Http3WTSession *session, const std::string &path);
+        void processNewSessionRequest(Http3Server *server, WebTransportSession *session, spdy::Http2HeaderBlock *reqheadcopy, WebTransportRespPromisePtr *promise);
+        void processNewSession(Http3Server *serverobj, Http3WTSession *session, const std::string &path, Napi::Reference<Napi::Value> *header);
         void processSessionClose(Http3WTSession *sessionobj, uint32_t errorcode, const std::string &path);
         void processSessionReady(Http3WTSession *sessionobj);
+
+        void processServerStatus(Http3Server *serverobj, NetworkStatus status, ServerStatusDetails *details);
 
         void processStream(bool incom, bool bidi, Http3WTSession *sessionobj, Http3WTStream *stream);
         void processStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);
@@ -257,7 +292,6 @@ namespace quic
         Napi::FunctionReference cbstream_;
         Napi::FunctionReference cbsession_;
         Napi::FunctionReference cbtransport_;
-
 
         bool loop_running_;
     };

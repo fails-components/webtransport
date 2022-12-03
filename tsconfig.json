@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+      "strict": true,
+      // project options
+      "outDir": "dist",
+      "allowJs": true,
+      "checkJs": true,
+      "target": "ES2020",
+      "module": "ES2022",
+      "lib": ["ES2021", "ES2021.Promise", "ES2021.String", "ES2020.BigInt", "DOM", "DOM.Iterable"],
+      "noEmit": false,
+      "noEmitOnError": true,
+      "emitDeclarationOnly": true,
+      "declaration": true,
+      "declarationMap": true,
+      "incremental": true,
+      "composite": true,
+      "isolatedModules": true,
+      "removeComments": false,
+      "sourceMap": true,
+      // module resolution
+      "esModuleInterop": true,
+      "moduleResolution": "node",
+      // linter checks
+      "noImplicitReturns": false,
+      "noFallthroughCasesInSwitch": true,
+      "noUnusedLocals": true,
+      "noUnusedParameters": false,
+      // advanced
+      "importsNotUsedAsValues": "error",
+      "forceConsistentCasingInFileNames": true,
+      "skipLibCheck": true,
+      "stripInternal": true,
+      "resolveJsonModule": true
+  },
+  "include": [
+      "lib",
+      "test"
+  ]
+}

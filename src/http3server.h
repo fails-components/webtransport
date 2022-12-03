@@ -50,6 +50,10 @@ namespace quic
 
         void addPath(const Napi::CallbackInfo &info);
 
+        void finishSessionRequest(const Napi::CallbackInfo &info);
+
+        void setJSRequestHandler(const Napi::CallbackInfo &info);
+
         static void InitExports(Napi::Env env, Napi::Object exports)
         {
             Napi::Function tplsrv = DefineClass(env, "Http3WebTransportServer",
@@ -58,7 +62,11 @@ namespace quic
                                                  InstanceMethod<&Http3ServerJS::stopServer>("stopServer",
                                                                                             static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                                  InstanceMethod<&Http3ServerJS::addPath>("addPath",
-                                                                                         static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
+                                                                                         static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                 InstanceMethod<&Http3ServerJS::finishSessionRequest>("finishSessionRequest",
+                                                                                                      static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                 InstanceMethod<&Http3ServerJS::setJSRequestHandler>("setJSRequestHandler",
+                                                                                                     static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
             exports.Set("Http3WebTransportServer", tplsrv);
         }
 
@@ -93,6 +101,14 @@ namespace quic
                            QuicSocketEventMask events) override;
 
         Http3ServerJS *getJS() { return js_; };
+
+        ServerStatusDetails *getStatusDetails()
+        {
+            ServerStatusDetails *details = new ServerStatusDetails();
+            details->host = host_;
+            details->port = port_;
+            return details;
+        }
 
     private:
         bool startServerInt();

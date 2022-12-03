@@ -3,18 +3,22 @@
 // found in the LICENSE file.
 
 import { echoTestsConnection } from './testsuite.js'
-import { WebTransport  } from '../src/webtransport.js'
+import { WebTransport } from '../lib/index.js'
 
+/**
+ * @param {{ hostname: string, port: number }} args
+ * @param {{ serverCertificateHashes: Array<{ algorithm: string, value: string }> }} hashes
+ */
 async function startClientTests(args, hashes) {
   const url = 'https://' + args.hostname + ':' + args.port + '/echo'
   console.log('startconnection')
-  const hashargs = { ...hashes }
-  hashargs.serverCertificateHashes = hashes.serverCertificateHashes.map(
-    (el) => ({
+  const hashargs = {
+    ...hashes,
+    serverCertificateHashes: hashes.serverCertificateHashes.map((el) => ({
       algorithm: el.algorithm,
       value: Buffer.from(el.value.split(':').map((el) => parseInt(el, 16)))
-    })
-  )
+    }))
+  }
   // eslint-disable-next-line no-undef
   console.log('hashagrs', hashargs)
   const transport = new WebTransport(url, hashargs)

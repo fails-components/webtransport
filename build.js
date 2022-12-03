@@ -1,6 +1,6 @@
 import { arch, argv, env, platform } from 'node:process'
 import { spawn } from 'node:child_process'
-import { rename, mkdtemp, rm, access } from 'node:fs/promises'
+import { cp, rename, mkdtemp, rm, access } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import path from 'node:path'
 import pkg from './package.json' assert { type: 'json' }
@@ -105,9 +105,16 @@ const extractthirdparty = async () => {
     try {
       await rm(destdir, { recursive: true, maxRetries: 10 })
     } catch (err) {
-      console.log('destdir does not exist: ', err)
+      console.log('destdir does not exist (only warning, ignore): ', err)
     }
-    await rename(path.join(copath, '/third_party'), destdir)
+    try {
+      await rename(path.join(copath, '/third_party'), destdir)
+    } catch (error) {
+      console.log('rename tmp dir failed:', error)
+      console.log('copy instead start... (can take a while)...')
+      await cp(path.join(copath, '/third_party'), destdir, {recursive: true})
+      console.log('copy instead finished')
+    }
   } catch (error) {
     console.error('failed to get third party code from git', error)
     fatal = true
@@ -157,6 +164,23 @@ const prebuildInstall = async (args) => {
   })
 }
 
+const buildTypes = async () => {
+  return new Promise((resolve, reject) => {
+    const tsc = 'tsc'
+    const proc = spawn(tsc, {
+      cwd: process.cwd(),
+      stdio: [null, 'inherit', 'inherit'],
+      shell: true
+    })
+
+    proc.on('close', (code) => {
+      if (code === 0) resolve(code)
+      else reject(code)
+      console.log(`child process exited with code ${code}`)
+    })
+  })
+}
+
 const execbuild = async (args) => {
   return new Promise((resolve, reject) => {
     const cmakejs = 'cmake-js'
@@ -184,14 +208,18 @@ if (argv.length > 2) {
   ]
   if (platform === 'win32') platformargs.push('-t', 'ClangCL')
   const pbargs = []
-  if (platform === 'win32') pbargs.push('-t', 'ClangCL')
   const pbargspre = []
-  if (env.BUILDARCH) pbargspre.push('--arch', env.BUILDARCH)
+  if (platform === 'win32') pbargs.push('-t', 'ClangCL') 
+  if (env.BUILDARCH) {
+    pbargspre.push('--arch', env.BUILDARCH)
+    platformargs.push('--arch', env.BUILDARCH)
+  }
   if (env.GH_TOKEN) pbargspre.push('--u', env.GH_TOKEN)
+
   switch (argv[2]) {
     case 'prebuild':
       try {
-        prebuild([
+        await prebuild([
           '-t',
           '6',
           '-r',
@@ -229,13 +257,13 @@ if (argv.length > 2) {
         await extractthirdparty()
       } catch (error) {
         console.error('Building binary failed: ', error)
-      
       }
     }
     // eslint-disable-next-line no-fallthrough
     case 'build':
       try {
-        execbuild(['build', ...platformargs])
+        await execbuild(['build', ...platformargs])
+        await buildTypes()
       } catch (error) {
         console.error('Building binary failed: ', error)
         process.exit(1)
@@ -243,7 +271,8 @@ if (argv.length > 2) {
       break
     case 'rebuild':
       try {
-        execbuild(['rebuild', ...platformargs])
+        await execbuild(['rebuild', ...platformargs])
+        await buildTypes()
       } catch (error) {
         console.error('ReBuilding binary failed: ', error)
         process.exit(1)
@@ -251,7 +280,8 @@ if (argv.length > 2) {
       break
     case 'build-debug':
       try {
-        execbuild(['build', '-D', ...platformargs])
+        await execbuild(['build', '-D', ...platformargs])
+        await buildTypes()
       } catch (error) {
         console.error('Building binary failed: ', error)
         process.exit(1)
@@ -259,10 +289,19 @@ if (argv.length > 2) {
       break
     case 'rebuild-debug':
       try {
-        execbuild(['rebuild', '-D', ...platformargs])
+        await execbuild(['rebuild', '-D', ...platformargs])
+        await buildTypes()
       } catch (error) {
         console.error('ReBuilding binary failed: ', error)
         process.exit(1)
+      }
+      break
+    case 'extract-thirdparty':
+      try {
+        // if we do not succeed, we have to build it ourselves
+        await extractthirdparty()
+      } catch (error) {
+        console.error('Extract third party failed: ', error)
       }
       break
     default:

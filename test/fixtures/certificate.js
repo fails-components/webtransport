@@ -53,16 +53,16 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
 
+// @ts-expect-error node-forge has no types and @types/node-forge do not include oids
 import forge from 'node-forge'
-import { webcrypto as crypto } from 'crypto'
-import { X509Certificate } from 'crypto'
+import { webcrypto as crypto, X509Certificate } from 'crypto'
 
 const { pki, asn1, oids } = forge
 // taken from node-forge
 /**
  * Converts an X.509 subject or issuer to an ASN.1 RDNSequence.
  *
- * @param obj the subject or issuer (distinguished name).
+ * @param {any} obj the subject or issuer (distinguished name).
  *
  * @return the ASN.1 RDNSequence.
  */
@@ -110,19 +110,19 @@ function _dnToAsn1(obj) {
   return rval
 }
 
+const jan_1_1950 = new Date('1950-01-01T00:00:00Z') // eslint-disable-line camelcase
+const jan_1_2050 = new Date('2050-01-01T00:00:00Z') // eslint-disable-line camelcase
 // taken from node-forge almost not modified
 /**
  * Converts a Date object to ASN.1
  * Handles the different format before and after 1st January 2050
  *
- * @param date date object.
+ * @param {Date} date date object.
  *
  * @return the ASN.1 object representing the date.
  */
-
-const jan_1_1950 = new Date('1950-01-01T00:00:00Z')
-const jan_1_2050 = new Date('2050-01-01T00:00:00Z')
 function _dateToAsn1(date) {
+  // eslint-disable-next-line camelcase
   if (date >= jan_1_1950 && date < jan_1_2050) {
     return asn1.create(
       asn1.Class.UNIVERSAL,
@@ -144,15 +144,15 @@ function _dateToAsn1(date) {
 /**
  * Convert signature parameters object to ASN.1
  *
- * @param {String} oid Signature algorithm OID
- * @param params The signature parametrs object
+ * @param {string} oid Signature algorithm OID
+ * @param {any} params The signature parameters object
  * @return ASN.1 object representing signature parameters
  */
 function _signatureParametersToAsn1(oid, params) {
+  const parts = []
+
   switch (oid) {
     case oids['RSASSA-PSS']:
-      const parts = []
-
       if (params.hash.algorithmOid !== undefined) {
         parts.push(
           asn1.create(asn1.Class.CONTEXT_SPECIFIC, 0, true, [
@@ -217,7 +217,7 @@ function _signatureParametersToAsn1(oid, params) {
 /**
  * Gets the ASN.1 TBSCertificate part of an X.509v3 certificate.
  *
- * @param cert the certificate.
+ * @param {any} cert the certificate.
  *
  * @return the asn1 TBSCertificate.
  */
@@ -319,6 +319,10 @@ function getTBSCertificate(cert) {
 // because serial numbers use ones' complement notation
 // this RFC in section 4.1.2.2 requires serial numbers to be positive
 // http://www.ietf.org/rfc/rfc5280.txt
+/**
+ * @param {string} hexString
+ * @returns
+ */
 function toPositiveHex(hexString) {
   let mostSiginficativeHexAsInt = parseInt(hexString[0], 16)
   if (mostSiginficativeHexAsInt < 8) {
@@ -330,9 +334,21 @@ function toPositiveHex(hexString) {
 }
 
 // the next is an edit of the selfsigned function reduced to the function necessary for webtransport
+/**
+ * @typedef {object} Certificate
+ * @property {string} public
+ * @property {string} private
+ * @property {string} cert
+ * @property {Uint8Array} hash
+ * @property {string} fingerprint
+ *
+ * @param {*} attrs
+ * @param {*} options
+ * @returns {Promise<Certificate | null>}
+ */
 export async function generateWebTransportCertificate(attrs, options) {
   try {
-    let keyPair = await crypto.subtle.generateKey(
+    const keyPair = await crypto.subtle.generateKey(
       {
         name: 'ECDSA',
         namedCurve: 'P-256'
@@ -355,7 +371,7 @@ export async function generateWebTransportCertificate(attrs, options) {
     cert.setSubject(attrs)
     cert.setIssuer(attrs)
 
-    let privateKey = crypto.subtle.exportKey('pkcs8', keyPair.privateKey)
+    const privateKey = crypto.subtle.exportKey('pkcs8', keyPair.privateKey)
     const publicKey = (cert.publicKey = await crypto.subtle.exportKey(
       'spki',
       keyPair.publicKey
@@ -392,7 +408,7 @@ export async function generateWebTransportCertificate(attrs, options) {
     oids['1.2.840.10045.4.3.2'] = 'ecdsa-with-sha256'
     oids['ecdsa-with-sha256'] = '1.2.840.10045.4.3.2'
 
-    cert.siginfo.algorithmOid = cert.signatureOid = '1.2.840.10045.4.3.2' //'ecdsa-with-sha256'
+    cert.siginfo.algorithmOid = cert.signatureOid = '1.2.840.10045.4.3.2' // 'ecdsa-with-sha256'
 
     cert.tbsCertificate = getTBSCertificate(cert)
     const encoded = Buffer.from(

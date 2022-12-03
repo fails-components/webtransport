@@ -6,8 +6,9 @@
        "name": "Launch Program",
        "preLaunchTask": "npm: build-debug",
        "program": "/usr/local/bin/node",
-       "args": [
-          "/workspaces/webtransport/test/test.js"
+       "args": ["node_modules/.bin/_mocha",
+         "test/bidirectional-streams.spec.js"
+ //         "/workspaces/webtransport/test/test.js"
        ]
       /* "args": ["node_modules/.bin/_mocha",
          "test/bidirectional-streams.spec.js"

@@ -4,8 +4,8 @@
 
 // this file runs various tests
 
-import { generateWebTransportCertificate } from './certificate.js'
-import { Http3Server, WebTransport, testcheck } from '../src/webtransport.js'
+import { generateWebTransportCertificate } from './fixtures/certificate.js'
+import { Http3Server, WebTransport, testcheck } from '../lib/index.js'
 import { echoTestsConnection, runEchoServer } from './testsuite.js'
 
 async function run() {
@@ -17,7 +17,28 @@ async function run() {
       console.log('global event loop gone, everything alright')
       process.exit(0)
     }
-  }, 40 * 1000)
+  }, 50 * 1000)
+  console.log('try connecting to server that does not exist')
+  const badClient = new WebTransport('https://127.0.0.1:49823/echo', {
+    serverCertificateHashes: [
+      {
+        algorithm: 'sha-256',
+        value: Buffer.from(
+          'a589bf4f98a0158aa890328d5d3f519b9e2a5b1e61b09eb10b7a9be0e79bf148',
+          'hex'
+        )
+      }
+    ]
+  })
+  await badClient.ready
+    .then(() => {
+      console.error('Successfully connected to a non-running server?!')
+      process.exit(1)
+    })
+    .catch(() => {
+      console.log('Did not connect to non-running server')
+    })
+
   console.log('start generating self signed certificate')
 
   const attrs = [
@@ -31,6 +52,10 @@ async function run() {
   const certificate = await generateWebTransportCertificate(attrs, {
     days: 13
   })
+
+  if (certificate == null) {
+    throw new Error('Certificate generation failed')
+  }
 
   console.log('start Http3Server and startup echo tests')
   // now ramp up the server
@@ -52,6 +77,7 @@ async function run() {
 
   const url = 'https://127.0.0.1:8080/echo'
 
+  /** @type {import('../lib/dom').WebTransport | null} */
   let client = new WebTransport(url, {
     serverCertificateHashes: [{ algorithm: 'sha-256', value: certificate.hash }]
   })

@@ -34,7 +34,7 @@ namespace quic
         friend Http3WTStreamJS;
 
     public:
-        Http3WTStream(WebTransportStream *stream, Http3EventLoop *eventloop) : stream_(stream), eventloop_(eventloop)
+        Http3WTStream(WebTransportStream *stream, Http3EventLoop *eventloop) : stream_(stream), eventloop_(eventloop), js_(nullptr)
         {
         }
 
@@ -93,8 +93,9 @@ namespace quic
         void tryRead()
         {
             pause_reading_ = false;
-            if (stream_ && stream_->ReadableBytes() > 0)
+            if (stream_ && ((stream_->ReadableBytes() > 0) || can_read_pending_))
             {
+                can_read_pending_ = false;
                 doCanRead();
             }
         }
@@ -107,6 +108,10 @@ namespace quic
         void setJS(Http3WTStreamJS  *js) { 
             js_ = js; 
         };
+
+        bool gone() {
+            return !stream_;
+        }
 
     protected:
         // internal functions called by js object
@@ -209,6 +214,7 @@ namespace quic
         bool fin_was_sent_ = false;
         bool stop_sending_received_ = false;
         bool pause_reading_ = false;
+        bool can_read_pending_ = false;
         std::deque<WChunks> chunks_;
     };
 

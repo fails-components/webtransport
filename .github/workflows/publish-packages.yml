@@ -11,14 +11,14 @@ on:
   workflow_dispatch:
     inputs:
       logLevel:
-        description: 'Log level'     
+        description: 'Log level'
         required: true
         default: 'warning'
       tags:
         description: 'Testing node.js package publish workflow'
-        required: true 
+        required: true
         type: string
-  
+
 jobs:
 # version check
   version-check:
@@ -43,7 +43,7 @@ jobs:
       - name: Check if version has been updated
         id: check
         uses: EndBug/version-check@v1
-        with: 
+        with:
          diff-search: true
 
       - name: Log when changed
@@ -55,12 +55,14 @@ jobs:
   prebuild:
     needs: version-check
     strategy:
-      matrix: 
+      matrix:
         os: [ubuntu-latest, windows-2019, macos-latest ]
         arch: [x64]
         include:
           - arch: ia32
             os: windows-2019
+          - arch: arm64
+            os: macos-latest
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -69,6 +71,15 @@ jobs:
      - name: Install missing software for Windows
        if: runner.os == 'Windows'
        run: choco install nasm -yv
+     - name: Debug CI/CD pipeline
+       run: |
+          echo ${{matrix.arch}}
+          echo ${{matrix.os}}
+          echo ${{matrix.arch == 'arm64'}}
+          echo ${{matrix.os == 'macos-latest'}}
+          echo ${{ matrix.arch == 'arm64' && matrix.os == 'macos-latest' }}
+          echo ${{matrix.arch == 'x64'}}
+          echo ${{ matrix.arch == 'x64' && matrix.os == 'macos-latest' }}
      - name: Checkout code
        uses: actions/checkout@v2
        with:
@@ -83,7 +94,7 @@ jobs:
 
      - name: Prebuild
        if: needs.version-check.outputs.changed == 'true'
-       env: 
+       env:
          BUILDARCH: ${{ matrix.arch }}
          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
        run: node build.js prebuild
@@ -92,7 +103,7 @@ jobs:
 #  prebuild-cross:
 #    needs: version-check
 #    strategy:
-#      matrix: 
+#      matrix:
 #        arch: [x64]
 #    runs-on: ubuntu-latest
 #    permissions:
@@ -115,10 +126,10 @@ jobs:
 #
 #      - name: Prebuild
 #        if: needs.version-check.outputs.changed == 'true'
-#        env: 
+#        env:
 #          BUILDARCH: ${{ matrix.arch }}
 #          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        run:  docker run --rm -v ${PWD}:/app -e BUILDARCH=${{ matrix.arch }} -e GH_TOKEN= ${{ secrets.GITHUB_TOKEN }} ghcr.io/prebuild/linux-${{ matrix.arch }} node build.js prebuild 
+#        run:  docker run --rm -v ${PWD}:/app -e BUILDARCH=${{ matrix.arch }} -e GH_TOKEN= ${{ secrets.GITHUB_TOKEN }} ghcr.io/prebuild/linux-${{ matrix.arch }} node build.js prebuild
 
 # steps for github
   publish-gpr:
@@ -141,6 +152,9 @@ jobs:
       - name: Install
         if: needs.version-check.outputs.changed == 'true'
         run: npm ci --ignore-scripts=true
+
+      - name: Build types
+        run: npm run types
 
       - run: npm publish --tag stable
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
@@ -179,6 +193,9 @@ jobs:
       - name: Install
         if: needs.version-check.outputs.changed == 'true'
         run: npm ci --ignore-scripts=true
+
+      - name: Build types
+        run: npm run types
 
       - run: npm publish --tag stable
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
