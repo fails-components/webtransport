@@ -1,6 +1,12 @@
 {
     "version": "0.2.0",
-    "configurations": [{
+    "configurations": [    {
+      "type": "lldb",
+      "name": "Attach to running node",
+      "request": "attach",
+      "program": "/usr/local/bin/node",
+      "pid": "${input:pidValue}"
+      },{
        "type": "lldb",
        "request": "launch",
        "name": "Launch Program",
@@ -14,5 +20,17 @@
          "test/bidirectional-streams.spec.js"
  //         "/workspaces/webtransport/test/test.js"
        ] */
-    }]
+    }],
+    "inputs": [
+       {
+         "id": "coreFileName",
+         "type": "promptString",
+         "description": "Enter core file path"
+       },
+       {
+          "id": "pidValue",
+          "type": "promptString",
+          "description": "Enter pid"
+        }
+     ] 
   }

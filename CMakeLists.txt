@@ -259,8 +259,8 @@ third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_fl
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_prefetch_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.h
-third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.cc
-third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.h
+# third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.cc
+# third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_iovec_impl.h
 third_party/quiche/quiche/common/print_elements.h
 third_party/quiche/quiche/common/quiche_buffer_allocator.cc

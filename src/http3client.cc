@@ -734,7 +734,15 @@ namespace quic
     {
         QUICHE_DCHECK(initialized_);
         QUICHE_DCHECK(!connected());
-        QuicPacketWriter *writer = new LevelTriggeredPacketWriter(GetLatestFD(), eventloop_->getQuicEventLoop());
+        QuicPacketWriter *writer;
+        if (eventloop_->getQuicEventLoop()->SupportsEdgeTriggered())
+        {
+            writer = new QuicDefaultPacketWriter(GetLatestFD());
+        }
+        else
+        {
+            writer = new LevelTriggeredPacketWriter(GetLatestFD(), eventloop_->getQuicEventLoop());
+        }
         ParsedQuicVersion mutual_version = UnsupportedQuicVersion();
         const bool can_reconnect_with_different_version =
             CanReconnectWithDifferentVersion(&mutual_version);
