@@ -1,4 +1,5 @@
 import { execa } from 'execa'
+import { OutputBuffer } from 'output-buffer'
 
 /**
  * Run server as separate process so we can kill it without
@@ -8,6 +9,9 @@ async function startServer() {
   return new Promise((resolve, reject) => {
     let foundAddress = false
 
+    const stdout = new OutputBuffer(console.info)
+    const stderr = new OutputBuffer(console.error)
+
     const server = execa('node', ['./test/fixtures/server.js'])
     server.stdout?.on('data', (data) => {
       if (!foundAddress) {
@@ -16,7 +20,6 @@ async function startServer() {
         const { address, certificate } = JSON.parse(data.toString())
 
         resolve({
-          server,
           address,
           certificate
         })
@@ -24,24 +27,26 @@ async function startServer() {
         return
       }
 
-      process.stdout.write(data)
+      stdout.append(data)
     })
     server.stderr?.on('data', (data) => {
-      process.stdout.write(data)
+      stderr.append(data)
     })
 
     server.catch((err) => reject(err))
+
+    server.finally(() => {
+      stdout.flush()
+      stderr.flush()
+    })
   })
 }
 
-/** @type {import('execa').ExecaChildProcess[]} */
-const procs = []
-let success = true
-
-try {
-  const { server, address, certificate } = await startServer()
-  procs.push(server)
-
+/**
+ * @param {string} certificate
+ * @param {string} serverAddress
+ */
+async function runTests(certificate, serverAddress) {
   const env = process.argv[2]
   /** @type {string} */
   let command = ''
@@ -61,23 +66,37 @@ try {
     args = ['./test/*.spec.js', ...process.argv.slice(3)]
   }
 
+  const stdout = new OutputBuffer(console.info)
+  const stderr = new OutputBuffer(console.error)
+
   const tests = execa(command, args, {
     env: {
       DEBUG_COLORS: process.env.CI ? '' : 'true',
       CERT_HASH: certificate,
-      SERVER_URL: address
+      SERVER_URL: serverAddress
     }
   })
   tests.stderr?.on('data', (data) => {
-    process.stdout.write(data)
+    stderr.append(data)
   })
   tests.stdout?.on('data', (data) => {
-    process.stdout.write(data)
+    stdout.append(data)
   })
 
-  procs.push(tests)
+  tests.finally(() => {
+    stdout.flush()
+    stderr.flush()
+  })
 
   await tests
+}
+
+let success = true
+
+try {
+  const { address, certificate } = await startServer()
+
+  await runTests(certificate, address)
 } catch (/** @type {any} */ err) {
   if (err.command == null) {
     // was not an execa error
@@ -88,9 +107,6 @@ try {
     success = false
   }
 } finally {
-  procs.forEach((proc) => proc.kill('SIGKILL'))
-
-  if (!success) {
-    process.exit(1)
-  }
+  // this will cause the server process to exit too as it is a child of this process
+  process.exit(success ? 0 : 1)
 }
