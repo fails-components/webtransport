@@ -168,7 +168,6 @@ add_library(gquiche STATIC
 #plattform impl
 platform/quiche_platform_impl/quiche_export_impl.h
 platform/quiche_platform_impl/quiche_logging_impl.h
-platform/quiche_platform_impl/quiche_logging_impl.cc
 platform/quiche_platform_impl/quiche_containers_impl.h
 platform/quiche_platform_impl/quiche_client_stats_impl.h
 platform/quiche_platform_impl/quiche_event_loop_impl.h
@@ -257,10 +256,11 @@ third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_fl
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_prefetch_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_logging_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.h
-# third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.cc
-# third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.cc
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_iovec_impl.h
 third_party/quiche/quiche/common/print_elements.h
 third_party/quiche/quiche/common/quiche_buffer_allocator.cc
