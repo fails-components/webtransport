@@ -112,8 +112,7 @@ namespace quic
         if (send_fin_)
         {
             bool success = stream_->SendFin();
-            QUICHE_DCHECK(success);
-            fin_was_sent_ = true;
+            if (success) fin_was_sent_ = true;
         }
     }
 

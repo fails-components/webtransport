@@ -1009,11 +1009,6 @@ endif()
 target_link_libraries(gquiche icu)
 
 
-if(APPLE)
-        target_compile_definitions (gquiche PRIVATE __APPLE_USE_RFC_3542)
-endif()
-
-
 # google quiche build parameters end
 
 #include_directories(${CMAKE_JS_INC})
