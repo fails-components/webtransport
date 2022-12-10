@@ -23,6 +23,14 @@ namespace quic
 
             stream_->chunks_.pop_front();
         }
+        if (!stream_->stop_sending_received_)
+        {
+            stream_->eventloop_->informStreamRecvSignal(stream_, 0, NetworkTask::stopSending);
+        }
+        if (!stream_->stream_was_reset_)
+        {
+            stream_->eventloop_->informStreamRecvSignal(stream_, 0, NetworkTask::resetStream);
+        }
         Http3WTStreamJS *strobj = stream_->getJS();
         if (strobj) {
             stream_->stream_ = nullptr;
@@ -48,6 +56,7 @@ namespace quic
         // replying with a FIN rather than a RESET_STREAM is more appropriate here.
         stream_->send_fin_ = true;
         OnCanWrite();*/
+        stream_->stream_was_reset_ = true;
         lasterror = error;
         stream_->eventloop_->informStreamRecvSignal(stream_, error, NetworkTask::resetStream); // may be move below
     }
