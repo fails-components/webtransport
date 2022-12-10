@@ -215,6 +215,7 @@ namespace quic
         bool stop_sending_received_ = false;
         bool pause_reading_ = false;
         bool can_read_pending_ = false;
+        bool stream_was_reset_ = false;
         std::deque<WChunks> chunks_;
     };
 
