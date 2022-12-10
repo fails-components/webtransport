@@ -107,8 +107,10 @@ namespace quic
   void Http3EventLoop::Schedule(std::function<void()> action)
   {
     // QUICHE_DCHECK(!quit_.HasBeenNotified());
-    QuicWriterMutexLock lock(&scheduled_actions_lock_);
-    scheduled_actions_.push_back(std::move(action));
+    {
+      QuicWriterMutexLock lock(&scheduled_actions_lock_);
+      scheduled_actions_.push_back(std::move(action));
+    }
     dynamic_cast<LibeventQuicEventLoop *>(quic_event_loop_.get())->WakeUp();
   }
 
