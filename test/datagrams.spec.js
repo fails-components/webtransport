@@ -44,6 +44,7 @@ describe('datagrams', function () {
     let closed = false
 
     // write datagrams until the server receives one and closes the connection
+    // eslint-disable-next-line promise/catch-or-return
     Promise.resolve().then(async () => {
       // eslint-disable-next-line no-unmodified-loop-condition
       while (!closed) {

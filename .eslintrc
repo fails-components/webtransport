@@ -23,6 +23,7 @@
   },
   "rules": {
     "space-before-function-paren": 0,
-    "import/export": 0
+    "import/export": 0,
+    "promise/catch-or-return": "error"
   }
 }

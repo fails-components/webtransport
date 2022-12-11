@@ -33,12 +33,12 @@ async function startServer() {
       stderr.append(data)
     })
 
-    server.catch((err) => reject(err))
-
-    server.finally(() => {
-      stdout.flush()
-      stderr.flush()
-    })
+    server
+      .finally(() => {
+        stdout.flush()
+        stderr.flush()
+      })
+      .catch((err) => reject(err))
   })
 }
 
@@ -83,6 +83,7 @@ async function runTests(certificate, serverAddress) {
     stdout.append(data)
   })
 
+  // eslint-disable-next-line promise/catch-or-return
   tests.finally(() => {
     stdout.flush()
     stderr.flush()

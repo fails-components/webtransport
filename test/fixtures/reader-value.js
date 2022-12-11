@@ -1,5 +1,10 @@
 /**
  * @template T
+ * @typedef {import('node:stream/web').ReadableStream<T>} ReadableStream<T>
+ */
+
+/**
+ * @template T
  * @param {ReadableStream<T>} readableStream
  * @returns {Promise<T>}
  */

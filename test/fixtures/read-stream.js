@@ -1,4 +1,9 @@
 /**
+ * @template T
+ * @typedef {import('node:stream/web').ReadableStream<T>} ReadableStream<T>
+ */
+
+/**
  * Read a stream contents to the end and return it
  *
  * @template T

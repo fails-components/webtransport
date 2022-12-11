@@ -10,10 +10,6 @@ import * as ui8 from 'uint8arrays'
 import { KNOWN_BYTES } from './fixtures/known-bytes.js'
 
 describe('unidirectional streams', function () {
-  // FIXME: sometimes there are seemingly arbitrary 5s delays in
-  // communicating with the server under node.js
-  this.timeout(30000)
-
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
 
@@ -73,7 +69,7 @@ describe('unidirectional streams', function () {
   })
 
   it('handles fin when paused due to backpressure', async function () {
-    this.timeout(30000)
+    this.timeout(5000)
 
     client = new WebTransport(
       `${process.env.SERVER_URL}/unidirectional_server_delay_before_read`,
