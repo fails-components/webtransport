@@ -1,3 +1,5 @@
+import type { ReadableStream } from 'node:stream/web'
+
 // Types taken from https://www.w3.org/TR/webtransport
 // These can be removed when they are added to the default typescript types
 

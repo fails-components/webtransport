@@ -69,7 +69,7 @@
     "output-buffer": "^2.0.0",
     "playwright-test": "^8.1.1",
     "prettier": "^2.4.1",
-    "typescript": "4.8.4",
+    "typescript": "^4.8.4",
     "uint8arrays": "^4.0.2"
   },
   "binary": {
