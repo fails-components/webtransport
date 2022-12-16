@@ -183,7 +183,7 @@ namespace quic
 
     void Http3Client::Initialize()
     {
-        priority_ = 3;
+        priority_ = QuicStreamPriority();
         connect_attempted_ = false;
         auto_reconnect_ = false;
         buffer_body_ = true;
@@ -390,8 +390,7 @@ namespace quic
                     SetLatestCreatedStream(stream);
                     if (latest_created_stream_)
                     {
-                        latest_created_stream_->SetPriority(
-                            spdy::SpdyStreamPrecedence(priority_));
+                        latest_created_stream_->SetPriority(priority_);
                     }
                     finish(latest_created_stream_);
                 });

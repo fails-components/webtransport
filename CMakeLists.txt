@@ -224,6 +224,8 @@ third_party/googleurl/url/url_parse_file.cc
 third_party/googleurl/url/url_canon_host.cc
 third_party/googleurl/url/url_canon_ip.cc
 third_party/googleurl/url/url_constants.cc
+third_party/googleurl/url/url_features.cc
+third_party/googleurl/url/url_features.h
 third_party/googleurl/url/url_util.cc
 third_party/googleurl/url/url_util.h
 third_party/googleurl/url/gurl.cc
@@ -788,6 +790,8 @@ third_party/quiche/quiche/quic/core/quic_stream.h
 third_party/quiche/quiche/quic/core/quic_stream_frame_data_producer.h
 third_party/quiche/quiche/quic/core/quic_stream_id_manager.cc
 third_party/quiche/quiche/quic/core/quic_stream_id_manager.h
+third_party/quiche/quiche/quic/core/quic_stream_priority.cc
+third_party/quiche/quiche/quic/core/quic_stream_priority.h
 third_party/quiche/quiche/quic/core/quic_stream_send_buffer.cc
 third_party/quiche/quiche/quic/core/quic_stream_send_buffer.h
 third_party/quiche/quiche/quic/core/quic_stream_sequencer.cc
@@ -910,6 +914,8 @@ ELSE(WIN32)
     third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
     )
 ENDIF(WIN32)
+
+target_compile_options(gquiche PRIVATE -flax-vector-conversions)
 
 
 add_custom_command(
