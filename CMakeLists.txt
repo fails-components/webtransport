@@ -911,6 +911,8 @@ ELSE(WIN32)
     )
 ENDIF(WIN32)
 
+target_compile_options(gquiche PRIVATE -flax-vector-conversions)
+
 
 add_custom_command(
 OUTPUT
