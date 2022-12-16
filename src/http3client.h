@@ -245,7 +245,7 @@ namespace quic
 
         void set_auto_reconnect(bool reconnect) { auto_reconnect_ = reconnect; }
 
-        void set_priority(spdy::SpdyPriority priority) { priority_ = priority; }
+        void set_priority(QuicStreamPriority priority) { priority_ = priority; }
 
         void WaitForWriteToFlush();
 
@@ -404,7 +404,7 @@ namespace quic
         // Parsed response trailers (if present), copied from the stream in OnClose.
         spdy::Http2HeaderBlock response_trailers_;
 
-        spdy::SpdyPriority priority_;
+        QuicStreamPriority priority_;
         std::string response_;
         // bytes_read_ and bytes_written_ are updated only when stream_ is released;
         // prefer bytes_read() and bytes_written() member functions.

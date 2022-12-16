@@ -44,14 +44,14 @@ namespace quic
     public:
       PromisedStreamInfo(spdy::Http2HeaderBlock request_headers,
                          QuicStreamId stream_id,
-                         const spdy::SpdyStreamPrecedence &precedence)
+                         const QuicStreamPriority &priority)
           : request_headers(std::move(request_headers)),
             stream_id(stream_id),
-            precedence(precedence),
+            priority(priority),
             is_cancelled(false) {}
       spdy::Http2HeaderBlock request_headers;
       QuicStreamId stream_id;
-      spdy::SpdyStreamPrecedence precedence;
+      QuicStreamPriority priority;
       bool is_cancelled;
     };
 
