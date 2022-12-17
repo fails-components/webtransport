@@ -242,13 +242,9 @@ if (address == null) {
 }
 
 // tell the calling process how to contact us
-console.info(
-  JSON.stringify(
-    {
-      address: `https://${address.host}:${address.port}`,
-      certificate: certificate.fingerprint
-    },
-    null,
-    2
-  )
-)
+if (process.send)
+  process.send({
+    address: `https://${address.host}:${address.port}`,
+    certificate: certificate.fingerprint
+  })
+else console.error('No IPC channel')

@@ -1,5 +1,4 @@
 import { execa } from 'execa'
-import { OutputBuffer } from 'output-buffer'
 
 /**
  * Run server as separate process so we can kill it without
@@ -9,36 +8,16 @@ async function startServer() {
   return new Promise((resolve, reject) => {
     let foundAddress = false
 
-    const stdout = new OutputBuffer(console.info)
-    const stderr = new OutputBuffer(console.error)
-
-    const server = execa('node', ['./test/fixtures/server.js'])
-    server.stdout?.on('data', (data) => {
+    const server = execa('node', ['./test/fixtures/server.js'], {
+      stdio: ['inherit', 'inherit', 'inherit', 'ipc']
+    })
+    server.on('message', (data) => {
       if (!foundAddress) {
         foundAddress = true
 
-        const { address, certificate } = JSON.parse(data.toString())
-
-        resolve({
-          address,
-          certificate
-        })
-
-        return
+        resolve(data)
       }
-
-      stdout.append(data)
     })
-    server.stderr?.on('data', (data) => {
-      stderr.append(data)
-    })
-
-    server
-      .finally(() => {
-        stdout.flush()
-        stderr.flush()
-      })
-      .catch((err) => reject(err))
   })
 }
 
@@ -66,27 +45,13 @@ async function runTests(certificate, serverAddress) {
     args = ['./test/*.spec.js', ...process.argv.slice(3)]
   }
 
-  const stdout = new OutputBuffer(console.info)
-  const stderr = new OutputBuffer(console.error)
-
   const tests = execa(command, args, {
     env: {
       DEBUG_COLORS: process.env.CI ? '' : 'true',
       CERT_HASH: certificate,
       SERVER_URL: serverAddress
-    }
-  })
-  tests.stderr?.on('data', (data) => {
-    stderr.append(data)
-  })
-  tests.stdout?.on('data', (data) => {
-    stdout.append(data)
-  })
-
-  // eslint-disable-next-line promise/catch-or-return
-  tests.finally(() => {
-    stdout.flush()
-    stderr.flush()
+    },
+    stdio: ['inherit', 'inherit', 'inherit']
   })
 
   await tests
