@@ -913,7 +913,10 @@ ELSE(WIN32)
     target_sources(gquiche PRIVATE third_party/quiche/quiche/quic/core/io/socket_posix.cc
     third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
     )
+    IF(APPLE)
+    ELSE(APPLE)
     target_link_libraries(gquiche -static-libgcc -static-libstdc++)
+    ENDIF(APPLE)
 ENDIF(WIN32)
 
 target_compile_options(gquiche PRIVATE -flax-vector-conversions)
@@ -1031,7 +1034,10 @@ set_target_properties(${PROJECT_NAME}  PROPERTIES LINKER_LANGUAGE CXX)
 IF (WIN32)
   # place for custum window stuff
 ELSE(WIN32)
+IF(APPLE)
+ELSE(APPLE)
     target_link_libraries(${PROJECT_NAME} -static-libgcc -static-libstdc++)
+ENDIF(APPLE)
 ENDIF(WIN32)
 
 execute_process(COMMAND node -p "require('node-addon-api').include"
