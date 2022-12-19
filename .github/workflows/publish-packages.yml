@@ -32,17 +32,17 @@ jobs:
       packages: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
 
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v3
         with:
           node-version: 16
           registry-url: https://npm.pkg.github.com/
       - name: Check if version has been updated
         id: check
-        uses: EndBug/version-check@v1
+        uses: EndBug/version-check@v2
         with:
          diff-search: true
 
@@ -81,10 +81,10 @@ jobs:
           echo ${{matrix.arch == 'x64'}}
           echo ${{ matrix.arch == 'x64' && matrix.os == 'macos-latest' }}
      - name: Checkout code
-       uses: actions/checkout@v2
+       uses: actions/checkout@v3
        with:
         submodules: recursive
-     - uses: actions/setup-node@v2
+     - uses: actions/setup-node@v3
        with:
          node-version: 16
          registry-url: https://npm.pkg.github.com/
@@ -140,11 +140,11 @@ jobs:
       packages: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
 
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v3
         with:
           node-version: 16
           registry-url: https://npm.pkg.github.com/
@@ -181,11 +181,11 @@ jobs:
       packages: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: recursive
 
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v3
         with:
           node-version: 16
           registry-url: https://registry.npmjs.org/
