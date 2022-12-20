@@ -28,7 +28,7 @@ jobs:
           submodules: recursive
 
       - name: Set up NodeJS
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: 16
 
