@@ -214,8 +214,8 @@ export async function createServer() {
                   reason: 'data did not match'
                 })
               } else {
-                await new Promise((resolve) => setTimeout(resolve, 1000)) // time out is needed, since it can be received before the read is complete
-                // and we want tthe client to close the session after it has processeed the read
+                await new Promise((resolve) => setTimeout(resolve, 2000)) // time out is needed, since it can be received before the read is complete
+                // and we want the client to close the session after it has processeed the read
                 session.close()
               }
             }
