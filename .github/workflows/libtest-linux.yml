@@ -45,7 +45,7 @@ jobs:
         run: NODE_ENV=production npm run test:node
 
       - name: Run browser unit tests
-        run: NODE_ENV=production DEBUG=webtransport npm run test:chromium
+        run: NODE_ENV=production npm run test:chromium
 
       - name: Run old unit tests
         run: NODE_ENV=production npm run oldtest

@@ -15,10 +15,6 @@ namespace quic
             session_->eventloop_->informUnref(sessobj);
         else
             delete session_;
-   /*     if (session_->session_) {
-            session_->session_ = nullptr;
-            session_->eventloop_->informSessionClosed(session_, 0, "");
-        } */
         session_ = nullptr;
     }
 
