@@ -51,6 +51,7 @@ describe('datagrams', function () {
         try {
           await writer.ready
           await writer.write(Uint8Array.from([0, 1, 2, 3, 4]))
+          await new Promise((resolve) => setTimeout(resolve, 100))
         } catch {
           // the session can be closed while we are writing
         }
