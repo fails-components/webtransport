@@ -93,7 +93,6 @@ namespace quic
             StreamNetworkFinish,
             DatagramReceived,
             DatagramSend,
-            DatagramBufferFree,
             Unref
         } type;
         union
@@ -216,8 +215,7 @@ namespace quic
         void informAboutStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task);
 
         void informDatagramReceived(Http3WTSession *sessionobj, absl::string_view datagram);
-        void informDatagramBufferFree(Napi::ObjectReference *bufferhandle);
-        void informDatagramSend(Http3WTSession *sessionobj);
+        void informDatagramSend(Http3WTSession *sessionobj, Napi::ObjectReference *bufferhandle);
 
         void informUnref(LifetimeHelper *obj);
 
@@ -282,8 +280,7 @@ namespace quic
         void processStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task);
 
         void processDatagramReceived(Http3WTSession *sessionobj, std::string *datagram);
-        void processDatagramSend(Http3WTSession *sessionobj);
-        void processDatagramBufferFree(Napi::ObjectReference *bufferhandle);
+        void processDatagramSend(Http3WTSession *sessionobj, Napi::ObjectReference *bufferhandle);
 
         bool shutDownEventLoopInt();
 
