@@ -12,8 +12,6 @@
 #include "src/http3serversession.h"
 
 #include "absl/strings/string_view.h"
-#include "quiche/quic/core/quic_epoll_alarm_factory.h"
-#include "quiche/quic/core/quic_epoll_connection_helper.h"
 
 namespace quic {
 
@@ -25,14 +23,16 @@ Http3Dispatcher::Http3Dispatcher(
     std::unique_ptr<QuicCryptoServerStreamBase::Helper> session_helper,
     std::unique_ptr<QuicAlarmFactory> alarm_factory,
     Http3ServerBackend* http3_server_backend,
-    uint8_t expected_server_connection_id_length)
+    uint8_t expected_server_connection_id_length,
+    ConnectionIdGeneratorInterface& generator)
     : QuicDispatcher(config,
                      crypto_config,
                      version_manager,
                      std::move(helper),
                      std::move(session_helper),
                      std::move(alarm_factory),
-                     expected_server_connection_id_length),
+                     expected_server_connection_id_length,
+                     generator),
       http3_server_backend_(http3_server_backend) {}
 
 Http3Dispatcher::~Http3Dispatcher() = default;
@@ -49,7 +49,7 @@ std::unique_ptr<QuicSession> Http3Dispatcher::CreateQuicSession(
       new QuicConnection(connection_id, self_address, peer_address, helper(),
                          alarm_factory(), writer(),
                          /* owns_writer= */ false, Perspective::IS_SERVER,
-                         ParsedQuicVersionVector{version});
+                         ParsedQuicVersionVector{version}, connection_id_generator());
 
   auto session = std::make_unique<Http3ServerSession>(
       config(), GetSupportedVersions(), connection, this, session_helper(),

@@ -11,7 +11,8 @@
 #ifndef HTTP3_WT_STREAM_VISITOR_H_
 #define HTTP3_WT_STREAM_VISITOR_H_
 
-#include <nan.h>
+#include <napi.h>
+#include <uv.h>
 
 #include <string>
 
@@ -26,13 +27,18 @@ namespace quic
 {
     class Http3EventLoop;
 
-    class Http3WTStream : public Nan::ObjectWrap
-    {
-    public:
-        Http3WTStream(WebTransportStream *stream, Http3EventLoop *eventloop)
-            : stream_(stream), eventloop_(eventloop) {}
+    class Http3WTStreamJS;
 
-        ~Http3WTStream(){printf("stream destruct %x\n", this);};
+    class Http3WTStream
+    {
+        friend Http3WTStreamJS;
+
+    public:
+        Http3WTStream(WebTransportStream *stream, Http3EventLoop *eventloop) : stream_(stream), eventloop_(eventloop), js_(nullptr)
+        {
+        }
+
+        ~Http3WTStream(){/*printf("stream destruct %x\n", this);*/};
 
         class Visitor : public WebTransportStreamVisitor
         {
@@ -51,17 +57,10 @@ namespace quic
                 stream_->doCanWrite();
             }
 
-            void OnResetStreamReceived(WebTransportStreamError error) override
-            {
-                // Send FIN in response to a stream reset.  We want to test that we can
-                // operate one side of the stream cleanly while the other is reset, thus
-                // replying with a FIN rather than a RESET_STREAM is more appropriate here.
-                lasterror = error;
-                stream_->send_fin_ = true;
-                OnCanWrite();
-            }
+            void OnResetStreamReceived(WebTransportStreamError error) override;
+
             void OnStopSendingReceived(WebTransportStreamError /*error*/) override;
-            
+
             void OnWriteSideInDataRecvdState() override;
 
             void OnStopReading()
@@ -85,7 +84,7 @@ namespace quic
 
         void tryWrite()
         {
-            if (stream_->CanWrite())
+            if (stream_ && stream_->CanWrite())
             {
                 doCanWrite();
             }
@@ -94,149 +93,100 @@ namespace quic
         void tryRead()
         {
             pause_reading_ = false;
-            if (stream_->ReadableBytes() > 0)
+            if (stream_ && ((stream_->ReadableBytes() > 0) || can_read_pending_))
             {
+                can_read_pending_ = false;
                 doCanRead();
             }
         }
 
-        // nan stuff
-
-        static NAN_METHOD(startReading)
+        Http3WTStreamJS  *getJS()
         {
-            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
-            if (!info[0]->IsUndefined())
-            {
-                v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-
-                std::function<void()> task = [obj]()
-                { if (!obj->stream_) return; // we do not have to cancel a promise?
-                  obj->tryRead(); };
-                obj->eventloop_->Schedule(task);
-            }
+            return js_;
         }
 
-        static NAN_METHOD(stopReading)
-        {
-            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
-            if (!info[0]->IsUndefined())
-            {
-                v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+        void setJS(Http3WTStreamJS  *js) { 
+            js_ = js; 
+        };
 
-                std::function<void()> task = [obj]()
-                { obj->doStopReading(); };
-                obj->eventloop_->Schedule(task);
-            }
-        }
-
-        static NAN_METHOD(readByob)
-        {
-            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
-            // ok we have to get the buffer
-            if (!info[0]->IsUndefined())
-            {
-                v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-                v8::Local<v8::Object> bufferlocal = info[0]->ToObject(context).ToLocalChecked();
-                Nan::Persistent<v8::Object> *bufferHandle = new Nan::Persistent<v8::Object>(bufferlocal);
-                char *buffer = node::Buffer::Data(bufferlocal);
-                size_t len = node::Buffer::Length(bufferlocal);
-
-                std::function<void()> task = [obj, bufferHandle, buffer, len]()
-                { obj->readByobInt(buffer, len, bufferHandle); };
-                obj->eventloop_->Schedule(task);
-            }
-        }
-
-        static NAN_METHOD(writeChunk)
-        {
-            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
-            // ok we have to get the buffer
-            if (!info[0]->IsUndefined())
-            {
-                v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-                v8::Local<v8::Object> bufferlocal = info[0]->ToObject(context).ToLocalChecked();
-                Nan::Persistent<v8::Object> *bufferHandle = new Nan::Persistent<v8::Object>(bufferlocal);
-                char *buffer = node::Buffer::Data(bufferlocal);
-                size_t len = node::Buffer::Length(bufferlocal);
-
-                std::function<void()> task = [obj, bufferHandle, buffer, len]()
-                { obj->writeChunkInt(buffer, len, bufferHandle); };
-                obj->eventloop_->Schedule(task);
-            }
-        }
-
-        static NAN_METHOD(closeStream)
-        {
-            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
-            std::function<void()> task = [obj]()
-            { obj->send_fin_ = true; };
-        }
-
-        static NAN_METHOD(resetStream)
-        {
-            Http3WTStream *obj = Nan::ObjectWrap::Unwrap<Http3WTStream>(info.Holder());
-            int code = 0;
-            v8::Isolate *isolate = info.GetIsolate();
-            unsigned int reason = 0;
-
-            if (!info[0]->IsUndefined())
-            {
-                v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-                v8::Local<v8::Int32> reasonl = info[0]->ToInt32(context).ToLocalChecked();
-                reason = Nan::To<unsigned int>(reasonl).FromJust();
-                
-            }
-
-            std::function<void()> task = [obj,reason]()
-            { obj->stream_->ResetWithUserCode(reason); };
-            obj->eventloop_->Schedule(task);
-        }
-
-        static NAN_METHOD(New)
-        {
-            if (!info.IsConstructCall())
-            {
-                return Nan::ThrowError("Http3WTStream() must be called as a constructor");
-            }
-
-            if (info.Length() != 1 || !info[0]->IsExternal())
-            {
-                return Nan::ThrowError("Http3WTStream() can only be called internally");
-            }
-
-            Http3WTStream *obj = static_cast<Http3WTStream *>(info[0].As<v8::External>()->Value());
-            obj->Wrap(info.This());
-            info.GetReturnValue().Set(info.This());
-        }
-
-        static v8::Local<v8::Object> NewInstance(Http3WTStream *sv)
-        {
-            Nan::EscapableHandleScope scope;
-
-            const unsigned argc = 1;
-            v8::Local<v8::Value> argv[argc] = {Nan::New<v8::External>(sv)};
-            v8::Local<v8::Function> constr = Nan::New<v8::Function>(constructor());
-            v8::Local<v8::Object> instance = Nan::NewInstance(constr, argc, argv).ToLocalChecked();
-
-            sv->Ref();
-
-            return scope.Escape(instance);
-        }
-
-        static inline Nan::Persistent<v8::Function> &constructor()
-        {
-            static Nan::Persistent<v8::Function> myconstr;
-            return myconstr;
+        bool gone() {
+            return !stream_;
         }
 
     protected:
+        // internal functions called by js object
+        void startReadingInt()
+        {
+
+            std::function<void()> task = [this]()
+            { if (!stream_) return; // we do not have to cancel a promise?
+                    tryRead(); };
+            eventloop_->Schedule(task);
+        }
+        void stopReadingInt()
+        {
+            std::function<void()> task = [this]()
+            { doStopReading(); };
+            eventloop_->Schedule(task);
+        }
+
+        void writeChunkIntJS(char *buffer, size_t len, Napi::ObjectReference *bufferhandle)
+        {
+            std::function<void()> task = [this, bufferhandle, buffer, len]()
+            { writeChunkInt(buffer, len, bufferhandle); };
+            eventloop_->Schedule(task);
+        }
+
+        void readByobIntJS(char *buffer, size_t len, Napi::ObjectReference *bufferhandle)
+        {
+            std::function<void()> task = [this, bufferhandle, buffer, len]()
+            { readByobInt(buffer, len, bufferhandle); };
+            eventloop_->Schedule(task);
+        }
+
+        void streamFinalInt()
+        {
+            std::function<void()> task = [this]()
+            {
+                send_fin_ = true;
+                tryWrite();
+            };
+            eventloop_->Schedule(task);
+        }
+
+        void stopSendingInt(unsigned int reason)
+        {
+            std::function<void()> task = [this, reason]()
+            {
+                if (stream_)
+                {
+                    stream_->SendStopSending(reason);
+                    eventloop_->informAboutStreamNetworkFinish(this, NetworkTask::stopSending);
+                }
+            };
+            eventloop_->Schedule(task);
+        }
+
+        void resetStreamInt(unsigned int reason)
+        {
+            std::function<void()> task = [this, reason]()
+            {
+                if (stream_)
+                {
+                    stream_->ResetWithUserCode(reason);
+                    eventloop_->informAboutStreamNetworkFinish(this, NetworkTask::resetStream);
+                }
+            };
+            eventloop_->Schedule(task);
+        }
+
         WebTransportStream *stream() { return stream_; }
 
         struct WChunks
         {
             char *buffer;
             size_t len;
-            Nan::Persistent<v8::Object> *bufferhandle;
+            Napi::ObjectReference *bufferhandle;
         };
 
         struct RByobs
@@ -244,11 +194,16 @@ namespace quic
             char *buffer;
             size_t len;
             size_t lenread;
-            Nan::Persistent<v8::Object> *bufferhandle;
+            Napi::ObjectReference *bufferhandle;
         };
 
-        void writeChunkInt(char *buffer, size_t len, Nan::Persistent<v8::Object> *bufferhandle)
+        void writeChunkInt(char *buffer, size_t len, Napi::ObjectReference *bufferhandle)
         {
+            if (fin_was_sent_ || send_fin_)
+            {
+                cancelWrite(bufferhandle);
+                return;
+            }
             if (!stream_)
             {
                 cancelWrite(bufferhandle);
@@ -262,7 +217,7 @@ namespace quic
             tryWrite();
         }
 
-        void readByobInt(char *buffer, size_t len, Nan::Persistent<v8::Object> *bufferhandle)
+        void readByobInt(char *buffer, size_t len, Napi::ObjectReference *bufferhandle)
         {
             if (!stream_)
             {
@@ -278,16 +233,142 @@ namespace quic
             tryRead();
         }
 
-        void cancelWrite(Nan::Persistent<v8::Object> *handle);
+        void cancelWrite(Napi::ObjectReference *handle);
 
     private:
+       
+        Http3WTStreamJS *js_;
+
         WebTransportStream *stream_;
         Http3EventLoop *eventloop_;
         bool send_fin_ = false;
+        bool fin_was_sent_ = false;
         bool stop_sending_received_ = false;
         bool pause_reading_ = false;
+        bool can_read_pending_ = false;
+        bool stream_was_reset_ = false;
         std::deque<WChunks> chunks_;
         std::deque<RByobs> byobs_;
+    };
+
+    class Http3WTStreamJS : public Napi::ObjectWrap<Http3WTStreamJS>, public LifetimeHelper
+    {
+    public:
+        Http3WTStreamJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Http3WTStreamJS>(info)
+        {
+        }
+
+        void init(Http3WTStream *wtstream);
+
+        // nan stuff
+
+        void startReading(const Napi::CallbackInfo &info)
+        {
+            wtstream_->startReadingInt();
+        }
+
+        void stopReading(const Napi::CallbackInfo &info)
+        {
+            wtstream_->stopReadingInt();
+        }
+
+        void writeChunk(const Napi::CallbackInfo &info)
+        {
+            // ok we have to get the buffer
+
+            const Napi::Object bufferlocal = info[0].ToObject();
+            Napi::ObjectReference *bufferhandle = new Napi::ObjectReference();
+            *bufferhandle = Napi::Persistent(bufferlocal);
+
+            char *buffer = bufferlocal.As<Napi::Buffer<char>>().Data();
+            size_t len = bufferlocal.As<Napi::Buffer<char>>().Length();
+
+            wtstream_->writeChunkIntJS(buffer, len, bufferhandle);
+        }
+
+        void readByob(const Napi::CallbackInfo &info)
+        {
+            // ok we have to get the buffer
+
+            const Napi::Object bufferlocal = info[0].ToObject();
+            Napi::ObjectReference *bufferhandle = new Napi::ObjectReference();
+            *bufferhandle = Napi::Persistent(bufferlocal);
+
+            char *buffer = bufferlocal.As<Napi::Buffer<char>>().Data();
+            size_t len = bufferlocal.As<Napi::Buffer<char>>().Length();
+
+             wtstream_->readByobIntJS(buffer, len, bufferhandle);
+
+        }
+
+        void streamFinal(const Napi::CallbackInfo &info)
+        {
+            wtstream_->streamFinalInt();
+        }
+
+        void stopSending(const Napi::CallbackInfo &info)
+        {
+            unsigned int reason = 0;
+
+            if (!info[0].IsUndefined())
+            {
+                Napi::Number reasonl = info[0].ToNumber();
+                reason = reasonl.Int32Value();
+            }
+
+            wtstream_->stopSendingInt(reason);
+        }
+
+        void resetStream(const Napi::CallbackInfo &info)
+        {
+            int code = 0;
+            unsigned int reason = 0;
+
+            if (!info[0].IsUndefined())
+            {
+                Napi::Number reasonl = info[0].ToNumber();
+                reason = reasonl.Int32Value();
+            }
+
+            wtstream_->resetStreamInt(reason);
+        }
+
+        static void InitExports(Napi::Env env, Napi::Object exports, Http3Constructors * constr)
+        {
+            Napi::Function tplwtsv =
+                DefineClass(env, "Http3WTStreamVisitor",
+                            {InstanceMethod<&Http3WTStreamJS::writeChunk>("writeChunk",
+                                                                          static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                             InstanceMethod<&Http3WTStreamJS::writeChunk>("readByob",
+                                                                          static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                             InstanceMethod<&Http3WTStreamJS::resetStream>("resetStream",
+                                                                           static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                             InstanceMethod<&Http3WTStreamJS::stopSending>("stopSending", static_cast<napi_property_attributes>(napi_writable | napi_configurable)), InstanceMethod<&Http3WTStreamJS::streamFinal>("streamFinal", static_cast<napi_property_attributes>(napi_writable | napi_configurable)), InstanceMethod<&Http3WTStreamJS::startReading>("startReading", static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                             InstanceMethod<&Http3WTStreamJS::startReading>("startReading",
+                                                                           static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                             InstanceMethod<&Http3WTStreamJS::stopReading>("stopReading",
+                                                                           static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
+            constr->stream  = Napi::Persistent(tplwtsv); 
+            exports.Set("Http3WTStreamVisitor", tplwtsv);
+        }
+
+        void setObj(Http3WTStream *wtstream)
+        {
+            wtstream_ = std::unique_ptr<Http3WTStream>(wtstream);
+        }
+
+        Http3WTStream *getObj()
+        {
+            return wtstream_.get();
+        }
+
+        void doUnref() override
+        {
+            Unref();
+        }
+
+    protected:
+        std::unique_ptr<Http3WTStream> wtstream_;
     };
 }
 

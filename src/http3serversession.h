@@ -26,7 +26,6 @@
 #include "quiche/quic/core/http/quic_spdy_session.h"
 #include "quiche/quic/core/quic_crypto_server_stream_base.h"
 #include "quiche/quic/core/quic_packets.h"
-#include "quiche/quic/platform/api/quic_containers.h"
 //#include "quic/tools/quic_backend_response.h"
 #include "src/http3serverbackend.h"
 #include "src/http3serverstream.h" // todo
@@ -45,14 +44,14 @@ namespace quic
     public:
       PromisedStreamInfo(spdy::Http2HeaderBlock request_headers,
                          QuicStreamId stream_id,
-                         const spdy::SpdyStreamPrecedence &precedence)
+                         const QuicStreamPriority &priority)
           : request_headers(std::move(request_headers)),
             stream_id(stream_id),
-            precedence(precedence),
+            priority(priority),
             is_cancelled(false) {}
       spdy::Http2HeaderBlock request_headers;
       QuicStreamId stream_id;
-      spdy::SpdyStreamPrecedence precedence;
+      QuicStreamPriority priority;
       bool is_cancelled;
     };
 
@@ -75,10 +74,6 @@ namespace quic
 
     void OnCanCreateNewOutgoingStream(bool unidirectional) override;
 
-    bool ShouldNegotiateDatagramContexts() override
-    {
-      return http3_server_backend_->UsesDatagramContexts();
-    }
 
   protected:
     // QuicSession methods:
@@ -112,7 +107,7 @@ namespace quic
     {
       if (ShouldNegotiateWebTransport())
       {
-        return HttpDatagramSupport::kDraft00And04;
+        return HttpDatagramSupport::kRfcAndDraft04;
       }
       return QuicServerSessionBase::LocalHttpDatagramSupport();
     }

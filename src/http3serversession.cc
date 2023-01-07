@@ -225,7 +225,7 @@ namespace quic
       QUICHE_DCHECK_EQ(promised_info.stream_id, promised_stream->id());
       QUIC_DLOG(INFO) << "created server push stream " << promised_stream->id();
 
-      promised_stream->SetPriority(promised_info.precedence);
+      promised_stream->SetPriority(promised_info.priority);
 
       spdy::Http2HeaderBlock request_headers(
           std::move(promised_info.request_headers));

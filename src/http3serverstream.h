@@ -8,8 +8,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef QUICHE_QUIC_TOOLS_QUIC_SIMPLE_SERVER_STREAM_H_
-#define QUICHE_QUIC_TOOLS_QUIC_SIMPLE_SERVER_STREAM_H_
+#ifndef HTTP3_SERVER_STREAM_H
+#define HTTP3_SERVER_STREAM_H
 
 #include "absl/strings/string_view.h"
 #include "quiche/quic/core/http/quic_spdy_server_stream_base.h"
@@ -103,6 +103,8 @@ namespace quic
     spdy::Http2HeaderBlock request_headers_;
     int64_t content_length_;
     std::string body_;
+    // promises not fullfilled from js side or c++ side
+    std::set<Http3ServerBackend::WebTransportRespPromisePtr> pending_proms_;
 
   private:
     uint64_t generate_bytes_length_;

@@ -7,30 +7,31 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "absl/cleanup/cleanup.h"
 #include "src/http3server.h"
 #include "src/http3dispatcher.h"
 #include "src/http3wtsessionvisitor.h"
 #include "src/http3eventloop.h"
 #include "quiche/quic/core/quic_default_packet_writer.h"
-#include "quiche/quic/core/quic_epoll_alarm_factory.h"
-#include "quiche/quic/core/quic_epoll_connection_helper.h"
+#include "quiche/quic/core/quic_default_connection_helper.h"
+#include "quiche/quic/core/quic_default_clock.h"
 #include "quiche/quic/tools/quic_simple_crypto_server_stream_helper.h"
-#include "quiche/quic/core/quic_epoll_clock.h"
 #include "quiche/quic/core/crypto/proof_source_x509.h"
 #include "quiche/common/platform/api/quiche_reference_counted.h"
 
-using namespace Nan;
+using namespace Napi;
 
 namespace quic
 {
 
   const size_t kNumSessionsToCreatePerSocketEvent = 16;
 
-  Http3Server::Http3Server(Http3EventLoop * eventloop, std::string host, int port, std::unique_ptr<ProofSource> proof_source,
-                           const char *secret)
+  Http3Server::Http3Server(Http3EventLoop *eventloop, std::string host, int port, std::unique_ptr<ProofSource> proof_source,
+                           const char *secret, QuicConfig config)
       : port_(port), host_(host), fd_(-1), overflow_supported_(false),
-       eventloop_(eventloop),
-       http3_server_backend_(eventloop),
+        config_(config),
+        eventloop_(eventloop),
+        http3_server_backend_(eventloop),
         packet_reader_(new QuicPacketReader()),
         packets_dropped_(0),
         version_manager_({ParsedQuicVersion::RFCv1()}),
@@ -38,19 +39,15 @@ namespace quic
                        QuicRandom::GetInstance(),
                        std::move(proof_source),
                        KeyExchangeSource::Default()),
-        expected_server_connection_id_length_(kQuicDefaultConnectionIdLength)
+        expected_server_connection_id_length_(kQuicDefaultConnectionIdLength),
+        js_(nullptr),
+        connection_id_generator_(expected_server_connection_id_length_)
   {
   }
 
   Http3Server::~Http3Server()
   {
-  }
-
-
-
-  NAN_METHOD(Http3Server::createHttp3Server)
-  {
-    // ok this creates an http3server object from javascript side
+    // printf("server destruct %x\n", this);
   }
 
   bool Http3Server::CreateUDPSocketAndListen(const QuicSocketAddress &address)
@@ -64,15 +61,13 @@ namespace quic
       QUIC_LOG(ERROR) << "CreateSocket() failed: " << strerror(errno);
       return false;
     }
+    auto closer = absl::MakeCleanup([this]
+                                    { { QuicUdpSocketApi api;api.Destroy(fd_); } });
 
     overflow_supported_ = socket_api.EnableDroppedPacketCount(fd_);
     socket_api.EnableReceiveTimestamp(fd_);
 
-    sockaddr_storage addr = address.generic_address();
-    // @BENBENZ: fix on mac OSX (was needed or a EINVAL is returned) (from api::Bind in quic_udp_socket_posix.cc)
-    int addr_len = address.host().IsIPv4() ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
-    int rc = bind(fd_, reinterpret_cast<sockaddr *>(&addr), addr_len);
-    if (rc < 0)
+    if (!socket_api.Bind(fd_, address))
     {
       QUIC_LOG(ERROR) << "Bind failed: " << strerror(errno) << "\n";
       return false;
@@ -90,19 +85,27 @@ namespace quic
       port_ = address.port();
     }
 
-    const int kEpollFlags = UV_READABLE | UV_WRITABLE; // there is no analogue to EPOLLET in libuv hopefully not a problem
+    const int kEpollFlags = kSocketEventReadable | kSocketEventWritable;
 
-    eventloop_->getEpollServer()->RegisterFD(fd_, this, kEpollFlags);
-    dispatcher_.reset(CreateQuicDispatcher());
-    dispatcher_->InitializeWithWriter(new QuicDefaultPacketWriter(fd_));
+    if (eventloop_->getQuicEventLoop()->RegisterSocket(fd_, kEpollFlags, this))
+    {
+      // eventloop_->SetNonblocking(fd_); // eventuelly should be part of register socket.
+      dispatcher_.reset(CreateQuicDispatcher());
+      dispatcher_->InitializeWithWriter(new QuicDefaultPacketWriter(fd_));
+      std::move(closer).Cancel();
 
-    return true;
+      eventloop_->informServerStatus(this, NetListening, getStatusDetails());
+      return true;
+    }
+
+    eventloop_->informServerStatus(this, NetError, getStatusDetails());
+    return false;
   }
 
   bool Http3Server::stopServerInt()
   {
-    
-    eventloop_->getEpollServer()->UnregisterFD(fd_);
+
+    eventloop_->getQuicEventLoop()->UnregisterSocket(fd_);
 
     // if (!silent_close_) {
     //  Before we shut down the epoll server, give all active sessions a chance
@@ -110,10 +113,11 @@ namespace quic
     dispatcher_->Shutdown();
     //}
 
-
-    close(fd_);
+    QuicUdpSocketApi api;
+    api.Destroy(fd_);
     fd_ = -1;
-    Unref();
+    eventloop_->informServerStatus(this, NetClose, getStatusDetails());
+    eventloop_->informUnref(this->getJS()); // must be done on the other thread...
     return true;
   }
 
@@ -122,126 +126,131 @@ namespace quic
     http3_server_backend_.setServer(this);
     return new Http3Dispatcher(
         &config_, &crypto_config_, &version_manager_,
-        std::unique_ptr<QuicEpollConnectionHelper>(new QuicEpollConnectionHelper(
-            eventloop_->getEpollServer(), QuicAllocator::BUFFER_POOL)),
+        std::unique_ptr<QuicDefaultConnectionHelper>(new QuicDefaultConnectionHelper()),
         std::unique_ptr<QuicCryptoServerStreamBase::Helper>(
             new QuicSimpleCryptoServerStreamHelper()),
-        std::unique_ptr<QuicEpollAlarmFactory>(
-            new QuicEpollAlarmFactory(eventloop_->getEpollServer())),
-        &http3_server_backend_, expected_server_connection_id_length_);
+        std::unique_ptr<QuicAlarmFactory>(
+            eventloop_->getQuicEventLoop()->CreateAlarmFactory()),
+        &http3_server_backend_, expected_server_connection_id_length_, connection_id_generator_);
   }
 
-
-
-  NAN_METHOD(Http3Server::New)
+  Http3ServerJS::Http3ServerJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Http3ServerJS>(info)
   {
-    if (info.IsConstructCall())
+    int port = 443;
+    std::string secret;
+    std::string cert;
+    std::string privkey;
+    std::string host("localhost");
+
+    QuicConfig sconfig;
+    if (!info[0].IsUndefined())
     {
-      int port = 443;
-      v8::Isolate *isolate = info.GetIsolate();
-      std::string secret;
-      std::string cert;
-      std::string privkey;
-      std::string host("localhost");
-
-
-
-      v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-      
-      if (!info[0]->IsUndefined())
+      Napi::Object lobj = info[0].ToObject();
+      if (!lobj.IsEmpty())
       {
-        v8::MaybeLocal<v8::Object> obj = info[0]->ToObject(context);
-        v8::Local<v8::String> portProp = Nan::New("port").ToLocalChecked();
-        v8::Local<v8::String> secretProp = Nan::New("secret").ToLocalChecked();
-        v8::Local<v8::String> certProp = Nan::New("cert").ToLocalChecked();
-        v8::Local<v8::String> hostProp = Nan::New("host").ToLocalChecked();
-        v8::Local<v8::String> keyProp = Nan::New("privKey").ToLocalChecked();
-        if (!obj.IsEmpty())
+        if (lobj.Has("port") && !(lobj).Get("port").IsEmpty())
         {
-          v8::Local<v8::Object> lobj = obj.ToLocalChecked();
-          if (Nan::HasOwnProperty(lobj, portProp).FromJust() && !Nan::Get(lobj, portProp).IsEmpty())
-          {
-            v8::Local<v8::Value> portValue = Nan::Get(lobj, portProp).ToLocalChecked();
-            port = Nan::To<int>(portValue).FromJust();
-          }
-          if (Nan::HasOwnProperty(lobj, secretProp).FromJust() && !Nan::Get(lobj, secretProp).IsEmpty())
-          {
-            v8::Local<v8::Value> secretValue = Nan::Get(lobj, secretProp).ToLocalChecked();
-            secret = *v8::String::Utf8Value(isolate, secretValue->ToString(context).ToLocalChecked());
-          }
-          else
-          {
-            return Nan::ThrowError("No secret set for Http3Server");
-          }
-          if (Nan::HasOwnProperty(lobj, hostProp).FromJust() && !Nan::Get(lobj, hostProp).IsEmpty())
-          {
-            v8::Local<v8::Value> hostValue = Nan::Get(lobj, hostProp).ToLocalChecked();
-            host = *v8::String::Utf8Value(isolate, hostValue->ToString(context).ToLocalChecked());
-          }
-          if (Nan::HasOwnProperty(lobj, certProp).FromJust() && !Nan::Get(lobj, certProp).IsEmpty())
-          {
-            v8::Local<v8::Value> certValue = Nan::Get(lobj, certProp).ToLocalChecked();
-            cert = *v8::String::Utf8Value(isolate, certValue->ToString(context).ToLocalChecked());
-          }
-          else
-          {
-            return Nan::ThrowError("No cert set for Http3Server");
-          }
-          if (Nan::HasOwnProperty(lobj, keyProp).FromJust() && !Nan::Get(lobj, keyProp).IsEmpty())
-          {
-            v8::Local<v8::Value> keyValue = Nan::Get(lobj, keyProp).ToLocalChecked();
-            privkey = *v8::String::Utf8Value(isolate, keyValue->ToString(context).ToLocalChecked());
-          }
-          else
-          {
-            return Nan::ThrowError("No privKey set for Http3Server");
-          }
+          Napi::Value portValue = (lobj).Get("port");
+          port = portValue.As<Napi::Number>().Int32Value();
         }
-        // Callback *callback, int port, std::unique_ptr<ProofSource> proof_source,  const char *secret
-
-        std::stringstream certstream(cert, std::ios_base::in);
-        quiche::QuicheReferenceCountedPointer<ProofSource::Chain> chain(new ProofSource::Chain(CertificateView::LoadPemFromStream(&certstream)));
-
-        std::stringstream privkeystream(privkey, std::ios_base::in);
-
-        auto certprivkey = CertificatePrivateKey::LoadPemFromStream(&privkeystream);
-        if (certprivkey == nullptr)
-          return Nan::ThrowError("LoadPemFromStream privKey  failed for Http3Server");
-
-        std::unique_ptr<ProofSourceX509> proofsource = ProofSourceX509::Create(chain, std::move(*certprivkey));
-        if (proofsource == nullptr)
-          return Nan::ThrowError("LoadPemFromStream cert failed for Http3Server");
-        Http3EventLoop * eventloop = nullptr;
-        if (!info[1]->IsUndefined())
+        if (lobj.Has("secret") && !(lobj).Get("secret").IsEmpty())
         {
-          v8::MaybeLocal<v8::Object> obj = info[1]->ToObject(context);
-          v8::Local<v8::Object> lobj = obj.ToLocalChecked();
-          eventloop = Nan::ObjectWrap::Unwrap<Http3EventLoop>(lobj);
-        } 
-        else 
+          Napi::Value secretValue = (lobj).Get("secret");
+          secret = secretValue.ToString().Utf8Value();
+        }
+        else
         {
-          return Nan::ThrowError("No eventloop arguments passed to Http3Server");
+          Napi::Error::New(Env(), "No secret set for Http3Server").ThrowAsJavaScriptException();
+          return;
+        }
+        if (lobj.Has("host") && !(lobj).Get("host").IsEmpty())
+        {
+          Napi::Value hostValue = (lobj).Get("host");
+          host = hostValue.ToString().Utf8Value();
+        }
+        if (lobj.Has("cert") && !(lobj).Get("cert").IsEmpty())
+        {
+          Napi::Value certValue = (lobj).Get("cert");
+          cert = certValue.ToString().Utf8Value();
+        }
+        else
+        {
+          Napi::Error::New(Env(), "No cert set for Http3Server").ThrowAsJavaScriptException();
+          return;
+        }
+        if (lobj.Has("privKey") && !(lobj).Get("privKey").IsEmpty())
+        {
+          Napi::Value keyValue = (lobj).Get("privKey");
+          privkey = keyValue.ToString().Utf8Value();
+        }
+        else
+        {
+          Napi::Error::New(Env(), "No privKey set for Http3Server").ThrowAsJavaScriptException();
+          return;
+        }
+        if (lobj.Has("maxConnections") && !(lobj).Get("maxConnections").IsEmpty())
+        {
+          Napi::Value maxconnValue = (lobj).Get("maxConnections");
+          int maxconn = maxconnValue.As<Napi::Number>().Int32Value();
+          sconfig.SetMaxBidirectionalStreamsToSend(maxconn);
+          sconfig.SetMaxUnidirectionalStreamsToSend(maxconn);
         }
 
-        
-        Http3Server *object = new Http3Server(eventloop, host, port, std::move(proofsource), secret.c_str());
-        object->Wrap(info.This());
-        info.GetReturnValue().Set(info.This());
+        if (lobj.Has("initialStreamFlowControlWindow") && !(lobj).Get("initialStreamFlowControlWindow").IsEmpty())
+        {
+          Napi::Value initialStreamFlowControlWindowValue = (lobj).Get("initialStreamFlowControlWindow");
+          int initialStreamFlowControlWindow = initialStreamFlowControlWindowValue.As<Napi::Number>().Int32Value();
+          sconfig.SetInitialStreamFlowControlWindowToSend(initialStreamFlowControlWindow);
+        }
+
+        if (lobj.Has("initialSessionFlowControlWindow") && !(lobj).Get("initialSessionFlowControlWindow").IsEmpty())
+        {
+          Napi::Value initialSessionFlowControlWindowValue = (lobj).Get("initialSessionFlowControlWindow");
+          int initialSessionFlowControlWindow = initialSessionFlowControlWindowValue.As<Napi::Number>().Int32Value();
+          sconfig.SetInitialSessionFlowControlWindowToSend(initialSessionFlowControlWindow);
+        }
+      }
+      // Callback *callback, int port, std::unique_ptr<ProofSource> proof_source,  const char *secret
+
+      std::stringstream certstream(cert, std::ios_base::in);
+      quiche::QuicheReferenceCountedPointer<ProofSource::Chain> chain(new ProofSource::Chain(CertificateView::LoadPemFromStream(&certstream)));
+
+      std::stringstream privkeystream(privkey, std::ios_base::in);
+
+      auto certprivkey = CertificatePrivateKey::LoadPemFromStream(&privkeystream);
+      if (certprivkey == nullptr)
+      {
+        Napi::Error::New(Env(), "LoadPemFromStream privKey  failed for Http3Server").ThrowAsJavaScriptException();
+        return;
+      }
+
+      std::unique_ptr<ProofSourceX509> proofsource = ProofSourceX509::Create(chain, std::move(*certprivkey));
+      if (proofsource == nullptr)
+      {
+        Napi::Error::New(Env(), "LoadPemFromStream cert failed for Http3Server").ThrowAsJavaScriptException();
+        return;
+      }
+      Http3EventLoop *eventloop = nullptr;
+      if (!info[1].IsUndefined())
+      {
+        Napi::Object lobj = info[1].ToObject();
+        eventloop = dynamic_cast<Http3EventLoop *>(Napi::ObjectWrap<Http3EventLoop>::Unwrap(lobj));
       }
       else
       {
-        return Nan::ThrowError("No arguments passed to Http3Server");
+        Napi::Error::New(Env(), "No eventloop arguments passed to Http3Server").ThrowAsJavaScriptException();
+        return;
       }
-     
+
+      server_ = std::make_unique<Http3Server>(eventloop, host, port, std::move(proofsource), secret.c_str(), sconfig);
+
+      server_->setJS(this);
+      return;
     }
     else
     {
-      const int argc = 2;
-      v8::Local<v8::Value> argv[argc] = {info[0],info[1]};
-      v8::Local<v8::Function> cons = Nan::New(constructor());
-      auto instance = Nan::NewInstance(cons, argc, argv);
-      if (!instance.IsEmpty())
-        info.GetReturnValue().Set(instance.ToLocalChecked());
+      Napi::Error::New(Env(), "No arguments passed to Http3Server").ThrowAsJavaScriptException();
+      return;
     }
   }
 
@@ -287,20 +296,35 @@ namespace quic
       freeaddrinfo(servinfo);
     }
 
+    const uint32_t kInitialSessionFlowControlWindow = 1 * 1024 * 1024; // 1 MB
+    const uint32_t kInitialStreamFlowControlWindow = 64 * 1024;        // 64 KB
+    if (config_.GetInitialStreamFlowControlWindowToSend() ==
+        kDefaultFlowControlSendWindow)
+    {
+      config_.SetInitialStreamFlowControlWindowToSend(
+          kInitialStreamFlowControlWindow);
+    }
+    if (config_.GetInitialSessionFlowControlWindowToSend() ==
+        kDefaultFlowControlSendWindow)
+    {
+      config_.SetInitialSessionFlowControlWindowToSend(
+          kInitialSessionFlowControlWindow);
+    }
+
     QuicSocketAddress address(ipaddress, port_);
     if (!CreateUDPSocketAndListen(address))
       return false; // move to this class
     return true;
   }
 
-  void Http3Server::OnEvent(int fd, QuicEpollEvent *event)
+  void Http3Server::OnSocketEvent(QuicEventLoop *event_loop, QuicUdpSocketFd fd,
+                                  QuicSocketEventMask events)
   {
     QUICHE_DCHECK_EQ(fd, fd_);
-    event->out_ready_mask = 0;
 
-    if (event->in_events & UV_READABLE)
+    if (events & kSocketEventReadable)
     {
-      QUIC_DVLOG(1) << "UV_READABLE";
+      QUIC_DVLOG(1) << "kSocketEventReadable";
 
       dispatcher_->ProcessBufferedChlos(kNumSessionsToCreatePerSocketEvent);
 
@@ -308,70 +332,183 @@ namespace quic
       while (more_to_read)
       {
         more_to_read = packet_reader_->ReadAndDispatchPackets(
-            fd_, port_, QuicEpollClock(eventloop_->getEpollServer()), dispatcher_.get(),
+            fd_, port_, *QuicDefaultClock::Get(), dispatcher_.get(),
             overflow_supported_ ? &packets_dropped_ : nullptr);
       }
 
       if (dispatcher_->HasChlosBuffered())
       {
-        // Register UV_READABLE event to consume buffered CHLO(s).
-        event->out_ready_mask |= UV_READABLE;
+        // Register EPOLLIN event to consume buffered CHLO(s).
+        bool success =
+            event_loop->ArtificiallyNotifyEvent(fd, kSocketEventReadable);
+        QUICHE_DCHECK(success);
+      } else if (!event_loop->SupportsEdgeTriggered())
+      {
+        bool success = event_loop->RearmSocket(fd, kSocketEventReadable);
+        QUICHE_DCHECK(success);
       }
     }
-    if (event->in_events & UV_WRITABLE)
+    if (events & kSocketEventWritable)
     {
       dispatcher_->OnCanWrite();
-      if (dispatcher_->HasPendingWrites())
+      if (!event_loop->SupportsEdgeTriggered() &&
+          dispatcher_->HasPendingWrites())
       {
-        event->out_ready_mask |= UV_WRITABLE;
+        bool success = event_loop->RearmSocket(fd, kSocketEventWritable);
+        QUICHE_DCHECK(success);
       }
     }
   }
 
-  NAN_METHOD(Http3Server::startServer)
+  void Http3ServerJS::startServer(const Napi::CallbackInfo &info)
   {
-    Http3Server *obj = Nan::ObjectWrap::Unwrap<Http3Server>(info.Holder());
+    Http3Server *obj = getObj();
     // got the object we can now start the server
-    obj->Ref(); // do not garbage collect
+    Ref(); // do not garbage collect
     std::function<void()> task = [obj]()
     { if (!obj->startServerInt())
     {
-      return Nan::ThrowError("startServerInt failed for Http3Server");
+      printf("startServerInt failed for Http3Server\n");
     } };
     obj->eventloop_->Schedule(task);
-    
   }
 
-  NAN_METHOD(Http3Server::stopServer)
+  void Http3ServerJS::stopServer(const Napi::CallbackInfo &info)
   {
-    Http3Server *obj = Nan::ObjectWrap::Unwrap<Http3Server>(info.Holder());
+    Http3Server *obj = getObj();
     // got the object we can now start the server
     std::function<void()> task = [obj]()
     { if (!obj->stopServerInt())
     {
-      return Nan::ThrowError("startServerInt failed for Http3Server");
+      printf("stopServerInt failed for Http3Server\n");
     } };
     obj->eventloop_->Schedule(task);
-    
   }
 
-  NAN_METHOD(Http3Server::addPath)
+  void Http3ServerJS::addPath(const Napi::CallbackInfo &info)
   {
-    Http3Server *obj = Nan::ObjectWrap::Unwrap<Http3Server>(info.Holder());
-    v8::Isolate *isolate = info.GetIsolate();
-    v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
+    Http3Server *obj = getObj();
 
-    if (!info[0]->IsUndefined())
+    if (!info[0].IsUndefined())
     {
 
-      std::string lpath(*v8::String::Utf8Value(isolate, info[0]->ToString(context).ToLocalChecked()));
+      std::string lpath(info[0].ToString().Utf8Value());
       std::function<void()> task = [obj, lpath]()
       {
-
         obj->http3_server_backend_.addPath(lpath);
       };
       obj->eventloop_->Schedule(task);
     }
+    else
+      return Napi::Error::New(Env(), "No path set for addPath").ThrowAsJavaScriptException();
   }
 
+  void Http3ServerJS::finishSessionRequest(const Napi::CallbackInfo &info)
+  {
+    Http3Server *obj = getObj();
+
+    if (!info[0].IsUndefined())
+    {
+      // needs two properties
+      int status = -1;
+      std::string path = "";
+      Napi::Object lobj = info[0].ToObject();
+      if (!lobj.IsEmpty())
+      {
+        if (lobj.Has("status") && !(lobj).Get("status").IsEmpty())
+        {
+          Napi::Value statusValue = (lobj).Get("status");
+          status = statusValue.As<Napi::Number>().Int32Value();
+        }
+        else
+          return Napi::Error::New(Env(), "No status code passed for finishSessionRequest").ThrowAsJavaScriptException();
+
+        if (lobj.Has("path") && !(lobj).Get("path").IsEmpty())
+        {
+          Napi::Value pathValue = (lobj).Get("path");
+          path = pathValue.ToString().Utf8Value();
+        }
+        else
+          return Napi::Error::New(Env(), "No status code passed for finishSessionRequest").ThrowAsJavaScriptException();
+        WebTransportSession *session = nullptr;
+        if (lobj.Has("session") && !(lobj).Get("session").IsEmpty())
+        {
+          Napi::Value sessionVal = (lobj).Get("session");
+          if (!sessionVal.IsExternal())
+            return Napi::Error::New(Env(), "Session is not external for finishSessionRequest").ThrowAsJavaScriptException();
+          Napi::External<WebTransportSession> sessionExt = sessionVal.As<Napi::External<WebTransportSession>>();
+          session = sessionExt.Data();
+        }
+        else
+          return Napi::Error::New(Env(), "No session passed for finishSessionRequest").ThrowAsJavaScriptException();
+
+        if (lobj.Has("promise") && !(lobj).Get("promise").IsEmpty())
+        {
+          Napi::Value promiseVal = (lobj).Get("promise");
+          if (!promiseVal.IsExternal())
+            return Napi::Error::New(Env(), "Promise is not external for finishSessionRequest").ThrowAsJavaScriptException();
+          Napi::External<Http3ServerBackend::WebTransportRespPromisePtr> promise = promiseVal.As<Napi::External<Http3ServerBackend::WebTransportRespPromisePtr>>();
+
+          Http3ServerBackend::WebTransportRespPromisePtr *prom = promise.Data();
+          Napi::Reference<Napi::Value> *headerValue = nullptr;
+          if (status == 200)
+          {
+
+            if (lobj.Has("header") && !(lobj).Get("header").IsEmpty())
+            {
+              napi_ref ref;
+              napi_status status = napi_create_reference(Env(), lobj.Get("header"), 1, &ref);
+              NAPI_THROW_IF_FAILED(Env(), status, Reference<Napi::Value>());
+              headerValue = new Napi::Reference<Napi::Value>(Env(), ref);
+            }
+            else
+              return Napi::Error::New(Env(), "No status code passed for finishSessionRequest").ThrowAsJavaScriptException();
+          }
+          std::function<void()> task = [status, prom, path, headerValue, session, obj, this]()
+          {
+            if (status != 200)
+            {
+              std::unique_ptr<Http3ServerBackend::WebTransportResponse> response = std::make_unique<Http3ServerBackend::WebTransportResponse>();
+              response->response_headers[":status"] = std::to_string(status);
+              (*prom)->resolve(std::move(response));
+            }
+            else
+            {
+              std::unique_ptr<Http3ServerBackend::WebTransportResponse> response = std::make_unique<Http3ServerBackend::WebTransportResponse>();
+              response->response_headers[":status"] = std::to_string(status);
+              Http3WTSession *wtsession = new Http3WTSession();
+              wtsession->init(session, obj->eventloop_);
+              response->visitor =
+                  std::make_unique<Http3WTSession::Visitor>(wtsession);
+              obj->eventloop_->informAboutNewSession(obj, static_cast<Http3WTSession *>(wtsession), path, headerValue);
+              (*prom)->resolve(std::move(response));
+            }
+          };
+          obj->eventloop_->Schedule(task);
+        }
+        else
+          return Napi::Error::New(Env(), "No promise passed for finishSessionRequest").ThrowAsJavaScriptException();
+      }
+      else
+        return Napi::Error::New(Env(), "No object passed for finishSessionRequest").ThrowAsJavaScriptException();
+    }
+  }
+
+  void Http3ServerJS::setJSRequestHandler(const Napi::CallbackInfo &info)
+  {
+    Http3Server *obj = getObj();
+
+    if (!info[0].IsUndefined())
+    {
+
+      bool hashandler = info[0].ToBoolean();
+      std::function<void()> task = [obj, hashandler]()
+      {
+        obj->http3_server_backend_.setJSHandler(hashandler);
+      };
+      obj->eventloop_->Schedule(task);
+    }
+    else
+      return Napi::Error::New(Env(), "No bool set for setJSRequestHandler").ThrowAsJavaScriptException();
+  }
 }

@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.18)
 
+cmake_policy(SET CMP0091 NEW)
+
+#IF (MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY  "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    add_definitions(-D_ITERATOR_DEBUG_LEVEL=0)
+    set(protobuf_MSVC_STATIC_RUNTIME ON)
+#ENDIF(MSVC)
+
 project (webtransport)
 
 
@@ -8,18 +16,45 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(BUILD_TESTING OFF)
 
+set(protobuf_BUILD_PROTOC_BINARIES ON)
+
+
+
+IF (WIN32)
+    add_compile_definitions(NOMINMAX)
+ENDIF(WIN32)
+
 set(ABSL_PROPAGATE_CXX_STD ON)
 # include abseil
-add_subdirectory(third_party/abseil-cpp)
+add_subdirectory(third_party/abseil-cpp EXCLUDE_FROM_ALL)
+
+
+# include libevent
+SET(EVENT__DISABLE_OPENSSL ON CACHE BOOL "Define if libevent should build without support for OpenSSL encryption")
+add_subdirectory(third_party/libevent EXCLUDE_FROM_ALL)
+
+# include protobuf
+SET(protobuf_WITH_ZLIB OFF CACHE BOOL "Build with zlib support")
+SET(protobuf_BUILD_TESTS OFF CACHE BOOL "Build tests")
+add_subdirectory(third_party/protobuf EXCLUDE_FROM_ALL)
+IF(APPLE)
+    set_target_properties(protoc libprotoc libprotobuf PROPERTIES OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for Mac OS X" FORCE )
+ENDIF(APPLE)
+
+IF (WIN32)
+    add_compile_definitions(WIN32_LEAN_AND_MEAN NOGDI)
+ENDIF(WIN32)
 
 # include boring ssl
-add_subdirectory(third_party/boringssl/src)
+add_subdirectory(third_party/boringssl/src EXCLUDE_FROM_ALL)
+
+#IF(MSVC)
+#    set(CMAKE_CXX_STANDARD 17)
+#ENDIF(MSVC)
 
 # include zlib
-add_subdirectory(third_party/zlib)
+add_subdirectory(third_party/zlib EXCLUDE_FROM_ALL)
 
-include(FindProtobuf)
-find_package(Protobuf REQUIRED)
 
 if(COMMAND cmake_policy)
 cmake_policy(SET CMP0003 NEW)
@@ -36,22 +71,21 @@ endif(COMMAND cmake_policy)
 
 
 
+add_compile_definitions(QUICHE_ENABLE_LIBEVENT)
 
 
+IF( NOT (WIN32 OR APPLE))
+    find_package(ICU COMPONENTS uc i18n REQUIRED)
+ENDIF(NOT (WIN32 OR APPLE))
 
-add_library(gquiche SHARED 
+add_library(gquiche STATIC 
 #plattform impl
-platform/quiche_platform_impl/epoll_bug_impl.h
-platform/quiche_platform_impl/epoll_export_impl.h
-platform/quiche_platform_impl/epoll_logging_impl.h
-platform/quiche_platform_impl/epoll_time_impl.h
 platform/quiche_platform_impl/quiche_export_impl.h
 platform/quiche_platform_impl/quiche_logging_impl.h
-platform/quiche_platform_impl/quiche_logging_impl.cc
 platform/quiche_platform_impl/quiche_containers_impl.h
 platform/quiche_platform_impl/quiche_client_stats_impl.h
+platform/quiche_platform_impl/quiche_event_loop_impl.h
 platform/quiche_platform_impl/quiche_bug_tracker_impl.h
-platform/quiche_platform_impl/quiche_epoll_impl.h
 platform/quiche_platform_impl/quiche_iovec_impl.h
 platform/quiche_platform_impl/quiche_mutex_impl.h
 platform/quiche_platform_impl/quiche_stack_trace_impl.h
@@ -62,10 +96,6 @@ platform/quiche_platform_impl/quic_testvalue_impl.h
 platform/quiche_platform_impl/quiche_udp_socket_platform_impl.h
 platform/quiche_platform_impl/quiche_prefetch_impl.h
 platform/quiche_platform_impl/quiche_server_stats_impl.h
-platform/quiche_platform_impl/simple_libuv_epoll_server.cc
-platform/quiche_platform_impl/simple_libuv_epoll_server.h
-platform/net/quiche/common/platform/impl/quiche_flags_impl.h
-platform/net/quiche/common/platform/impl/quiche_flags_impl.cc
 platform/quiche_platform_impl/quiche_mem_slice_impl.h
 platform/quiche_platform_impl/quiche_flag_utils_impl.h
 #protofiles
@@ -77,17 +107,49 @@ platform/quiche_platform_impl/quiche_flag_utils_impl.h
 #${CMAKE_CURRENT_BINARY_DIR}/third_party/quiche/quiche/quic/core/proto/crypto_server_config.pb.cc
 #${CMAKE_CURRENT_BINARY_DIR}/third_party/quiche/quiche/quic/core/proto/source_address_token.pb.cc
 # url file
+third_party/googleurl/base/debug/crash_logging.cc
+third_party/googleurl/base/debug/crash_logging.h
+third_party/googleurl/base/strings/string_util_constants.cc
+third_party/googleurl/base/strings/string_piece.cc
+third_party/googleurl/base/strings/string_piece.h
+third_party/googleurl/base/strings/string_util.cc
+third_party/googleurl/base/strings/string_util.h
+third_party/googleurl/base/strings/utf_string_conversions.cc
+third_party/googleurl/base/strings/utf_string_conversions.h
 third_party/googleurl/url/url_canon.cc
 third_party/googleurl/url/url_canon_internal.cc
 third_party/googleurl/url/url_canon_path.cc
+third_party/googleurl/url/url_canon_query.cc
 third_party/googleurl/url/url_canon_stdstring.cc
+third_party/googleurl/url/url_canon_stdurl.cc
+third_party/googleurl/url/url_canon_filesystemurl.cc
 third_party/googleurl/url/third_party/mozilla/url_parse.h
 third_party/googleurl/url/url_canon.h
+third_party/googleurl/url/url_canon_etc.cc
+third_party/googleurl/url/url_canon_fileurl.cc
 third_party/googleurl/url/url_canon_internal.h
+third_party/googleurl/url/url_canon_mailtourl.cc
+third_party/googleurl/url/url_canon_pathurl.cc
+third_party/googleurl/url/url_canon_path.cc
+third_party/googleurl/url/url_canon_relative.cc
 third_party/googleurl/url/url_canon_stdstring.h
 third_party/googleurl/url/url_parse_internal.h
+third_party/googleurl/url/url_parse_file.cc
 third_party/googleurl/url/url_canon_host.cc
 third_party/googleurl/url/url_canon_ip.cc
+third_party/googleurl/url/url_constants.cc
+third_party/googleurl/url/url_features.cc
+third_party/googleurl/url/url_features.h
+third_party/googleurl/url/url_util.cc
+third_party/googleurl/url/url_util.h
+third_party/googleurl/url/gurl.cc
+third_party/googleurl/url/gurl.h
+third_party/googleurl/url/third_party/mozilla/url_parse.cc
+third_party/googleurl/url/third_party/mozilla/url_parse.h
+third_party/googleurl/base/strings/utf_string_conversion_utils.cc
+third_party/googleurl/base/strings/utf_string_conversion_utils.h
+third_party/googleurl/build/buildflag.h
+third_party/googleurl/build/build_config.h
 # normal files
 third_party/quiche/quiche/common/platform/api/quiche_bug_tracker.h
 third_party/quiche/quiche/common/platform/api/quiche_export.h
@@ -105,27 +167,41 @@ third_party/quiche/quiche/common/platform/api/quiche_reference_counted.h
 third_party/quiche/quiche/common/platform/api/quiche_thread_local.h
 third_party/quiche/quiche/common/platform/api/quiche_time_utils.h
 third_party/quiche/quiche/common/platform/api/quiche_url_utils.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flag_utils_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_prefetch_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_logging_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.cc
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_iovec_impl.h
 third_party/quiche/quiche/common/print_elements.h
 third_party/quiche/quiche/common/quiche_buffer_allocator.cc
 third_party/quiche/quiche/common/quiche_buffer_allocator.h
+third_party/quiche/quiche/common/quiche_crypto_logging.cc
+third_party/quiche/quiche/common/quiche_crypto_logging.h
 third_party/quiche/quiche/common/quiche_circular_deque.h
 third_party/quiche/quiche/common/quiche_data_reader.cc
 third_party/quiche/quiche/common/quiche_data_reader.h
 third_party/quiche/quiche/common/quiche_data_writer.cc
 third_party/quiche/quiche/common/quiche_data_writer.h
 third_party/quiche/quiche/common/quiche_endian.h
+third_party/quiche/quiche/common/quiche_ip_address.cc
+third_party/quiche/quiche/common/quiche_ip_address.h
+third_party/quiche/quiche/common/quiche_ip_address_family.cc
+third_party/quiche/quiche/common/quiche_ip_address_family.h
 third_party/quiche/quiche/common/quiche_linked_hash_map.h
 third_party/quiche/quiche/common/quiche_mem_slice_storage.h
 third_party/quiche/quiche/common/quiche_mem_slice_storage.cc
+third_party/quiche/quiche/common/quiche_random.cc
+third_party/quiche/quiche/common/quiche_random.h
 third_party/quiche/quiche/common/quiche_text_utils.cc
 third_party/quiche/quiche/common/quiche_text_utils.h
 third_party/quiche/quiche/common/simple_buffer_allocator.cc
-# third_party/quiche/quiche/epoll_server/simple_epoll_server.cc
-# third_party/quiche/quiche/epoll_server/simple_epoll_server.h
+third_party/quiche/quiche/common/structured_headers.h
+third_party/quiche/quiche/common/structured_headers.cc
 third_party/quiche/quiche/http2/adapter/data_source.h
 third_party/quiche/quiche/http2/adapter/event_forwarder.cc
 third_party/quiche/quiche/http2/adapter/event_forwarder.h
@@ -138,6 +214,8 @@ third_party/quiche/quiche/http2/adapter/http2_session.h
 third_party/quiche/quiche/http2/adapter/http2_util.cc
 third_party/quiche/quiche/http2/adapter/http2_util.h
 third_party/quiche/quiche/http2/adapter/http2_visitor_interface.h
+third_party/quiche/quiche/http2/adapter/noop_header_validator.h
+third_party/quiche/quiche/http2/adapter/noop_header_validator.cc
 third_party/quiche/quiche/http2/adapter/oghttp2_adapter.cc
 third_party/quiche/quiche/http2/adapter/oghttp2_adapter.h
 third_party/quiche/quiche/http2/adapter/oghttp2_session.cc
@@ -149,7 +227,6 @@ third_party/quiche/quiche/http2/adapter/window_manager.h
 third_party/quiche/quiche/http2/core/http2_trace_logging.cc
 third_party/quiche/quiche/http2/core/http2_trace_logging.h
 third_party/quiche/quiche/http2/core/priority_write_scheduler.h
-third_party/quiche/quiche/http2/core/write_scheduler.h
 third_party/quiche/quiche/http2/decoder/decode_buffer.cc
 third_party/quiche/quiche/http2/decoder/decode_buffer.h
 third_party/quiche/quiche/http2/decoder/decode_http2_structures.cc
@@ -235,13 +312,13 @@ third_party/quiche/quiche/http2/http2_constants.cc
 third_party/quiche/quiche/http2/http2_constants.h
 third_party/quiche/quiche/http2/http2_structures.cc
 third_party/quiche/quiche/http2/http2_structures.h
-third_party/quiche/quiche/http2/platform/api/http2_bug_tracker.h
-third_party/quiche/quiche/http2/platform/api/http2_flag_utils.h
-third_party/quiche/quiche/http2/platform/api/http2_flags.h
-third_party/quiche/quiche/http2/platform/api/http2_logging.h
 #third_party/quiche/quiche/http2/platform/api/http2_macros.h
+third_party/quiche/quiche/quic/bindings/quic_libevent.h
+third_party/quiche/quiche/quic/bindings/quic_libevent.cc
 third_party/quiche/quiche/quic/core/chlo_extractor.cc
 third_party/quiche/quiche/quic/core/chlo_extractor.h
+third_party/quiche/quiche/quic/core/quic_ping_manager.cc
+third_party/quiche/quiche/quic/core/quic_ping_manager.h
 third_party/quiche/quiche/quic/core/congestion_control/bandwidth_sampler.cc
 third_party/quiche/quiche/quic/core/congestion_control/bandwidth_sampler.h
 third_party/quiche/quiche/quic/core/congestion_control/bbr2_drain.cc
@@ -364,8 +441,6 @@ third_party/quiche/quiche/quic/core/crypto/quic_encrypter.cc
 third_party/quiche/quiche/quic/core/crypto/quic_encrypter.h
 third_party/quiche/quiche/quic/core/crypto/quic_hkdf.cc
 third_party/quiche/quiche/quic/core/crypto/quic_hkdf.h
-third_party/quiche/quiche/quic/core/crypto/quic_random.cc
-third_party/quiche/quiche/quic/core/crypto/quic_random.h
 third_party/quiche/quiche/quic/core/crypto/tls_client_connection.cc
 third_party/quiche/quiche/quic/core/crypto/tls_client_connection.h
 third_party/quiche/quiche/quic/core/crypto/tls_connection.cc
@@ -376,8 +451,6 @@ third_party/quiche/quiche/quic/core/crypto/transport_parameters.cc
 third_party/quiche/quiche/quic/core/crypto/transport_parameters.h
 third_party/quiche/quiche/quic/core/crypto/web_transport_fingerprint_proof_verifier.cc
 third_party/quiche/quiche/quic/core/crypto/web_transport_fingerprint_proof_verifier.h
-third_party/quiche/quiche/quic/core/quic_epoll_alarm_factory.h
-third_party/quiche/quiche/quic/core/quic_epoll_alarm_factory.cc
 third_party/quiche/quiche/quic/core/frames/quic_ack_frame.cc
 third_party/quiche/quiche/quic/core/frames/quic_ack_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_ack_frequency_frame.cc
@@ -466,7 +539,7 @@ third_party/quiche/quiche/quic/core/http/quic_spdy_stream.cc
 third_party/quiche/quiche/quic/core/http/quic_spdy_stream.h
 third_party/quiche/quiche/quic/core/http/quic_spdy_stream_body_manager.cc
 third_party/quiche/quiche/quic/core/http/quic_spdy_stream_body_manager.h
-# third_party/quiche/quiche/quic/core/http/spdy_server_push_utils.cc
+third_party/quiche/quiche/quic/core/http/spdy_server_push_utils.cc
 third_party/quiche/quiche/quic/core/http/spdy_server_push_utils.h
 third_party/quiche/quiche/quic/core/http/spdy_utils.cc
 third_party/quiche/quiche/quic/core/http/spdy_utils.h
@@ -474,6 +547,10 @@ third_party/quiche/quiche/quic/core/http/web_transport_http3.cc
 third_party/quiche/quiche/quic/core/http/web_transport_http3.h
 third_party/quiche/quiche/quic/core/http/web_transport_stream_adapter.cc
 third_party/quiche/quiche/quic/core/http/web_transport_stream_adapter.h
+third_party/quiche/quiche/quic/core/io/quic_event_loop.h
+third_party/quiche/quiche/quic/core/io/quic_default_event_loop.cc
+third_party/quiche/quiche/quic/core/io/quic_default_event_loop.h
+third_party/quiche/quiche/quic/core/io/socket.h
 third_party/quiche/quiche/quic/core/legacy_quic_stream_id_manager.cc
 third_party/quiche/quiche/quic/core/legacy_quic_stream_id_manager.h
 third_party/quiche/quiche/quic/core/packet_number_indexed_queue.h
@@ -573,14 +650,15 @@ third_party/quiche/quiche/quic/core/quic_datagram_queue.cc
 third_party/quiche/quiche/quic/core/quic_datagram_queue.h
 third_party/quiche/quiche/quic/core/quic_default_packet_writer.cc
 third_party/quiche/quiche/quic/core/quic_default_packet_writer.h
+third_party/quiche/quiche/quic/core/quic_default_clock.cc
+third_party/quiche/quiche/quic/core/quic_default_clock.h
+third_party/quiche/quiche/quic/core/quic_default_connection_helper.h
+third_party/quiche/quiche/quic/core/deterministic_connection_id_generator.h
+third_party/quiche/quiche/quic/core/deterministic_connection_id_generator.cc
 third_party/quiche/quiche/quic/core/quic_dispatcher.cc
 third_party/quiche/quiche/quic/core/quic_dispatcher.h
 third_party/quiche/quiche/quic/core/quic_error_codes.cc
 third_party/quiche/quiche/quic/core/quic_error_codes.h
-third_party/quiche/quiche/quic/core/quic_epoll_clock.h
-third_party/quiche/quiche/quic/core/quic_epoll_clock.cc
-third_party/quiche/quiche/quic/core/quic_epoll_connection_helper.h
-third_party/quiche/quiche/quic/core/quic_epoll_connection_helper.cc
 third_party/quiche/quiche/quic/core/quic_flags_list.h
 third_party/quiche/quiche/quic/core/quic_flow_controller.cc
 third_party/quiche/quiche/quic/core/quic_flow_controller.h
@@ -591,8 +669,6 @@ third_party/quiche/quiche/quic/core/quic_idle_network_detector.h
 third_party/quiche/quiche/quic/core/quic_interval.h
 third_party/quiche/quiche/quic/core/quic_interval_deque.h
 third_party/quiche/quiche/quic/core/quic_interval_set.h
-third_party/quiche/quiche/quic/core/quic_legacy_version_encapsulator.cc
-third_party/quiche/quiche/quic/core/quic_legacy_version_encapsulator.h
 third_party/quiche/quiche/quic/core/quic_lru_cache.h
 third_party/quiche/quiche/quic/core/quic_mtu_discovery.cc
 third_party/quiche/quiche/quic/core/quic_mtu_discovery.h
@@ -626,6 +702,8 @@ third_party/quiche/quiche/quic/core/quic_stream.h
 third_party/quiche/quiche/quic/core/quic_stream_frame_data_producer.h
 third_party/quiche/quiche/quic/core/quic_stream_id_manager.cc
 third_party/quiche/quiche/quic/core/quic_stream_id_manager.h
+third_party/quiche/quiche/quic/core/quic_stream_priority.cc
+third_party/quiche/quiche/quic/core/quic_stream_priority.h
 third_party/quiche/quiche/quic/core/quic_stream_send_buffer.cc
 third_party/quiche/quiche/quic/core/quic_stream_send_buffer.h
 third_party/quiche/quiche/quic/core/quic_stream_sequencer.cc
@@ -647,6 +725,7 @@ third_party/quiche/quiche/quic/core/quic_types.cc
 third_party/quiche/quiche/quic/core/quic_types.h
 third_party/quiche/quiche/quic/core/quic_unacked_packet_map.cc
 third_party/quiche/quiche/quic/core/quic_unacked_packet_map.h
+third_party/quiche/quiche/quic/core/quic_udp_socket.h
 third_party/quiche/quiche/quic/core/quic_utils.cc
 third_party/quiche/quiche/quic/core/quic_utils.h
 third_party/quiche/quiche/quic/core/quic_version_manager.cc
@@ -670,18 +749,13 @@ third_party/quiche/quiche/quic/core/uber_quic_stream_id_manager.cc
 third_party/quiche/quiche/quic/core/uber_quic_stream_id_manager.h
 third_party/quiche/quiche/quic/core/uber_received_packet_manager.cc
 third_party/quiche/quiche/quic/core/uber_received_packet_manager.h
-third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
 third_party/quiche/quiche/quic/core/quic_udp_socket.h
 third_party/quiche/quiche/quic/platform/api/quic_bug_tracker.h
 third_party/quiche/quiche/quic/platform/api/quic_client_stats.h
-third_party/quiche/quiche/quic/platform/api/quic_containers.h
 third_party/quiche/quiche/quic/platform/api/quic_export.h
 third_party/quiche/quiche/quic/platform/api/quic_exported_stats.h
 third_party/quiche/quiche/quic/platform/api/quic_flag_utils.h
 third_party/quiche/quiche/quic/platform/api/quic_flags.h
-third_party/quiche/quiche/quic/platform/api/quic_ip_address.cc
-third_party/quiche/quiche/quic/platform/api/quic_ip_address.h
-third_party/quiche/quiche/quic/platform/api/quic_ip_address_family.h
 third_party/quiche/quiche/quic/platform/api/quic_logging.h
 #third_party/quiche/quiche/quic/platform/api/quic_mem_slice.h
 #third_party/quiche/quiche/quic/platform/api/quic_mem_slice_storage.cc
@@ -691,14 +765,6 @@ third_party/quiche/quiche/quic/platform/api/quic_socket_address.cc
 third_party/quiche/quiche/quic/platform/api/quic_socket_address.h
 third_party/quiche/quiche/quic/platform/api/quic_stack_trace.h
 third_party/quiche/quiche/quic/platform/api/quic_thread.h
-#third_party/quiche/quiche/quic/quic_transport/quic_transport_client_session.cc
-#third_party/quiche/quiche/quic/quic_transport/quic_transport_client_session.h
-third_party/quiche/quiche/quic/quic_transport/quic_transport_protocol.h
-#third_party/quiche/quiche/quic/quic_transport/quic_transport_server_session.cc
-#third_party/quiche/quiche/quic/quic_transport/quic_transport_server_session.h
-third_party/quiche/quiche/quic/quic_transport/quic_transport_session_interface.h
-third_party/quiche/quiche/quic/quic_transport/quic_transport_stream.cc
-third_party/quiche/quiche/quic/quic_transport/quic_transport_stream.h
 third_party/quiche/quiche/quic/tools/quic_simple_crypto_server_stream_helper.cc
 third_party/quiche/quiche/quic/tools/quic_simple_crypto_server_stream_helper.h
 third_party/quiche/quiche/spdy/core/hpack/hpack_constants.cc
@@ -717,6 +783,10 @@ third_party/quiche/quiche/spdy/core/hpack/hpack_static_table.cc
 third_party/quiche/quiche/spdy/core/hpack/hpack_static_table.h
 third_party/quiche/quiche/spdy/core/http2_frame_decoder_adapter.cc
 third_party/quiche/quiche/spdy/core/http2_frame_decoder_adapter.h
+third_party/quiche/quiche/spdy/core/http2_header_block.cc
+third_party/quiche/quiche/spdy/core/http2_header_block.h
+third_party/quiche/quiche/spdy/core/http2_header_storage.cc
+third_party/quiche/quiche/spdy/core/http2_header_storage.h
 third_party/quiche/quiche/spdy/core/recording_headers_handler.cc
 third_party/quiche/quiche/spdy/core/recording_headers_handler.h
 third_party/quiche/quiche/spdy/core/spdy_alt_svc_wire_format.cc
@@ -728,10 +798,6 @@ third_party/quiche/quiche/spdy/core/spdy_frame_builder.h
 #third_party/quiche/quiche/spdy/core/spdy_frame_reader.h
 third_party/quiche/quiche/spdy/core/spdy_framer.cc
 third_party/quiche/quiche/spdy/core/spdy_framer.h
-third_party/quiche/quiche/spdy/core/spdy_header_block.cc
-third_party/quiche/quiche/spdy/core/spdy_header_block.h
-third_party/quiche/quiche/spdy/core/spdy_header_storage.cc
-third_party/quiche/quiche/spdy/core/spdy_header_storage.h
 third_party/quiche/quiche/spdy/core/spdy_headers_handler_interface.h
 third_party/quiche/quiche/spdy/core/spdy_intrusive_list.h
 third_party/quiche/quiche/spdy/core/spdy_no_op_visitor.cc
@@ -747,8 +813,30 @@ third_party/quiche/quiche/spdy/core/spdy_simple_arena.h
 third_party/quiche/quiche/spdy/core/zero_copy_output_buffer.h
 )
 
+IF(APPLE OR WIN32)
+target_sources(gquiche PRIVATE third_party/googleurl/url/url_idna_ascii_only.cc)
+ELSE()
+target_sources(gquiche PRIVATE third_party/googleurl/url/url_idna_icu.cc)
+ENDIF()
+
 FILE(TO_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche PROTOMODEL_PATH)
 FILE(TO_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche PROTOBINDING_PATH)
+
+IF (WIN32)
+    target_sources(gquiche PRIVATE third_party/googleurl/base/strings/string_util_win.cc
+                    third_party/googleurl/base/strings/string_util_win.h
+                    platform/quiche_platform_impl/socket_winsock.cc
+                    platform/quiche_platform_impl/quic_udp_socket_winsock.cc)
+ELSE(WIN32)
+    target_sources(gquiche PRIVATE third_party/quiche/quiche/quic/core/io/socket_posix.cc
+    third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
+    )
+    IF(APPLE)
+    ELSE(APPLE)
+    target_link_libraries(gquiche -static-libgcc -static-libstdc++)
+    ENDIF(APPLE)
+ENDIF(WIN32)
+
 
 
 add_custom_command(
@@ -759,9 +847,12 @@ ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/source_add
 ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/cached_network_parameters.pb.cc
 ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/crypto_server_config.pb.cc
 ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/source_address_token.pb.cc
-COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} --proto_path=${PROTOMODEL_PATH} --cpp_out=${PROTOBINDING_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/cached_network_parameters.proto
-COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} --proto_path=${PROTOMODEL_PATH} --cpp_out=${PROTOBINDING_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/crypto_server_config.proto 
-COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} --proto_path=${PROTOMODEL_PATH} --cpp_out=${PROTOBINDING_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/source_address_token.proto
+DEPENDS protobuf::protoc ${filename} ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/cached_network_parameters.proto
+${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/crypto_server_config.proto
+${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/source_address_token.proto
+COMMAND protobuf::protoc --proto_path=${PROTOMODEL_PATH} --cpp_out=${PROTOBINDING_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/cached_network_parameters.proto
+COMMAND protobuf::protoc --proto_path=${PROTOMODEL_PATH} --cpp_out=${PROTOBINDING_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/crypto_server_config.proto 
+COMMAND protobuf::protoc --proto_path=${PROTOMODEL_PATH} --cpp_out=${PROTOBINDING_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/source_address_token.proto
 )
 
 target_sources(gquiche PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/cached_network_parameters.pb.h
@@ -798,16 +889,20 @@ ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/source_add
 set_property(TARGET gquiche PROPERTY CXX_STANDARD 17)
 
 target_include_directories(gquiche
+PUBLIC platform
 PUBLIC third_party/quiche
 PUBLIC third_party/boringssl/src/include
 PUBLIC third_party/abseil-cpp
 PUBLIC third_party/googleurl
-PUBLIC platform
+PUBLIC third_party/libevent/include
+PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/third_party/libevent/include
 PUBLIC .
 PUBLIC ${Protobuf_INCLUDE_DIRS}
 PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
 PUBLIC ${CMAKE_JS_INC}
 )
+
+
 target_link_libraries(gquiche 
 absl::base 
 absl::int128
@@ -816,12 +911,26 @@ absl::str_format
 absl::flat_hash_map
 absl::any 
 absl::synchronization
-${Protobuf_LIBRARIES}
-ssl crypto)
+absl::time
+absl::status
+absl::statusor
+absl::cleanup
+protobuf::libprotobuf
+ssl 
+zlibstatic
+crypto
+event_core
+)
 
-if(APPLE)
-        target_compile_definitions (gquiche PRIVATE __APPLE_USE_RFC_3542)
+
+add_definitions(-DNAPI_VERSION=${napi_build_version})
+
+if(MSVC AND CMAKE_JS_NODELIB_DEF AND CMAKE_JS_NODELIB_TARGET)
+  # Generate node.lib
+  execute_process(COMMAND ${CMAKE_AR} /def:${CMAKE_JS_NODELIB_DEF} /out:${CMAKE_JS_NODELIB_TARGET} ${CMAKE_STATIC_LINKER_FLAGS})
 endif()
+
+
 
 
 # google quiche build parameters end
@@ -834,8 +943,16 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 target_include_directories(${PROJECT_NAME} 
 PUBLIC third_party/boringssl/src/include
 PUBLIC ${CMAKE_JS_INC})
-target_link_libraries(${PROJECT_NAME} gquiche ssl crypto ${CMAKE_JS_LIB} )
+target_link_libraries(${PROJECT_NAME} gquiche ssl zlibstatic crypto  ${CMAKE_JS_LIB} )
 set_target_properties(${PROJECT_NAME}  PROPERTIES LINKER_LANGUAGE CXX)
+IF (WIN32)
+  # place for custum window stuff
+ELSE(WIN32)
+IF(APPLE)
+ELSE(APPLE)
+    target_link_libraries(${PROJECT_NAME} -static-libgcc -static-libstdc++)
+ENDIF(APPLE)
+ENDIF(WIN32)
 
 execute_process(COMMAND node -p "require('node-addon-api').include"
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}

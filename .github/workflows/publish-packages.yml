@@ -1,0 +1,216 @@
+# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
+# For more information see: https://help.github.com/actions/language-and-framework-guides/publishing-nodejs-packages
+
+name: Node.js Package prebuild and publish
+
+on:
+  push:
+    branches:
+      - 'master'
+
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
+      tags:
+        description: 'Testing node.js package publish workflow'
+        required: true
+        type: string
+
+jobs:
+# version check
+  version-check:
+    runs-on: ubuntu-latest
+    outputs:
+      commit: ${{ steps.check.outputs.commit }}
+      version: ${{ steps.check.outputs.version }}
+      changed: ${{ steps.check.outputs.changed }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          registry-url: https://npm.pkg.github.com/
+      - name: Check if version has been updated
+        id: check
+        uses: EndBug/version-check@v2
+        with:
+         diff-search: true
+
+      - name: Log when changed
+        if: steps.check.outputs.changed == 'true'
+        run: 'echo "Version change found in commit ${{ steps.check.outputs.commit }}! New version: ${{ steps.check.outputs.version }} (${{ steps.check.outputs.type }})"'
+      - name: Log when unchanged
+        if: steps.check.outputs.changed == 'false'
+        run: 'echo "No version change :/"'
+  prebuild:
+    needs: version-check
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, windows-2019, macos-latest ]
+        arch: [x64]
+        include:
+          - arch: ia32
+            os: windows-2019
+          - arch: arm64
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+      packages: write
+    steps:
+     - name: Install missing software for Windows
+       if: runner.os == 'Windows'
+       run: choco install nasm -yv
+     - name: Debug CI/CD pipeline
+       run: |
+          echo ${{matrix.arch}}
+          echo ${{matrix.os}}
+          echo ${{matrix.arch == 'arm64'}}
+          echo ${{matrix.os == 'macos-latest'}}
+          echo ${{ matrix.arch == 'arm64' && matrix.os == 'macos-latest' }}
+          echo ${{matrix.arch == 'x64'}}
+          echo ${{ matrix.arch == 'x64' && matrix.os == 'macos-latest' }}
+     - name: Checkout code
+       uses: actions/checkout@v3
+       with:
+        submodules: recursive
+     - uses: actions/setup-node@v3
+       with:
+         node-version: 16
+         registry-url: https://npm.pkg.github.com/
+     - name: Install
+       if: needs.version-check.outputs.changed == 'true'
+       run: npm ci --ignore-scripts=true
+
+     - name: Prebuild
+       if: needs.version-check.outputs.changed == 'true'
+       env:
+         BUILDARCH: ${{ matrix.arch }}
+         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+       run: node build.js prebuild
+
+# code is not ready... if anyone needs it, I am open for PR
+#  prebuild-cross:
+#    needs: version-check
+#    strategy:
+#      matrix:
+#        arch: [x64]
+#    runs-on: ubuntu-latest
+#    permissions:
+#      contents: read
+#      packages: write
+#    steps:
+#     - name: Checkout code
+#        uses: actions/checkout@v2
+#        with:
+#          submodules: recursive
+#
+#      - uses: actions/setup-node@v2
+#        with:
+#          node-version: 16
+#          registry-url: https://npm.pkg.github.com/
+#
+#      - name: Install
+#        if: needs.version-check.outputs.changed == 'true'
+#        run: npm ci --ignore-scripts=true
+#
+#      - name: Prebuild
+#        if: needs.version-check.outputs.changed == 'true'
+#        env:
+#          BUILDARCH: ${{ matrix.arch }}
+#          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        run:  docker run --rm -v ${PWD}:/app -e BUILDARCH=${{ matrix.arch }} -e GH_TOKEN= ${{ secrets.GITHUB_TOKEN }} ghcr.io/prebuild/linux-${{ matrix.arch }} node build.js prebuild
+
+# steps for github
+  publish-gpr:
+    needs: [version-check, prebuild]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          registry-url: https://npm.pkg.github.com/
+
+      - name: Install
+        if: needs.version-check.outputs.changed == 'true'
+        run: npm ci --ignore-scripts=true
+
+      - name: Build types
+        run: npm run types
+
+      - run: npm publish --tag stable
+        if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm publish --tag next
+        if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latest
+        if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latestunstable
+        if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+# steps for npm
+  publish-npm:
+    needs: [version-check, prebuild]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          registry-url: https://registry.npmjs.org/
+
+      - name: Install
+        if: needs.version-check.outputs.changed == 'true'
+        run: npm ci --ignore-scripts=true
+
+      - name: Build types
+        run: npm run types
+
+      - run: npm publish --tag stable
+        if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish --tag next
+        if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latest
+        if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latestunstable
+        if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+

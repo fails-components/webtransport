@@ -5,14 +5,8 @@
 #ifndef NET_QUICHE_PLATFORM_IMPL_QUICHE_STACK_TRACE_IMPL_H_
 #define NET_QUICHE_PLATFORM_IMPL_QUICHE_STACK_TRACE_IMPL_H_
 
+#include <string>
 
-namespace quiche {
-
-inline std::string QuicheStackTraceImpl() {
-  return std::string("no stack trace implemented");
-  // base::debug::StackTrace().ToString();
-}
-
-}  // namespace quic
+#include "third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.h"
 
 #endif  // NET_QUIC_PLATFORM_IMPL_QUIC_STACK_TRACE_IMPL_H_

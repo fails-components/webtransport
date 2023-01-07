@@ -1,7 +1,9 @@
 .env
 files
-node_modules
-build
+/node_modules
+/build_*
+/build
+!/third_party/googleurl/build
 *.crt
 *.csr
 *.key
@@ -10,3 +12,7 @@ fingerprints.txt
 certs/out/*
 *.pb.*
 chrome.bat
+certificatecache.json
+archives
+prebuilds
+dist

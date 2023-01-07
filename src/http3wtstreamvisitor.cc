@@ -7,6 +7,10 @@
 
 namespace quic
 {
+    void Http3WTStreamJS::init(Http3WTStream * wtstream)
+    {
+        wtstream_ = std::unique_ptr<Http3WTStream>(wtstream);
+    }
 
     Http3WTStream::Visitor::~Visitor()
     {
@@ -28,26 +32,54 @@ namespace quic
 
             stream_->byobs_.pop_front();
         }
-        Http3WTStream *strobj = stream_;
-        std::function<void()> task = [strobj]()
-        {printf("stream unref %x\n", strobj); strobj->Unref(); };
-        stream_->eventloop_->Schedule(task);
-
-        stream_->stream_ = nullptr;
+        if (!stream_->stop_sending_received_)
+        {
+            stream_->eventloop_->informStreamRecvSignal(stream_, 0, NetworkTask::stopSending);
+        }
+        if (!stream_->stream_was_reset_)
+        {
+            stream_->eventloop_->informStreamRecvSignal(stream_, 0, NetworkTask::resetStream);
+        }
+        Http3WTStreamJS *strobj = stream_->getJS();
+        if (strobj) {
+            stream_->stream_ = nullptr;
+            stream_->eventloop_->informUnref(strobj);
+        } else {
+            stream_->stream_ = nullptr;
+        }
     }
 
-     void Http3WTStream::Visitor::OnWriteSideInDataRecvdState() 
-     {
-         if (stream_->send_fin_)  stream_->eventloop_->informStreamClosed(stream_, lasterror); // may be move below
-     }
+    void Http3WTStream::Visitor::OnWriteSideInDataRecvdState() // called if everything is written to the client and it is closed
+    {
+        if (stream_->send_fin_)
+            stream_->eventloop_->informAboutStreamNetworkFinish(stream_, NetworkTask::streamFinal);
+    }
+
+    void Http3WTStream::Visitor::OnResetStreamReceived(WebTransportStreamError error)
+    {
+        // should this be removed
+        /*
+
+        // Send FIN in response to a stream reset.  We want to test that we can
+        // operate one side of the stream cleanly while the other is reset, thus
+        // replying with a FIN rather than a RESET_STREAM is more appropriate here.
+        stream_->send_fin_ = true;
+        OnCanWrite();*/
+        stream_->stream_was_reset_ = true;
+        lasterror = error;
+        stream_->eventloop_->informStreamRecvSignal(stream_, error, NetworkTask::resetStream); // may be move below
+    }
 
     void Http3WTStream::Visitor::OnStopSendingReceived(WebTransportStreamError error)
     {
         stream_->stop_sending_received_ = true;
-        stream_->eventloop_->informStreamClosed(stream_, error); // may be move below
+        stream_->eventloop_->informStreamRecvSignal(stream_, error, NetworkTask::stopSending); // may be move below
+        // we should also finallize the stream, so send a fin
+        stream_->send_fin_ = true;
+        OnCanWrite();
     }
 
-    void Http3WTStream::cancelWrite(Nan::Persistent<v8::Object> *handle)
+    void Http3WTStream::cancelWrite(Napi::ObjectReference *handle)
     {
         eventloop_->informAboutStreamWrite(this, handle, false);
     }
@@ -55,15 +87,19 @@ namespace quic
     void Http3WTStream::doCanRead()
     {
         // if (pause_reading_) return ; // back pressure folks!
+        
+        if (pause_reading_)
+        {
+            can_read_pending_ = true;
+            return; // back pressure folks!
+        }
         // first figure out if we have readable data
         size_t readable = stream_->ReadableBytes();
         while (readable > 0 && byobs_.size() > 0)
         {
             auto cur = byobs_.front();
-            // ok create a string obj to hold the data
-
             WebTransportStream::ReadResult result = 
-                stream_->Read(cur.buffer, std::min(readable,cur.len));
+                stream_->Read(absl::Span<char>(cur.buffer, cur.len));
             cur.lenread = result.bytes_read;
             QUIC_DVLOG(1) << "Attempted reading on WebTransport bidirectional stream "
                           << ", bytes read: " << result.bytes_read;
@@ -75,10 +111,11 @@ namespace quic
 
     void Http3WTStream::doCanWrite()
     {
-        if (stop_sending_received_ || pause_reading_)
-        {
-            return;
-        }
+        /* if (/* stop_sending_received_ || * pause_reading_)
+         {
+             return;
+         } */
+        if (fin_was_sent_) return;
 
         while (chunks_.size() > 0)
         {
@@ -99,7 +136,7 @@ namespace quic
         if (send_fin_)
         {
             bool success = stream_->SendFin();
-            QUICHE_DCHECK(success);
+            if (success) fin_was_sent_ = true;
         }
     }
 

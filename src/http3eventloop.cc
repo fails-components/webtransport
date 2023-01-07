@@ -8,112 +8,86 @@
 // found in the LICENSE file.
 
 #include "src/http3server.h"
+#include "src/http3client.h"
 #include "src/http3eventloop.h"
 #include "src/http3dispatcher.h"
 #include "src/http3wtsessionvisitor.h"
-#include "quiche/quic/core/quic_epoll_alarm_factory.h"
-#include "quiche/quic/core/quic_epoll_connection_helper.h"
 #include "quiche/quic/tools/quic_simple_crypto_server_stream_helper.h"
-#include "quiche/quic/core/quic_epoll_clock.h"
 #include "quiche/quic/core/crypto/proof_source_x509.h"
 #include "quiche/common/platform/api/quiche_reference_counted.h"
+#include "quiche/quic/core/quic_default_clock.h"
+#include "quiche/quic/bindings/quic_libevent.h"
 
-using namespace Nan;
+using namespace Napi;
 
 namespace quic
 {
 
-  const size_t kNumSessionsToCreatePerSocketEvent = 16;
+#ifdef WIN32
 
-   Http3EventLoop:: Http3EventLoop(Callback *callback, Callback *cbstream, Callback *cbsession)
-      : AsyncProgressQueueWorker(callback),
-        progress_(nullptr), cbstream_(cbstream), cbsession_(cbsession)
-  {
-    epoll_server_.SetAsyncCallback(this);
-  }
+  bool initSockets();
+  bool destroySockets();
+
+#endif
+
+  // hack since the header is faulty
+  QUICHE_NO_EXPORT QuicEventLoopFactory *GetDefaultEventLoop();
+
+  static const int kErrorBufferSize = 256;
+
+  const size_t kNumSessionsToCreatePerSocketEvent = 16;
 
   Http3EventLoop::~Http3EventLoop()
   {
-    delete cbstream_;
-    delete cbsession_;
+    printf("Destructor eventloop\n");
+#ifdef WIN32
+    destroySockets();
+#endif
   }
 
-  NAN_MODULE_INIT(Http3EventLoop::Init)
+  void Http3EventLoop::Init(Napi::Env env, Napi::Object exports)
   {
-    v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(Http3EventLoop::New);
-    tpl->SetClassName(Nan::New("Http3EventLoop").ToLocalChecked());
-    tpl->InstanceTemplate()->SetInternalFieldCount(2);
-    Nan::SetPrototypeMethod(tpl, "startEventLoop", Http3EventLoop::startEventLoop);
-    Http3EventLoop::constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
-    Nan::Set(target, Nan::New("Http3EventLoop").ToLocalChecked(),
-             Nan::GetFunction(tpl).ToLocalChecked());
+    Napi::Function tpl =
+        DefineClass(env, "Http3EventLoop",
+                    {InstanceMethod<&Http3EventLoop::startEventLoop>("startEventLoop",
+                                                                     static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                     InstanceMethod<&Http3EventLoop::shutDownEventLoop>("shutDownEventLoop",
+                                                                        static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
+    exports.Set("Http3EventLoop", tpl);
 
+    Http3Constructors *constr = new Http3Constructors();
 
-    v8::Local<v8::FunctionTemplate> tplsrv = Nan::New<v8::FunctionTemplate>(Http3Server::New);
-    tplsrv->SetClassName(Nan::New("Http3WebTransport").ToLocalChecked());
-    tplsrv->InstanceTemplate()->SetInternalFieldCount(2);
-    Nan::SetPrototypeMethod(tplsrv, "createHttp3Server", Http3Server::createHttp3Server);
-    Nan::SetPrototypeMethod(tplsrv, "startServer", Http3Server::startServer);
-    Nan::SetPrototypeMethod(tplsrv, "stopServer", Http3Server::stopServer);
-    Nan::SetPrototypeMethod(tplsrv, "addPath", Http3Server::addPath);
-    Http3Server::constructor().Reset(Nan::GetFunction(tplsrv).ToLocalChecked());
-    Nan::Set(target, Nan::New("Http3WebTransport").ToLocalChecked(),
-             Nan::GetFunction(tplsrv).ToLocalChecked());
+    Http3ServerJS::InitExports(env, exports);
+    Http3ClientJS::InitExports(env, exports);
+    Http3WTSessionJS::InitExports(env, exports, constr);
+    Http3WTStreamJS::InitExports(env, exports, constr);
+    Napi::ObjectReference *exportref = new Napi::ObjectReference();
 
-    // http3wtsessionvisitor
-    v8::Local<v8::FunctionTemplate> tplwt = Nan::New<v8::FunctionTemplate>(Http3WTSession::New);
-    tplwt->SetClassName(Nan::New("Http3WTSession").ToLocalChecked());
-    tplwt->InstanceTemplate()->SetInternalFieldCount(1);
-    Nan::SetPrototypeMethod(tplwt, "orderBidiStream", Http3WTSession::orderBidiStream);
-    Nan::SetPrototypeMethod(tplwt, "orderUnidiStream", Http3WTSession::orderUnidiStream);
-    Nan::SetPrototypeMethod(tplwt, "writeDatagram", Http3WTSession::writeDatagram);
-    Nan::SetPrototypeMethod(tplwt, "close", Http3WTSession::close);
-
-    Http3WTSession::constructor().Reset(Nan::GetFunction(tplwt).ToLocalChecked());
-    Nan::Set(target, Nan::New("Http3WTSession").ToLocalChecked(),
-             Nan::GetFunction(tplwt).ToLocalChecked());
-
-    // http3wtstreamvisitor
-    v8::Local<v8::FunctionTemplate> tplwtsv = Nan::New<v8::FunctionTemplate>(Http3WTStream::New);
-    tplwtsv->SetClassName(Nan::New("Http3WTStream").ToLocalChecked());
-    tplwtsv->InstanceTemplate()->SetInternalFieldCount(1);
-    Nan::SetPrototypeMethod(tplwtsv, "writeChunk", Http3WTStream::writeChunk);
-    Nan::SetPrototypeMethod(tplwtsv, "readByob", Http3WTStream::readByob);
-    Nan::SetPrototypeMethod(tplwtsv, "closeStream", Http3WTStream::closeStream);
-    Nan::SetPrototypeMethod(tplwtsv, "resetStream", Http3WTStream::resetStream);
-    Nan::SetPrototypeMethod(tplwtsv, "startReading", Http3WTStream::startReading);
-    Nan::SetPrototypeMethod(tplwtsv, "stopReading", Http3WTStream::stopReading);
-
-    Http3WTStream::constructor().Reset(Nan::GetFunction(tplwtsv).ToLocalChecked());
-    Nan::Set(target, Nan::New("Http3WTStream").ToLocalChecked(),
-             Nan::GetFunction(tplwtsv).ToLocalChecked());
+    env.SetInstanceData<Http3Constructors>(constr);
   }
-
 
   void Http3EventLoop::Destroy()
   {
-    Unref();
-    // FIXME kill the uv loop
-    epoll_server_.Shutdown();
-
+    printf("eventloop destroy called\n");
+    cbstream_.Unref();
+    cbsession_.Unref();
+    cbtransport_.Unref();
   }
 
-
-
-  void Http3EventLoop::Execute(const AsyncProgressQueueWorker::ExecutionProgress &progress)
+  void Http3EventLoop::Execute(const AsyncProgressQueueWorker<Http3ProgressReport>::ExecutionProgress &progress)
   {
     progress_ = &progress;
     // main event loop
-    while (true)
+    loop_running_ = true;
+    while (loop_running_)
     {
-      epoll_server_.WaitForEventsAndExecuteCallbacks();
+      // Note QuicTime::Delta::Infinite() causes a busy loop.
+      quic_event_loop_->RunEventLoopOnce(QuicTime::Delta::FromSeconds(5));
+      ExecuteScheduledActions();
     }
+    printf("event loop exited\n");
     progress_ = nullptr;
-  }
-
-  void Http3EventLoop::OnAsyncExecution()
-  {
-     ExecuteScheduledActions();
+    Unref();
   }
 
   void Http3EventLoop::ExecuteScheduledActions()
@@ -133,9 +107,11 @@ namespace quic
   void Http3EventLoop::Schedule(std::function<void()> action)
   {
     // QUICHE_DCHECK(!quit_.HasBeenNotified());
-    QuicWriterMutexLock lock(&scheduled_actions_lock_);
-    scheduled_actions_.push_back(std::move(action));
-    epoll_server_.TriggerAsync();
+    {
+      QuicWriterMutexLock lock(&scheduled_actions_lock_);
+      scheduled_actions_.push_back(std::move(action));
+    }
+    dynamic_cast<LibeventQuicEventLoop *>(quic_event_loop_.get())->WakeUp();
   }
 
   void Http3EventLoop::informAboutStream(bool incom, bool bidir, Http3WTSession *sessionobj, Http3WTStream *stream)
@@ -169,17 +145,18 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::informStreamClosed(Http3WTStream *streamobj, WebTransportStreamError code)
+  void Http3EventLoop::informStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task)
   {
     struct Http3ProgressReport report;
-    report.type = Http3ProgressReport::StreamClosed;
+    report.type = Http3ProgressReport::StreamRecvSignal;
     report.streamobj = streamobj;
-    report.wtscode = code;
+    report.wtscode = error_code;
+    report.nettask = task;
     if (progress_)
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::informAboutStreamRead(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, size_t lenread, bool fin, bool success)
+  void Http3EventLoop::informAboutStreamRead(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, size_t lenread, bool fin, bool success)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::StreamRead;
@@ -192,13 +169,23 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::informAboutStreamWrite(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, bool success)
+  void Http3EventLoop::informAboutStreamWrite(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, bool success)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::StreamWrite;
     report.streamobj = streamobj;
     report.bufferhandle = bufferhandle;
     report.success = success;
+    if (progress_)
+      progress_->Send(&report, 1);
+  }
+
+  void Http3EventLoop::informAboutStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task)
+  {
+    struct Http3ProgressReport report;
+    report.type = Http3ProgressReport::StreamNetworkFinish;
+    report.streamobj = streamobj;
+    report.nettask = task;
     if (progress_)
       progress_->Send(&report, 1);
   }
@@ -222,38 +209,81 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::informDatagramSend(Http3WTSession *sessionobj)
+  void Http3EventLoop::informDatagramSend(Http3WTSession *sessionobj, Napi::ObjectReference *bufferhandle)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::DatagramSend;
     report.sessionobj = sessionobj;
+    report.bufferhandle = bufferhandle;
     if (progress_)
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::informDatagramBufferFree(Nan::Persistent<v8::Object> *bufferhandle)
+  void Http3EventLoop::informUnref(LifetimeHelper *obj)
   {
     struct Http3ProgressReport report;
-    report.type = Http3ProgressReport::DatagramBufferFree;
-    report.bufferhandle = bufferhandle;
+    report.type = Http3ProgressReport::Unref;
+    report.obj = obj;
 
     if (progress_)
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::informAboutNewSession(Http3Server *server, Http3WTSession *session, absl::string_view path)
+  void Http3EventLoop::informAboutClientConnected(Http3Client *client, bool success)
+  {
+    struct Http3ProgressReport report;
+    report.type = Http3ProgressReport::ClientConnected;
+    report.clientobj = client;
+    report.success = success;
+    if (progress_)
+      progress_->Send(&report, 1);
+  }
+
+  void Http3EventLoop::informClientWebtransportSupport(Http3Client *client)
+  {
+    struct Http3ProgressReport report;
+    report.type = Http3ProgressReport::ClientWebTransportSupport;
+    report.clientobj = client;
+    if (progress_)
+      progress_->Send(&report, 1);
+  }
+
+  void Http3EventLoop::informAboutNewSessionRequest(Http3Server *server, WebTransportSession *session, spdy::Http2HeaderBlock *reqheadcopy, WebTransportRespPromisePtr promise)
+  {
+    struct Http3ProgressReport report;
+    report.type = Http3ProgressReport::NewSessionRequest;
+    report.webtsession = session;
+    report.serverobj = server;
+    report.headerblock = reqheadcopy;
+    report.promise = new WebTransportRespPromisePtr(promise);
+    if (progress_)
+      progress_->Send(&report, 1);
+  }
+
+  void Http3EventLoop::informAboutNewSession(Http3Server *server, Http3WTSession *session, absl::string_view path, Napi::Reference<Napi::Value> *header)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::NewSession;
     report.serverobj = server;
     report.session = session;
+    report.header = header;
     report.para = new std::string(path);
     if (progress_)
       progress_->Send(&report, 1);
   }
 
+  void Http3EventLoop::informNewClientSession(Http3Client *client, Http3WTSession *session)
+  {
+    struct Http3ProgressReport report;
+    report.type = Http3ProgressReport::NewClientSession;
+    report.clientobj = client;
+    report.session = session;
+    if (progress_)
+      progress_->Send(&report, 1);
+  }
+
   void Http3EventLoop::informSessionClosed(Http3WTSession *sessionobj, WebTransportSessionError error_code,
-                                        absl::string_view error_message)
+                                           absl::string_view error_message)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::SessionClosed;
@@ -273,253 +303,452 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::freeData(char *data, void *hint)
+  void Http3EventLoop::informServerStatus(Http3Server *serverobj, NetworkStatus status, ServerStatusDetails *details)
+  {
+    struct Http3ProgressReport report;
+    report.type = Http3ProgressReport::ServerStatus;
+    report.serverobj = serverobj;
+    report.status = status;
+    report.details = details;
+    if (progress_)
+      progress_->Send(&report, 1);
+  }
+
+  void Http3EventLoop::freeData(Napi::Env env, void *data, std::string *hint)
   {
     // ok free data is actually using a string object
-    std::string *sdata = static_cast<std::string *>(hint);
-    delete sdata;
+    delete hint;
+  }
+
+  void Http3EventLoop::processClientConnected(Http3Client *clientobj, bool success)
+  {
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
+    auto client = clientobj->getJS();
+
+    Napi::Object objVal = client->Value();
+
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "ClientConnected");
+    retObj.Set("success", success);
+    retObj.Set("object", objVal);
+
+    cbtransport_.Call({retObj});
+  }
+
+  void Http3EventLoop::processClientWebtransportSupport(Http3Client *clientobj)
+  {
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
+
+    auto client = clientobj->getJS();
+    Napi::Object objVal = client->Value();
+
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "ClientWebtransportSupport");
+    retObj.Set("object", objVal);
+
+    cbtransport_.Call({retObj});
   }
 
   void Http3EventLoop::processStream(bool incom, bool bidi, Http3WTSession *sessionobj, Http3WTStream *stream)
   {
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
+    Http3Constructors *constr = qw_->Env().GetInstanceData<Http3Constructors>();
+    Napi::Object strobj = constr->stream.New({});
+    Http3WTStreamJS *strjs = Napi::ObjectWrap<Http3WTStreamJS>::Unwrap(strobj);
+    strjs->setObj(stream);
+    if (!stream->gone()) strjs->Ref();
+    stream->setJS(strjs);
 
-    HandleScope scope;
+    Napi::Object objVal = sessionobj->getJS()->Value();
 
-    auto strVal = Http3WTStream::NewInstance(stream);
-    v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
-    v8::Local<v8::String> purposeVal = Nan::New("Http3WTStreamVisitor").ToLocalChecked();
-    v8::Local<v8::String> strProp = Nan::New("stream").ToLocalChecked();
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "Http3WTStreamVisitor");
+    retObj.Set("stream", strobj);
+    retObj.Set("incoming", incom);
+    retObj.Set("bidirectional", bidi);
+    retObj.Set("object", objVal);
 
-    v8::Local<v8::String> incomProp = Nan::New("incoming").ToLocalChecked();
-    v8::Local<v8::Boolean> incomVal = Nan::New(incom);
-    v8::Local<v8::String> bidiProp = Nan::New("bidirectional").ToLocalChecked();
-    v8::Local<v8::Boolean> bidiVal = Nan::New(bidi);
-
-    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
-    v8::Local<v8::Object> objVal = sessionobj->handle();
-
-    auto context = GetCurrentContext();
-    v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
-    retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, strProp, strVal).FromJust();
-    retObj->Set(context, incomProp, incomVal).FromJust();
-    retObj->Set(context, bidiProp, bidiVal).FromJust();
-    retObj->Set(context, objProp, objVal).FromJust();
-
-    v8::Local<v8::Value> argv[] = {retObj};
-    Nan::Call(*cbsession_, 1, argv);
+    cbsession_.Call({retObj});
   }
 
-  void Http3EventLoop::processStreamClosed(Http3WTStream *streamobj, WebTransportStreamError code)
+  void Http3EventLoop::processStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task)
   {
-    HandleScope scope;
-    v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
-    v8::Local<v8::String> purposeVal = Nan::New("StreamClosed").ToLocalChecked();
-    v8::Local<v8::String> codeProp = Nan::New("code").ToLocalChecked();
-    v8::Local<v8::Int32> codeVal = Nan::New(code);
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
+    auto stream = streamobj->getJS();
+    if (!stream)
+      return;
+    Napi::Object objVal = stream->Value();
 
-    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
-    v8::Local<v8::Object> objVal = streamobj->handle();
+    std::string nettaskstr;
+    switch (task)
+    {
+    case NetworkTask::resetStream:
+    {
+      nettaskstr = "resetStream";
+    }
+    break;
+    case NetworkTask::stopSending:
+    {
+      nettaskstr = "stopSending";
+    }
+    break;
+    case NetworkTask::streamFinal:
+    {
+      nettaskstr = "streamFinal";
+    }
+    break;
+    default:
+      return;
+    };
 
-    auto context = GetCurrentContext();
-    v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
-    retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, codeProp, codeVal).FromJust();
-    retObj->Set(context, objProp, objVal).FromJust();
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "StreamRecvSignal");
+    retObj.Set("code", error_code);
+    retObj.Set("object", objVal);
+    retObj.Set("nettask", nettaskstr);
 
-    v8::Local<v8::Value> argv[] = {retObj};
-    Nan::Call(*cbstream_, 1, argv);
+    cbstream_.Call({retObj});
   }
 
-  void Http3EventLoop::processStreamRead(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, size_t lenread, bool fin, bool success)
+  void Http3EventLoop::processStreamRead(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, size_t lenread, bool fin, bool success)
   {
-    HandleScope scope;
-    v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
-    v8::Local<v8::String> purposeVal = Nan::New("StreamRead").ToLocalChecked();
-    v8::Local<v8::String> finProp = Nan::New("fin").ToLocalChecked();
-    v8::Local<v8::Boolean> finVal = Nan::New(fin);
-    v8::Local<v8::String> datalenProp = Nan::New("datalen").ToLocalChecked();
-    v8::Local<v8::Uint32> datalenVal = Nan::New((uint32_t) lenread);
-    v8::Local<v8::String> successProp = Nan::New("success").ToLocalChecked();
-    v8::Local<v8::Boolean> successVal = Nan::New(success);
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
 
-
-    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
-    v8::Local<v8::Object> objVal = streamobj->handle();
-
-    bufferhandle->Reset(); // release the incoming buffer
+    bufferhandle->Unref(); // release the incoming buffer
     delete bufferhandle;   // free the handle object
 
-    auto context = GetCurrentContext();
-    v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
-    retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, finProp, finVal).FromJust();
-    retObj->Set(context, datalenProp, datalenVal).FromJust();
-    retObj->Set(context, objProp, objVal).FromJust();
-    retObj->Set(context, successProp, successVal).FromJust();
+    auto stream = streamobj->getJS();
+    if (!stream)
+      return;
+    Napi::Object objVal = stream->Value();
 
-    v8::Local<v8::Value> argv[] = {retObj};
-    Nan::Call(*cbstream_, 1, argv);
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "StreamRead");
+    retObj.Set("fin", fin);
+    retObj.Set("datalen", lenread);
+    retObj.Set("object", objVal);
+    retObj.Set("success", success);
+
+    cbstream_.Call({retObj});
   }
 
-  void Http3EventLoop::processStreamWrite(Http3WTStream *streamobj, Nan::Persistent<v8::Object> *bufferhandle, bool success)
+  void Http3EventLoop::processStreamWrite(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, bool success)
   {
-    HandleScope scope;
-    v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
-    v8::Local<v8::String> purposeVal = Nan::New("StreamWrite").ToLocalChecked();
-    v8::Local<v8::String> successProp = Nan::New("success").ToLocalChecked();
-    v8::Local<v8::Boolean> successVal = Nan::New(success);
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
 
-    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
-    v8::Local<v8::Object> objVal = streamobj->handle();
+    auto stream = streamobj->getJS();
+    if (!stream)
+      return;
 
-    bufferhandle->Reset(); // release the outgoing buffer
+    Napi::Object objVal = stream->Value();
+    bufferhandle->Unref(); // release the outgoing buffer
     delete bufferhandle;   // free the handle object
 
-    auto context = GetCurrentContext();
-    v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
-    retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, successProp, successVal).FromJust();
-    retObj->Set(context, objProp, objVal).FromJust();
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "StreamWrite");
+    retObj.Set("success", success);
+    retObj.Set("object", objVal);
 
-    v8::Local<v8::Value> argv[] = {retObj};
-    Nan::Call(*cbstream_, 1, argv);
+    cbstream_.Call({retObj});
   }
 
   void Http3EventLoop::processStreamReset(Http3WTStream *streamobj)
   {
-    HandleScope scope;
-    v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
-    v8::Local<v8::String> purposeVal = Nan::New("StreamReset").ToLocalChecked();
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
 
-    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
-    v8::Local<v8::Object> objVal = streamobj->handle();
+    auto stream = streamobj->getJS();
+    if (!stream)
+      return;
 
+    Napi::Object objVal = stream->Value();
 
-    auto context = GetCurrentContext();
-    v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
-    retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, objProp, objVal).FromJust();
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "StreamReset");
+    retObj.Set("object", objVal);
 
-    v8::Local<v8::Value> argv[] = {retObj};
-    Nan::Call(*cbstream_, 1, argv);
+    cbstream_.Call({retObj});
   }
 
-  void Http3EventLoop::processDatagramBufferFree(Nan::Persistent<v8::Object> *bufferhandle)
+  void Http3EventLoop::processStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task)
   {
-    bufferhandle->Reset(); // release the outgoing buffer
-    delete bufferhandle;   // free the handle object
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
+
+    auto stream = streamobj->getJS();
+    if (!stream)
+      return;
+    Napi::Object objVal = stream->Value();
+
+    std::string nettaskstr;
+    switch (task)
+    {
+    case NetworkTask::resetStream:
+    {
+      nettaskstr = "resetStream";
+    }
+    break;
+    case NetworkTask::stopSending:
+    {
+      nettaskstr = "stopSending";
+    }
+    break;
+    case NetworkTask::streamFinal:
+    {
+      nettaskstr = "streamFinal";
+    }
+    break;
+    default:
+      return;
+    };
+
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "StreamNetworkFinish");
+    retObj.Set("object", objVal);
+    retObj.Set("nettask", nettaskstr);
+
+    cbstream_.Call({retObj});
   }
 
   void Http3EventLoop::processDatagramReceived(Http3WTSession *sessionobj, std::string *datagram)
   {
-    HandleScope scope;
-    v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
-    v8::Local<v8::String> purposeVal = Nan::New("DatagramReceived").ToLocalChecked();
-    v8::Local<v8::String> datagramProp = Nan::New("datagram").ToLocalChecked();
-    v8::Local<v8::Object> datagramVal = Nan::NewBuffer(&(*datagram)[0], datagram->length(),
-                                                       freeData, static_cast<void *>(datagram))
-                                            .ToLocalChecked();
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
+    Napi::Object datagramVal =
+        Napi::Uint8Array::New(qw_->Env(),
+                              datagram->length(),
+                              Napi::ArrayBuffer::New(qw_->Env(), &(*datagram)[0], datagram->length(),
+                                                     freeData, datagram),
+                              0);
 
-    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
-    v8::Local<v8::Object> objVal = sessionobj->handle();
+    auto session = sessionobj->getJS();
+    if (!session)
+      return;
+    Napi::Object objVal = session->Value();
 
-    auto context = GetCurrentContext();
-    v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
-    retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, datagramProp, datagramVal).FromJust();
-    retObj->Set(context, objProp, objVal).FromJust();
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "DatagramReceived");
+    retObj.Set("datagram", datagramVal);
+    retObj.Set("object", objVal);
 
-    v8::Local<v8::Value> argv[] = {retObj};
-    Nan::Call(*cbsession_, 1, argv);
+    cbsession_.Call({retObj});
   }
 
-  void Http3EventLoop::processDatagramSend(Http3WTSession *sessionobj)
+  void Http3EventLoop::processDatagramSend(Http3WTSession *sessionobj, Napi::ObjectReference *bufferhandle)
   {
-    HandleScope scope;
-    v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
-    v8::Local<v8::String> purposeVal = Nan::New("DatagramSend").ToLocalChecked();
+     bufferhandle->Unref(); // release the outgoing buffer
+    delete bufferhandle;   // free the handle object
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
+    auto session = sessionobj->getJS();
+    if (!session)
+      return;
+    Napi::Object objVal = session->Value();
 
-    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
-    v8::Local<v8::Object> objVal = sessionobj->handle();
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "DatagramSend");
+    retObj.Set("object", objVal);
 
-    auto context = GetCurrentContext();
-    v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
-    retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, objProp, objVal).FromJust();
-
-    v8::Local<v8::Value> argv[] = {retObj};
-    Nan::Call(*cbsession_, 1, argv);
+    cbsession_.Call({retObj});
   }
 
-  void Http3EventLoop::processNewSession(Http3Server * serverobj, Http3WTSession *session, const std::string &path)
+  void Http3EventLoop::processNewSessionRequest(Http3Server *serverobj, WebTransportSession *session, spdy::Http2HeaderBlock *reqheadcopy, WebTransportRespPromisePtr *promise)
   {
-    HandleScope scope;
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
 
-    auto sessionobj = Http3WTSession::NewInstance(session);
-    v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
-    v8::Local<v8::String> purposeVal = Nan::New("Http3WTSessionVisitor").ToLocalChecked();
-    v8::Local<v8::String> sessProp = Nan::New("session").ToLocalChecked();
+    Napi::Object objVal = serverobj->getJS()->Value();
 
-    v8::Local<v8::String> pathProp = Nan::New("path").ToLocalChecked();
-    v8::Local<v8::String> stringPath = Nan::New(path).ToLocalChecked();
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
 
-    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
-    v8::Local<v8::Object> objVal = serverobj->handle();
+    retObj.Set("purpose", "SessionRequest");
+    // header
 
-    auto context = GetCurrentContext();
-    v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
-    retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, sessProp, sessionobj).FromJust();
-    retObj->Set(context, pathProp, stringPath).FromJust();
-    retObj->Set(context, objProp, objVal).FromJust();
+    Napi::Object headObj = Napi::Object::New(qw_->Env());
+    for (auto pair : *reqheadcopy)
+    {
+      // we iterate over all header fields
+      headObj.Set(std::string(pair.first), std::string(pair.second));
+    }
+    retObj.Set("header", headObj);
+    delete reqheadcopy; // we own it and must free it!
 
-    v8::Local<v8::Value> argv[] = {retObj};
-    Nan::Call(*callback, 1, argv);
+    // promise
+    Napi::External<WebTransportRespPromisePtr> promObj =
+        Napi::External<WebTransportRespPromisePtr>::New(qw_->Env(), promise,
+                                                        [](Napi::Env /*env*/, WebTransportRespPromisePtr *ref)
+                                                        {
+                                                          delete ref; // we own it and must delete it
+                                                        });
+    retObj.Set("promise", promObj);
+
+    Napi::External<WebTransportSession> wtsObj =
+        Napi::External<WebTransportSession>::New(qw_->Env(), session,
+                                                 [](Napi::Env /*env*/, WebTransportSession *ref)
+                                                 {
+                                                   // we do not own it! And do not delete it.
+                                                   // does it outlife everything?
+                                                 });
+    retObj.Set("session", wtsObj);
+
+    retObj.Set("object", objVal);
+
+    cbtransport_.Call({retObj});
+  }
+
+  void Http3EventLoop::processNewSession(Http3Server *serverobj, Http3WTSession *session, const std::string &path, Napi::Reference<Napi::Value> *header)
+  {
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
+
+    Http3Constructors *constr = qw_->Env().GetInstanceData<Http3Constructors>();
+    Napi::Object sessionobj = constr->session.New({});
+    Http3WTSessionJS *sessionjs = Napi::ObjectWrap<Http3WTSessionJS>::Unwrap(sessionobj);
+    sessionjs->setObj(session);
+    sessionjs->Ref();
+    session->setJS(sessionjs);
+
+    Napi::Object objVal = serverobj->getJS()->Value();
+
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "Http3WTSessionVisitor");
+    retObj.Set("session", sessionobj);
+    retObj.Set("path", path);
+    retObj.Set("object", objVal);
+    if (header)
+    {
+      retObj.Set("header", header->Value());
+      header->Unref();
+      delete header;
+    }
+
+    cbtransport_.Call({retObj});
+  }
+
+  void Http3EventLoop::processNewClientSession(Http3Client *clientobj, Http3WTSession *session)
+  {
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
+
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "Http3WTSessionVisitor");
+    if (session != nullptr)
+    {
+      Http3Constructors *constr = qw_->Env().GetInstanceData<Http3Constructors>();
+      Napi::Object sessionobj = constr->session.New({});
+      Http3WTSessionJS *sessionjs = Napi::ObjectWrap<Http3WTSessionJS>::Unwrap(sessionobj);
+      sessionjs->setObj(session);
+      sessionjs->Ref();
+      session->setJS(sessionjs);
+
+      Napi::Object objVal = clientobj->getJS()->Value();
+      retObj.Set("session", sessionobj);
+
+      retObj.Set("object", objVal);
+    }
+    cbtransport_.Call({retObj});
   }
 
   void Http3EventLoop::processSessionReady(Http3WTSession *sessionobj)
   {
-    HandleScope scope;
-    v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
-    v8::Local<v8::String> purposeVal = Nan::New("SessionReady").ToLocalChecked();
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
+    auto session = sessionobj->getJS();
+    if (!session)
+      return;
+    Napi::Object objVal = session->Value();
 
-    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
-    v8::Local<v8::Object> objVal = sessionobj->handle();
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "SessionReady");
+    retObj.Set("object", objVal);
 
-    auto context = GetCurrentContext();
-    v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
-    retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, objProp, objVal).FromJust();
-
-
-    v8::Local<v8::Value> argv[] = {retObj};
-    Nan::Call(*cbsession_, 1, argv);
+    cbsession_.Call({retObj});
   }
 
   void Http3EventLoop::processSessionClose(Http3WTSession *sessionobj, uint32_t errorcode, const std::string &error)
   {
-    HandleScope scope;
-    v8::Local<v8::String> purposeProp = Nan::New("purpose").ToLocalChecked();
-    v8::Local<v8::String> purposeVal = Nan::New("SessionClose").ToLocalChecked();
-    v8::Local<v8::String> errorProp = Nan::New("error").ToLocalChecked();
-    v8::Local<v8::String> errorVal = Nan::New(error).ToLocalChecked();
-    v8::Local<v8::String> errorcProp = Nan::New("errorcode").ToLocalChecked();
-    v8::Local<v8::Uint32> errorcVal = Nan::New(errorcode);
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
 
-    v8::Local<v8::String> objProp = Nan::New("object").ToLocalChecked();
-    v8::Local<v8::Object> objVal = sessionobj->handle();
+    auto session = sessionobj->getJS();
+    if (!session)
+      return;
 
-    auto context = GetCurrentContext();
-    v8::Local<v8::Object> retObj = Nan::New<v8::Object>();
-    retObj->Set(context, purposeProp, purposeVal).FromJust();
-    retObj->Set(context, errorProp, errorVal).FromJust();
-    retObj->Set(context, errorcProp, errorcVal).FromJust();
+    Napi::Object objVal = session->Value();
 
-    retObj->Set(context, objProp, objVal).FromJust();
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "SessionClose");
+    retObj.Set("error", error);
+    retObj.Set("errorcode", errorcode);
 
-    v8::Local<v8::Value> argv[] = {retObj};
-    Nan::Call(*cbsession_, 1, argv);
+    retObj.Set("object", objVal);
+
+    cbsession_.Call({retObj});
+  }
+
+  void Http3EventLoop::processServerStatus(Http3Server *serverobj, NetworkStatus status, ServerStatusDetails *details)
+  {
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
+
+    Napi::Object objVal = serverobj->getJS()->Value();
+
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "ServerStatus");
+    retObj.Set("object", objVal);
+    Napi::Number portVal = Napi::Number::New(qw_->Env(), details->port);
+    retObj.Set("port", portVal);
+    Napi::String hostVal = Napi::String::New(qw_->Env(), details->host);
+    retObj.Set("host", hostVal);
+
+    delete details; // we own it and must throw it away
+    switch (status)
+    {
+    case NetError:
+    {
+      retObj.Set("status", "error");
+    }
+    break;
+    case NetListening:
+    {
+      retObj.Set("status", "listening");
+    }
+    break;
+    case NetClose:
+    {
+      retObj.Set("status", "close");
+    }
+    break;
+    default:
+    {
+      Napi::Error::New(Env(), "Unknown status from server").ThrowAsJavaScriptException();
+      return;
+    }
+    break;
+    };
+    cbtransport_.Call({retObj});
   }
 
   void Http3EventLoop::HandleProgressCallback(const Http3ProgressReport *data, size_t count)
@@ -529,9 +758,29 @@ namespace quic
       Http3ProgressReport cur = data[i];
       switch (cur.type)
       {
+      case Http3ProgressReport::ClientConnected:
+      {
+        processClientConnected(cur.clientobj, cur.success);
+      }
+      break;
+      case Http3ProgressReport::ClientWebTransportSupport:
+      {
+        processClientWebtransportSupport(cur.clientobj);
+      }
+      break;
+      case Http3ProgressReport::NewClientSession:
+      {
+        processNewClientSession(cur.clientobj, cur.session);
+      }
+      break;
+      case Http3ProgressReport::NewSessionRequest:
+      {
+        processNewSessionRequest(cur.serverobj, cur.webtsession, cur.headerblock, cur.promise);
+      }
+      break;
       case Http3ProgressReport::NewSession:
       {
-        processNewSession(cur.serverobj, cur.session, *cur.para);
+        processNewSession(cur.serverobj, cur.session, *cur.para, cur.header);
       }
       break;
       case Http3ProgressReport::SessionReady:
@@ -564,9 +813,15 @@ namespace quic
         processStream(false, false, cur.sessionobj, cur.stream);
       }
       break;
-      case Http3ProgressReport::StreamClosed:
+      case Http3ProgressReport::ServerStatus:
       {
-        processStreamClosed(cur.streamobj, cur.wtscode);
+        processServerStatus(cur.serverobj, cur.status, cur.details);
+        cur.para = nullptr; // take ownership of the data
+      }
+      break;
+      case Http3ProgressReport::StreamRecvSignal:
+      {
+        processStreamRecvSignal(cur.streamobj, cur.wtscode, cur.nettask);
       }
       break;
       case Http3ProgressReport::StreamRead:
@@ -584,6 +839,11 @@ namespace quic
         processStreamReset(cur.streamobj);
       }
       break;
+      case Http3ProgressReport::StreamNetworkFinish:
+      {
+        processStreamNetworkFinish(cur.streamobj, cur.nettask);
+      }
+      break;
       case Http3ProgressReport::DatagramReceived:
       {
         processDatagramReceived(cur.sessionobj, cur.para);
@@ -592,99 +852,112 @@ namespace quic
       break;
       case Http3ProgressReport::DatagramSend:
       {
-        processDatagramSend(cur.sessionobj);
+        processDatagramSend(cur.sessionobj, cur.bufferhandle);
       }
       break;
-      case Http3ProgressReport::DatagramBufferFree:
+      case Http3ProgressReport::Unref:
       {
-        processDatagramBufferFree(cur.bufferhandle);
+        cur.obj->doUnref();
       }
       break;
       };
       if (cur.para)
         delete cur.para;
     }
-
-    // v8::Local<v8::Value> argv[] = {
-    //     Nan::New<v8::Integer>(*reinterpret_cast<int *>(const_cast<char *>(data)))};
-    //  progress->Call(1, argv, async_resource);
   }
 
-
-
-  NAN_METHOD(Http3EventLoop::New)
+  Http3EventLoop::Http3EventLoop(const Napi::CallbackInfo &info)
+      : Napi::ObjectWrap<Http3EventLoop>(info),
+        progress_(nullptr),
+        quic_event_loop_(GetDefaultEventLoop()->Create(QuicDefaultClock::Get()))
   {
-    if (info.IsConstructCall())
+#ifdef WIN32
+    initSockets();
+#endif
+
+    if (!info[0].IsUndefined() /*|| info[1].IsFunction()*/)
     {
-      v8::Isolate *isolate = info.GetIsolate();
-
-      Callback *callback = nullptr;
-      Callback *cbstream = nullptr;
-      Callback *cbsession = nullptr;
-
-      v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
-      if (!info[0]->IsUndefined() /*|| info[1]->IsFunction()*/)
+      Napi::Object lobj = info[0].ToObject();
+      if (lobj.IsEmpty())
       {
-        v8::MaybeLocal<v8::Object> obj = info[0]->ToObject(context);
-        v8::Local<v8::String> tpProp = Nan::New("transportCallback").ToLocalChecked();
-        v8::Local<v8::String> strProp = Nan::New("streamCallback").ToLocalChecked();
-        v8::Local<v8::String> sessProp = Nan::New("sessionCallback").ToLocalChecked();
-        if (obj.IsEmpty())  return Nan::ThrowError("No callback obj for Http3Transport");
-        v8::Local<v8::Object> lobj = obj.ToLocalChecked();
+        Napi::Error::New(Env(), "No callback obj for Http3Transport").ThrowAsJavaScriptException();
+        return;
+      }
 
-        if (Nan::HasOwnProperty(lobj, tpProp).FromJust() && !Nan::Get(lobj, tpProp).IsEmpty())
-        {
-          callback = new Callback(To<v8::Function>(Nan::Get(lobj, tpProp).ToLocalChecked()).ToLocalChecked());
-        } else return Nan::ThrowError("No transport callback");
+      if (lobj.Has("eventloopCallback") && (lobj).Get("eventloopCallback").IsFunction())
+      {
+        Napi::Function cbeventloop = lobj.Get("eventloopCallback").As<Napi::Function>();
+        qw_ = new QueueWorker(this, cbeventloop);
+      }
+      else
+      {
+        Napi::Error::New(Env(), "No eventloop callback").ThrowAsJavaScriptException();
+        qw_ = nullptr;
+        return;
+      }
 
-        if (Nan::HasOwnProperty(lobj, strProp).FromJust() && !Nan::Get(lobj, strProp).IsEmpty())
-        {
-          cbstream = new Callback(To<v8::Function>(Nan::Get(lobj, strProp).ToLocalChecked()).ToLocalChecked());
-        } else return Nan::ThrowError("No stream callback");
+      if (lobj.Has("transportCallback") && (lobj).Get("transportCallback").IsFunction())
+      {
+        cbtransport_ = Napi::Persistent(lobj.Get("transportCallback").As<Napi::Function>());
+      }
+      else
+      {
+        Napi::Error::New(Env(), "No transport callback").ThrowAsJavaScriptException();
+        return;
+      }
 
-        if (Nan::HasOwnProperty(lobj, sessProp).FromJust() && !Nan::Get(lobj, sessProp).IsEmpty())
-        {
-          cbsession = new Callback(To<v8::Function>(Nan::Get(lobj, sessProp).ToLocalChecked()).ToLocalChecked());
-        } else return Nan::ThrowError("No session callback");
+      if (lobj.Has("streamCallback") && lobj.Get("streamCallback").IsFunction())
+      {
+        cbstream_ = Napi::Persistent(lobj.Get("streamCallback").As<Napi::Function>());
+      }
+      else
+      {
+        Napi::Error::New(Env(), "No stream callback").ThrowAsJavaScriptException();
+        return;
+      }
 
-      } else  return Nan::ThrowError("Callback not passed to Http3EventLoop internal");
-        
-      Http3EventLoop *object = new Http3EventLoop(callback, cbstream, cbsession);
-      object->Wrap(info.This());
-      info.GetReturnValue().Set(info.This());
-      
+      if (lobj.Has("sessionCallback") && lobj.Get("sessionCallback").IsFunction())
+      {
+        cbsession_ = Napi::Persistent(lobj.Get("sessionCallback").As<Napi::Function>());
+      }
+      else
+      {
+        Napi::Error::New(Env(), "No session callback").ThrowAsJavaScriptException();
+        return;
+      }
     }
     else
     {
-      const int argc = 1;
-      v8::Local<v8::Value> argv[argc] = {info[0]};
-      v8::Local<v8::Function> cons = Nan::New(constructor());
-      auto instance = Nan::NewInstance(cons, argc, argv);
-      if (!instance.IsEmpty())
-        info.GetReturnValue().Set(instance.ToLocalChecked());
+      Napi::Error::New(Env(), "Callback not passed to Http3EventLoop internal").ThrowAsJavaScriptException();
+      return;
     }
   }
 
-  bool Http3EventLoop::startEventLoopInt()
+  void Http3EventLoop::startEventLoop(const Napi::CallbackInfo &info)
   {
-
-    Nan::AsyncQueueWorker(this);
-    return true;
-  }
-
-  NAN_METHOD(Http3EventLoop::startEventLoop)
-  {
-    Http3EventLoop *obj = Nan::ObjectWrap::Unwrap<Http3EventLoop>(info.Holder());
     // got the object we can now start the server
-    obj->Ref(); // do not garbage collect
-    obj->epoll_server_.set_timeout_in_us(-1); // negative values would mean wait forever
-  
-    if (!obj->startEventLoopInt())
-    {
-      return Nan::ThrowError("startEventLoopInt failed for Http3Server");
-    }
+    Ref(); // do not garbage collect
+    // epoll_server_.set_timeout_in_us(-1); // negative values would mean wait forever
+    if (!checkQw())
+      return;
+    qw_->Queue(); // from asyncprogressqueue worker
   }
 
-  NODE_MODULE(webtransport, Http3EventLoop::Init)
+  void Http3EventLoop::shutDownEventLoop(const Napi::CallbackInfo &info)
+  {
+    // FIXME kill the uv loop
+    std::function<void()> task = [this]()
+    {
+      loop_running_ = false;
+    };
+    Schedule(task);
+  }
 
+  Napi::Object Init(Napi::Env env, Napi::Object exports)
+  {
+    Http3EventLoop::Init(env, exports);
+    return exports;
+  }
+
+  NODE_API_MODULE(webtransport, Init)
 }

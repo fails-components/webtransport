@@ -5,7 +5,9 @@
 #ifndef NET_QUICHE_PLATFORM_IMPL_QUICHE_UDP_SOCKET_PLATFORM_IMPL_H_
 #define NET_QUICHE_PLATFORM_IMPL_QUICHE_UDP_SOCKET_PLATFORM_IMPL_H_
 
+#ifndef WIN32
 #include <sys/socket.h>
+#endif
 
 #include <cstddef>
 #include <cstdint>

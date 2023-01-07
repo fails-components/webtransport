@@ -1,13 +1,36 @@
 {
     "version": "0.2.0",
-    "configurations": [{
+    "configurations": [    {
+      "type": "lldb",
+      "name": "Attach to running node",
+      "request": "attach",
+      "program": "/usr/local/bin/node",
+      "pid": "${input:pidValue}"
+      },{
        "type": "lldb",
        "request": "launch",
        "name": "Launch Program",
        "preLaunchTask": "npm: build-debug",
        "program": "/usr/local/bin/node",
-       "args": [
-          "/workspaces/webtransport/test/echoserver.js"
+       "args": ["node_modules/.bin/_mocha",
+         "test/bidirectional-streams.spec.js"
+ //         "/workspaces/webtransport/test/test.js"
        ]
-    }]
+      /* "args": ["node_modules/.bin/_mocha",
+         "test/bidirectional-streams.spec.js"
+ //         "/workspaces/webtransport/test/test.js"
+       ] */
+    }],
+    "inputs": [
+       {
+         "id": "coreFileName",
+         "type": "promptString",
+         "description": "Enter core file path"
+       },
+       {
+          "id": "pidValue",
+          "type": "promptString",
+          "description": "Enter pid"
+        }
+     ] 
   }

@@ -8,6 +8,16 @@
 namespace quic
 {
 
+    Http3WTSession::Visitor::~Visitor()
+    {
+        Http3WTSessionJS *sessobj = session_->getJS();
+        if (sessobj)
+            session_->eventloop_->informUnref(sessobj);
+        else
+            delete session_;
+        session_ = nullptr;
+    }
+
     void Http3WTSession::Visitor::OnSessionClosed(WebTransportSessionError error_code,
                                                 const std::string &error_message)
     {
@@ -15,7 +25,7 @@ namespace quic
         session_->eventloop_->informSessionClosed(session_, error_code, error_message);
     }
 
-    void Http3WTSession::Visitor::OnSessionReady(const spdy::SpdyHeaderBlock &)
+    void Http3WTSession::Visitor::OnSessionReady(const spdy::Http2HeaderBlock &)
     {
         session_->eventloop_->informSessionReady(session_);
 

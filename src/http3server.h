@@ -12,79 +12,110 @@
 
 #include <memory>
 
-#include <nan.h>
+#include <napi.h>
+#include <uv.h>
 
 #include "src/http3serverbackend.h"
+#include "src/http3eventloop.h"
 #include "quiche/quic/core/crypto/quic_crypto_server_config.h"
+#include "quiche/quic/core/deterministic_connection_id_generator.h"
 #include "quiche/quic/core/quic_udp_socket.h"
 #include "quiche/quic/core/quic_dispatcher.h"
 #include "quiche/quic/core/quic_packet_reader.h"
 #include "quiche/quic/platform/api/quic_socket_address.h"
-#include "quiche/quic/platform/api/quic_epoll.h"
 
-using namespace Nan;
+using namespace Napi;
 
 namespace quic
 {
 
     class Http3EventLoop;
-    
 
-    class Http3Server : public QuicEpollCallbackInterface, public Nan::ObjectWrap
+    class Http3Server;
+
+    class Http3ServerJS : public Napi::ObjectWrap<Http3ServerJS>,
+                          public LifetimeHelper
     {
     public:
-        Http3Server(Http3EventLoop * eventloop, std::string host, int port, 
-            std::unique_ptr<ProofSource> proof_source,
-                           const char *secret);
+        Http3ServerJS(const Napi::CallbackInfo &info);
+
+        Http3Server *getObj()
+        {
+            return server_.get();
+        }
+
+        void startServer(const Napi::CallbackInfo &info);
+
+        void stopServer(const Napi::CallbackInfo &info);
+
+        void addPath(const Napi::CallbackInfo &info);
+
+        void finishSessionRequest(const Napi::CallbackInfo &info);
+
+        void setJSRequestHandler(const Napi::CallbackInfo &info);
+
+        static void InitExports(Napi::Env env, Napi::Object exports)
+        {
+            Napi::Function tplsrv = DefineClass(env, "Http3WebTransportServer",
+                                                {InstanceMethod<&Http3ServerJS::startServer>("startServer",
+                                                                                             static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                 InstanceMethod<&Http3ServerJS::stopServer>("stopServer",
+                                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                 InstanceMethod<&Http3ServerJS::addPath>("addPath",
+                                                                                         static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                 InstanceMethod<&Http3ServerJS::finishSessionRequest>("finishSessionRequest",
+                                                                                                      static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                 InstanceMethod<&Http3ServerJS::setJSRequestHandler>("setJSRequestHandler",
+                                                                                                     static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
+            exports.Set("Http3WebTransportServer", tplsrv);
+        }
+
+        void doUnref() override
+        {
+            Unref();
+        }
+
+    protected:
+        std::unique_ptr<Http3Server> server_;
+    };
+
+    class Http3Server : public QuicSocketEventListener
+    {
+        friend class Http3ServerJS;
+
+    public:
+        Http3Server(Http3EventLoop *eventloop, std::string host, int port,
+                    std::unique_ptr<ProofSource> proof_source,
+                    const char *secret,
+                    QuicConfig config);
 
         Http3Server(const Http3Server &) = delete;
         Http3Server &operator=(const Http3Server &) = delete;
 
         ~Http3Server();
 
-        static NAN_METHOD(createHttp3Server);
-
         bool CreateUDPSocketAndListen(const QuicSocketAddress &address);
 
-       
+        // From QuicSocketEventListener
+        void OnSocketEvent(QuicEventLoop *event_loop, QuicUdpSocketFd fd,
+                           QuicSocketEventMask events) override;
 
+        Http3ServerJS *getJS() { return js_; };
 
-        // From EpollCallbackInterface
-        std::string Name() const override { return "Http3Server"; }
-
-        
-        void OnRegistration(QuicEpollServer * /*eps*/,
-                            int /*fd*/,
-                            int /*event_mask*/) override {}
-        void OnModification(int /*fd*/, int /*event_mask*/) override {}
-        void OnEvent(int /*fd*/, QuicEpollEvent * /*event*/) override;
-        void OnUnregistration(int /*fd*/, bool /*replaced*/) override {}
-
-        void OnShutdown(QuicEpollServer * /*eps*/, int /*fd*/) override {}
-
-        static NAN_METHOD(New);
-
-        static NAN_METHOD(startServer);
-
-        static NAN_METHOD(stopServer);
-
-        static NAN_METHOD(addPath);
-
-        
-        static inline Nan::Persistent<v8::Function> &constructor()
+        ServerStatusDetails *getStatusDetails()
         {
-            static Nan::Persistent<v8::Function> my_constructor;
-            return my_constructor;
+            ServerStatusDetails *details = new ServerStatusDetails();
+            details->host = host_;
+            details->port = port_;
+            return details;
         }
-       
-
 
     private:
-
         bool startServerInt();
         bool stopServerInt();
 
-
+        void setJS(Http3ServerJS *js) { js_ = js; };
+        Http3ServerJS *js_;
 
         QuicUdpSocketFd fd_;
         bool overflow_supported_;
@@ -111,10 +142,8 @@ namespace quic
 
         QuicDispatcher *CreateQuicDispatcher();
 
-        Http3EventLoop * eventloop_;
-
-        
-
+        Http3EventLoop *eventloop_;
+        DeterministicConnectionIdGenerator connection_id_generator_;
     };
 
 }
