@@ -87,10 +87,10 @@ namespace quic
         // ok create a string obj to hold the data
         std::string *data = new std::string();
         data->resize(readable);
-        WebTransportStream::ReadResult result = stream_->Read(&(*data)[0], readable);
+        WebTransportStream::ReadResult result = stream_->Read(absl::Span<char>(&(*data)[0], readable));
         data->resize(result.bytes_read);
         QUIC_DVLOG(1) << "Attempted reading on WebTransport bidirectional stream "
-                       << ", bytes read: " << result.bytes_read;
+                      << ", bytes read: " << result.bytes_read;
         eventloop_->informAboutStreamRead(this, data, result.fin);
     }
 
