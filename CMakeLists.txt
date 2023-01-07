@@ -74,95 +74,9 @@ endif(COMMAND cmake_policy)
 add_compile_definitions(QUICHE_ENABLE_LIBEVENT)
 
 
-add_library(icu STATIC 
-#icu
-    third_party/icu/icu4c/source/common/appendable.cpp
-    third_party/icu/icu4c/source/common/bytestream.cpp
-    third_party/icu/icu4c/source/common/bytesinkutil.cpp
-    third_party/icu/icu4c/source/common/bytestrie.cpp
-    third_party/icu/icu4c/source/common/bmpset.cpp
-    third_party/icu/icu4c/source/common/charstr.cpp
-    third_party/icu/icu4c/source/common/cmemory.cpp
-    third_party/icu/icu4c/source/common/cstring.cpp
-    third_party/icu/icu4c/source/common/edits.cpp
-    third_party/icu/icu4c/source/common/locavailable.cpp
-    third_party/icu/icu4c/source/common/localebuilder.cpp
-    third_party/icu/icu4c/source/common/locid.cpp
-    third_party/icu/icu4c/source/common/locmap.cpp
-    third_party/icu/icu4c/source/common/loclikely.cpp
-    third_party/icu/icu4c/source/common/loadednormalizer2impl.cpp
-    third_party/icu/icu4c/source/common/normalizer2.cpp
-    third_party/icu/icu4c/source/common/normalizer2impl.cpp
-    third_party/icu/icu4c/source/common/patternprops.cpp
-    third_party/icu/icu4c/source/common/propname.cpp
-    third_party/icu/icu4c/source/common/punycode.cpp
-    third_party/icu/icu4c/source/common/resource.cpp
-    third_party/icu/icu4c/source/common/stringpiece.cpp
-    third_party/icu/icu4c/source/common/uarrsort.cpp
-    third_party/icu/icu4c/source/common/ubidi_props.cpp
-    third_party/icu/icu4c/source/common/uchar.cpp
-    third_party/icu/icu4c/source/common/ucmndata.cpp
-    third_party/icu/icu4c/source/common/ucln_cmn.cpp
-    third_party/icu/icu4c/source/common/ucptrie.cpp
-    third_party/icu/icu4c/source/common/ucol_swp.cpp
-    third_party/icu/icu4c/source/common/udata.cpp
-    third_party/icu/icu4c/source/common/udatamem.cpp
-    third_party/icu/icu4c/source/common/udataswp.cpp
-    third_party/icu/icu4c/source/common/uenum.cpp
-    third_party/icu/icu4c/source/common/uhash.cpp
-    third_party/icu/icu4c/source/common/uloc.cpp
-    third_party/icu/icu4c/source/common/uloc_tag.cpp
-    third_party/icu/icu4c/source/common/uloc_keytype.cpp
-    third_party/icu/icu4c/source/common/umapfile.cpp
-    third_party/icu/icu4c/source/common/umath.cpp
-    third_party/icu/icu4c/source/common/umutablecptrie.cpp
-    third_party/icu/icu4c/source/common/umutex.cpp
-    third_party/icu/icu4c/source/common/unistr.cpp
-    third_party/icu/icu4c/source/common/unifilt.cpp
-    third_party/icu/icu4c/source/common/unifunct.cpp
-    third_party/icu/icu4c/source/common/unisetspan.cpp
-    third_party/icu/icu4c/source/common/ustring.cpp
-    third_party/icu/icu4c/source/common/ustrtrns.cpp
-    third_party/icu/icu4c/source/common/ustrenum.cpp
-    third_party/icu/icu4c/source/common/uscript_props.cpp
-    third_party/icu/icu4c/source/common/util.cpp
-    third_party/icu/icu4c/source/common/uts46.cpp
-    third_party/icu/icu4c/source/common/uobject.cpp
-    third_party/icu/icu4c/source/common/uinvchar.cpp
-    third_party/icu/icu4c/source/common/uresbund.cpp
-    third_party/icu/icu4c/source/common/uresdata.cpp
-    third_party/icu/icu4c/source/common/uniset.cpp
-    third_party/icu/icu4c/source/common/utf_impl.cpp
-    third_party/icu/icu4c/source/common/utrace.cpp
-    third_party/icu/icu4c/source/common/utrie2.cpp
-    third_party/icu/icu4c/source/common/utrie_swap.cpp
-    third_party/icu/icu4c/source/common/utypes.cpp
-    third_party/icu/icu4c/source/common/uvector.cpp
-    third_party/icu/icu4c/source/common/putil.cpp
-)
-target_include_directories(icu
-    PUBLIC third_party/icu/icu4c/source/common
-)
-if (WIN32)
-    target_sources(icu PRIVATE
-    third_party/icu/icu4c/source/common/wintz.cpp
-    )
-    target_compile_definitions(icu PRIVATE
-    #hack since this function is not currently used
-    ICU_DATA_DIR_WINDOWS=""
-    )
-else()
-# fix data problem
-    target_sources(icu PRIVATE
-    platform/icufix/fakedata.cpp
-    )
-endif()
-
-target_compile_definitions(icu 
-PRIVATE U_DEFINE_FALSE_AND_TRUE=1
-U_STATIC_IMPLEMENTATION
-U_COMMON_IMPLEMENTATION
-)
+IF( NOT (WIN32 OR APPLE))
+    find_package(ICU COMPONENTS uc i18n REQUIRED)
+ENDIF(NOT (WIN32 OR APPLE))
 
 add_library(gquiche STATIC 
 #plattform impl
@@ -232,7 +146,6 @@ third_party/googleurl/url/gurl.cc
 third_party/googleurl/url/gurl.h
 third_party/googleurl/url/third_party/mozilla/url_parse.cc
 third_party/googleurl/url/third_party/mozilla/url_parse.h
-third_party/googleurl/url/url_idna_icu.cc
 third_party/googleurl/base/strings/utf_string_conversion_utils.cc
 third_party/googleurl/base/strings/utf_string_conversion_utils.h
 third_party/googleurl/build/buildflag.h
@@ -314,7 +227,6 @@ third_party/quiche/quiche/http2/adapter/window_manager.h
 third_party/quiche/quiche/http2/core/http2_trace_logging.cc
 third_party/quiche/quiche/http2/core/http2_trace_logging.h
 third_party/quiche/quiche/http2/core/priority_write_scheduler.h
-third_party/quiche/quiche/http2/core/write_scheduler.h
 third_party/quiche/quiche/http2/decoder/decode_buffer.cc
 third_party/quiche/quiche/http2/decoder/decode_buffer.h
 third_party/quiche/quiche/http2/decoder/decode_http2_structures.cc
@@ -901,6 +813,12 @@ third_party/quiche/quiche/spdy/core/spdy_simple_arena.h
 third_party/quiche/quiche/spdy/core/zero_copy_output_buffer.h
 )
 
+IF(APPLE OR WIN32)
+target_sources(gquiche PRIVATE third_party/googleurl/url/url_idna_ascii_only.cc)
+ELSE()
+target_sources(gquiche PRIVATE third_party/googleurl/url/url_idna_icu.cc)
+ENDIF()
+
 FILE(TO_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche PROTOMODEL_PATH)
 FILE(TO_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche PROTOBINDING_PATH)
 
@@ -919,7 +837,6 @@ ELSE(WIN32)
     ENDIF(APPLE)
 ENDIF(WIN32)
 
-target_compile_options(gquiche PRIVATE -flax-vector-conversions)
 
 
 add_custom_command(
@@ -986,8 +903,6 @@ PUBLIC ${CMAKE_JS_INC}
 )
 
 
-target_include_directories(gquiche PUBLIC third_party/icu/icu4c/source/common)
-
 target_link_libraries(gquiche 
 absl::base 
 absl::int128
@@ -1016,7 +931,6 @@ if(MSVC AND CMAKE_JS_NODELIB_DEF AND CMAKE_JS_NODELIB_TARGET)
 endif()
 
 
-target_link_libraries(gquiche icu)
 
 
 # google quiche build parameters end
