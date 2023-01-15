@@ -61,7 +61,6 @@ namespace quic
     Http3ClientJS::InitExports(env, exports);
     Http3WTSessionJS::InitExports(env, exports, constr);
     Http3WTStreamJS::InitExports(env, exports, constr);
-    Napi::ObjectReference *exportref = new Napi::ObjectReference();
 
     env.SetInstanceData<Http3Constructors>(constr);
   }
