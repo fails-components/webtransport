@@ -1042,7 +1042,7 @@ namespace quic
 
     void Http3Client::OnCompleteResponse(
         QuicStreamId id, const spdy::Http2HeaderBlock &response_headers,
-        const std::string &response_body)
+        const absl::string_view &response_body)
     {
         // implement
     }
@@ -1238,7 +1238,7 @@ namespace quic
         bool response_headers_complete,
         const spdy::Http2HeaderBlock &response_headers,
         const spdy::Http2HeaderBlock &preliminary_headers,
-        const std::string &response, const spdy::Http2HeaderBlock &response_trailers,
+        const absl::string_view response, const spdy::Http2HeaderBlock &response_trailers,
         uint64_t bytes_read, uint64_t bytes_written, int64_t response_body_size)
         : stream_error(stream_error),
           response_complete(response_complete),

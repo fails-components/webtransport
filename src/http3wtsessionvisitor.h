@@ -52,7 +52,6 @@ namespace quic
         {
             session_ = session;
             eventloop_ = eventloop;
-            allocator_ = std::make_unique<DatagramAllocator>(eventloop);
         }
 
         class Visitor : public WebTransportVisitor
@@ -226,49 +225,18 @@ namespace quic
             eventloop_->Schedule(task);
         }
 
-        class DatagramAllocator : public quiche::QuicheBufferAllocator
-        {
-        public:
-            DatagramAllocator(Http3EventLoop *eventloop) : eventloop_(eventloop)
-            {
-            }
-
-            char *New(size_t size) { return nullptr; }                   // fake it comes from javascript
-            char *New(size_t size, bool flag_enable) { return nullptr; } // fake it comes from javascript
-
-            void Delete(char *buffer)
-            {
-                eventloop_->informDatagramBufferFree(buffers_[buffer]);
-                buffers_.erase(buffer);
-            }
-
-            void registerBuffer(char *buffer, Napi::ObjectReference *bufferhandle)
-            {
-                buffers_[buffer] = bufferhandle;
-            }
-
-        protected:
-            Http3EventLoop *eventloop_;
-            std::map<char *, Napi::ObjectReference *> buffers_;
-        };
-
         void writeDatagramInt(char *buffer, size_t len, Napi::ObjectReference *bufferhandle)
         {
             if (!session_)
             {
-                eventloop_->informDatagramSend(this);
+                eventloop_->informDatagramSend(this, bufferhandle);
                 return;
             }
-            allocator_->registerBuffer(buffer, bufferhandle);
-            auto ubuffer = quiche::QuicheUniqueBufferPtr(buffer,
-                                                         quiche::QuicheBufferDeleter(allocator_.get()));
-
-            quiche::QuicheMemSlice slice(quiche::QuicheBuffer(std::move(ubuffer), len));
-            session_->SendOrQueueDatagram(std::move(slice));
-            eventloop_->informDatagramSend(this);
+            session_->SendOrQueueDatagram(absl::string_view(buffer, len));
+            eventloop_->informDatagramSend(this, bufferhandle);
         }
+
         WebTransportSession *session_;
-        std::unique_ptr<DatagramAllocator> allocator_;
         bool echo_stream_opened_ = false;
         Http3EventLoop *eventloop_;
         uint32_t ordBidiStreams;

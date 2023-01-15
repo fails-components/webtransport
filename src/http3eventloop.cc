@@ -206,21 +206,12 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::informDatagramSend(Http3WTSession *sessionobj)
+  void Http3EventLoop::informDatagramSend(Http3WTSession *sessionobj, Napi::ObjectReference *bufferhandle)
   {
     struct Http3ProgressReport report;
     report.type = Http3ProgressReport::DatagramSend;
     report.sessionobj = sessionobj;
-    if (progress_)
-      progress_->Send(&report, 1);
-  }
-
-  void Http3EventLoop::informDatagramBufferFree(Napi::ObjectReference *bufferhandle)
-  {
-    struct Http3ProgressReport report;
-    report.type = Http3ProgressReport::DatagramBufferFree;
     report.bufferhandle = bufferhandle;
-
     if (progress_)
       progress_->Send(&report, 1);
   }
@@ -533,12 +524,6 @@ namespace quic
     cbstream_.Call({retObj});
   }
 
-  void Http3EventLoop::processDatagramBufferFree(Napi::ObjectReference *bufferhandle)
-  {
-    bufferhandle->Unref(); // release the outgoing buffer
-    delete bufferhandle;   // free the handle object
-  }
-
   void Http3EventLoop::processDatagramReceived(Http3WTSession *sessionobj, std::string *datagram)
   {
     if (!checkQw())
@@ -564,8 +549,10 @@ namespace quic
     cbsession_.Call({retObj});
   }
 
-  void Http3EventLoop::processDatagramSend(Http3WTSession *sessionobj)
+  void Http3EventLoop::processDatagramSend(Http3WTSession *sessionobj, Napi::ObjectReference *bufferhandle)
   {
+     bufferhandle->Unref(); // release the outgoing buffer
+    delete bufferhandle;   // free the handle object
     if (!checkQw())
       return;
     HandleScope scope(qw_->Env());
@@ -866,12 +853,7 @@ namespace quic
       break;
       case Http3ProgressReport::DatagramSend:
       {
-        processDatagramSend(cur.sessionobj);
-      }
-      break;
-      case Http3ProgressReport::DatagramBufferFree:
-      {
-        processDatagramBufferFree(cur.bufferhandle);
+        processDatagramSend(cur.sessionobj, cur.bufferhandle);
       }
       break;
       case Http3ProgressReport::Unref:
