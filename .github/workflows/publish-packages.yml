@@ -195,6 +195,7 @@ jobs:
         run: npm ci --ignore-scripts=true
 
       - name: Build types
+        if: needs.version-check.outputs.changed == 'true'
         run: npm run types
 
       - run: npm publish --tag stable
