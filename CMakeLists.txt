@@ -151,6 +151,8 @@ third_party/googleurl/base/strings/utf_string_conversion_utils.h
 third_party/googleurl/build/buildflag.h
 third_party/googleurl/build/build_config.h
 # normal files
+third_party/quiche/quiche/common/capsule.cc
+third_party/quiche/quiche/common/capsule.h
 third_party/quiche/quiche/common/platform/api/quiche_bug_tracker.h
 third_party/quiche/quiche/common/platform/api/quiche_export.h
 third_party/quiche/quiche/common/platform/api/quiche_flag_utils.h
@@ -500,8 +502,6 @@ third_party/quiche/quiche/quic/core/frames/quic_streams_blocked_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_window_update_frame.cc
 third_party/quiche/quiche/quic/core/frames/quic_window_update_frame.h
 third_party/quiche/quiche/quic/core/handshaker_delegate_interface.h
-third_party/quiche/quiche/quic/core/http/capsule.cc
-third_party/quiche/quiche/quic/core/http/capsule.h
 third_party/quiche/quiche/quic/core/http/http_constants.cc
 third_party/quiche/quiche/quic/core/http/http_constants.h
 third_party/quiche/quiche/quic/core/http/http_decoder.cc
