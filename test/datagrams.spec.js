@@ -1,11 +1,11 @@
 /* eslint-env mocha */
-/*
+
 import WebTransport from './fixtures/webtransport.js'
 import { expect } from './fixtures/chai.js'
 import { readStream } from './fixtures/read-stream.js'
 import { readCertHash } from './fixtures/read-cert-hash.js'
 import { pTimeout } from './fixtures/p-timeout.js'
-*/
+
 /**
  * @template T
  * @typedef {import('../lib/types').Deferred<T>} Deferred<T>
@@ -24,7 +24,7 @@ describe('datagrams', function () {
       client.close()
     }
   })
-  /*
+
   it('client sends datagrams to the server', async () => {
     // client context - connects to the server, sends some datagrams and reads the response
     client = new WebTransport(
@@ -91,5 +91,4 @@ describe('datagrams', function () {
 
     expect(received).to.have.lengthOf(expected)
   })
-  */
 })
