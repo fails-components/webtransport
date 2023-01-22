@@ -25,6 +25,7 @@ describe('bidirectional streams', function () {
   afterEach(async () => {
     if (client != null) {
       client.close()
+      client = undefined
     }
   })
 
