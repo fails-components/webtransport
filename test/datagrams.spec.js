@@ -2,9 +2,9 @@
 
 import WebTransport from './fixtures/webtransport.js'
 import { expect } from './fixtures/chai.js'
-// import { readStream } from './fixtures/read-stream.js'
+import { readStream } from './fixtures/read-stream.js'
 import { readCertHash } from './fixtures/read-cert-hash.js'
-// import { pTimeout } from './fixtures/p-timeout.js'
+import { pTimeout } from './fixtures/p-timeout.js'
 
 /**
  * @template T
@@ -65,7 +65,7 @@ describe('datagrams', function () {
     expect(result).to.have.property('reason', '')
     expect(result).to.have.property('closeCode', 0)
   })
-  /*
+
   it('receives datagrams from the server', async () => {
     // client context - pipes the server's datagrams back to them
     client = new WebTransport(
@@ -90,5 +90,5 @@ describe('datagrams', function () {
     )
 
     expect(received).to.have.lengthOf(expected)
-  }) */
+  })
 })
