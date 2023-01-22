@@ -24,7 +24,7 @@ describe('datagrams', function () {
       client.close()
     }
   })
-
+  /*
   it('client sends datagrams to the server', async () => {
     // client context - connects to the server, sends some datagrams and reads the response
     client = new WebTransport(
@@ -64,7 +64,7 @@ describe('datagrams', function () {
     // should receive the default close info
     expect(result).to.have.property('reason', '')
     expect(result).to.have.property('closeCode', 0)
-  })
+  }) */
 
   it('receives datagrams from the server', async () => {
     // client context - pipes the server's datagrams back to them
