@@ -227,12 +227,15 @@ namespace quic
 
         void writeDatagramInt(char *buffer, size_t len, Napi::ObjectReference *bufferhandle)
         {
+            printf("Datagram write\n");
             if (!session_)
             {
+                printf("Datagram session gone\n");
                 eventloop_->informDatagramSend(this, bufferhandle);
                 return;
             }
-            session_->SendOrQueueDatagram(absl::string_view(buffer, len));
+            auto status=session_->SendOrQueueDatagram(absl::string_view(buffer, len));
+            printf("Datagram status %d %s\n", status.code, status.error_message.c_str());
             eventloop_->informDatagramSend(this, bufferhandle);
         }
 
