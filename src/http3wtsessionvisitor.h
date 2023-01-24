@@ -113,6 +113,7 @@ namespace quic
 
             void OnDatagramReceived(absl::string_view datagram) override
             {
+                printf("OnDatagramReceived %d\n", getpid());
                 session_->eventloop_->informDatagramReceived(session_, datagram);
                 /*auto buffer = MakeUniqueBuffer(&allocator_, datagram.size());
                 memcpy(buffer.get(), datagram.data(), datagram.size());
@@ -227,15 +228,15 @@ namespace quic
 
         void writeDatagramInt(char *buffer, size_t len, Napi::ObjectReference *bufferhandle)
         {
-            printf("Datagram write\n");
+            printf("Datagram write %d\n", getpid());
             if (!session_)
             {
-                printf("Datagram session gone\n");
+                printf("Datagram session gone %d\n", getpid());
                 eventloop_->informDatagramSend(this, bufferhandle);
                 return;
             }
             auto status=session_->SendOrQueueDatagram(absl::string_view(buffer, len));
-            printf("Datagram status %d %s\n", status.code, status.error_message.c_str());
+            printf("Datagram status %d %d %s\n", getpid(), status.code, status.error_message.c_str());
             eventloop_->informDatagramSend(this, bufferhandle);
         }
 
