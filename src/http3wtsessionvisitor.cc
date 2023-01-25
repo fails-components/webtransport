@@ -10,7 +10,7 @@ namespace quic
 
     Http3WTSession::Visitor::~Visitor()
     {
-        printf("~Visitor %d\n", getpid());
+        printf("~Visitor %d %x\n", getpid(), this);
         Http3WTSessionJS *sessobj = session_->getJS();
         if (sessobj)
             session_->eventloop_->informUnref(sessobj);
@@ -22,7 +22,7 @@ namespace quic
     void Http3WTSession::Visitor::OnSessionClosed(WebTransportSessionError error_code,
                                                 const std::string &error_message)
     {
-        printf("OnSessionClosed %d\n", getpid());
+        printf("OnSessionClosed %d %x\n", getpid(), this);
         session_->session_ = nullptr;
         session_->eventloop_->informSessionClosed(session_, error_code, error_message);
     }

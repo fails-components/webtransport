@@ -44,7 +44,7 @@ namespace quic
 
         ~Http3WTSession()
         {
-            // printf("session destruct %x\n", this);
+            printf("session destruct %x\n", this);
         }
 
         // need to be called immediately after new
@@ -228,15 +228,15 @@ namespace quic
 
         void writeDatagramInt(char *buffer, size_t len, Napi::ObjectReference *bufferhandle)
         {
-            printf("Datagram write %d\n", getpid());
+            printf("Datagram write %d %x\n", getpid(), this);
             if (!session_)
             {
-                printf("Datagram session gone %d\n", getpid());
+                printf("Datagram session gone %d %x\n", getpid(), this);
                 eventloop_->informDatagramSend(this, bufferhandle);
                 return;
             }
             auto status=session_->SendOrQueueDatagram(absl::string_view(buffer, len));
-            printf("Datagram status %d %d %s\n", getpid(), status.code, status.error_message.c_str());
+            printf("Datagram status %d %d %s %x\n", getpid(), status.code, status.error_message.c_str(), this);
             eventloop_->informDatagramSend(this, bufferhandle);
         }
 
