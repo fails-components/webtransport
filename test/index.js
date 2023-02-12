@@ -40,21 +40,56 @@ async function runTests(certificate, serverAddress) {
       './test/*.node.js',
       ...process.argv.slice(3)
     ]
+    const tests = execa(command, args, {
+      env: {
+        DEBUG_COLORS: process.env.CI ? '' : 'true',
+        CERT_HASH: certificate,
+        SERVER_URL: serverAddress
+      },
+      stdio: ['inherit', 'inherit', 'inherit']
+    })
+
+    await tests
   } else if (env === 'chromium') {
     command = 'playwright-test'
-    args = ['./test/*.spec.js', ...process.argv.slice(3)]
+    args = ['./test/bidi*.spec.js', ...process.argv.slice(3)]
+    const testsbidi = execa(command, args, {
+      env: {
+        DEBUG_COLORS: process.env.CI ? '' : 'true',
+        CERT_HASH: certificate,
+        SERVER_URL: serverAddress
+      },
+      stdio: ['inherit', 'inherit', 'inherit']
+    })
+
+    await testsbidi
+
+    command = 'playwright-test'
+    args = ['./test/sess*.spec.js', ...process.argv.slice(3)]
+    const testssess = execa(command, args, {
+      env: {
+        DEBUG_COLORS: process.env.CI ? '' : 'true',
+        CERT_HASH: certificate,
+        SERVER_URL: serverAddress
+      },
+      stdio: ['inherit', 'inherit', 'inherit']
+    })
+
+    await testssess
+
+    command = 'playwright-test'
+    args = ['./test/uni*.spec.js', ...process.argv.slice(3)]
+    const testsuni = execa(command, args, {
+      env: {
+        DEBUG_COLORS: process.env.CI ? '' : 'true',
+        CERT_HASH: certificate,
+        SERVER_URL: serverAddress
+      },
+      stdio: ['inherit', 'inherit', 'inherit']
+    })
+
+    await testsuni
   }
-
-  const tests = execa(command, args, {
-    env: {
-      DEBUG_COLORS: process.env.CI ? '' : 'true',
-      CERT_HASH: certificate,
-      SERVER_URL: serverAddress
-    },
-    stdio: ['inherit', 'inherit', 'inherit']
-  })
-
-  await tests
 }
 
 let success = true
