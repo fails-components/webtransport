@@ -74,8 +74,21 @@ async function runTests(certificate, serverAddress) {
       },
       stdio: ['inherit', 'inherit', 'inherit']
     })
-
+    
     await testssess
+
+    command = 'playwright-test'
+    args = ['./test/data*.spec.js', ...process.argv.slice(3)]
+    const testdata = execa(command, args, {
+      env: {
+        DEBUG_COLORS: process.env.CI ? '' : 'true',
+        CERT_HASH: certificate,
+        SERVER_URL: serverAddress
+      },
+      stdio: ['inherit', 'inherit', 'inherit']
+    })
+
+    await testsdata
 
     command = 'playwright-test'
     args = ['./test/uni*.spec.js', ...process.argv.slice(3)]
