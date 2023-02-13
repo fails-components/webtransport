@@ -122,16 +122,19 @@ export async function createServer() {
               // write datagrams until the client receives one and closes the connection
               // eslint-disable-next-line promise/catch-or-return
               Promise.resolve().then(async () => {
+                let bytes = 0
                 // eslint-disable-next-line no-unmodified-loop-condition
                 while (!closed) {
                   try {
                     await writer.ready
                     await writer.write(Uint8Array.from([0, 1, 2, 3, 4]))
-                    await new Promise((resolve) => setTimeout(resolve, 50)) // do not flood everything
+                    bytes += 5
+                    // await new Promise((resolve) => setTimeout(resolve, 1)) // do not flood everything
                   } catch {
                     // the session can be closed while we are writing
                   }
                 }
+                console.log('bytes send from server', bytes)
               })
 
               await session.closed
