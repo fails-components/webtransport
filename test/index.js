@@ -74,7 +74,7 @@ async function runTests(certificate, serverAddress) {
       },
       stdio: ['inherit', 'inherit', 'inherit']
     })
-    
+
     await testssess
 
     command = 'playwright-test'
@@ -88,7 +88,7 @@ async function runTests(certificate, serverAddress) {
       stdio: ['inherit', 'inherit', 'inherit']
     })
 
-    await testsdata
+    await testdata
 
     command = 'playwright-test'
     args = ['./test/uni*.spec.js', ...process.argv.slice(3)]
