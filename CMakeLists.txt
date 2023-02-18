@@ -902,6 +902,9 @@ PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
 PUBLIC ${CMAKE_JS_INC}
 )
 
+target_include_directories(crypto PUBLIC 
+$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/third_party/boringssl/src/include>
+)
 
 target_link_libraries(gquiche 
 absl::base 
