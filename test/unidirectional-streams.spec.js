@@ -22,18 +22,23 @@ describe('unidirectional streams', function () {
 
   it('sends data over an outgoing unidirectional stream', async () => {
     // client context - connects to the server, opens a bidi stream, sends some data and reads the response
-    client = new WebTransport(
-      `${process.env.SERVER_URL}/unidirectional_client_send`,
-      {
-        serverCertificateHashes: [
-          {
-            algorithm: 'sha-256',
-            value: readCertHash(process.env.CERT_HASH)
-          }
-        ]
-      }
-    )
-    await client.ready
+    try {
+      client = new WebTransport(
+        `${process.env.SERVER_URL}/unidirectional_client_send`,
+        {
+          serverCertificateHashes: [
+            {
+              algorithm: 'sha-256',
+              value: readCertHash(process.env.CERT_HASH)
+            }
+          ]
+        }
+      )
+      await client.ready
+    } catch (error) {
+      console.log('Peak unidirectional error:', error)
+      throw error
+    }
 
     const stream = await client.createUnidirectionalStream()
     await writeStream(stream, KNOWN_BYTES)
