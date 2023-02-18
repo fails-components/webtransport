@@ -18,6 +18,10 @@ set(BUILD_TESTING OFF)
 
 set(protobuf_BUILD_PROTOC_BINARIES ON)
 
+#debugging code, may be related to the problems, remove before merging PR
+add_compile_options(-fsanitize=address)
+add_link_options(-fsanitize=address)
+
 
 
 IF (WIN32)
