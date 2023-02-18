@@ -827,6 +827,8 @@ IF (WIN32)
                     third_party/googleurl/base/strings/string_util_win.h
                     platform/quiche_platform_impl/socket_winsock.cc
                     platform/quiche_platform_impl/quic_udp_socket_winsock.cc)
+
+    target_compile_definitions(crypto PUBLIC strdup=_strdup)
 ELSE(WIN32)
     target_sources(gquiche PRIVATE third_party/quiche/quiche/quic/core/io/socket_posix.cc
     third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
@@ -902,6 +904,9 @@ PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
 PUBLIC ${CMAKE_JS_INC}
 )
 
+target_include_directories(crypto PUBLIC 
+$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/third_party/boringssl/src/include>
+)
 
 target_link_libraries(gquiche 
 absl::base 
