@@ -828,7 +828,7 @@ IF (WIN32)
                     platform/quiche_platform_impl/socket_winsock.cc
                     platform/quiche_platform_impl/quic_udp_socket_winsock.cc)
 
-    target_add_compile_definitions(crypto strdup=_strdup)
+    target_compile_definitions(crypto strdup=_strdup)
 ELSE(WIN32)
     target_sources(gquiche PRIVATE third_party/quiche/quiche/quic/core/io/socket_posix.cc
     third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
