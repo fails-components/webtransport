@@ -23,6 +23,7 @@ describe('unidirectional streams', function () {
   it('sends data over an outgoing unidirectional stream', async () => {
     // client context - connects to the server, opens a bidi stream, sends some data and reads the response
     try {
+      console.log('unidirectional mark1')
       client = new WebTransport(
         `${process.env.SERVER_URL}/unidirectional_client_send`,
         {
@@ -34,7 +35,9 @@ describe('unidirectional streams', function () {
           ]
         }
       )
+      console.log('unidirectional mark2')
       await client.ready
+      console.log('unidirectional mark3')
     } catch (error) {
       console.log('Peak unidirectional error:', error)
       throw error
