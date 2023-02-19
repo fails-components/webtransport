@@ -18,11 +18,6 @@ set(BUILD_TESTING OFF)
 
 set(protobuf_BUILD_PROTOC_BINARIES ON)
 
-IF(UNIX AND NOT APPLE)
-#debugging code, may be related to the problems, remove it before merging PR
-add_compile_options(-fsanitize=address)
-add_link_options(-fsanitize=address)
-ENDIF(UNIX AND NOT APPLE)
 
 
 

@@ -42,34 +42,34 @@ jobs:
         run: npm run build
 
       - name: Run node unit tests
-        run: LD_PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so) NODE_ENV=production npm run test:node
+        run:  NODE_ENV=production npm run test:node
 
       - name: Run browser unit tests
-        run: LD_PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so) NODE_ENV=production npm run test:chromium
+        run:  NODE_ENV=production npm run test:chromium
       
       - name: Run browser unit tests 1
-        run: LD_PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so) NODE_ENV=production npm run test:chromium
+        run:  NODE_ENV=production npm run test:chromium
 
       - name: Run browser unit tests 2
-        run: LD_PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so) NODE_ENV=production npm run test:chromium
+        run:  NODE_ENV=production npm run test:chromium
 
       - name: Run browser unit tests 3
-        run: LD_PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so) NODE_ENV=production npm run test:chromium
+        run:  NODE_ENV=production npm run test:chromium
       
       - name: Run browser unit tests 4
-        run: LD_PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so) NODE_ENV=production npm run test:chromium
+        run:  NODE_ENV=production npm run test:chromium
 
       - name: Run browser unit tests 5
-        run: LD_PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so) NODE_ENV=production npm run test:chromium
+        run: NODE_ENV=production npm run test:chromium
 
       - name: Run browser unit tests 6
-        run: LD_PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so) NODE_ENV=production npm run test:chromium
+        run: NODE_ENV=production npm run test:chromium
       
       - name: Run browser unit tests 7
-        run: LD_PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so) ODE_ENV=production npm run test:chromium
+        run: NODE_ENV=production npm run test:chromium
 
       - name: Run browser unit tests 8
-        run: LD_PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so) NODE_ENV=production npm run test:chromium
+        run: NODE_ENV=production npm run test:chromium
 
       - name: Run old unit tests
         run: NODE_ENV=production npm run oldtest
