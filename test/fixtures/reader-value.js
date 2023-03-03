@@ -37,17 +37,19 @@ export async function* getReaderStream(readableStream) {
   const reader = readableStream.getReader()
 
   try {
-    const { done, value } = await reader.read()
+    while (true) {
+      const { done, value } = await reader.read()
 
-    if (done) {
-      return
+      if (done) {
+        return
+      }
+
+      if (!value) {
+        throw new Error('Stream value was undefined')
+      }
+
+      yield value
     }
-
-    if (!value) {
-      throw new Error('Stream value was undefined')
-    }
-
-    yield value
   } finally {
     reader.releaseLock()
   }
