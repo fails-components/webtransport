@@ -166,7 +166,6 @@ third_party/quiche/quiche/common/platform/api/quiche_mutex.cc
 third_party/quiche/quiche/common/platform/api/quiche_mutex.h
 third_party/quiche/quiche/common/platform/api/quiche_prefetch.h
 third_party/quiche/quiche/common/platform/api/quiche_reference_counted.h
-third_party/quiche/quiche/common/platform/api/quiche_thread_local.h
 third_party/quiche/quiche/common/platform/api/quiche_time_utils.h
 third_party/quiche/quiche/common/platform/api/quiche_url_utils.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flag_utils_impl.h
