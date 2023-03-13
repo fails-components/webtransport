@@ -25,6 +25,15 @@ inline bool GetGooglePacketHeadersFromControlMessageImpl(
 
 inline void SetGoogleSocketOptionsImpl(int fd) {}
 
+inline int GetEcnCmsgArgsPreserveDscpImpl(const int /*fd*/,
+                                          const int /*address_family*/,
+                                          uint8_t /*ecn_codepoint*/,
+                                          int& /*type*/, void* /*value*/,
+                                          socklen_t& /*value_len*/) {
+  // TODO(b/273081493): implement this.
+  return 0;
+}
+
 }  // namespace quic
 
 #endif  // NET_QUIC_PLATFORM_IMPL_QUIC_UDP_SOCKET_PLATFORM_IMPL_H_
