@@ -609,7 +609,6 @@ third_party/quiche/quiche/quic/core/quic_buffered_packet_store.cc
 third_party/quiche/quiche/quic/core/quic_buffered_packet_store.h
 third_party/quiche/quiche/quic/core/quic_chaos_protector.cc
 third_party/quiche/quiche/quic/core/quic_chaos_protector.h
-third_party/quiche/quiche/quic/core/quic_clock.cc
 third_party/quiche/quiche/quic/core/quic_clock.h
 third_party/quiche/quiche/quic/core/quic_coalesced_packet.cc
 third_party/quiche/quiche/quic/core/quic_coalesced_packet.h
