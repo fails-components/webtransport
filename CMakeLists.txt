@@ -549,6 +549,8 @@ third_party/quiche/quiche/quic/core/http/web_transport_stream_adapter.h
 third_party/quiche/quiche/quic/core/io/quic_event_loop.h
 third_party/quiche/quiche/quic/core/io/quic_default_event_loop.cc
 third_party/quiche/quiche/quic/core/io/quic_default_event_loop.h
+third_party/quiche/quiche/quic/core/io/quic_poll_event_loop.cc
+third_party/quiche/quiche/quic/core/io/quic_poll_event_loop.h
 third_party/quiche/quiche/quic/core/io/socket.h
 third_party/quiche/quiche/quic/core/io/socket.cc
 third_party/quiche/quiche/quic/core/io/socket_posix.inc
@@ -829,7 +831,8 @@ IF (WIN32)
                     third_party/googleurl/base/strings/string_util_win.h
                     platform/quiche_platform_impl/quic_udp_socket_winsock.cc)
 
-    target_compile_definitions(crypto PUBLIC strdup=_strdup)
+    target_compile_definitions(crypto PRIVATE strdup=_strdup)
+    target_compile_definitions(gquiche PRIVATE _WINSOCK_DEPRECATED_NO_WARNINGS)
 ELSE(WIN32)
     target_sources(gquiche PRIVATE third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
     )
