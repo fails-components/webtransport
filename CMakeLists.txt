@@ -550,6 +550,10 @@ third_party/quiche/quiche/quic/core/io/quic_event_loop.h
 third_party/quiche/quiche/quic/core/io/quic_default_event_loop.cc
 third_party/quiche/quiche/quic/core/io/quic_default_event_loop.h
 third_party/quiche/quiche/quic/core/io/socket.h
+third_party/quiche/quiche/quic/core/io/socket.cc
+third_party/quiche/quiche/quic/core/io/socket_posix.inc
+third_party/quiche/quiche/quic/core/io/socket_win.inc
+third_party/quiche/quiche/quic/core/io/socket_internal.h
 third_party/quiche/quiche/quic/core/legacy_quic_stream_id_manager.cc
 third_party/quiche/quiche/quic/core/legacy_quic_stream_id_manager.h
 third_party/quiche/quiche/quic/core/packet_number_indexed_queue.h
@@ -823,13 +827,11 @@ FILE(TO_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche PROTOBINDING_
 IF (WIN32)
     target_sources(gquiche PRIVATE third_party/googleurl/base/strings/string_util_win.cc
                     third_party/googleurl/base/strings/string_util_win.h
-                    platform/quiche_platform_impl/socket_winsock.cc
                     platform/quiche_platform_impl/quic_udp_socket_winsock.cc)
 
     target_compile_definitions(crypto PUBLIC strdup=_strdup)
 ELSE(WIN32)
-    target_sources(gquiche PRIVATE third_party/quiche/quiche/quic/core/io/socket_posix.cc
-    third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
+    target_sources(gquiche PRIVATE third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
     )
     IF(APPLE)
     ELSE(APPLE)
