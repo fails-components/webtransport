@@ -148,7 +148,8 @@ namespace quic
           connection_in_progress_(false),
           num_attempts_connect_(0),
           webtransport_server_support_inform_(false),
-          connection_debug_visitor_(nullptr)
+          connection_debug_visitor_(nullptr),
+          priority_(HttpStreamPriority())
     {
         set_server_address(server_address);
         Initialize();
@@ -183,7 +184,7 @@ namespace quic
 
     void Http3Client::Initialize()
     {
-        priority_ = QuicStreamPriority();
+        priority_ = QuicStreamPriority(HttpStreamPriority());
         connect_attempted_ = false;
         auto_reconnect_ = false;
         buffer_body_ = true;
