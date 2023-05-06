@@ -1,12 +1,6 @@
-#ifndef QUICHE_EXPORT_IMPL
-#define QUICHE_EXPORT_IMPL
+#ifndef QUICHE_EXPORT_IMPL_HEADER
+#define QUICHE_EXPORT_IMPL_HEADER
 
-// dirty hack to fix absl include error
-
-#include "absl/types/optional.h"
-
-#define QUICHE_EXPORT_IMPL
-#define QUICHE_EXPORT_PRIVATE_IMPL
-#define QUICHE_NO_EXPORT_IMPL
+#include "third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_export_impl.h"
 
 #endif
