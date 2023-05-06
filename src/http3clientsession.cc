@@ -37,9 +37,11 @@ Http3ClientSession::Http3ClientSession(
 
 std::unique_ptr<QuicSpdyClientStream>
 Http3ClientSession::CreateClientStream() {
-  return std::make_unique<Http3ClientStream>(
+  auto stream =  std::make_unique<Http3ClientStream>(
       GetNextOutgoingBidirectionalStreamId(), this, BIDIRECTIONAL,
       drop_response_body_);
+  stream->set_on_interim_headers(on_interim_headers_);
+  return stream;
 }
 
 bool Http3ClientSession::ShouldNegotiateWebTransport() {
