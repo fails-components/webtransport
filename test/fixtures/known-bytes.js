@@ -8,3 +8,8 @@ export const KNOWN_BYTES = [
   Uint8Array.from([15, 16, 17, 18, 19]),
   Uint8Array.from([20, 21, 22, 23, 24])
 ]
+
+export const KNOWN_BYTES_LENGTH = KNOWN_BYTES.reduce(
+  (accumulator, currentValue) => accumulator + currentValue.length,
+  0
+)

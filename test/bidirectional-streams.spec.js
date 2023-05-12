@@ -7,7 +7,7 @@ import { writeStream } from './fixtures/write-stream.js'
 import { readCertHash } from './fixtures/read-cert-hash.js'
 import WebTransport from './fixtures/webtransport.js'
 import * as ui8 from 'uint8arrays'
-import { KNOWN_BYTES } from './fixtures/known-bytes.js'
+import { KNOWN_BYTES, KNOWN_BYTES_LENGTH } from './fixtures/known-bytes.js'
 
 /**
  * @template T
@@ -47,7 +47,7 @@ describe('bidirectional streams', function () {
     const stream = await client.createBidirectionalStream()
     await writeStream(stream.writable, KNOWN_BYTES)
 
-    const output = await readStream(stream.readable, KNOWN_BYTES.length)
+    const output = await readStream(stream.readable, KNOWN_BYTES_LENGTH)
     expect(ui8.concat(KNOWN_BYTES)).to.deep.equal(
       ui8.concat(output),
       'Did not receive the same bytes we sent'

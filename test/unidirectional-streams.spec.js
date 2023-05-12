@@ -7,7 +7,7 @@ import { readStream } from './fixtures/read-stream.js'
 import { writeStream } from './fixtures/write-stream.js'
 import { readCertHash } from './fixtures/read-cert-hash.js'
 import * as ui8 from 'uint8arrays'
-import { KNOWN_BYTES } from './fixtures/known-bytes.js'
+import { KNOWN_BYTES, KNOWN_BYTES_LENGTH } from './fixtures/known-bytes.js'
 
 describe('unidirectional streams', function () {
   /** @type {import('../lib/dom').WebTransport | undefined} */
@@ -70,7 +70,7 @@ describe('unidirectional streams', function () {
     await client.ready
 
     const stream = await getReaderValue(client.incomingUnidirectionalStreams)
-    const output = await readStream(stream, KNOWN_BYTES.length)
+    const output = await readStream(stream, KNOWN_BYTES_LENGTH)
     expect(ui8.concat(KNOWN_BYTES)).to.deep.equal(
       ui8.concat(output),
       'Did not receive the same bytes we sent'
