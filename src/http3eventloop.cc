@@ -23,13 +23,6 @@ using namespace Napi;
 namespace quic
 {
 
-#ifdef WIN32
-
-  bool initSockets();
-  bool destroySockets();
-
-#endif
-
   // hack since the header is faulty
   QUICHE_NO_EXPORT QuicEventLoopFactory *GetDefaultEventLoop();
 
@@ -40,9 +33,6 @@ namespace quic
   Http3EventLoop::~Http3EventLoop()
   {
     printf("Destructor eventloop\n");
-#ifdef WIN32
-    destroySockets();
-#endif
   }
 
   void Http3EventLoop::Init(Napi::Env env, Napi::Object exports)
@@ -872,10 +862,6 @@ namespace quic
         progress_(nullptr),
         quic_event_loop_(GetDefaultEventLoop()->Create(QuicDefaultClock::Get()))
   {
-#ifdef WIN32
-    initSockets();
-#endif
-
     if (!info[0].IsUndefined() /*|| info[1].IsFunction()*/)
     {
       Napi::Object lobj = info[0].ToObject();
