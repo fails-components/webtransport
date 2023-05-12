@@ -92,8 +92,6 @@ platform/quiche_platform_impl/quiche_mutex_impl.h
 platform/quiche_platform_impl/quiche_stack_trace_impl.h
 platform/quiche_platform_impl/quiche_stream_buffer_allocator_impl.h
 platform/quiche_platform_impl/quiche_time_utils_impl.h
-platform/quiche_platform_impl/quiche_time_utils_impl.cc
-platform/quiche_platform_impl/quic_testvalue_impl.h
 platform/quiche_platform_impl/quiche_udp_socket_platform_impl.h
 platform/quiche_platform_impl/quiche_prefetch_impl.h
 platform/quiche_platform_impl/quiche_server_stats_impl.h
@@ -179,6 +177,7 @@ third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mu
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_iovec_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_time_utils_impl.cc
 third_party/quiche/quiche/common/print_elements.h
 third_party/quiche/quiche/common/quiche_buffer_allocator.cc
 third_party/quiche/quiche/common/quiche_buffer_allocator.h
@@ -730,6 +729,9 @@ third_party/quiche/quiche/quic/core/quic_types.cc
 third_party/quiche/quiche/quic/core/quic_types.h
 third_party/quiche/quiche/quic/core/quic_unacked_packet_map.cc
 third_party/quiche/quiche/quic/core/quic_unacked_packet_map.h
+third_party/quiche/quiche/quic/core/quic_udp_socket.cc
+third_party/quiche/quiche/quic/core/quic_udp_socket_win.inc
+third_party/quiche/quiche/quic/core/quic_udp_socket_posix.inc
 third_party/quiche/quiche/quic/core/quic_udp_socket.h
 third_party/quiche/quiche/quic/core/quic_utils.cc
 third_party/quiche/quiche/quic/core/quic_utils.h
@@ -754,7 +756,6 @@ third_party/quiche/quiche/quic/core/uber_quic_stream_id_manager.cc
 third_party/quiche/quiche/quic/core/uber_quic_stream_id_manager.h
 third_party/quiche/quiche/quic/core/uber_received_packet_manager.cc
 third_party/quiche/quiche/quic/core/uber_received_packet_manager.h
-third_party/quiche/quiche/quic/core/quic_udp_socket.h
 third_party/quiche/quiche/quic/platform/api/quic_bug_tracker.h
 third_party/quiche/quiche/quic/platform/api/quic_client_stats.h
 third_party/quiche/quiche/quic/platform/api/quic_export.h
@@ -829,14 +830,11 @@ FILE(TO_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche PROTOBINDING_
 
 IF (WIN32)
     target_sources(gquiche PRIVATE third_party/googleurl/base/strings/string_util_win.cc
-                    third_party/googleurl/base/strings/string_util_win.h
-                    platform/quiche_platform_impl/quic_udp_socket_winsock.cc)
+                    third_party/googleurl/base/strings/string_util_win.h)
 
     target_compile_definitions(crypto PRIVATE strdup=_strdup)
     target_compile_definitions(gquiche PRIVATE _WINSOCK_DEPRECATED_NO_WARNINGS)
 ELSE(WIN32)
-    target_sources(gquiche PRIVATE third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
-    )
     IF(APPLE)
     ELSE(APPLE)
     target_link_libraries(gquiche -static-libgcc -static-libstdc++)

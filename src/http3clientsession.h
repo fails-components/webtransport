@@ -11,6 +11,9 @@
 #ifndef HTTP3_CLIENT_SESSION_H
 #define HTTP3_CLIENT_SESSION_H
 
+#include <functional>
+#include <utility>
+
 #include "quiche/quic/core/http/quic_spdy_client_session.h"
 #include "src/http3clientstream.h"
 
@@ -37,7 +40,13 @@ class Http3ClientSession : public QuicSpdyClientSession {
   bool ShouldNegotiateWebTransport() override;
   HttpDatagramSupport LocalHttpDatagramSupport() override;
 
+  void set_on_interim_headers(
+      std::function<void(const spdy::Http2HeaderBlock&)> on_interim_headers) {
+    on_interim_headers_ = std::move(on_interim_headers);
+  }
+
  private:
+  std::function<void(const spdy::Http2HeaderBlock&)> on_interim_headers_;
   const bool drop_response_body_;
   const bool enable_web_transport_;
 };

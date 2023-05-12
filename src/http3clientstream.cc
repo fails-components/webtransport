@@ -9,6 +9,7 @@
 // found in the LICENSE file.
 
 #include "src/http3clientstream.h"
+#include "quiche/common/platform/api/quiche_logging.h"
 
 namespace quic {
 
@@ -30,6 +31,22 @@ void Http3ClientStream::OnBodyAvailable() {
   } else {
     sequencer()->SetUnblocked();
   }
+}
+
+bool Http3ClientStream::ParseAndValidateStatusCode() {
+  const size_t num_previous_interim_headers = preliminary_headers().size();
+  if (!QuicSpdyClientStream::ParseAndValidateStatusCode()) {
+    return false;
+  }
+  // The base ParseAndValidateStatusCode() may have added a preliminary header.
+  if (preliminary_headers().size() > num_previous_interim_headers) {
+    QUICHE_DCHECK_EQ(preliminary_headers().size(),
+                     num_previous_interim_headers + 1);
+    if (on_interim_headers_) {
+      on_interim_headers_(preliminary_headers().back());
+    }
+  }
+  return true;
 }
 
 }  // namespace quic
