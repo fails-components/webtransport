@@ -167,10 +167,13 @@ third_party/quiche/quiche/common/platform/api/quiche_prefetch.h
 third_party/quiche/quiche/common/platform/api/quiche_reference_counted.h
 third_party/quiche/quiche/common/platform/api/quiche_time_utils.h
 third_party/quiche/quiche/common/platform/api/quiche_url_utils.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_command_line_flags_impl.cc
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_command_line_flags_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flag_utils_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_prefetch_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_logging_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_logging_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.h
@@ -911,7 +914,15 @@ $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/third_party/boringssl/src/include>
 )
 
 target_link_libraries(gquiche 
-absl::base 
+absl::core_headers
+absl::log_severity
+absl::flags
+absl::flags_usage
+absl::flags_parse
+absl::absl_check
+absl::absl_log
+absl::log_flags
+absl::log_initialize
 absl::int128
 absl::strings 
 absl::str_format
