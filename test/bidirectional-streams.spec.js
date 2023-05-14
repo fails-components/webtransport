@@ -74,7 +74,11 @@ describe('bidirectional streams', function () {
     const bidiStream = await getReaderValue(client.incomingBidirectionalStreams)
 
     // redirect input to output
-    await bidiStream.readable.pipeTo(bidiStream.writable)
+    try {
+      await bidiStream.readable.pipeTo(bidiStream.writable)
+    } catch (error) {
+      console.log('Pipe to error (ignore)', error) // Actually all you can get is, that the fin is catched
+    }
 
     // the remote will close the session
     const result = await client.closed

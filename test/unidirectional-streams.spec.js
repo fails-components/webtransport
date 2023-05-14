@@ -99,9 +99,12 @@ describe('unidirectional streams', function () {
     }
 
     await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    await writer.ready
-    await writer.close()
+    try {
+      await writer.ready
+      await writer.close()
+    } catch (error) {
+      console.log('Ignore stop sending', error)
+    }
 
     // the remote will close the session cleanly if everything was ok
     await client.closed

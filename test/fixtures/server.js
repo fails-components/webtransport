@@ -5,7 +5,7 @@ import { getReaderStream, getReaderValue } from './reader-value.js'
 import { writeStream } from './write-stream.js'
 import { readStream } from './read-stream.js'
 import * as ui8 from 'uint8arrays'
-import { KNOWN_BYTES } from './known-bytes.js'
+import { KNOWN_BYTES, KNOWN_BYTES_LENGTH } from './known-bytes.js'
 
 export async function createServer() {
   const attrs = [
@@ -25,6 +25,8 @@ export async function createServer() {
   }
 
   const server = new Http3Server({
+    /*   port: 8080,
+    host: '0.0.0.0', */
     port: 0,
     host: '127.0.0.1',
     secret: 'mysecret',
@@ -67,8 +69,9 @@ export async function createServer() {
 
               const received = await readStream(
                 stream.readable,
-                KNOWN_BYTES.length
+                KNOWN_BYTES_LENGTH
               )
+              await stream.readable.cancel() // cancel so that the client can progress
 
               // if we did not get the data we sent, close the session with a reason
               if (!ui8.equals(ui8.concat(KNOWN_BYTES), ui8.concat(received))) {
@@ -168,7 +171,8 @@ export async function createServer() {
               const stream = await getReaderValue(
                 session.incomingUnidirectionalStreams
               )
-              const received = await readStream(stream, KNOWN_BYTES.length)
+              const received = await readStream(stream, KNOWN_BYTES_LENGTH)
+              await stream.cancel() // cancel so that the client can progress
 
               // if we did not get the data we sent, close the session with a reason
               if (!ui8.equals(ui8.concat(KNOWN_BYTES), ui8.concat(received))) {
@@ -206,10 +210,12 @@ export async function createServer() {
               // on the client
               await new Promise((resolve) => setTimeout(resolve, 1000))
 
-              const received = await readStream(stream, KNOWN_BYTES.length)
+              const received = await readStream(stream, KNOWN_BYTES_LENGTH)
+              await stream.cancel() // cancel so that the client can progress
 
               // if we did not get expected data, close the session with a reason
               if (!ui8.equals(ui8.concat(KNOWN_BYTES), ui8.concat(received))) {
+                console.log('ERROR', KNOWN_BYTES, received)
                 session.close({
                   closeCode: 500,
                   reason: 'data did not match'
@@ -251,3 +257,7 @@ if (process.send)
     certificate: certificate.fingerprint
   })
 else console.error('No IPC channel')
+/* console.log({
+  address: `https://${address.host}:${address.port}`,
+  certificate: certificate.fingerprint
+}) */
