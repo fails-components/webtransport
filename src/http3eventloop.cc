@@ -17,6 +17,10 @@
 #include "quiche/common/platform/api/quiche_reference_counted.h"
 #include "quiche/quic/core/quic_default_clock.h"
 #include "quiche/quic/bindings/quic_libevent.h"
+#include "quiche/common/platform/api/quiche_command_line_flags.h"
+
+#include "absl/log/initialize.h"
+#include "absl/strings/string_view.h"
 
 using namespace Napi;
 
@@ -105,7 +109,7 @@ namespace quic
 
   void Http3EventLoop::informAboutStream(bool incom, bool bidir, Http3WTSession *sessionobj, Http3WTStream *stream)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     if (incom)
     {
       if (bidir)
@@ -136,7 +140,7 @@ namespace quic
 
   void Http3EventLoop::informStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::StreamRecvSignal;
     report.streamobj = streamobj;
     report.wtscode = error_code;
@@ -147,7 +151,7 @@ namespace quic
 
   void Http3EventLoop::informAboutStreamRead(Http3WTStream *streamobj, std::string *data, bool fin)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::StreamRead;
     report.streamobj = streamobj;
     report.para = data;
@@ -158,7 +162,7 @@ namespace quic
 
   void Http3EventLoop::informAboutStreamWrite(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, bool success)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::StreamWrite;
     report.streamobj = streamobj;
     report.bufferhandle = bufferhandle;
@@ -169,7 +173,7 @@ namespace quic
 
   void Http3EventLoop::informAboutStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::StreamNetworkFinish;
     report.streamobj = streamobj;
     report.nettask = task;
@@ -179,7 +183,7 @@ namespace quic
 
   void Http3EventLoop::informAboutStreamReset(Http3WTStream *streamobj)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::StreamReset;
     report.streamobj = streamobj;
     if (progress_)
@@ -188,7 +192,7 @@ namespace quic
 
   void Http3EventLoop::informDatagramReceived(Http3WTSession *sessionobj, absl::string_view datagram)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::DatagramReceived;
     report.sessionobj = sessionobj;
     report.para = new std::string(datagram);
@@ -198,7 +202,7 @@ namespace quic
 
   void Http3EventLoop::informDatagramSend(Http3WTSession *sessionobj, Napi::ObjectReference *bufferhandle)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::DatagramSend;
     report.sessionobj = sessionobj;
     report.bufferhandle = bufferhandle;
@@ -208,7 +212,7 @@ namespace quic
 
   void Http3EventLoop::informUnref(LifetimeHelper *obj)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::Unref;
     report.obj = obj;
 
@@ -218,7 +222,7 @@ namespace quic
 
   void Http3EventLoop::informAboutClientConnected(Http3Client *client, bool success)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::ClientConnected;
     report.clientobj = client;
     report.success = success;
@@ -228,7 +232,7 @@ namespace quic
 
   void Http3EventLoop::informClientWebtransportSupport(Http3Client *client)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::ClientWebTransportSupport;
     report.clientobj = client;
     if (progress_)
@@ -237,7 +241,7 @@ namespace quic
 
   void Http3EventLoop::informAboutNewSessionRequest(Http3Server *server, WebTransportSession *session, spdy::Http2HeaderBlock *reqheadcopy, WebTransportRespPromisePtr promise)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::NewSessionRequest;
     report.webtsession = session;
     report.serverobj = server;
@@ -249,7 +253,7 @@ namespace quic
 
   void Http3EventLoop::informAboutNewSession(Http3Server *server, Http3WTSession *session, absl::string_view path, Napi::Reference<Napi::Value> *header)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::NewSession;
     report.serverobj = server;
     report.session = session;
@@ -261,7 +265,7 @@ namespace quic
 
   void Http3EventLoop::informNewClientSession(Http3Client *client, Http3WTSession *session)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::NewClientSession;
     report.clientobj = client;
     report.session = session;
@@ -272,7 +276,7 @@ namespace quic
   void Http3EventLoop::informSessionClosed(Http3WTSession *sessionobj, WebTransportSessionError error_code,
                                            absl::string_view error_message)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::SessionClosed;
     report.sessionobj = sessionobj;
     report.para = new std::string(error_message);
@@ -283,7 +287,7 @@ namespace quic
 
   void Http3EventLoop::informSessionReady(Http3WTSession *sessionobj)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::SessionReady;
     report.sessionobj = sessionobj;
     if (progress_)
@@ -292,7 +296,7 @@ namespace quic
 
   void Http3EventLoop::informServerStatus(Http3Server *serverobj, NetworkStatus status, ServerStatusDetails *details)
   {
-    struct Http3ProgressReport report;
+    Http3ProgressReport report;
     report.type = Http3ProgressReport::ServerStatus;
     report.serverobj = serverobj;
     report.status = status;
@@ -862,6 +866,8 @@ namespace quic
         progress_(nullptr),
         quic_event_loop_(GetDefaultEventLoop()->Create(QuicDefaultClock::Get()))
   {
+    std::vector<std::string> quiche_cmd_line;
+    quiche_cmd_line.push_back(std::string("webtransport.node"));
     if (!info[0].IsUndefined() /*|| info[1].IsFunction()*/)
     {
       Napi::Object lobj = info[0].ToObject();
@@ -912,12 +918,25 @@ namespace quic
         Napi::Error::New(Env(), "No session callback").ThrowAsJavaScriptException();
         return;
       }
+      if (lobj.Has("quicheLogVerbose") && lobj.Get("quicheLogVerbose").IsFunction())
+      {
+         Napi::Value verboseValue = (lobj).Get("quicheLogVerbose");
+         quiche_cmd_line.push_back(std::string("-v"));
+         quiche_cmd_line.push_back(verboseValue.ToString().Utf8Value());
+         cbsession_ = Napi::Persistent(lobj.Get("sessionCallback").As<Napi::Function>());
+      }
     }
     else
     {
       Napi::Error::New(Env(), "Callback not passed to Http3EventLoop internal").ThrowAsJavaScriptException();
       return;
     }
+    std::vector<const char*> quiche_cmd_line_char;
+    for (auto cur= quiche_cmd_line.begin(); cur != quiche_cmd_line.end(); cur++) {
+      quiche_cmd_line_char.push_back((*cur).c_str());
+    } 
+
+    quiche::QuicheParseCommandLineFlags("No use instruction.", quiche_cmd_line.size(), &(*quiche_cmd_line_char.begin()));
   }
 
   void Http3EventLoop::startEventLoop(const Napi::CallbackInfo &info)
