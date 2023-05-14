@@ -17,6 +17,7 @@ describe('session', function () {
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
 
+  // @ts-ignore
   afterEach(async () => {
     if (client != null) {
       client.close()

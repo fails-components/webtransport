@@ -27,6 +27,7 @@ export async function readStream(readable, expected) {
       }
 
       if (value != null) {
+        // @ts-ignore
         outputlength += value.length
         output.push(value)
       }
