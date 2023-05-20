@@ -61,7 +61,7 @@ namespace quic
 
             ~Visitor();
 
-            void OnSessionReady(const spdy::Http2HeaderBlock &) override;
+            void OnSessionReady() override;
 
             void OnSessionClosed(WebTransportSessionError error_code,
                                  const std::string &error_message) override;
