@@ -76,6 +76,8 @@ They are:
 * [getStats()](https://www.w3.org/TR/webtransport/#dom-webtransport-getstats)
 * [reliability](https://www.w3.org/TR/webtransport/#dom-webtransport-reliability)
 
+The WebTransport client only supports certification validation using fingerprints. Without a fingerprint it will accept any server without certificate checking.
+
 ### WebTransportDatagramDuplexStream
 
 * [maxDatagramSize](https://www.w3.org/TR/webtransport/#dom-webtransportdatagramduplexstream-maxdatagramsize)
