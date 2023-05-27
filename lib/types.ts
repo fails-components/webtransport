@@ -8,6 +8,7 @@ import type { WebTransport } from './dom'
   writeDatagram: (chunk: Uint8Array) => void
   orderUnidiStream: () => void
   orderBidiStream: () => void
+  // orderStats: () => void
   close: (arg: { code: number, reason: string }) => void
 }
 

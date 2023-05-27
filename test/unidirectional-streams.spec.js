@@ -39,6 +39,7 @@ describe('unidirectional streams', function () {
     url = `https://${address.host}:${address.port}`
   })
 
+  // @ts-ignore
   afterEach(async () => {
     if (client != null) {
       client.close()

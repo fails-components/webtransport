@@ -45,7 +45,7 @@
     "@types/chai": "^4.3.3",
     "@types/dirty-chai": "^2.0.2",
     "@types/mocha": "^10.0.0",
-    "@types/node": "^18.11.5",
+    "@types/node": "^18.15.3",
     "chai": "^4.3.6",
     "cmake-js": "^6.3.2",
     "dirty-chai": "^2.0.1",
