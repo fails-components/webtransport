@@ -63,10 +63,11 @@ namespace quic
             WriteResult WritePacket(const char *buffer, size_t buf_len,
                                     const QuicIpAddress &self_address,
                                     const QuicSocketAddress &peer_address,
-                                    PerPacketOptions *options) override
+                                    PerPacketOptions *options,
+                                    const quic::QuicPacketWriterParams& wparams) override
             {
                 WriteResult result = QuicDefaultPacketWriter::WritePacket(
-                    buffer, buf_len, self_address, peer_address, options);
+                    buffer, buf_len, self_address, peer_address, options, wparams);
                 if (IsWriteBlockedStatus(result.status))
                 {
                     bool success = event_loop_->RearmSocket(fd(), kSocketEventWritable);
