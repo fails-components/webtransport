@@ -73,13 +73,16 @@ export interface WebTransportOptions {
   allowPooling?: boolean
   requireUnreliable?: boolean
   serverCertificateHashes?: WebTransportHash[]
+  congestionControl?: WebTransportCongestionControl
 }
 
 export interface WebTransport {
-  // getStats: () => Promise<WebTransportStats>
+  getStats: () => Promise<WebTransportStats>
   readonly ready: Promise<void>
-  // readonly reliability: WebTransportReliabilityMode
+  readonly reliability: WebTransportReliabilityMode
+  readonly congestionControl: WebTransportCongestionControl
   readonly closed: Promise<WebTransportCloseInfo>
+  readonly draining: Promise<undefined>
   close: (closeInfo?: WebTransportCloseInfo) => void
   readonly datagrams: WebTransportDatagramDuplexStream
 
@@ -93,3 +96,5 @@ export interface WebTransport {
 }
 
 export type WebTransportReliabilityMode = 'pending' | 'reliable-only' | 'supports-unreliable'
+export type WebTransportCongestionControl = 'default' | 'throughput' | 'low-latency';
+

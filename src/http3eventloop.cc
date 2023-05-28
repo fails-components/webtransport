@@ -918,12 +918,13 @@ namespace quic
         Napi::Error::New(Env(), "No session callback").ThrowAsJavaScriptException();
         return;
       }
+      quiche_cmd_line.push_back(std::string("-v"));
       if (lobj.Has("quicheLogVerbose") && lobj.Get("quicheLogVerbose").IsFunction())
       {
          Napi::Value verboseValue = (lobj).Get("quicheLogVerbose");
-         quiche_cmd_line.push_back(std::string("-v"));
          quiche_cmd_line.push_back(verboseValue.ToString().Utf8Value());
-         cbsession_ = Napi::Persistent(lobj.Get("sessionCallback").As<Napi::Function>());
+      } else {
+         quiche_cmd_line.push_back(std::string("-1"));
       }
     }
     else
