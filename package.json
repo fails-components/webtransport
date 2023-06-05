@@ -66,5 +66,10 @@
     "napi_versions": [
       6
     ]
-  }
+  },
+  "files": [
+    "build/",
+    "lib/",
+    "dist/lib/"
+  ]
 }
