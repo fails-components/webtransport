@@ -93,6 +93,7 @@ namespace quic
             StreamNetworkFinish,
             DatagramReceived,
             DatagramSend,
+            GoawayReceived,
             Unref
         } type;
         union
@@ -217,6 +218,8 @@ namespace quic
         void informDatagramReceived(Http3WTSession *sessionobj, absl::string_view datagram);
         void informDatagramSend(Http3WTSession *sessionobj, Napi::ObjectReference *bufferhandle);
 
+        void informGoawayReceived(Http3WTSession *sessionobj);
+
         void informUnref(LifetimeHelper *obj);
 
         void Schedule(std::function<void()> action);
@@ -281,6 +284,8 @@ namespace quic
 
         void processDatagramReceived(Http3WTSession *sessionobj, std::string *datagram);
         void processDatagramSend(Http3WTSession *sessionobj, Napi::ObjectReference *bufferhandle);
+
+        void processGoawayReceived(Http3WTSession *sessionobj);
 
         bool shutDownEventLoopInt();
 

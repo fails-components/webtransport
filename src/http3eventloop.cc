@@ -210,6 +210,15 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
+  void Http3EventLoop::informGoawayReceived(Http3WTSession *sessionobj)
+  {
+    Http3ProgressReport report;
+    report.type = Http3ProgressReport::GoawayReceived;
+    report.sessionobj = sessionobj;
+    if (progress_)
+      progress_->Send(&report, 1);
+  }
+
   void Http3EventLoop::informUnref(LifetimeHelper *obj)
   {
     Http3ProgressReport report;
@@ -562,6 +571,24 @@ namespace quic
     cbsession_.Call({retObj});
   }
 
+  void Http3EventLoop::processGoawayReceived(Http3WTSession *sessionobj)
+  {
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
+   
+
+    auto session = sessionobj->getJS();
+    if (!session)
+      return;
+    Napi::Object objVal = session->Value();
+
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "GoawayReceived");
+    retObj.Set("object", objVal);
+    cbsession_.Call({retObj});
+  }
+
   void Http3EventLoop::processNewSessionRequest(Http3Server *serverobj, WebTransportSession *session, spdy::Http2HeaderBlock *reqheadcopy, WebTransportRespPromisePtr *promise)
   {
     if (!checkQw())
@@ -850,6 +877,11 @@ namespace quic
         processDatagramSend(cur.sessionobj, cur.bufferhandle);
       }
       break;
+      case Http3ProgressReport::GoawayReceived:
+      {
+        processGoawayReceived(cur.sessionobj);
+      }
+      break;
       case Http3ProgressReport::Unref:
       {
         cur.obj->doUnref();
@@ -918,12 +950,13 @@ namespace quic
         Napi::Error::New(Env(), "No session callback").ThrowAsJavaScriptException();
         return;
       }
+      quiche_cmd_line.push_back(std::string("-v"));
       if (lobj.Has("quicheLogVerbose") && lobj.Get("quicheLogVerbose").IsFunction())
       {
          Napi::Value verboseValue = (lobj).Get("quicheLogVerbose");
-         quiche_cmd_line.push_back(std::string("-v"));
          quiche_cmd_line.push_back(verboseValue.ToString().Utf8Value());
-         cbsession_ = Napi::Persistent(lobj.Get("sessionCallback").As<Napi::Function>());
+      } else {
+         quiche_cmd_line.push_back(std::string("-1"));
       }
     }
     else

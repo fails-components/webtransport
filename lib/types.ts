@@ -8,6 +8,7 @@ import type { WebTransport, WebTransportOptions } from './dom'
   writeDatagram: (chunk: Uint8Array) => void
   orderUnidiStream: () => void
   orderBidiStream: () => void
+  // orderStats: () => void
   close: (arg: { code: number, reason: string }) => void
 }
 
@@ -88,6 +89,11 @@ export interface DatagramSendEvent {
   purpose: 'DatagramSend'
 }
 
+export interface GoawayReceivedEvent {
+  object: NativeHttp3WTSession
+  purpose: 'GoawayReceived'
+}
+
 export interface NewStreamEvent {
   object: NativeHttp3WTSession
   purpose: 'Http3WTStreamVisitor'
@@ -102,6 +108,7 @@ export interface WebTransportSessionEventHandler {
   onClose: (evt: SessionCloseEvent) => void
   onDatagramReceived: (evt: DatagramReceivedEvent) => void
   onDatagramSend: (evt: DatagramSendEvent) => void
+  onGoAwayReceived: (evt: GoawayReceivedEvent) => void
   onStream: (evt: NewStreamEvent) => void
   closeHook?: (() => void) | null
 }
@@ -175,7 +182,7 @@ export interface Deferred<T = unknown> {
 }
 
 // https://www.w3.org/TR/webtransport/#dom-webtransport-state-slot
-export type WebTransportSessionState = 'connecting' | 'connected' | 'closed' | 'failed'
+export type WebTransportSessionState =  'connecting' | 'connected' | 'draining' | 'closed' | 'failed'
 
 export interface WebTransportSession extends WebTransport {
   state: WebTransportSessionState
@@ -184,6 +191,7 @@ export interface WebTransportSession extends WebTransport {
 export interface Http3WebTransportInit extends WebTransportOptions {
   host: string
   port: string | number
+  quicheLogVerbose?: number
 }
 
 // see Http3ServerJS C++ type

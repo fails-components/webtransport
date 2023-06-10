@@ -40,10 +40,7 @@ export interface WebTransportDatagramDuplexStream {
   // outgoingHighWaterMark: number
 }
 
-export interface WebTransportBidirectionalStream {
-  readonly readable: ReadableStream<Uint8Array>
-  readonly writable: WritableStream<Uint8Array>
-}
+
 
 export interface  WebTransportSendStreamStats {
   timestamp: number
@@ -53,7 +50,7 @@ export interface  WebTransportSendStreamStats {
 }
 
 export interface WebTransportSendStream extends WritableStream<Uint8Array> {
-  //getStats: () => Promise<WebTransportSendStreamStats>
+  getStats: () => Promise<WebTransportSendStreamStats>
 }
 
 export interface WebTransportReceiveStreamStats {
@@ -63,7 +60,12 @@ export interface WebTransportReceiveStreamStats {
 }
 
 export interface WebTransportReceiveStream extends ReadableStream<Uint8Array> {
-  //getStats: () => Promise<WebTransportReceiveStreamStats>
+  getStats: () => Promise<WebTransportReceiveStreamStats>
+}
+
+export interface WebTransportBidirectionalStream {
+  readonly readable: WebTransportReceiveStream
+  readonly writable: WebTransportSendStream
 }
 
 export interface WebTransportHash {
@@ -85,13 +87,16 @@ export interface WebTransportOptions {
     * Nonstandard option - when a new connection is opened, how long to wait for the webtransport handshake to complete in ms before rejecting
     */
   webTransportConnectTimeout?: number
+  congestionControl?: WebTransportCongestionControl
 }
 
 export interface WebTransport {
-  // getStats: () => Promise<WebTransportStats>
+  getStats: () => Promise<WebTransportStats>
   readonly ready: Promise<void>
-  // readonly reliability: WebTransportReliabilityMode
+  readonly reliability: WebTransportReliabilityMode
+  readonly congestionControl: WebTransportCongestionControl
   readonly closed: Promise<WebTransportCloseInfo>
+  readonly draining: Promise<undefined>
   close: (closeInfo?: WebTransportCloseInfo) => void
   readonly datagrams: WebTransportDatagramDuplexStream
 
@@ -105,3 +110,5 @@ export interface WebTransport {
 }
 
 export type WebTransportReliabilityMode = 'pending' | 'reliable-only' | 'supports-unreliable'
+export type WebTransportCongestionControl = 'default' | 'throughput' | 'low-latency';
+
