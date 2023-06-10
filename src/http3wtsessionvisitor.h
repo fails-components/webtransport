@@ -52,6 +52,11 @@ namespace quic
         {
             session_ = session;
             eventloop_ = eventloop;
+            if (session_) {
+                session_->SetOnDraining([this]() {
+                    eventloop_->informGoawayReceived(this);
+                }); 
+            }
         }
 
         class Visitor : public WebTransportVisitor
@@ -282,6 +287,14 @@ namespace quic
                 wtsession_->writeDatagramIntJS(buffer, len, bufferhandle);
             }
         }
+/*
+        void sendGoAway(const Napi::CallbackInfo &info)
+        {
+            if (!wtsession_->sendGoAwayInt())
+            {
+                 Napi::Error::New(Env(), "sendGoAway failed, not supported on Client").ThrowAsJavaScriptException();
+            }
+        } */
 
         void close(const Napi::CallbackInfo &info)
         {
