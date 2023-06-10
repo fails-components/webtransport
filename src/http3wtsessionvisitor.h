@@ -287,14 +287,14 @@ namespace quic
                 wtsession_->writeDatagramIntJS(buffer, len, bufferhandle);
             }
         }
-
+/*
         void sendGoAway(const Napi::CallbackInfo &info)
         {
             if (!wtsession_->sendGoAwayInt())
             {
-                 Napi::Error::New(Env(), "sendGoAway failed, not supported on Clent").ThrowAsJavaScriptException();
+                 Napi::Error::New(Env(), "sendGoAway failed, not supported on Client").ThrowAsJavaScriptException();
             }
-        }
+        } */
 
         void close(const Napi::CallbackInfo &info)
         {
