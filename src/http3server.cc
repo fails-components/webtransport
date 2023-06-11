@@ -69,7 +69,7 @@ namespace quic
 
     if (!socket_api.Bind(fd_, address))
     {
-      QUIC_LOG(ERROR) << "Bind failed: " << strerror(errno) << "\n";
+      QUIC_LOG(ERROR) << "Bind failed: " << strerror(errno) << " for " << address.ToString() << "\n";
       return false;
     }
     QUIC_LOG(INFO) << "Listening on " << address.ToString() << "\n";
