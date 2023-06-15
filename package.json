@@ -66,7 +66,7 @@
     "execa": "^6.1.0",
     "mocha": "^10.1.0",
     "node-forge": "^1.3.1",
-    "playwright-test": "^8.1.1",
+    "playwright-test": "github:hugomrdias/playwright-test#master",
     "prettier": "^2.4.1",
     "typescript": "^4.8.4",
     "uint8arrays": "^4.0.2"
