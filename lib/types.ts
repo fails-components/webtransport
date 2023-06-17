@@ -9,6 +9,7 @@ import type { WebTransport } from './dom'
   orderUnidiStream: () => void
   orderBidiStream: () => void
   // orderStats: () => void
+  notifySessionDraining(): () => void
   close: (arg: { code: number, reason: string }) => void
 }
 
