@@ -224,6 +224,13 @@ namespace quic
             eventloop_->Schedule(task);
         }
 
+        void notifySessionDrainingInt()
+        {
+            std::function<void()> task = [this]()
+            { if (session_) session_->NotifySessionDraining(); };
+            eventloop_->Schedule(task);
+        }
+
         void closeInt(int code, std::string &reason)
         {
             std::function<void()> task = [this, code, reason]()
@@ -291,14 +298,11 @@ namespace quic
                 wtsession_->writeDatagramIntJS(buffer, len, bufferhandle);
             }
         }
-/*
-        void sendGoAway(const Napi::CallbackInfo &info)
+
+        void notifySessionDraining(const Napi::CallbackInfo &info)
         {
-            if (!wtsession_->sendGoAwayInt())
-            {
-                 Napi::Error::New(Env(), "sendGoAway failed, not supported on Client").ThrowAsJavaScriptException();
-            }
-        } */
+            wtsession_->notifySessionDrainingInt();
+        }
 
         void close(const Napi::CallbackInfo &info)
         {
@@ -335,6 +339,8 @@ namespace quic
                                                            InstanceMethod<&Http3WTSessionJS::orderUnidiStream>("orderUnidiStream",
                                                                                                                static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                                            InstanceMethod<&Http3WTSessionJS::writeDatagram>("writeDatagram",
+                                                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                           InstanceMethod<&Http3WTSessionJS::notifySessionDraining>("notifySessionDraining",
                                                                                                             static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                                            InstanceMethod<&Http3WTSessionJS::close>("close",
                                                                                                     static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
