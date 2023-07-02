@@ -26,7 +26,7 @@
 #include "quiche/quic/core/http/quic_spdy_session.h"
 #include "quiche/quic/core/quic_crypto_server_stream_base.h"
 #include "quiche/quic/core/quic_packets.h"
-//#include "quic/tools/quic_backend_response.h"
+// #include "quic/tools/quic_backend_response.h"
 #include "src/http3serverbackend.h"
 #include "src/http3serverstream.h" // todo
 
@@ -36,7 +36,6 @@ namespace quic
   class Http3ServerSession : public QuicServerSessionBase
   {
   public:
-
     // Takes ownership of |connection|.
     Http3ServerSession(const QuicConfig &config,
                        const ParsedQuicVersionVector &supported_versions,
@@ -53,7 +52,6 @@ namespace quic
 
     // Override base class to detact client sending data on server push stream.
     void OnStreamFrame(const QuicStreamFrame &frame) override;
-
 
   protected:
     // QuicSession methods:
@@ -72,11 +70,14 @@ namespace quic
       return http3_server_backend_;
     }
 
-
-    bool ShouldNegotiateWebTransport() override
+    WebTransportHttp3VersionSet LocallySupportedWebTransportVersions()
+        const override
     {
-      return http3_server_backend_->SupportsWebTransport();
+      return http3_server_backend_->SupportsWebTransport()
+                 ? kDefaultSupportedWebTransportVersions
+                 : WebTransportHttp3VersionSet();
     }
+
     HttpDatagramSupport LocalHttpDatagramSupport() override
     {
       if (ShouldNegotiateWebTransport())
@@ -85,7 +86,7 @@ namespace quic
       }
       return QuicServerSessionBase::LocalHttpDatagramSupport();
     }
-  
+
     Http3ServerBackend *http3_server_backend_; // Not owned.
   };
 
