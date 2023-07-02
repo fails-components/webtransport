@@ -63,24 +63,30 @@ export async function createServer() {
             for await (const session of getReaderStream(
               server.sessionStream('/bidirectional_server_initiated_echo')
             )) {
-              const stream = await session.createBidirectionalStream()
+              try {
+                const stream = await session.createBidirectionalStream()
 
-              await writeStream(stream.writable, KNOWN_BYTES)
+                await writeStream(stream.writable, KNOWN_BYTES)
 
-              const received = await readStream(
-                stream.readable,
-                KNOWN_BYTES_LENGTH
-              )
-              await stream.readable.cancel() // cancel so that the client can progress
+                const received = await readStream(
+                  stream.readable,
+                  KNOWN_BYTES_LENGTH
+                )
+                await stream.readable.cancel() // cancel so that the client can progress
 
-              // if we did not get the data we sent, close the session with a reason
-              if (!ui8.equals(ui8.concat(KNOWN_BYTES), ui8.concat(received))) {
-                session.close({
-                  closeCode: 500,
-                  reason: 'data did not match'
-                })
-              } else {
-                session.close()
+                // if we did not get the data we sent, close the session with a reason
+                if (
+                  !ui8.equals(ui8.concat(KNOWN_BYTES), ui8.concat(received))
+                ) {
+                  session.close({
+                    closeCode: 500,
+                    reason: 'data did not match'
+                  })
+                } else {
+                  session.close()
+                }
+              } catch {
+                // in some tests the client closes the stream
               }
             }
           },
@@ -168,20 +174,25 @@ export async function createServer() {
             for await (const session of getReaderStream(
               server.sessionStream('/unidirectional_client_send')
             )) {
-              const stream = await getReaderValue(
-                session.incomingUnidirectionalStreams
-              )
-              const received = await readStream(stream, KNOWN_BYTES_LENGTH)
-              await stream.cancel() // cancel so that the client can progress
-
-              // if we did not get the data we sent, close the session with a reason
-              if (!ui8.equals(ui8.concat(KNOWN_BYTES), ui8.concat(received))) {
-                session.close({
-                  closeCode: 500,
-                  reason: 'data did not match'
-                })
-              } else {
-                session.close()
+              try {
+                const stream = await getReaderValue(
+                  session.incomingUnidirectionalStreams
+                )
+                const received = await readStream(stream, KNOWN_BYTES_LENGTH)
+                await stream.cancel() // cancel so that the client can progress
+                // if we did not get the data we sent, close the session with a reason
+                if (
+                  !ui8.equals(ui8.concat(KNOWN_BYTES), ui8.concat(received))
+                ) {
+                  session.close({
+                    closeCode: 500,
+                    reason: 'data did not match'
+                  })
+                } else {
+                  session.close()
+                }
+              } catch (error) {
+                // in some tests the client closes the stream
               }
             }
           },
