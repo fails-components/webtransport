@@ -8,18 +8,6 @@
 #ifndef QUICHE_TIME_UTILS_IMPL
 #define QUICHE_TIME_UTILS_IMPL
 
-#include <cstdint>
-
-#include "absl/time/civil_time.h"
-#include "absl/time/time.h"
-#include "absl/types/optional.h"
-
-namespace quiche {
-
-// NOLINTNEXTLINE(readability-identifier-naming)
-absl::optional<int64_t> QuicheUtcDateTimeToUnixSecondsImpl(int year, int month, int day, int hour,
-                                                           int minute, int second);
-
-} // namespace quiche
+#include "third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_time_utils_impl.h"
 
 #endif

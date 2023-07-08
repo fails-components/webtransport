@@ -25,7 +25,7 @@ namespace quic
         session_->eventloop_->informSessionClosed(session_, error_code, error_message);
     }
 
-    void Http3WTSession::Visitor::OnSessionReady(const spdy::Http2HeaderBlock &)
+    void Http3WTSession::Visitor::OnSessionReady()
     {
         session_->eventloop_->informSessionReady(session_);
 

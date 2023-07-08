@@ -52,6 +52,11 @@ namespace quic
         {
             session_ = session;
             eventloop_ = eventloop;
+            if (session_) {
+                session_->SetOnDraining([this]() {
+                    eventloop_->informGoawayReceived(this);
+                }); 
+            }
         }
 
         class Visitor : public WebTransportVisitor
@@ -61,7 +66,7 @@ namespace quic
 
             ~Visitor();
 
-            void OnSessionReady(const spdy::Http2HeaderBlock &) override;
+            void OnSessionReady() override;
 
             void OnSessionClosed(WebTransportSessionError error_code,
                                  const std::string &error_message) override;
@@ -218,6 +223,13 @@ namespace quic
             eventloop_->Schedule(task);
         }
 
+        void notifySessionDrainingInt()
+        {
+            std::function<void()> task = [this]()
+            { if (session_) session_->NotifySessionDraining(); };
+            eventloop_->Schedule(task);
+        }
+
         void closeInt(int code, std::string &reason)
         {
             std::function<void()> task = [this, code, reason]()
@@ -283,6 +295,11 @@ namespace quic
             }
         }
 
+        void notifySessionDraining(const Napi::CallbackInfo &info)
+        {
+            wtsession_->notifySessionDrainingInt();
+        }
+
         void close(const Napi::CallbackInfo &info)
         {
             int code = 0;
@@ -318,6 +335,8 @@ namespace quic
                                                            InstanceMethod<&Http3WTSessionJS::orderUnidiStream>("orderUnidiStream",
                                                                                                                static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                                            InstanceMethod<&Http3WTSessionJS::writeDatagram>("writeDatagram",
+                                                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                           InstanceMethod<&Http3WTSessionJS::notifySessionDraining>("notifySessionDraining",
                                                                                                             static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                                            InstanceMethod<&Http3WTSessionJS::close>("close",
                                                                                                     static_cast<napi_property_attributes>(napi_writable | napi_configurable))});

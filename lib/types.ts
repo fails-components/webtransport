@@ -8,6 +8,8 @@ import type { WebTransport } from './dom'
   writeDatagram: (chunk: Uint8Array) => void
   orderUnidiStream: () => void
   orderBidiStream: () => void
+  // orderStats: () => void
+  notifySessionDraining(): () => void
   close: (arg: { code: number, reason: string }) => void
 }
 
@@ -90,6 +92,11 @@ export interface DatagramSendEvent {
   purpose: 'DatagramSend'
 }
 
+export interface GoawayReceivedEvent {
+  object: NativeHttp3WTSession
+  purpose: 'GoawayReceived'
+}
+
 export interface NewStreamEvent {
   object: NativeHttp3WTSession
   purpose: 'Http3WTStreamVisitor'
@@ -104,6 +111,7 @@ export interface WebTransportSessionEventHandler {
   onClose: (evt: SessionCloseEvent) => void
   onDatagramReceived: (evt: DatagramReceivedEvent) => void
   onDatagramSend: (evt: DatagramSendEvent) => void
+  onGoAwayReceived: (evt: GoawayReceivedEvent) => void
   onStream: (evt: NewStreamEvent) => void
   closeHook?: (() => void) | null
 }
@@ -176,7 +184,7 @@ export interface Deferred<T = unknown> {
   reject: (reason?: any) => void
 }
 
-export type WebTransportSessionState = 'connected' | 'closed' | 'failed'
+export type WebTransportSessionState = 'connected' | 'draining' | 'closed' | 'failed'
 
 export interface WebTransportSession extends WebTransport {
   state: WebTransportSessionState

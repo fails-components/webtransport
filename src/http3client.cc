@@ -63,10 +63,11 @@ namespace quic
             WriteResult WritePacket(const char *buffer, size_t buf_len,
                                     const QuicIpAddress &self_address,
                                     const QuicSocketAddress &peer_address,
-                                    PerPacketOptions *options) override
+                                    PerPacketOptions *options,
+                                    const quic::QuicPacketWriterParams& wparams) override
             {
                 WriteResult result = QuicDefaultPacketWriter::WritePacket(
-                    buffer, buf_len, self_address, peer_address, options);
+                    buffer, buf_len, self_address, peer_address, options, wparams);
                 if (IsWriteBlockedStatus(result.status))
                 {
                     bool success = event_loop_->RearmSocket(fd(), kSocketEventWritable);
@@ -148,7 +149,8 @@ namespace quic
           connection_in_progress_(false),
           num_attempts_connect_(0),
           webtransport_server_support_inform_(false),
-          connection_debug_visitor_(nullptr)
+          connection_debug_visitor_(nullptr),
+          priority_(HttpStreamPriority())
     {
         set_server_address(server_address);
         Initialize();
@@ -183,7 +185,7 @@ namespace quic
 
     void Http3Client::Initialize()
     {
-        priority_ = QuicStreamPriority();
+        priority_ = QuicStreamPriority(HttpStreamPriority());
         connect_attempted_ = false;
         auto_reconnect_ = false;
         buffer_body_ = true;
@@ -891,7 +893,6 @@ namespace quic
         response_ = "";
         response_complete_ = false;
         response_headers_complete_ = false;
-        preliminary_headers_.clear();
         response_headers_.clear();
         response_trailers_.clear();
         bytes_read_ = 0;
@@ -990,21 +991,6 @@ namespace quic
         return &response_headers_;
     }
 
-    const spdy::Http2HeaderBlock *Http3Client::preliminary_headers() const
-    {
-        for (std::pair<QuicStreamId, QuicSpdyClientStream *> stream : open_streams_)
-        {
-            size_t bytes_read =
-                stream.second->stream_bytes_read() + stream.second->header_bytes_read();
-            if (bytes_read > 0)
-            {
-                preliminary_headers_ = stream.second->preliminary_headers().Clone();
-                break;
-            }
-        }
-        return &preliminary_headers_;
-    }
-
     const spdy::Http2HeaderBlock &Http3Client::response_trailers() const
     {
         return response_trailers_;
@@ -1076,8 +1062,11 @@ namespace quic
                 QUIC_LOG(ERROR) << "Invalid :status response header: " << status->second;
             }
             latest_response_headers_ = response_headers.DebugString();
-            preliminary_response_headers_ =
-                client_stream->preliminary_headers().DebugString();
+            for (const Http2HeaderBlock &headers :
+                 client_stream->preliminary_headers())
+            {
+                absl::StrAppend(&preliminary_response_headers_, headers.DebugString());
+            }
             latest_response_header_block_ = response_headers.Clone();
             latest_response_body_ = client_stream->data();
             latest_response_trailers_ =
@@ -1101,7 +1090,6 @@ namespace quic
                 client_stream->stream_error(), connected(),
                 client_stream->headers_decompressed(),
                 client_stream->response_headers(),
-                client_stream->preliminary_headers(),
                 (buffer_body() ? client_stream->data() : ""),
                 client_stream->received_trailers(),
                 // Use NumBytesConsumed to avoid counting retransmitted stream frames.
@@ -1226,7 +1214,6 @@ namespace quic
           response_complete(other.response_complete),
           response_headers_complete(other.response_headers_complete),
           response_headers(other.response_headers.Clone()),
-          preliminary_headers(other.preliminary_headers.Clone()),
           response(other.response),
           response_trailers(other.response_trailers.Clone()),
           bytes_read(other.bytes_read),
@@ -1237,14 +1224,12 @@ namespace quic
         QuicRstStreamErrorCode stream_error, bool response_complete,
         bool response_headers_complete,
         const spdy::Http2HeaderBlock &response_headers,
-        const spdy::Http2HeaderBlock &preliminary_headers,
         const absl::string_view response, const spdy::Http2HeaderBlock &response_trailers,
         uint64_t bytes_read, uint64_t bytes_written, int64_t response_body_size)
         : stream_error(stream_error),
           response_complete(response_complete),
           response_headers_complete(response_headers_complete),
           response_headers(response_headers.Clone()),
-          preliminary_headers(preliminary_headers.Clone()),
           response(response),
           response_trailers(response_trailers.Clone()),
           bytes_read(bytes_read),
@@ -1286,7 +1271,6 @@ namespace quic
             response_ = state.response;
             response_complete_ = state.response_complete;
             response_headers_complete_ = state.response_headers_complete;
-            preliminary_headers_ = state.preliminary_headers.Clone();
             response_headers_ = state.response_headers.Clone();
             response_trailers_ = state.response_trailers.Clone();
             bytes_read_ = state.bytes_read;

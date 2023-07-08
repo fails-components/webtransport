@@ -180,7 +180,6 @@ namespace quic
         // Group 2.
         bool response_headers_complete() const;
         const spdy::Http2HeaderBlock *response_headers() const;
-        const spdy::Http2HeaderBlock *preliminary_headers() const;
         int64_t response_size() const;
         size_t bytes_read() const;
         size_t bytes_written() const;
@@ -321,7 +320,6 @@ namespace quic
             PerStreamState(QuicRstStreamErrorCode stream_error, bool response_complete,
                            bool response_headers_complete,
                            const spdy::Http2HeaderBlock &response_headers,
-                           const spdy::Http2HeaderBlock &preliminary_headers,
                            const absl::string_view response,
                            const spdy::Http2HeaderBlock &response_trailers,
                            uint64_t bytes_read, uint64_t bytes_written,
@@ -332,7 +330,6 @@ namespace quic
             bool response_complete;
             bool response_headers_complete;
             spdy::Http2HeaderBlock response_headers;
-            spdy::Http2HeaderBlock preliminary_headers;
             std::string response;
             spdy::Http2HeaderBlock response_trailers;
             uint64_t bytes_read;
@@ -398,7 +395,6 @@ namespace quic
 
         bool response_complete_;
         bool response_headers_complete_;
-        mutable spdy::Http2HeaderBlock preliminary_headers_;
         mutable spdy::Http2HeaderBlock response_headers_;
 
         // Parsed response trailers (if present), copied from the stream in OnClose.

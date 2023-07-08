@@ -59,7 +59,7 @@ When testing remember you might need to start chromium based browser with certai
 ```
 chrome --ignore-certificate-errors-spki-list=FINGERPRINTOFYOURCERTIFICATE --ignore-certificate-errors --v=2 --enable-logging=stderr --origin-to-force-quic-on=192.168.1.50:8080
 ```
-of course replace IP and fingerprint of your certificate accordingly.
+of course replace IP and fingerprint of your certificate accordingly. However, the author never got this to work and is using this without flags, but supplies instead a fingerprint when opening a WebTransport session. (PR welcome).
 
 ## Specification divergence
 
@@ -75,6 +75,8 @@ They are:
 
 * [getStats()](https://www.w3.org/TR/webtransport/#dom-webtransport-getstats)
 * [reliability](https://www.w3.org/TR/webtransport/#dom-webtransport-reliability)
+
+The WebTransport client only supports certification validation using fingerprints. Without a fingerprint it will accept any server without certificate checking.
 
 ### WebTransportDatagramDuplexStream
 

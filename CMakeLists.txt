@@ -91,8 +91,6 @@ platform/quiche_platform_impl/quiche_mutex_impl.h
 platform/quiche_platform_impl/quiche_stack_trace_impl.h
 platform/quiche_platform_impl/quiche_stream_buffer_allocator_impl.h
 platform/quiche_platform_impl/quiche_time_utils_impl.h
-platform/quiche_platform_impl/quiche_time_utils_impl.cc
-platform/quiche_platform_impl/quic_testvalue_impl.h
 platform/quiche_platform_impl/quiche_udp_socket_platform_impl.h
 platform/quiche_platform_impl/quiche_prefetch_impl.h
 platform/quiche_platform_impl/quiche_server_stats_impl.h
@@ -110,12 +108,12 @@ platform/quiche_platform_impl/quiche_flag_utils_impl.h
 third_party/googleurl/base/debug/crash_logging.cc
 third_party/googleurl/base/debug/crash_logging.h
 third_party/googleurl/base/strings/string_util_constants.cc
-third_party/googleurl/base/strings/string_piece.cc
-third_party/googleurl/base/strings/string_piece.h
 third_party/googleurl/base/strings/string_util.cc
 third_party/googleurl/base/strings/string_util.h
 third_party/googleurl/base/strings/utf_string_conversions.cc
 third_party/googleurl/base/strings/utf_string_conversions.h
+third_party/googleurl/base/strings/utf_ostream_operators.cc
+third_party/googleurl/base/strings/utf_ostream_operators.h
 third_party/googleurl/url/url_canon.cc
 third_party/googleurl/url/url_canon_internal.cc
 third_party/googleurl/url/url_canon_path.cc
@@ -151,6 +149,8 @@ third_party/googleurl/base/strings/utf_string_conversion_utils.h
 third_party/googleurl/build/buildflag.h
 third_party/googleurl/build/build_config.h
 # normal files
+third_party/quiche/quiche/common/capsule.cc
+third_party/quiche/quiche/common/capsule.h
 third_party/quiche/quiche/common/platform/api/quiche_bug_tracker.h
 third_party/quiche/quiche/common/platform/api/quiche_export.h
 third_party/quiche/quiche/common/platform/api/quiche_flag_utils.h
@@ -164,19 +164,22 @@ third_party/quiche/quiche/common/platform/api/quiche_mutex.cc
 third_party/quiche/quiche/common/platform/api/quiche_mutex.h
 third_party/quiche/quiche/common/platform/api/quiche_prefetch.h
 third_party/quiche/quiche/common/platform/api/quiche_reference_counted.h
-third_party/quiche/quiche/common/platform/api/quiche_thread_local.h
 third_party/quiche/quiche/common/platform/api/quiche_time_utils.h
 third_party/quiche/quiche/common/platform/api/quiche_url_utils.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_command_line_flags_impl.cc
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_command_line_flags_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flag_utils_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_prefetch_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_logging_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_logging_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_mutex_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_iovec_impl.h
+third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_time_utils_impl.cc
 third_party/quiche/quiche/common/print_elements.h
 third_party/quiche/quiche/common/quiche_buffer_allocator.cc
 third_party/quiche/quiche/common/quiche_buffer_allocator.h
@@ -500,8 +503,6 @@ third_party/quiche/quiche/quic/core/frames/quic_streams_blocked_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_window_update_frame.cc
 third_party/quiche/quiche/quic/core/frames/quic_window_update_frame.h
 third_party/quiche/quiche/quic/core/handshaker_delegate_interface.h
-third_party/quiche/quiche/quic/core/http/capsule.cc
-third_party/quiche/quiche/quic/core/http/capsule.h
 third_party/quiche/quiche/quic/core/http/http_constants.cc
 third_party/quiche/quiche/quic/core/http/http_constants.h
 third_party/quiche/quiche/quic/core/http/http_decoder.cc
@@ -550,7 +551,13 @@ third_party/quiche/quiche/quic/core/http/web_transport_stream_adapter.h
 third_party/quiche/quiche/quic/core/io/quic_event_loop.h
 third_party/quiche/quiche/quic/core/io/quic_default_event_loop.cc
 third_party/quiche/quiche/quic/core/io/quic_default_event_loop.h
+third_party/quiche/quiche/quic/core/io/quic_poll_event_loop.cc
+third_party/quiche/quiche/quic/core/io/quic_poll_event_loop.h
 third_party/quiche/quiche/quic/core/io/socket.h
+third_party/quiche/quiche/quic/core/io/socket.cc
+third_party/quiche/quiche/quic/core/io/socket_posix.inc
+third_party/quiche/quiche/quic/core/io/socket_win.inc
+third_party/quiche/quiche/quic/core/io/socket_internal.h
 third_party/quiche/quiche/quic/core/legacy_quic_stream_id_manager.cc
 third_party/quiche/quiche/quic/core/legacy_quic_stream_id_manager.h
 third_party/quiche/quiche/quic/core/packet_number_indexed_queue.h
@@ -610,7 +617,6 @@ third_party/quiche/quiche/quic/core/quic_buffered_packet_store.cc
 third_party/quiche/quiche/quic/core/quic_buffered_packet_store.h
 third_party/quiche/quiche/quic/core/quic_chaos_protector.cc
 third_party/quiche/quiche/quic/core/quic_chaos_protector.h
-third_party/quiche/quiche/quic/core/quic_clock.cc
 third_party/quiche/quiche/quic/core/quic_clock.h
 third_party/quiche/quiche/quic/core/quic_coalesced_packet.cc
 third_party/quiche/quiche/quic/core/quic_coalesced_packet.h
@@ -725,6 +731,9 @@ third_party/quiche/quiche/quic/core/quic_types.cc
 third_party/quiche/quiche/quic/core/quic_types.h
 third_party/quiche/quiche/quic/core/quic_unacked_packet_map.cc
 third_party/quiche/quiche/quic/core/quic_unacked_packet_map.h
+third_party/quiche/quiche/quic/core/quic_udp_socket.cc
+third_party/quiche/quiche/quic/core/quic_udp_socket_win.inc
+third_party/quiche/quiche/quic/core/quic_udp_socket_posix.inc
 third_party/quiche/quiche/quic/core/quic_udp_socket.h
 third_party/quiche/quiche/quic/core/quic_utils.cc
 third_party/quiche/quiche/quic/core/quic_utils.h
@@ -749,7 +758,6 @@ third_party/quiche/quiche/quic/core/uber_quic_stream_id_manager.cc
 third_party/quiche/quiche/quic/core/uber_quic_stream_id_manager.h
 third_party/quiche/quiche/quic/core/uber_received_packet_manager.cc
 third_party/quiche/quiche/quic/core/uber_received_packet_manager.h
-third_party/quiche/quiche/quic/core/quic_udp_socket.h
 third_party/quiche/quiche/quic/platform/api/quic_bug_tracker.h
 third_party/quiche/quiche/quic/platform/api/quic_client_stats.h
 third_party/quiche/quiche/quic/platform/api/quic_export.h
@@ -824,13 +832,11 @@ FILE(TO_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche PROTOBINDING_
 
 IF (WIN32)
     target_sources(gquiche PRIVATE third_party/googleurl/base/strings/string_util_win.cc
-                    third_party/googleurl/base/strings/string_util_win.h
-                    platform/quiche_platform_impl/socket_winsock.cc
-                    platform/quiche_platform_impl/quic_udp_socket_winsock.cc)
+                    third_party/googleurl/base/strings/string_util_win.h)
+
+    target_compile_definitions(crypto PRIVATE strdup=_strdup)
+    target_compile_definitions(gquiche PRIVATE _WINSOCK_DEPRECATED_NO_WARNINGS)
 ELSE(WIN32)
-    target_sources(gquiche PRIVATE third_party/quiche/quiche/quic/core/io/socket_posix.cc
-    third_party/quiche/quiche/quic/core/quic_udp_socket_posix.cc
-    )
     IF(APPLE)
     ELSE(APPLE)
     target_link_libraries(gquiche -static-libgcc -static-libstdc++)
@@ -902,9 +908,20 @@ PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
 PUBLIC ${CMAKE_JS_INC}
 )
 
+target_include_directories(crypto PUBLIC 
+$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/third_party/boringssl/src/include>
+)
 
 target_link_libraries(gquiche 
-absl::base 
+absl::core_headers
+absl::log_severity
+absl::flags
+absl::flags_usage
+absl::flags_parse
+absl::absl_check
+absl::absl_log
+absl::log_flags
+absl::log_initialize
 absl::int128
 absl::strings 
 absl::str_format
