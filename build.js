@@ -257,6 +257,7 @@ if (argv.length > 2) {
         await execbuild(['build', ...platformargs])
       } catch (error) {
         console.error('Building binary failed: ', error)
+        process.exit(1)
       }
     } break
     case 'build':
