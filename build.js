@@ -254,11 +254,11 @@ if (argv.length > 2) {
       try {
         // if we do not succeed, we have to build it ourselves
         await extractthirdparty()
+        await execbuild(['build', ...platformargs])
       } catch (error) {
         console.error('Building binary failed: ', error)
       }
-    }
-    // eslint-disable-next-line no-fallthrough
+    } break
     case 'build':
       try {
         await execbuild(['build', ...platformargs])
