@@ -107,10 +107,10 @@ namespace quic
         union
         {
             WebTransportSessionError wtecode;
-            size_t lenread;
             NetworkTask nettask;
             NetworkStatus status;
             WebTransportSession *webtsession;
+            uint32_t buffergrow;
         };
         union
         {
@@ -211,7 +211,7 @@ namespace quic
 
         void informAboutStream(bool incom, bool bidir, Http3WTSession *sessionobj, Http3WTStream *stream);
         void informStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);
-        void informAboutStreamRead(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, size_t lenread, bool fin, bool success);
+        void informAboutStreamRead(Http3WTStream *streamobj, uint32_t buffergrow, bool fin, bool success);
         void informAboutStreamWrite(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, bool success);
         void informAboutStreamReset(Http3WTStream *streamobj);
         void informAboutStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task);
@@ -278,7 +278,7 @@ namespace quic
 
         void processStream(bool incom, bool bidi, Http3WTSession *sessionobj, Http3WTStream *stream);
         void processStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);
-        void processStreamRead(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, size_t lenread, bool fin, bool success);
+        void processStreamRead(Http3WTStream *streamobj, size_t buffergrow, bool fin, bool success);
         void processStreamWrite(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, bool success);
         void processStreamReset(Http3WTStream *streamobj);
         void processStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task);

@@ -23,15 +23,9 @@ namespace quic
 
             stream_->chunks_.pop_front();
         }
-        while (stream_->byobs_.size() > 0)
-        {
-            auto cur = stream_->byobs_.front();
 
-            // now we have to inform the server TODO
-            stream_->eventloop_->informAboutStreamRead(stream_, cur.bufferhandle, 0, false, false);
+        stream_->eventloop_->informAboutStreamRead(stream_, 0, false, false);
 
-            stream_->byobs_.pop_front();
-        }
         if (!stream_->stop_sending_received_)
         {
             stream_->eventloop_->informStreamRecvSignal(stream_, 0, NetworkTask::stopSending);
@@ -94,18 +88,36 @@ namespace quic
             return; // back pressure folks!
         }
         // first figure out if we have readable data
+        if (bufferlen_ >= readbufsize_ || !readbufdata_) {
+            can_read_pending_ = true;
+            return; // no space here
+        }
         size_t readable = stream_->ReadableBytes();
-        while (readable > 0 && byobs_.size() > 0)
+        bool read = false;
+        while (readable > 0 && bufferlen_ < readbufsize_)
         {
-            auto cur = byobs_.front();
-            WebTransportStream::ReadResult result = 
-                stream_->Read(absl::Span<char>(cur.buffer, cur.len));
-            cur.lenread = result.bytes_read;
-            QUIC_DVLOG(1) << "Attempted reading on WebTransport bidirectional stream "
+            if (writepos_ >= readpos_) {
+                size_t len = readbufsize_ - writepos_;   
+                WebTransportStream::ReadResult result = 
+                    stream_->Read(absl::Span<char>(((char*) readbufdata_) + writepos_, len));
+                QUIC_DVLOG(1) << "Attempted reading on WebTransport stream "
                           << ", bytes read: " << result.bytes_read;
-            eventloop_->informAboutStreamRead(this, cur.bufferhandle, cur.lenread, result.fin, true);
+                writepos_ = (writepos_ + result.bytes_read) % readbufsize_;
+                bufferlen_ = bufferlen_ + result.bytes_read;
+                eventloop_->informAboutStreamRead(this, result.bytes_read, 
+                            result.fin, true);
+            } else  { // readpos_ > writepos_
+                size_t len = writepos_ - readpos_;
+                WebTransportStream::ReadResult result = 
+                    stream_->Read(absl::Span<char>(((char*) readbufdata_) + writepos_, len));
+                QUIC_DVLOG(1) << "Attempted reading on WebTransport stream "
+                          << ", bytes read: " << result.bytes_read; 
+                writepos_ = (writepos_ + result.bytes_read) % readbufsize_;
+                bufferlen_ = bufferlen_ + result.bytes_read;
+                eventloop_->informAboutStreamRead(this, result.bytes_read,
+                             result.fin, true);
+            } 
             readable = stream_->ReadableBytes();
-            byobs_.pop_front();
         }
     }
 

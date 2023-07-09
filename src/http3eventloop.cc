@@ -149,14 +149,13 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::informAboutStreamRead(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, size_t lenread, bool fin, bool success)
+  void Http3EventLoop::informAboutStreamRead(Http3WTStream *streamobj, uint32_t buffergrow, bool fin, bool success)
   {
     Http3ProgressReport report;
     report.type = Http3ProgressReport::StreamRead;
     report.streamobj = streamobj;
-    report.bufferhandle = bufferhandle;
     report.fin = fin;
-    report.lenread = lenread;
+    report.buffergrow = buffergrow;
     report.success = success;
     if (progress_)
       progress_->Send(&report, 1);
@@ -365,6 +364,13 @@ namespace quic
     Http3WTStreamJS *strjs = Napi::ObjectWrap<Http3WTStreamJS>::Unwrap(strobj);
     strjs->setObj(stream);
     if (!stream->gone()) strjs->Ref();
+   
+    if (incom || bidi) { // we have a read stream
+      // same size of a pipe in chromium, but the WT Pipe thre is 256 kbyte, the default 64 kbyte
+      Napi::ArrayBuffer arraybuf = Napi::ArrayBuffer::New(qw_->Env(),  64 * 1024);
+      strobj.Set("readbuffer", arraybuf); // so the lifecycle is bound to the JS Obj!
+      stream->setReadBuffer(arraybuf.Data(), arraybuf.ByteLength());
+    }
     stream->setJS(strjs);
 
     Napi::Object objVal = sessionobj->getJS()->Value();
@@ -420,14 +426,11 @@ namespace quic
     cbstream_.Call({retObj});
   }
 
-  void Http3EventLoop::processStreamRead(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, size_t lenread, bool fin, bool success)
+  void Http3EventLoop::processStreamRead(Http3WTStream *streamobj, size_t buffergrow, bool fin, bool success)
   {
     if (!checkQw())
       return;
     HandleScope scope(qw_->Env());
-
-    bufferhandle->Unref(); // release the incoming buffer
-    delete bufferhandle;   // free the handle object
 
     auto stream = streamobj->getJS();
     if (!stream)
@@ -437,7 +440,7 @@ namespace quic
     Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "StreamRead");
     retObj.Set("fin", fin);
-    retObj.Set("datalen", lenread);
+    retObj.Set("buffergrow", buffergrow);
     retObj.Set("object", objVal);
     retObj.Set("success", success);
 
@@ -846,7 +849,7 @@ namespace quic
       break;
       case Http3ProgressReport::StreamRead:
       {
-        processStreamRead(cur.streamobj, cur.bufferhandle, cur.lenread, cur.fin, cur.success);
+        processStreamRead(cur.streamobj, cur.buffergrow, cur.fin, cur.success);
       }
       break;
       case Http3ProgressReport::StreamWrite:

@@ -17,8 +17,9 @@ import type { WebTransport } from './dom'
  * Native Http3WTStream counterpart
  */
 export interface NativeHttp3WTStream {
-  readByob(view: Uint8Array): unknown
+  updateReadPos(bytesread: Number, pos: Number): unknown
   jsobj: WebTransportStreamEventHandler
+  readbuffer: Uint8Array | undefined
   startReading: () => void
   stopReading: () => void
   stopSending: (code: number) => void
@@ -40,9 +41,9 @@ export interface StreamRecvSignalEvent {
 export interface StreamReadEvent {
   object: NativeHttp3WTStream
   purpose: 'StreamRead'
-  data?: Uint8Array
-  datalen?: number
+  buffergrow?: number
   fin?: boolean
+  success?: boolean
 }
 
 export interface StreamWriteEvent {
