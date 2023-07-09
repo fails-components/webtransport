@@ -89,7 +89,6 @@ describe('datagrams', function () {
       readStream(client.datagrams.readable, expected),
       1000
     )
-
     expect(received).to.have.lengthOf(expected)
   })
 })

@@ -109,12 +109,12 @@ platform/quiche_platform_impl/quiche_flag_utils_impl.h
 third_party/googleurl/base/debug/crash_logging.cc
 third_party/googleurl/base/debug/crash_logging.h
 third_party/googleurl/base/strings/string_util_constants.cc
-third_party/googleurl/base/strings/string_piece.cc
-third_party/googleurl/base/strings/string_piece.h
 third_party/googleurl/base/strings/string_util.cc
 third_party/googleurl/base/strings/string_util.h
 third_party/googleurl/base/strings/utf_string_conversions.cc
 third_party/googleurl/base/strings/utf_string_conversions.h
+#third_party/googleurl/base/strings/utf_ostream_operators.cc
+#third_party/googleurl/base/strings/utf_ostream_operators.h
 third_party/googleurl/url/url_canon.cc
 third_party/googleurl/url/url_canon_internal.cc
 third_party/googleurl/url/url_canon_path.cc

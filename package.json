@@ -5,7 +5,7 @@
   "main": "lib/index.js",
   "module": "lib/index.js",
   "engines": {
-    "node": ">=16"
+    "node": ">=16.5"
   },
   "type": "module",
   "types": "./dist/lib/index.d.ts",
