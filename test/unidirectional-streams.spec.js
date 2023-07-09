@@ -7,6 +7,7 @@ import { expect } from 'chai'
 import { readStream } from './fixtures/read-stream.js'
 import { writeStream } from './fixtures/write-stream.js'
 import { defer } from '../lib/utils.js'
+import * as ui8 from 'uint8arrays'
 
 /**
  * @template T
@@ -56,13 +57,21 @@ describe('unidirectional streams', function () {
     /** @type {Deferred<Uint8Array[]>} */
     const serverData = defer()
 
+    const input = [
+      Uint8Array.from([0, 1, 2, 3, 4]),
+      Uint8Array.from([5, 6, 7, 8, 9]),
+      Uint8Array.from([10, 11, 12, 13, 14])
+    ]
+
     // server context - waits for the client to open a bidi stream and pipes it back to them
     Promise.resolve().then(async () => {
       const session = await getReaderValue(server.sessionStream(SERVER_PATH))
+      if (!session) throw new Error('no session')
       const stream = await getReaderValue(session.incomingUnidirectionalStreams)
 
-      const output = await readStream(stream)
+      const output = await readStream(stream, ui8.concat(input).length)
       serverData.resolve(output)
+      await stream.cancel() // cancel so that the client can progress
     })
 
     // client context - connects to the server, opens a bidi stream, sends some data and reads the response
@@ -76,18 +85,12 @@ describe('unidirectional streams', function () {
     })
     await client.ready
 
-    const input = [
-      Uint8Array.from([0, 1, 2, 3, 4]),
-      Uint8Array.from([5, 6, 7, 8, 9]),
-      Uint8Array.from([10, 11, 12, 13, 14])
-    ]
-
     const stream = await client.createUnidirectionalStream()
     await writeStream(stream, input)
 
     const received = await serverData.promise
-    expect(received).to.deep.equal(
-      input,
+    expect(ui8.concat(received)).to.deep.equal(
+      ui8.concat(input),
       'Server did not receive the same bytes we sent'
     )
   })
@@ -103,6 +106,7 @@ describe('unidirectional streams', function () {
     // server context - waits for the client to connect, opens a bidi stream, sends some data and reads the response
     Promise.resolve().then(async () => {
       const session = await getReaderValue(server.sessionStream(SERVER_PATH))
+      if (!session) throw new Error('no session')
       const stream = await session.createUnidirectionalStream()
 
       await writeStream(stream, input)
@@ -120,9 +124,9 @@ describe('unidirectional streams', function () {
     await client.ready
 
     const stream = await getReaderValue(client.incomingUnidirectionalStreams)
-    const received = await readStream(stream)
-    expect(received).to.deep.equal(
-      input,
+    const received = await readStream(stream, ui8.concat(input).length)
+    expect(ui8.concat(received)).to.deep.equal(
+      ui8.concat(input),
       'Did not receive the same bytes we sent'
     )
   })
@@ -135,6 +139,7 @@ describe('unidirectional streams', function () {
 
     Promise.resolve().then(async () => {
       const session = await getReaderValue(server.sessionStream(SERVER_PATH))
+      if (!session) throw new Error('Got no session')
       const stream = await getReaderValue(session.incomingUnidirectionalStreams)
 
       serverStream.resolve(stream)
@@ -172,9 +177,12 @@ describe('unidirectional streams', function () {
 
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    const received = await readStream(await serverStream.promise)
-    expect(received).to.deep.equal(
-      input,
+    const received = await readStream(
+      await serverStream.promise,
+      ui8.concat(input).length
+    )
+    expect(ui8.concat(received)).to.deep.equal(
+      ui8.concat(input),
       'Did not receive the same bytes we sent'
     )
   })

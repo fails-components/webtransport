@@ -7,6 +7,7 @@ import { expect } from './fixtures/chai.js'
 import { readStream } from './fixtures/read-stream.js'
 import { writeStream } from './fixtures/write-stream.js'
 import { defer } from '../lib/utils.js'
+import * as ui8 from 'uint8arrays'
 
 /**
  * @template T
@@ -60,6 +61,7 @@ describe('bidirectional streams', function () {
     // server context - waits for the client to open a bidi stream and pipes it back to them
     Promise.resolve().then(async () => {
       const session = await getReaderValue(server.sessionStream(SERVER_PATH))
+      if (!session) throw new Error('Got no session')
       const bidiStream = await getReaderValue(
         session.incomingBidirectionalStreams
       )
@@ -87,9 +89,9 @@ describe('bidirectional streams', function () {
     const stream = await client.createBidirectionalStream()
     await writeStream(stream.writable, input)
 
-    const output = await readStream(stream.readable)
-    expect(output).to.deep.equal(
-      input,
+    const output = await readStream(stream.readable, ui8.concat(input).length)
+    expect(ui8.concat(output)).to.deep.equal(
+      ui8.concat(input),
       'Did not receive the same bytes we sent'
     )
   })
@@ -107,12 +109,14 @@ describe('bidirectional streams', function () {
     // server context - waits for the client to connect, opens a bidi stream, sends some data and reads the response
     Promise.resolve().then(async () => {
       const session = await getReaderValue(server.sessionStream(SERVER_PATH))
+      if (!session) throw new Error('Got no session')
       const stream = await session.createBidirectionalStream()
 
       await writeStream(stream.writable, input)
 
-      const output = await readStream(stream.readable)
+      const output = await readStream(stream.readable, ui8.concat(input).length)
       serverData.resolve(output)
+      await stream.readable.cancel() // cancel so that the client can progress
     })
 
     // client context - waits for the server to open a bidi stream then pipes it back to them
@@ -128,11 +132,15 @@ describe('bidirectional streams', function () {
 
     const bidiStream = await getReaderValue(client.incomingBidirectionalStreams)
     // redirect input to output
-    await bidiStream.readable.pipeTo(bidiStream.writable)
+    try {
+      await bidiStream.readable.pipeTo(bidiStream.writable)
+    } catch (error) {
+      console.log('Pipe to error (ignore)', error) // Actually all you can get is, that the fin is catched
+    }
 
     const received = await serverData.promise
-    expect(received).to.deep.equal(
-      input,
+    expect(ui8.concat(received)).to.deep.equal(
+      ui8.concat(input),
       'Did not receive the same bytes we sent'
     )
   })

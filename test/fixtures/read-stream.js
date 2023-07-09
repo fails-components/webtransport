@@ -12,6 +12,7 @@ export async function readStream(readable, expected) {
   try {
     /** @type {T[]} */
     const output = []
+    let outputlength = 0
 
     while (true) {
       const { done, value } = await reader.read()
@@ -21,10 +22,12 @@ export async function readStream(readable, expected) {
       }
 
       if (value != null) {
+        // @ts-ignore
+        outputlength += value.length
         output.push(value)
       }
 
-      if (expected != null && output.length === expected) {
+      if (expected != null && outputlength >= expected) {
         break
       }
     }
