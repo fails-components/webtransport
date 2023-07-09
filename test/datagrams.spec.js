@@ -6,7 +6,8 @@ import { WebTransport } from '../lib/index.js'
 import { expect } from './fixtures/chai.js'
 import { readStream } from './fixtures/read-stream.js'
 import { writeStream } from './fixtures/write-stream.js'
-import { defer } from '../lib/utils.js'
+import * as ui8 from 'uint8arrays'
+import { pTimeout } from './fixtures/p-timeout.js'
 
 /**
  * @template T
@@ -80,7 +81,10 @@ describe('datagrams', function () {
 
     await writeStream(client.datagrams.writable, input)
 
-    const output = await readStream(client.datagrams.readable, input.length)
+    const output = await readStream(
+      client.datagrams.readable,
+      ui8.concat(input).length
+    )
     expect(output).to.deep.equal(
       input,
       'Did not receive the same bytes we sent'
@@ -89,25 +93,29 @@ describe('datagrams', function () {
 
   it('receives datagrams from the server', async () => {
     this.timeout(200)
-    /** @type {Deferred<Uint8Array[]>} */
-    const serverData = defer()
-    const input = [
-      Uint8Array.from([0, 1, 2, 3, 4]),
-      Uint8Array.from([5, 6, 7, 8, 9]),
-      Uint8Array.from([10, 11, 12, 13, 14])
-    ]
 
     // server context - waits for the client to connect, sends some datagrams and reads the response
     Promise.resolve().then(async () => {
       const session = await getReaderValue(server.sessionStream(SERVER_PATH))
 
-      await writeStream(session.datagrams.writable, input)
-
-      const output = await readStream(session.datagrams.readable, input.length)
+      let closed = false
+      const writer = session.datagrams.writable.getWriter()
+      Promise.resolve().then(async () => {
+        // eslint-disable-next-line no-unmodified-loop-condition
+        while (!closed) {
+          try {
+            await writer.ready
+            await writer.write(Uint8Array.from([0, 1, 2, 3, 4]))
+            await new Promise((resolve) => setTimeout(resolve, 1)) // do not flood everything
+          } catch {
+            // the session can be closed while we are writing
+          }
+        }
+      })
 
       // have to close the session to end the client's datagram stream
-      session.close()
-      serverData.resolve(output)
+      await session.closed
+      closed = true
     })
 
     // client context - pipes the server's datagrams back to them
@@ -121,13 +129,15 @@ describe('datagrams', function () {
     })
     await client.ready
 
-    // redirect input to output
-    await client.datagrams.readable.pipeTo(client.datagrams.writable)
+    // datagram transport is unreliable, at least one message should make it through
+    const expected = 1
 
-    const received = await serverData.promise
-    expect(received).to.deep.equal(
-      input,
-      'Did not receive the same bytes we sent'
+    const received = await pTimeout(
+      readStream(client.datagrams.readable, expected),
+      1000
     )
+    await client.close()
+    client = undefined
+    expect(received).to.have.lengthOf(expected)
   })
 })

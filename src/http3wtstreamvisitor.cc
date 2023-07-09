@@ -23,6 +23,9 @@ namespace quic
 
             stream_->chunks_.pop_front();
         }
+
+        stream_->eventloop_->informAboutStreamRead(stream_, 0, false, false);
+
         if (!stream_->stop_sending_received_)
         {
             stream_->eventloop_->informStreamRecvSignal(stream_, 0, NetworkTask::stopSending);
@@ -77,21 +80,45 @@ namespace quic
 
     void Http3WTStream::doCanRead()
     {
+        // if (pause_reading_) return ; // back pressure folks!
+        
         if (pause_reading_)
         {
             can_read_pending_ = true;
             return; // back pressure folks!
         }
         // first figure out if we have readable data
+        if (bufferlen_ >= readbufsize_ || !readbufdata_) {
+            can_read_pending_ = true;
+            return; // no space here
+        }
         size_t readable = stream_->ReadableBytes();
-        // ok create a string obj to hold the data
-        std::string *data = new std::string();
-        data->resize(readable);
-        WebTransportStream::ReadResult result = stream_->Read(absl::Span<char>(&(*data)[0], readable));
-        data->resize(result.bytes_read);
-        QUIC_DVLOG(1) << "Attempted reading on WebTransport bidirectional stream "
-                      << ", bytes read: " << result.bytes_read;
-        eventloop_->informAboutStreamRead(this, data, result.fin);
+        bool read = false;
+        while (readable > 0 && bufferlen_ < readbufsize_)
+        {
+            if (writepos_ >= readpos_) {
+                size_t len = readbufsize_ - writepos_;   
+                WebTransportStream::ReadResult result = 
+                    stream_->Read(absl::Span<char>(((char*) readbufdata_) + writepos_, len));
+                QUIC_DVLOG(1) << "Attempted reading on WebTransport stream "
+                          << ", bytes read: " << result.bytes_read;
+                writepos_ = (writepos_ + result.bytes_read) % readbufsize_;
+                bufferlen_ = bufferlen_ + result.bytes_read;
+                eventloop_->informAboutStreamRead(this, result.bytes_read, 
+                            result.fin, true);
+            } else  { // readpos_ > writepos_
+                size_t len = writepos_ - readpos_;
+                WebTransportStream::ReadResult result = 
+                    stream_->Read(absl::Span<char>(((char*) readbufdata_) + writepos_, len));
+                QUIC_DVLOG(1) << "Attempted reading on WebTransport stream "
+                          << ", bytes read: " << result.bytes_read; 
+                writepos_ = (writepos_ + result.bytes_read) % readbufsize_;
+                bufferlen_ = bufferlen_ + result.bytes_read;
+                eventloop_->informAboutStreamRead(this, result.bytes_read,
+                             result.fin, true);
+            } 
+            readable = stream_->ReadableBytes();
+        }
     }
 
     void Http3WTStream::doCanWrite()

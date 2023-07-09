@@ -34,7 +34,15 @@ namespace quic
         friend Http3WTStreamJS;
 
     public:
-        Http3WTStream(WebTransportStream *stream, Http3EventLoop *eventloop) : stream_(stream), eventloop_(eventloop), js_(nullptr)
+        Http3WTStream(WebTransportStream *stream, Http3EventLoop *eventloop) : 
+            stream_(stream),
+            eventloop_(eventloop), 
+            js_(nullptr), 
+            readpos_(0),
+            writepos_(0),
+            bufferlen_(0),
+            readbufsize_(0),
+            readbufdata_(nullptr)
         {
         }
 
@@ -90,10 +98,16 @@ namespace quic
             }
         }
 
+
+        inline bool readBufferFull() {
+            return !readbufdata_ || bufferlen_ >= readbufsize_;
+        }
+
         void tryRead()
         {
             pause_reading_ = false;
-            if (stream_ && ((stream_->ReadableBytes() > 0) || can_read_pending_))
+            if (stream_ && ((stream_->ReadableBytes() > 0) || can_read_pending_)
+               && !readBufferFull())
             {
                 can_read_pending_ = false;
                 doCanRead();
@@ -112,6 +126,17 @@ namespace quic
         bool gone() {
             return !stream_;
         }
+
+        void setReadBuffer(void * data, size_t length) {
+            std::function<void()> task = [this, data, length]()
+            {
+                readbufsize_ = length;
+                readbufdata_ = data;
+                tryRead();
+            };
+            eventloop_->Schedule(task);
+        }
+
 
     protected:
         // internal functions called by js object
@@ -134,6 +159,13 @@ namespace quic
         {
             std::function<void()> task = [this, bufferhandle, buffer, len]()
             { writeChunkInt(buffer, len, bufferhandle); };
+            eventloop_->Schedule(task);
+        }
+
+        void updateReadPosIntJS(size_t readbytes, uint32_t readpos)
+        {
+            std::function<void()> task = [this, readpos, readbytes]()
+            { updateReadPosInt(readbytes, readpos); };
             eventloop_->Schedule(task);
         }
 
@@ -202,6 +234,17 @@ namespace quic
             tryWrite();
         }
 
+        void updateReadPosInt(size_t readbytes, uint32_t readpos)
+        {
+            if (!stream_)
+            {
+                return;
+            }
+            readpos_ = readpos;
+            bufferlen_ -= readbytes;
+            tryRead();
+        }
+
         void cancelWrite(Napi::ObjectReference *handle);
 
     private:
@@ -217,6 +260,13 @@ namespace quic
         bool can_read_pending_ = false;
         bool stream_was_reset_ = false;
         std::deque<WChunks> chunks_;
+
+        //reading stream
+        uint32_t readpos_;
+        uint32_t writepos_;
+        uint32_t bufferlen_;
+        size_t readbufsize_;
+        void * readbufdata_;
     };
 
     class Http3WTStreamJS : public Napi::ObjectWrap<Http3WTStreamJS>, public LifetimeHelper
@@ -252,6 +302,31 @@ namespace quic
             size_t len = bufferlocal.As<Napi::Buffer<char>>().Length();
 
             wtstream_->writeChunkIntJS(buffer, len, bufferhandle);
+        }
+
+        void updateReadPos(const Napi::CallbackInfo &info)
+        {
+            // ok we have to get the buffer
+            uint32_t readpos = 0;
+            size_t readbytes = 0;
+
+            if (!info[0].IsUndefined())
+            {
+                Napi::Number readbytesl = info[0].ToNumber();
+                readbytes = readbytesl.Uint32Value();
+            } else {
+                return Napi::Error::New(Env(), "No readbytes passed").ThrowAsJavaScriptException();
+            }
+
+            if (!info[1].IsUndefined())
+            {
+                Napi::Number readposl = info[1].ToNumber();
+                readpos = readposl.Uint32Value();
+            } else {
+                return Napi::Error::New(Env(), "No readpos passed").ThrowAsJavaScriptException();
+            }
+
+            wtstream_->updateReadPosIntJS(readbytes, readpos);
         }
 
         void streamFinal(const Napi::CallbackInfo &info)
@@ -292,9 +367,12 @@ namespace quic
                 DefineClass(env, "Http3WTStreamVisitor",
                             {InstanceMethod<&Http3WTStreamJS::writeChunk>("writeChunk",
                                                                           static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                             InstanceMethod<&Http3WTStreamJS::updateReadPos>("updateReadPos",
+                                                                          static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                              InstanceMethod<&Http3WTStreamJS::resetStream>("resetStream",
                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                             InstanceMethod<&Http3WTStreamJS::stopSending>("stopSending", static_cast<napi_property_attributes>(napi_writable | napi_configurable)), InstanceMethod<&Http3WTStreamJS::streamFinal>("streamFinal", static_cast<napi_property_attributes>(napi_writable | napi_configurable)), InstanceMethod<&Http3WTStreamJS::startReading>("startReading", static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                             InstanceMethod<&Http3WTStreamJS::stopSending>("stopSending", static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                             InstanceMethod<&Http3WTStreamJS::streamFinal>("streamFinal", static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                              InstanceMethod<&Http3WTStreamJS::startReading>("startReading",
                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                              InstanceMethod<&Http3WTStreamJS::stopReading>("stopReading",
