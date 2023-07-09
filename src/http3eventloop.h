@@ -256,6 +256,8 @@ namespace quic
             return my_constructor;
         }
 
+        static bool hasSetLogging;
+
         void ExecuteScheduledActions();
 
         QuicMutex scheduled_actions_lock_;

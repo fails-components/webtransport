@@ -33,6 +33,7 @@ namespace quic
   static const int kErrorBufferSize = 256;
 
   const size_t kNumSessionsToCreatePerSocketEvent = 16;
+  bool Http3EventLoop::hasSetLogging = false;
 
   Http3EventLoop::~Http3EventLoop()
   {
@@ -969,8 +970,10 @@ namespace quic
     for (auto cur= quiche_cmd_line.begin(); cur != quiche_cmd_line.end(); cur++) {
       quiche_cmd_line_char.push_back((*cur).c_str());
     } 
-
-    quiche::QuicheParseCommandLineFlags("No use instruction.", quiche_cmd_line.size(), &(*quiche_cmd_line_char.begin()));
+    if (!hasSetLogging) {
+      quiche::QuicheParseCommandLineFlags("No use instruction.", quiche_cmd_line.size(), &(*quiche_cmd_line_char.begin()));
+      hasSetLogging = true;
+    }
   }
 
   void Http3EventLoop::startEventLoop(const Napi::CallbackInfo &info)
