@@ -10,7 +10,7 @@
        "type": "lldb",
        "request": "launch",
        "name": "Launch Program",
-       "preLaunchTask": "npm: build-debug",
+       /* "preLaunchTask": "npm: build-debug",*/
        "program": "/usr/local/bin/node",
        "args": ["node_modules/.bin/_mocha",
          "test/bidirectional-streams.spec.js"
