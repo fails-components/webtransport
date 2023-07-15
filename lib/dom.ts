@@ -39,8 +39,8 @@ export interface WebTransportDatagramDuplexStream {
 }
 
 export interface WebTransportBidirectionalStream {
-  readonly readable: ReadableStream<Uint8Array>
-  readonly writable: WritableStream<Uint8Array>
+  readonly readable: WebTransportReceiveStream
+  readonly writable: WebTransportSendStream
 }
 
 export interface  WebTransportSendStreamStats {
