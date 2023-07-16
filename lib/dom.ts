@@ -41,7 +41,6 @@ export interface WebTransportDatagramDuplexStream {
 }
 
 
-
 export interface  WebTransportSendStreamStats {
   timestamp: number
   bytesWritten: bigint
