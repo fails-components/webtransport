@@ -16,5 +16,9 @@ export async function writeStream(writable, input) {
 
   await writer.ready
   await writer.releaseLock()
-  await writable.close()
+  try {
+    await writable.close()
+  } catch (error) {
+    console.log('Did we get a STOP_SENDING? ignore', error)
+  }
 }

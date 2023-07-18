@@ -102,10 +102,7 @@ describe('unidirectional streams', function () {
     await new Promise((resolve) => setTimeout(resolve, 2000))
     try {
       await writer.ready
-      // correct test
       await writer.close()
-      // Temporary workaround for Chromium, does not fix! Need to debug this case separately.
-      // await Promise.race([writer.close(), client.closed])
     } catch (error) {
       console.log('Ignore stop sending', error)
     }
