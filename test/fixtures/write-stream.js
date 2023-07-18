@@ -4,7 +4,7 @@
  * @template T
  * @param {WritableStream<T>} writable
  * @param {T[]} input
- * @param {any} closehelper
+ * @param {any|undefined} closehelper
  * @returns
  */
 export async function writeStream(writable, input, closehelper) {
