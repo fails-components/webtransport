@@ -103,9 +103,9 @@ describe('unidirectional streams', function () {
     try {
       await writer.ready
       // correct test
-      // await writer.close()
-      // Temprorary workaround for Chromium
-      await Promise.race([writer.close(), client.closed])
+      await writer.close()
+      // Temporary workaround for Chromium, does not fix! Need to debug this case separately.
+      // await Promise.race([writer.close(), client.closed])
     } catch (error) {
       console.log('Ignore stop sending', error)
     }
