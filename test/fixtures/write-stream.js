@@ -4,9 +4,10 @@
  * @template T
  * @param {WritableStream<T>} writable
  * @param {T[]} input
+ * @param {any} closehelper
  * @returns
  */
-export async function writeStream(writable, input) {
+export async function writeStream(writable, input, closehelper) {
   const writer = writable.getWriter()
 
   for (const buf of input) {
@@ -17,7 +18,12 @@ export async function writeStream(writable, input) {
   await writer.ready
   await writer.releaseLock()
   try {
-    await writable.close()
+    if (!closehelper) {
+      // correct test
+      await writable.close()
+    } else {
+      await Promise.race([writable.close(), closehelper])
+    }
   } catch (error) {
     console.log('Did we get a STOP_SENDING? ignore', error)
   }

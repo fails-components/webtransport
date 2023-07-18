@@ -42,7 +42,10 @@ describe('unidirectional streams', function () {
     }
 
     const stream = await client.createUnidirectionalStream()
-    await writeStream(stream, KNOWN_BYTES)
+    // correct test
+    // await writeStream(stream, KNOWN_BYTES)
+    // workaround for Chromium bug
+    await writeStream(stream, KNOWN_BYTES, client.closed)
 
     // the remote will close the session
     const result = await client.closed
