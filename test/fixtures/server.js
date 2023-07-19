@@ -72,7 +72,7 @@ export async function createServer() {
                   stream.readable,
                   KNOWN_BYTES_LENGTH
                 )
-                await stream.readable.cancel() // cancel so that the client can progress
+                // await stream.readable.cancel() // cancel so that the client can progress
 
                 // if we did not get the data we sent, close the session with a reason
                 if (
@@ -179,7 +179,7 @@ export async function createServer() {
                   session.incomingUnidirectionalStreams
                 )
                 const received = await readStream(stream, KNOWN_BYTES_LENGTH)
-                await stream.cancel() // cancel so that the client can progress
+                // await stream.cancel() // cancel so that the client can progress
                 // if we did not get the data we sent, close the session with a reason
                 if (
                   !ui8.equals(ui8.concat(KNOWN_BYTES), ui8.concat(received))
@@ -222,7 +222,7 @@ export async function createServer() {
               await new Promise((resolve) => setTimeout(resolve, 1000))
 
               const received = await readStream(stream, KNOWN_BYTES_LENGTH)
-              await stream.cancel() // cancel so that the client can progress
+              // await stream.cancel() // cancel so that the client can progress
 
               // if we did not get expected data, close the session with a reason
               if (!ui8.equals(ui8.concat(KNOWN_BYTES), ui8.concat(received))) {
