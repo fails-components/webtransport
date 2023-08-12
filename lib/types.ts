@@ -1,4 +1,5 @@
-import type { WebTransport, WebTransportOptions } from './dom'
+import type { WebTransport, WebTransportHash, WebTransportOptions } from './dom'
+import type { IncomingHttpHeaders, ServerHttp2Stream } from 'http2'
 
 /**
  * Native Http3WTSession counterpart
@@ -27,6 +28,29 @@ export interface NativeHttp3WTStream {
   resetStream: (code: number) => void
   writeChunk: (buf: Uint8Array) => void
   streamFinal: () => void
+}
+
+export interface NativeServerOptions {
+  port: number | 443
+  secret?: string
+  host: string
+  cert: string
+  privKey: string
+}
+
+export interface NativeClientOptions {
+  port: number
+  hostname: string
+  serverCertificateHashes: WebTransportHash[]
+  localPort: number
+  allowPooling: boolean
+  forceIpv6: boolean
+}
+
+export interface NativeFinishSessionRequest {
+   header: IncomingHttpHeaders
+   session: ServerHttp2Stream
+   status: number 
 }
 
 export type Purpose = 'StreamRecvSignal' | 'StreamRead' | 'StreamWrite' | 'StreamReset' | 'StreamNetworkFinish'
