@@ -43,13 +43,14 @@ std::unique_ptr<QuicSession> Http3Dispatcher::CreateQuicSession(
     QuicConnectionId connection_id, const QuicSocketAddress& self_address,
     const QuicSocketAddress& peer_address, absl::string_view /*alpn*/,
     const ParsedQuicVersion& version,
-    const ParsedClientHello& /*parsed_chlo*/) {
+    const ParsedClientHello& /*parsed_chlo*/,
+    ConnectionIdGeneratorInterface& connection_id_generator) {
   // The QuicServerSessionBase takes ownership of |connection| below.
   QuicConnection* connection =
       new QuicConnection(connection_id, self_address, peer_address, helper(),
                          alarm_factory(), writer(),
                          /* owns_writer= */ false, Perspective::IS_SERVER,
-                         ParsedQuicVersionVector{version}, connection_id_generator());
+                         ParsedQuicVersionVector{version}, connection_id_generator);
 
   auto session = std::make_unique<Http3ServerSession>(
       config(), GetSupportedVersions(), connection, this, session_helper(),

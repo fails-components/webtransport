@@ -40,7 +40,8 @@ namespace quic
         QuicConnectionId connection_id, const QuicSocketAddress &self_address,
         const QuicSocketAddress &peer_address, absl::string_view alpn,
         const ParsedQuicVersion &version,
-        const ParsedClientHello &parsed_chlo) override;
+        const ParsedClientHello &parsed_chlo,
+        ConnectionIdGeneratorInterface& connection_id_generator) override;
 
     Http3ServerBackend *server_backend()
     {
