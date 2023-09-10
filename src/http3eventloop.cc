@@ -183,15 +183,6 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::informAboutStreamReset(Http3WTStream *streamobj)
-  {
-    Http3ProgressReport report;
-    report.type = Http3ProgressReport::StreamReset;
-    report.streamobj = streamobj;
-    if (progress_)
-      progress_->Send(&report, 1);
-  }
-
   void Http3EventLoop::informDatagramReceived(Http3WTSession *sessionobj, absl::string_view datagram)
   {
     Http3ProgressReport report;
@@ -490,25 +481,6 @@ namespace quic
     Napi::Object retObj = Napi::Object::New(qw_->Env());
     retObj.Set("purpose", "StreamWrite");
     retObj.Set("success", success);
-    retObj.Set("object", objVal);
-
-    cbstream_.Call({retObj});
-  }
-
-  void Http3EventLoop::processStreamReset(Http3WTStream *streamobj)
-  {
-    if (!checkQw())
-      return;
-    HandleScope scope(qw_->Env());
-
-    auto stream = streamobj->getJS();
-    if (!stream)
-      return;
-
-    Napi::Object objVal = stream->Value();
-
-    Napi::Object retObj = Napi::Object::New(qw_->Env());
-    retObj.Set("purpose", "StreamReset");
     retObj.Set("object", objVal);
 
     cbstream_.Call({retObj});
@@ -945,11 +917,6 @@ namespace quic
       case Http3ProgressReport::StreamWrite:
       {
         processStreamWrite(cur.streamobj, cur.bufferhandle, cur.success);
-      }
-      break;
-      case Http3ProgressReport::StreamReset:
-      {
-        processStreamReset(cur.streamobj);
       }
       break;
       case Http3ProgressReport::StreamNetworkFinish:

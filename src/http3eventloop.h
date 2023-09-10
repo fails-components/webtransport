@@ -88,7 +88,6 @@ namespace quic
             StreamRecvSignal,
             StreamRead,
             StreamWrite,
-            StreamReset,
             StreamNetworkFinish,
             DatagramReceived,
             DatagramSend,
@@ -217,7 +216,6 @@ namespace quic
         void informStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);
         void informAboutStreamRead(Http3WTStream *streamobj, uint32_t buffergrow, bool fin, bool success);
         void informAboutStreamWrite(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, bool success);
-        void informAboutStreamReset(Http3WTStream *streamobj);
         void informAboutStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task);
 
         void informDatagramReceived(Http3WTSession *sessionobj, absl::string_view datagram);
@@ -289,7 +287,6 @@ namespace quic
         void processStreamRecvSignal(Http3WTStream *streamobj, WebTransportStreamError error_code, NetworkTask task);
         void processStreamRead(Http3WTStream *streamobj, size_t buffergrow, bool fin, bool success);
         void processStreamWrite(Http3WTStream *streamobj, Napi::ObjectReference *bufferhandle, bool success);
-        void processStreamReset(Http3WTStream *streamobj);
         void processStreamNetworkFinish(Http3WTStream *streamobj, NetworkTask task);
 
         void processDatagramReceived(Http3WTSession *sessionobj, std::string *datagram);

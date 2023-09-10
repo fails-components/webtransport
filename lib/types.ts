@@ -76,11 +76,6 @@ export interface StreamWriteEvent {
   purpose: 'StreamWrite'
 }
 
-export interface StreamResetEvent {
-  object: NativeHttp3WTStream
-  purpose: 'StreamReset'
-}
-
 export interface StreamNetworkFinishEvent {
   object: NativeHttp3WTStream
   purpose: 'StreamNetworkFinish'
@@ -91,7 +86,6 @@ export interface WebTransportStreamEventHandler {
   onStreamRecvSignal: (evt: StreamRecvSignalEvent) => void
   onStreamRead: (evt: StreamReadEvent) => void
   onStreamWrite: (evt: StreamWriteEvent) => void
-  onStreamReset: (evt: StreamResetEvent) => void
   onStreamNetworkFinish: (evt: StreamNetworkFinishEvent) => void
 }
 
