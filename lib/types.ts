@@ -81,7 +81,6 @@ export interface WebTransportStreamEventHandler {
   onStreamRecvSignal: (evt: StreamRecvSignalEvent) => void
   onStreamRead: (evt: StreamReadEvent) => void
   onStreamWrite: (evt: StreamWriteEvent) => void
-  onStreamReset: (evt: StreamResetEvent) => void
   onStreamNetworkFinish: (evt: StreamNetworkFinishEvent) => void
 }
 
