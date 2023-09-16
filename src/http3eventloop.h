@@ -94,6 +94,8 @@ namespace quic
             DatagramReceived,
             DatagramSend,
             GoawayReceived,
+            SessionStats,
+            DatagramStats,
             Unref
         } type;
         union
@@ -125,12 +127,15 @@ namespace quic
         {
             std::string *para = nullptr; // for session and others, we own it, and must delete it
             ServerStatusDetails *details;
+            webtransport::SessionStats * sessionStats; // we own it and must delete it after return from js
+            webtransport::DatagramStats * datagramStats; // we own it and must delete it after return from js
         };
         union
         {
             bool success;
             WebTransportRespPromisePtr *promise;
             Napi::Reference<Napi::Value> *header;
+            absl::Duration *timestamp; // for session and others, we own it, and must delete it
         };
     };
 
@@ -219,6 +224,9 @@ namespace quic
         void informDatagramReceived(Http3WTSession *sessionobj, absl::string_view datagram);
         void informDatagramSend(Http3WTSession *sessionobj, Napi::ObjectReference *bufferhandle);
 
+        void informSessionStats(Http3WTSession *sessionobj, webtransport::SessionStats * sessstats);
+        void informDatagramStats(Http3WTSession *sessionobj, webtransport::DatagramStats * datastats);
+
         void informGoawayReceived(Http3WTSession *sessionobj);
 
         void informUnref(LifetimeHelper *obj);
@@ -287,6 +295,9 @@ namespace quic
 
         void processDatagramReceived(Http3WTSession *sessionobj, std::string *datagram);
         void processDatagramSend(Http3WTSession *sessionobj, Napi::ObjectReference *bufferhandle);
+
+        void processSessionStats(Http3WTSession *sessionobj, absl::Duration* timestamp, webtransport::SessionStats * sessstats);
+        void processDatagramStats(Http3WTSession *sessionobj, absl::Duration* timestamp, webtransport::DatagramStats * datastats);
 
         void processGoawayReceived(Http3WTSession *sessionobj);
 

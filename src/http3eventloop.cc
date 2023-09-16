@@ -221,6 +221,31 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
+  void  Http3EventLoop::informSessionStats(Http3WTSession *sessionobj, webtransport::SessionStats * sessstats)
+  {
+    Http3ProgressReport report;
+    report.type = Http3ProgressReport::SessionStats;
+    report.sessionobj = sessionobj;
+    report.sessionStats = sessstats;
+  
+    report.timestamp = new absl::Duration();
+    report.timestamp[0] = absl::Now() - absl::UnixEpoch();
+    if (progress_)
+      progress_->Send(&report, 1);
+  }
+
+  void  Http3EventLoop::informDatagramStats(Http3WTSession *sessionobj, webtransport::DatagramStats * datastats)
+  {
+    Http3ProgressReport report;
+    report.type = Http3ProgressReport::DatagramStats;
+    report.sessionobj = sessionobj;
+    report.datagramStats = datastats;
+    report.timestamp = new absl::Duration();
+    report.timestamp[0] = absl::Now() - absl::UnixEpoch();
+    if (progress_)
+      progress_->Send(&report, 1);
+  }
+
   void Http3EventLoop::informUnref(LifetimeHelper *obj)
   {
     Http3ProgressReport report;
@@ -592,6 +617,70 @@ namespace quic
     cbsession_.Call({retObj});
   }
 
+  void Http3EventLoop::processSessionStats(Http3WTSession *sessionobj, absl::Duration* timestamp, webtransport::SessionStats * sessstats)
+  {
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
+   
+
+    auto session = sessionobj->getJS();
+    if (!session)
+      return;
+    Napi::Object objVal = session->Value();
+
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "SessionStats");
+    retObj.Set("object", objVal);
+    //  expiredOutgoing: bigint
+  // lostOutgoing: bigint
+
+  // non Datagram
+ //  minRtt: number
+ //  smoothedRtt: number
+ //  rttVariation: number
+  // estimatedSendRateBps: bigint
+    retObj.Set("timestamp", absl::ToDoubleMilliseconds(*timestamp)); // absl::Duration
+    // datagram
+    retObj.Set("expiredOutgoing", Napi::BigInt::New(qw_->Env(), sessstats->datagram_stats.expired_outgoing)); //uint64_t
+    retObj.Set("lostOutgoing", Napi::BigInt::New(qw_->Env(), sessstats->datagram_stats.lost_outgoing)); //uint64_t
+
+    // non Datagram
+    retObj.Set("minRtt", absl::ToDoubleMilliseconds(sessstats->min_rtt)); // absl::Duration
+    retObj.Set("smoothedRtt", absl::ToDoubleMilliseconds(sessstats->smoothed_rtt)); // absl::Duration
+    retObj.Set("rttVariation", absl::ToDoubleMilliseconds(sessstats->rtt_variation)); // absl::Duration
+    retObj.Set("estimatedSendRateBps", sessstats->estimated_send_rate_bps); // absl::Duration
+
+    cbsession_.Call({retObj});
+    delete sessstats;
+    delete timestamp;
+  }
+
+  void Http3EventLoop::processDatagramStats(Http3WTSession *sessionobj, absl::Duration* timestamp, webtransport::DatagramStats * datastats)
+  {
+    if (!checkQw())
+      return;
+    HandleScope scope(qw_->Env());
+   
+
+    auto session = sessionobj->getJS();
+    if (!session)
+      return;
+    Napi::Object objVal = session->Value();
+
+    Napi::Object retObj = Napi::Object::New(qw_->Env());
+    retObj.Set("purpose", "DatagramStats");
+    retObj.Set("object", objVal);
+    retObj.Set("timestamp", absl::ToDoubleMilliseconds(*timestamp)); // absl::Duration
+    // datagram
+    retObj.Set("expiredOutgoing", Napi::BigInt::New(qw_->Env(), datastats->expired_outgoing)); //uint64_t
+    retObj.Set("lostOutgoing", Napi::BigInt::New(qw_->Env(), datastats->lost_outgoing)); //uint64_t
+
+    cbsession_.Call({retObj});
+    delete datastats;
+    delete timestamp;
+  }
+
   void Http3EventLoop::processNewSessionRequest(Http3Server *serverobj, WebTransportSession *session, spdy::Http2HeaderBlock *reqheadcopy, WebTransportRespPromisePtr *promise)
   {
     if (!checkQw())
@@ -882,6 +971,18 @@ namespace quic
       case Http3ProgressReport::GoawayReceived:
       {
         processGoawayReceived(cur.sessionobj);
+      }
+      break;
+      case Http3ProgressReport::SessionStats:
+      {
+        processSessionStats(cur.sessionobj, cur.timestamp, cur.sessionStats);
+        cur.para = nullptr; // take ownership of the data
+      }
+      break;
+      case Http3ProgressReport::DatagramStats:
+      {
+        processDatagramStats(cur.sessionobj, cur.timestamp, cur.datagramStats);
+        cur.para = nullptr; // take ownership of the data
       }
       break;
       case Http3ProgressReport::Unref:
