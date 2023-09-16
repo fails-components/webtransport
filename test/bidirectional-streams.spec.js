@@ -76,13 +76,7 @@ describe('bidirectional streams', function () {
 
     // redirect input to output
     try {
-      // Correct test
-      // await bidiStream.readable.pipeTo(bidiStream.writable)
-      // temporal work around until Chromium is fixed
-      await Promise.race([
-        bidiStream.readable.pipeTo(bidiStream.writable),
-        client.closed
-      ])
+      await bidiStream.readable.pipeTo(bidiStream.writable)
     } catch (error) {
       console.log('Pipe to error (ignore)', error) // Actually all you can get is, that the fin is catched
     }
