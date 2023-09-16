@@ -230,6 +230,28 @@ namespace quic
             eventloop_->Schedule(task);
         }
 
+        void orderSessionStatsInt()
+        {
+            std::function<void()> task = [this](){
+                if (session_) {
+                    webtransport::SessionStats * stats = new webtransport::SessionStats();
+                    *stats = session_->GetSessionStats();
+                    eventloop_->informSessionStats(this, stats);
+            }};
+            eventloop_->Schedule(task);
+        }
+
+        void orderDatagramStatsInt()
+        {
+            std::function<void()> task = [this]()
+            {  if (session_) {
+                webtransport::DatagramStats * stats = new webtransport::DatagramStats();
+                *stats = session_->GetDatagramStats();
+                eventloop_->informDatagramStats(this, stats);
+            } };
+            eventloop_->Schedule(task);
+        }
+
         void closeInt(int code, std::string &reason)
         {
             std::function<void()> task = [this, code, reason]()
@@ -300,6 +322,16 @@ namespace quic
             wtsession_->notifySessionDrainingInt();
         }
 
+        void orderSessionStats(const Napi::CallbackInfo &info)
+        {
+             wtsession_->orderSessionStatsInt();
+        }
+
+        void orderDatagramStats(const Napi::CallbackInfo &info)
+        {
+             wtsession_->orderDatagramStatsInt();
+        }
+
         void close(const Napi::CallbackInfo &info)
         {
             int code = 0;
@@ -337,6 +369,10 @@ namespace quic
                                                            InstanceMethod<&Http3WTSessionJS::writeDatagram>("writeDatagram",
                                                                                                             static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                                            InstanceMethod<&Http3WTSessionJS::notifySessionDraining>("notifySessionDraining",
+                                                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                            InstanceMethod<&Http3WTSessionJS::orderSessionStats>("orderSessionStats",
+                                                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                            InstanceMethod<&Http3WTSessionJS::orderDatagramStats>("orderDatagramStats",
                                                                                                             static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                                            InstanceMethod<&Http3WTSessionJS::close>("close",
                                                                                                     static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
