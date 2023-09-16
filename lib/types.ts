@@ -1,5 +1,6 @@
 import type { WebTransport, WebTransportHash, WebTransportOptions } from './dom'
-import type { IncomingHttpHeaders, ServerHttp2Stream } from 'http2'
+import type { IncomingHttpHeaders, Http2Stream } from 'http2'
+
 
 /**
  * Native Http3WTSession counterpart
@@ -49,7 +50,7 @@ export interface NativeClientOptions {
 
 export interface NativeFinishSessionRequest {
    header: IncomingHttpHeaders
-   session: ServerHttp2Stream
+   session: Http2Stream
    status: number 
 }
 
@@ -143,7 +144,6 @@ export interface NewStreamEvent {
   object: NativeHttp3WTSession
   purpose: 'Http3WTStreamVisitor'
   stream: NativeHttp3WTStream
-  transport: object
   bidirectional: boolean
   incoming: boolean
 }
@@ -263,4 +263,17 @@ export interface Logger {
   (formatter: any, ...args: any[]): void
   error: (formatter: any, ...args: any[]) => void
   trace: (formatter: any, ...args: any[]) => void
+}
+
+export interface Http2CapsuleParserInit {
+  stream: Http2Stream
+  isclient: boolean
+  sessioncallback: (args: SessionReadyEvent | SessionCloseEvent | DatagramReceivedEvent | DatagramSendEvent | GoawayReceivedEvent | NewStreamEvent) => void
+  streamcallback: (args: StreamRecvSignalEvent | StreamReadEvent | StreamWriteEvent  | StreamNetworkFinishEvent) => void
+  nativesession: any
+}
+
+export interface ReadDataInt {
+  data: Uint8Array
+  fin: boolean
 }
