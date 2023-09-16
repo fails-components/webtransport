@@ -98,6 +98,8 @@ async function run() {
   await client.ready
   console.log('client is ready')
   await echoTestsConnection(client)
+  console.log('Test if getStats works')
+  console.log('getStats returned', await client.getStats())
   console.log('client test finished, now close the client but wait 2 seconds')
 
   await new Promise((resolve) => setTimeout(resolve, 2000))

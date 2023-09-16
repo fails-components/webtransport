@@ -8,7 +8,8 @@ import type { WebTransport } from './dom'
   writeDatagram: (chunk: Uint8Array) => void
   orderUnidiStream: () => void
   orderBidiStream: () => void
-  // orderStats: () => void
+  orderSessionStats: () => void
+  orderDatagramStats: () => void
   notifySessionDraining(): () => void
   close: (arg: { code: number, reason: string }) => void
 }
@@ -82,6 +83,28 @@ export interface SessionCloseEvent {
   error: string
 }
 
+export interface SessionStatsEvent {
+  object: NativeHttp3WTSession
+  purpose: 'SessionStats'
+  timestamp: number
+  expiredOutgoing: bigint
+  lostOutgoing: bigint
+
+  // non Datagram
+  minRtt: number
+  smoothedRtt: number
+  rttVariation: number
+  estimatedSendRateBps: bigint
+}
+
+export interface DatagramStatsEvent {
+  object: NativeHttp3WTSession
+  purpose: 'DatagramStats'
+  timestamp: number
+  expiredOutgoing: bigint
+  lostOutgoing: bigint
+}
+
 export interface DatagramReceivedEvent {
   object: NativeHttp3WTSession
   purpose: 'DatagramReceived'
@@ -113,6 +136,8 @@ export interface WebTransportSessionEventHandler {
   onDatagramReceived: (evt: DatagramReceivedEvent) => void
   onDatagramSend: (evt: DatagramSendEvent) => void
   onGoAwayReceived: (evt: GoawayReceivedEvent) => void
+  onSessionStats: (evt: SessionStatsEvent) => void
+  onDatagramStats: (evt: DatagramStatsEvent) => void
   onStream: (evt: NewStreamEvent) => void
   closeHook?: (() => void) | null
 }

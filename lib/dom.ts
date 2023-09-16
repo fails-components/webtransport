@@ -20,6 +20,7 @@ export interface WebTransportStats {
   smoothedRtt: number
   rttVariation: number
   minRtt: number
+  estimatedSendRate: bigint
   datagrams: WebTransportDatagramStats
 }
 
