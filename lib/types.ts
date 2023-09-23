@@ -3,9 +3,9 @@ import type { IncomingHttpHeaders, Http2Stream } from 'http2'
 
 
 /**
- * Native Http3WTSession counterpart
+ * Native HttpWTSession counterpart
  */
- export interface NativeHttp3WTSession {
+ export interface NativeHttpWTSession {
   jsobj: WebTransportSessionEventHandler
   writeDatagram: (chunk: Uint8Array) => void
   orderUnidiStream: () => void
@@ -17,9 +17,9 @@ import type { IncomingHttpHeaders, Http2Stream } from 'http2'
 }
 
 /**
- * Native Http3WTStream counterpart
+ * Native HttpWTStream counterpart
  */
-export interface NativeHttp3WTStream {
+export interface NativeHttpWTStream {
   updateReadPos(bytesread: Number, pos: Number): unknown
   jsobj: WebTransportStreamEventHandler
   readbuffer: Uint8Array | undefined
@@ -86,7 +86,7 @@ export interface WebTransportStreamEventHandler {
 }
 
 export interface SessionReadyEvent {
-  object: NativeHttp3WTSession
+  object: NativeHttpWTSession
 }
 
 export interface SessionCloseEvent {
@@ -123,7 +123,7 @@ export interface GoawayReceivedEvent {
 }
 
 export interface NewStreamEvent {
-  stream: NativeHttp3WTStream
+  stream: NativeHttpWTStream
   bidirectional: boolean
   incoming: boolean
 }
@@ -147,17 +147,17 @@ export interface ClientConnectedEvent {
 export interface ClientWebtransportSupportEvent {
 }
 
-export interface Http3WTSessionVisitorEvent {
-  session: NativeHttp3WTSession
+export interface HttpWTSessionVisitorEvent {
+  session: NativeHttpWTSession
 }
 
-export interface Http3ClientEventHandler {
+export interface HttpClientEventHandler {
   onClientConnected: (evt: ClientConnectedEvent) => void
   onClientWebTransportSupport: (evt: ClientWebtransportSupportEvent) => void
-  onHttp3WTSessionVisitor: (evt: Http3WTSessionVisitorEvent) => void
+  onHttpWTSessionVisitor: (evt: HttpWTSessionVisitorEvent) => void
 }
 
-export interface Http3WTServerSessionVisitorEvent extends Http3WTSessionVisitorEvent {
+export interface HttpWTServerSessionVisitorEvent extends HttpWTSessionVisitorEvent {
   path: string
   object: any
   header?: any
@@ -178,19 +178,18 @@ export interface UDPServerSocketSend {
 }
 
 /**
- * The Http3 server is listening on the specified port
+ * The Http server is listening on the specified port
  */
-export interface Http3ServerListeningEvent {
+export interface HttpServerListeningEvent {
   port: number | undefined
   host: string | undefined
 }
 
 
-
-export interface Http3ServerEventHandler {
-  onHttp3WTSessionVisitor: (evt: Http3WTServerSessionVisitorEvent) => void
+export interface HttpServerEventHandler {
+  onHttpWTSessionVisitor: (evt: HttpWTServerSessionVisitorEvent) => void
   onServerError: (error?: Error) => void
-  onServerListening: (evt: Http3ServerListeningEvent) => void
+  onServerListening: (evt: HttpServerListeningEvent) => void
   onServerClose: () => void
 }
 
@@ -210,7 +209,7 @@ export interface WebTransportSession extends WebTransport {
   state: WebTransportSessionState
 }
 
-export interface Http3WebTransportInit extends WebTransportOptions {
+export interface HttpWebTransportInit extends WebTransportOptions {
   host: string
   port: string | number
   quicheLogVerbose?: number
@@ -218,8 +217,9 @@ export interface Http3WebTransportInit extends WebTransportOptions {
   localPort?: number
 }
 
-// see Http3ServerJS C++ type
-export interface Http3ServerInit extends Http3WebTransportInit {
+
+// see HttpServerJS C++ type
+export interface HttpServerInit extends HttpWebTransportInit {
   port: string | number
   host: string
   secret: string
@@ -228,10 +228,11 @@ export interface Http3ServerInit extends Http3WebTransportInit {
   maxConnections?: number
   initialStreamFlowControlWindow?: number
   initialSessionFlowControlWindow?: number
+  reliability?: 'unreliableOnly' | 'reliableOnly' | 'both'
 }
 
-// see Http3ClientJS C++ type
-export interface Http3ClientInit extends Http3WebTransportInit {
+// see HttpClientJS C++ type
+export interface HttpClientInit extends HttpWebTransportInit {
   forceIpv6?: boolean
   localPort?: number
 }
