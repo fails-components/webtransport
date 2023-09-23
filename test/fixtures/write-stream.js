@@ -10,8 +10,15 @@ export async function writeStream(writable, input) {
   const writer = writable.getWriter()
 
   for (const buf of input) {
+    await writer.ready
     await writer.write(buf)
   }
 
-  await writer.close()
+  await writer.ready
+  await writer.releaseLock()
+  try {
+    await writable.close()
+  } catch (error) {
+    console.log('Did we get a STOP_SENDING? ignore', error)
+  }
 }

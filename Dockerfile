@@ -3,7 +3,7 @@ FROM node:18-bullseye
 
 ARG ENV
 
-RUN apt-get update -y && apt-get upgrade -y && apt-get install -y clang-9 cmake build-essential perl6 golang  ninja-build
+RUN apt-get update -y && apt-get upgrade -y && apt-get install -y clang-9 cmake build-essential perl6 golang  ninja-build && npm_config_yes=true npx playwright install-deps -y
 
 
 WORKDIR /usr/src/webtransport

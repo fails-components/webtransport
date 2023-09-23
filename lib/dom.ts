@@ -1,3 +1,5 @@
+import type { ReadableStream } from 'node:stream/web'
+
 // Types taken from https://www.w3.org/TR/webtransport
 // These can be removed when they are added to the default typescript types
 
@@ -39,10 +41,6 @@ export interface WebTransportDatagramDuplexStream {
   // outgoingHighWaterMark: number
 }
 
-export interface WebTransportBidirectionalStream {
-  readonly readable: WebTransportReceiveStream
-  readonly writable: WebTransportSendStream
-}
 
 export interface  WebTransportSendStreamStats {
   timestamp: number
@@ -65,6 +63,11 @@ export interface WebTransportReceiveStream extends ReadableStream<Uint8Array> {
   getStats: () => Promise<WebTransportReceiveStreamStats>
 }
 
+export interface WebTransportBidirectionalStream {
+  readonly readable: WebTransportReceiveStream
+  readonly writable: WebTransportSendStream
+}
+
 export interface WebTransportHash {
   algorithm: string
   value: BufferSource
@@ -74,6 +77,16 @@ export interface WebTransportOptions {
   allowPooling?: boolean
   requireUnreliable?: boolean
   serverCertificateHashes?: WebTransportHash[]
+
+  /**
+   * Nonstandard option - when a new connection is opened, how long to wait for the quic handshake to complete in ms before rejecting
+   */
+  quicConnectTimeout?: number
+
+   /**
+    * Nonstandard option - when a new connection is opened, how long to wait for the webtransport handshake to complete in ms before rejecting
+    */
+  webTransportConnectTimeout?: number
   congestionControl?: WebTransportCongestionControl
 }
 

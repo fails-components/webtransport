@@ -4,7 +4,7 @@
 
 // this file runs various tests
 
-import { generateWebTransportCertificate } from './fixtures/certificate.js'
+import { generateWebTransportCertificate } from '../test/fixtures/certificate.js'
 import { Http3Server, WebTransport, testcheck } from '../lib/index.js'
 import { echoTestsConnection, runEchoServer } from './testsuite.js'
 
@@ -30,7 +30,7 @@ async function run() {
       }
     ]
   })
-  await badClient.ready
+  await Promise.all([badClient.ready, badClient.closed])
     .then(() => {
       console.error('Successfully connected to a non-running server?!')
       process.exit(1)
@@ -67,8 +67,8 @@ async function run() {
     privKey: certificate.private
   })
 
-  runEchoServer(http3server)
   http3server.startServer() // you can call destroy to remove the server
+  runEchoServer(http3server)
 
   console.log('server started now wait 2 seconds')
 

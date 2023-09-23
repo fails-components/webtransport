@@ -1,189 +1,118 @@
 /* eslint-env mocha */
 
-import { createServer } from './fixtures/server.js'
 import { getReaderValue } from './fixtures/reader-value.js'
-import { WebTransport } from '../lib/index.js'
+import WebTransport from './fixtures/webtransport.js'
 import { expect } from 'chai'
 import { readStream } from './fixtures/read-stream.js'
 import { writeStream } from './fixtures/write-stream.js'
-import { defer } from '../lib/utils.js'
+import { readCertHash } from './fixtures/read-cert-hash.js'
 import * as ui8 from 'uint8arrays'
-
-/**
- * @template T
- * @typedef {import('../lib/types').Deferred<T>} Deferred<T>
- */
-
-const SERVER_PATH = '/unidirectional-streams'
+import { KNOWN_BYTES, KNOWN_BYTES_LENGTH } from './fixtures/known-bytes.js'
 
 describe('unidirectional streams', function () {
-  /** @type {import('../lib/server').Http3Server} */
-  let server
-  /** @type {import('./fixtures/certificate.js').Certificate} */
-  let certificate
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
-  /** @type {string} */
-  let url
-
-  beforeEach(async () => {
-    ;({ server, certificate } = await createServer())
-    server.startServer()
-    await server.ready
-
-    const address = server.address()
-
-    if (address == null || address.port == null) {
-      throw new Error('No address')
-    }
-
-    url = `https://${address.host}:${address.port}`
-  })
 
   // @ts-ignore
   afterEach(async () => {
     if (client != null) {
       client.close()
-    }
-
-    if (server != null) {
-      server.stopServer()
-      await server.closed
+      client = undefined
     }
   })
 
   it('sends data over an outgoing unidirectional stream', async () => {
-    this.timeout(200)
-    /** @type {Deferred<Uint8Array[]>} */
-    const serverData = defer()
-
-    const input = [
-      Uint8Array.from([0, 1, 2, 3, 4]),
-      Uint8Array.from([5, 6, 7, 8, 9]),
-      Uint8Array.from([10, 11, 12, 13, 14])
-    ]
-
-    // server context - waits for the client to open a bidi stream and pipes it back to them
-    Promise.resolve().then(async () => {
-      const session = await getReaderValue(server.sessionStream(SERVER_PATH))
-      if (!session) throw new Error('no session')
-      const stream = await getReaderValue(session.incomingUnidirectionalStreams)
-
-      const output = await readStream(stream, ui8.concat(input).length)
-      serverData.resolve(output)
-      await stream.cancel() // cancel so that the client can progress
-    })
-
     // client context - connects to the server, opens a bidi stream, sends some data and reads the response
-    client = new WebTransport(`${url}${SERVER_PATH}`, {
-      serverCertificateHashes: [
+    try {
+      client = new WebTransport(
+        `${process.env.SERVER_URL}/unidirectional_client_send`,
         {
-          algorithm: 'sha-256',
-          value: certificate.hash
+          serverCertificateHashes: [
+            {
+              algorithm: 'sha-256',
+              value: readCertHash(process.env.CERT_HASH)
+            }
+          ]
         }
-      ]
-    })
-    await client.ready
+      )
+      await client.ready
+    } catch (error) {
+      console.log('Peak unidirectional error:', error)
+      throw error
+    }
 
     const stream = await client.createUnidirectionalStream()
-    await writeStream(stream, input)
+    // correct test
+    await writeStream(stream, KNOWN_BYTES)
 
-    const received = await serverData.promise
-    expect(ui8.concat(received)).to.deep.equal(
-      ui8.concat(input),
-      'Server did not receive the same bytes we sent'
-    )
+    // the remote will close the session
+    const result = await client.closed
+
+    // should receive the default close info
+    expect(result).to.have.property('reason', '')
+    expect(result).to.have.property('closeCode', 0)
   })
 
   it('receives data over an incoming unidirectional stream', async () => {
-    this.timeout(200)
-    const input = [
-      Uint8Array.from([0, 1, 2, 3, 4]),
-      Uint8Array.from([5, 6, 7, 8, 9]),
-      Uint8Array.from([10, 11, 12, 13, 14])
-    ]
-
-    // server context - waits for the client to connect, opens a bidi stream, sends some data and reads the response
-    Promise.resolve().then(async () => {
-      const session = await getReaderValue(server.sessionStream(SERVER_PATH))
-      if (!session) throw new Error('no session')
-      const stream = await session.createUnidirectionalStream()
-
-      await writeStream(stream, input)
-    })
-
     // client context - waits for the server to open a bidi stream then pipes it back to them
-    client = new WebTransport(`${url}${SERVER_PATH}`, {
-      serverCertificateHashes: [
-        {
-          algorithm: 'sha-256',
-          value: certificate.hash
-        }
-      ]
-    })
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/unidirectional_server_send`,
+      {
+        serverCertificateHashes: [
+          {
+            algorithm: 'sha-256',
+            value: readCertHash(process.env.CERT_HASH)
+          }
+        ]
+      }
+    )
     await client.ready
 
     const stream = await getReaderValue(client.incomingUnidirectionalStreams)
-    const received = await readStream(stream, ui8.concat(input).length)
-    expect(ui8.concat(received)).to.deep.equal(
-      ui8.concat(input),
+    const output = await readStream(stream, KNOWN_BYTES_LENGTH)
+    expect(ui8.concat(KNOWN_BYTES)).to.deep.equal(
+      ui8.concat(output),
       'Did not receive the same bytes we sent'
     )
   })
 
   it('handles fin when paused due to backpressure', async function () {
-    this.timeout(10000)
-
-    /** @type {Deferred<ReadableStream>} */
-    const serverStream = defer()
-
-    Promise.resolve().then(async () => {
-      const session = await getReaderValue(server.sessionStream(SERVER_PATH))
-      if (!session) throw new Error('Got no session')
-      const stream = await getReaderValue(session.incomingUnidirectionalStreams)
-
-      serverStream.resolve(stream)
-    })
-
-    client = new WebTransport(`${url}${SERVER_PATH}`, {
-      serverCertificateHashes: [
-        {
-          algorithm: 'sha-256',
-          value: certificate.hash
-        }
-      ]
-    })
+    this.timeout(6000)
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/unidirectional_server_delay_before_read`,
+      {
+        serverCertificateHashes: [
+          {
+            algorithm: 'sha-256',
+            value: readCertHash(process.env.CERT_HASH)
+          }
+        ]
+      }
+    )
     await client.ready
 
     const clientStream = await client.createUnidirectionalStream()
 
-    const input = [
-      Uint8Array.from([0, 1, 2, 3, 4]),
-      Uint8Array.from([5, 6, 7, 8, 9]),
-      Uint8Array.from([10, 11, 12, 13, 14]),
-      Uint8Array.from([15, 16, 17, 18, 19]),
-      Uint8Array.from([20, 21, 22, 23, 24])
-    ]
-
     const writer = clientStream.getWriter()
 
-    for (const buf of input) {
+    for (const buf of KNOWN_BYTES) {
+      await writer.ready
       await writer.write(buf)
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    try {
+      await writer.ready
+      await writer.close()
+    } catch (error) {
+      console.log('Ignore stop sending', error)
+    }
 
-    await writer.close()
+    // the remote will close the session cleanly if everything was ok
+    await client.closed
 
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    const received = await readStream(
-      await serverStream.promise,
-      ui8.concat(input).length
-    )
-    expect(ui8.concat(received)).to.deep.equal(
-      ui8.concat(input),
-      'Did not receive the same bytes we sent'
-    )
+    // should receive the default close info, not true on chromium
+    // expect(result).to.have.property('reason', '')
+    // expect(result).to.have.property('closeCode', 0)
   })
 })

@@ -1329,9 +1329,9 @@ namespace quic
                     return;
                 }
 
-                if (lobj.Has("hostname") && !(lobj).Get("hostname").IsEmpty())
+                if (lobj.Has("host") && !(lobj).Get("host").IsEmpty())
                 {
-                    Napi::Value hostnameValue = (lobj).Get("hostname");
+                    Napi::Value hostnameValue = (lobj).Get("host");
                     hostname = hostnameValue.ToString().Utf8Value();
                 }
                 else

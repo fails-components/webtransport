@@ -20,6 +20,7 @@ set(protobuf_BUILD_PROTOC_BINARIES ON)
 
 
 
+
 IF (WIN32)
     add_compile_definitions(NOMINMAX)
 ENDIF(WIN32)

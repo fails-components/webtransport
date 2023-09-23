@@ -85,3 +85,67 @@ The WebTransport client only supports certification validation using fingerprint
 * [outgoingMaxAge](https://www.w3.org/TR/webtransport/#dom-webtransportdatagramduplexstream-outgoingmaxage)
 * [incomingHighWaterMark](https://www.w3.org/TR/webtransport/#dom-webtransportdatagramduplexstream-incominghighwatermark)
 * [outgoingHighWaterMark](https://www.w3.org/TR/webtransport/#dom-webtransportdatagramduplexstream-outgoinghighwatermark)
+
+## Development notes
+
+### Tests
+
+The unit test suite can be run on both node.js and Chrome to ensure behaviour is consistent between the two environments.
+
+[Mocha](https://www.npmjs.com/package/mocha) is used as a test runner in both environments, in the browser it is run via [playwright-test](https://www.npmjs.com/package/playwright-test).
+
+#### Running all tests:
+
+```console
+$ npm test
+```
+
+#### Running in node
+
+```console
+$ npm run test:node
+```
+
+#### Running in Chromium
+
+```console
+$ npm run test:chrome
+```
+
+#### Forward args
+
+Forward args are supported so you can pass any Mocha or playwright-test options after the `--`:
+
+E.g.:
+
+Run only "unidirectional streams" tests:
+
+```console
+$ npm run test:node -- --grep '"unidirectional streams"'
+```
+
+Disable headless mode to watch tests run in Chromium:
+
+```console
+$ npm run test:chromium -- --debug
+```
+
+### Logging
+
+This module uses the [debug](https://www.npmjs.com/package/debug) module for logging.
+
+To enable logging, specify the `DEBUG` environmental variable:
+
+```console
+$ DEBUG=webtransport* node my-script.js
+// debug output
+```
+
+#### Trace logging
+
+To enable detailed output, additionally set the `DEBUG_TRACE` environmental variable:
+
+```console
+$ DEBUG=webtransport* DEBUG_TRACE=true node my-script.js
+// lots of debug output
+```

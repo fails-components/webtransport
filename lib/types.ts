@@ -1,4 +1,4 @@
-import type { WebTransport } from './dom'
+import type { WebTransport, WebTransportOptions } from './dom'
 
 /**
  * Native Http3WTSession counterpart
@@ -210,16 +210,39 @@ export interface Deferred<T = unknown> {
   reject: (reason?: any) => void
 }
 
-export type WebTransportSessionState = 'connected' | 'draining' | 'closed' | 'failed'
+// https://www.w3.org/TR/webtransport/#dom-webtransport-state-slot
+export type WebTransportSessionState =  'connecting' | 'connected' | 'draining' | 'closed' | 'failed'
 
 export interface WebTransportSession extends WebTransport {
   state: WebTransportSessionState
 }
 
-export interface Http3ServerInit {
-  port: number
+export interface Http3WebTransportInit extends WebTransportOptions {
+  host: string
+  port: string | number
+  quicheLogVerbose?: number
+}
+
+// see Http3ServerJS C++ type
+export interface Http3ServerInit extends Http3WebTransportInit {
+  port: string | number
   host: string
   secret: string
   cert: string
   privKey: string
+  maxConnections?: number
+  initialStreamFlowControlWindow?: number
+  initialSessionFlowControlWindow?: number
+}
+
+// see Http3ClientJS C++ type
+export interface Http3ClientInit extends Http3WebTransportInit {
+  forceIpv6?: boolean
+  localPort?: number
+}
+
+export interface Logger {
+  (formatter: any, ...args: any[]): void
+  error: (formatter: any, ...args: any[]) => void
+  trace: (formatter: any, ...args: any[]) => void
 }
