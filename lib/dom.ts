@@ -79,12 +79,12 @@ export interface WebTransportOptions {
   serverCertificateHashes?: WebTransportHash[]
 
   /**
-   * Nonstandard option - when a new connection is opened, how long to wait for the quic handshake to complete in ms before rejecting
+   * Nonstandard option - when a new connection is opened, how long to wait for the quic handshake to complete in ms before rejecting or switching to http2
    */
   quicConnectTimeout?: number
 
    /**
-    * Nonstandard option - when a new connection is opened, how long to wait for the webtransport handshake to complete in ms before rejecting
+    * Nonstandard option - when a new connection is opened, how long to wait for the webtransport handshake to complete in ms before rejecting or switching to http2
     */
   webTransportConnectTimeout?: number
   congestionControl?: WebTransportCongestionControl
