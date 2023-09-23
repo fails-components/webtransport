@@ -167,6 +167,7 @@ export interface ServerSessionRequestEvent {
   header: Object
   promise: any
   session: any
+  object: any // the actual transport object itself, actually present on all messages, but required here
 }
 
 export interface UDPServerSocketSend {
@@ -217,6 +218,7 @@ export interface HttpWebTransportInit extends WebTransportOptions {
   localPort?: number
 }
 
+export type WebTransportServerReliability = 'unreliableOnly' | 'reliableOnly' | 'both'
 
 // see HttpServerJS C++ type
 export interface HttpServerInit extends HttpWebTransportInit {
@@ -228,7 +230,7 @@ export interface HttpServerInit extends HttpWebTransportInit {
   maxConnections?: number
   initialStreamFlowControlWindow?: number
   initialSessionFlowControlWindow?: number
-  reliability?: 'unreliableOnly' | 'reliableOnly' | 'both'
+  reliability?: WebTransportServerReliability
 }
 
 // see HttpClientJS C++ type
