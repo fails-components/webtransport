@@ -5,8 +5,19 @@
 // this file runs various tests
 
 import { generateWebTransportCertificate } from '../test/fixtures/certificate.js'
-import { Http3Server, WebTransport, testcheck } from '../lib/index.js'
+import {
+  Http3Server,
+  Http2Server,
+  WebTransport,
+  testcheck
+} from '../lib/index.js'
 import { echoTestsConnection, runEchoServer } from './testsuite.js'
+
+let http2 = false
+
+if (process.argv.some((el) => el === 'http2')) {
+  http2 = true
+}
 
 async function run() {
   setTimeout(() => {
@@ -57,18 +68,29 @@ async function run() {
     throw new Error('Certificate generation failed')
   }
 
-  console.log('start Http3Server and startup echo tests')
+  console.log('start HttpServer and startup echo tests')
   // now ramp up the server
-  const http3server = new Http3Server({
-    port: 8080,
-    host: '127.0.0.1',
-    secret: 'mysecret',
-    cert: certificate.cert, // unclear if it is the correct format
-    privKey: certificate.private
-  })
+  let httpserver
+  if (!http2) {
+    httpserver = new Http3Server({
+      port: 8080,
+      host: '127.0.0.1',
+      secret: 'mysecret',
+      cert: certificate.cert, // unclear if it is the correct format
+      privKey: certificate.private
+    })
+  } else {
+    httpserver = new Http2Server({
+      port: 8080,
+      host: '127.0.0.1',
+      secret: 'mysecret',
+      cert: certificate.cert, // unclear if it is the correct format
+      privKey: certificate.private
+    })
+  }
 
-  http3server.startServer() // you can call destroy to remove the server
-  runEchoServer(http3server)
+  httpserver.startServer() // you can call destroy to remove the server
+  runEchoServer(httpserver)
 
   console.log('server started now wait 2 seconds')
 
@@ -83,16 +105,10 @@ async function run() {
   })
   client.closed
     .then(() => {
-      console.log('The HTTP/3 connection to ', url, 'closed gracefully.')
+      console.log('The HTTP connection to ', url, 'closed gracefully.')
     })
     .catch((error) => {
-      console.error(
-        'The HTTP/3 connection to',
-        url,
-        'closed due to ',
-        error,
-        '.'
-      )
+      console.error('The HTTP connection to', url, 'closed due to ', error, '.')
     })
   console.log('wait for client to be ready')
   await client.ready
@@ -114,7 +130,7 @@ async function run() {
 
   console.log('now stop server')
 
-  http3server.stopServer()
+  httpserver.stopServer()
   console.log('tests finished!')
 }
 run()
