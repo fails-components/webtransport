@@ -41,7 +41,7 @@ export interface NativeServerOptions {
 
 export interface NativeClientOptions {
   port: number
-  hostname: string
+  host: string
   serverCertificateHashes: WebTransportHash[]
   localPort: number
   allowPooling: boolean
@@ -149,6 +149,7 @@ export interface ClientWebtransportSupportEvent {
 
 export interface HttpWTSessionVisitorEvent {
   session: NativeHttpWTSession
+  reliable?: boolean
 }
 
 export interface HttpClientEventHandler {

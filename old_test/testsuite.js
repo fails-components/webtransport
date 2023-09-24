@@ -77,7 +77,7 @@ export async function datagramEchoTest(session) {
 }
 
 /**
- * @param {import('../lib').Http3Server} server
+ * @param {import('../lib').Http3Server|import('../lib').Http2Server} server
  */
 export async function runEchoServer(server) {
   try {
