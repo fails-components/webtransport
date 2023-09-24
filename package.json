@@ -15,6 +15,7 @@
     "test:node": "node test/index.js node",
     "test:chromium": "node test/index.js chromium",
     "oldtest": "node old_test/test.js",
+    "oldtesthttp2": "node old_test/test.js http2",
     "install": "node build.js install",
     "build": "node build.js build",
     "rebuild": "node build.js rebuild",
