@@ -20,11 +20,11 @@ import type { IncomingHttpHeaders, Http2Stream } from 'http2'
  * Native HttpWTStream counterpart
  */
 export interface NativeHttpWTStream {
-  updateReadPos(bytesread: Number, pos: Number): unknown
   jsobj: WebTransportStreamEventHandler
-  readbuffer: Uint8Array | undefined
+  readbuffer: ArrayBuffer | undefined
   startReading: () => void
   stopReading: () => void
+  updateReadPos: (bytesread: number, pos: number) => void
   stopSending: (code: number) => void
   resetStream: (code: number) => void
   writeChunk: (buf: Uint8Array) => void
@@ -69,6 +69,7 @@ export interface StreamReadEvent {
 }
 
 export interface StreamWriteEvent {
+  success?: boolean
 }
 
 export interface StreamResetEvent {
