@@ -152,6 +152,10 @@ third_party/googleurl/build/build_config.h
 # normal files
 third_party/quiche/quiche/common/capsule.cc
 third_party/quiche/quiche/common/capsule.h
+third_party/quiche/quiche/common/http/http_header_block.cc
+third_party/quiche/quiche/common/http/http_header_block.h
+third_party/quiche/quiche/common/http/http_header_storage.cc
+third_party/quiche/quiche/common/http/http_header_storage.h
 third_party/quiche/quiche/common/platform/api/quiche_bug_tracker.h
 third_party/quiche/quiche/common/platform/api/quiche_export.h
 third_party/quiche/quiche/common/platform/api/quiche_flag_utils.h
@@ -201,6 +205,8 @@ third_party/quiche/quiche/common/quiche_mem_slice_storage.h
 third_party/quiche/quiche/common/quiche_mem_slice_storage.cc
 third_party/quiche/quiche/common/quiche_random.cc
 third_party/quiche/quiche/common/quiche_random.h
+third_party/quiche/quiche/common/quiche_simple_arena.cc
+third_party/quiche/quiche/common/quiche_simple_arena.h
 third_party/quiche/quiche/common/quiche_text_utils.cc
 third_party/quiche/quiche/common/quiche_text_utils.h
 third_party/quiche/quiche/common/simple_buffer_allocator.cc
@@ -794,10 +800,6 @@ third_party/quiche/quiche/spdy/core/hpack/hpack_static_table.cc
 third_party/quiche/quiche/spdy/core/hpack/hpack_static_table.h
 third_party/quiche/quiche/spdy/core/http2_frame_decoder_adapter.cc
 third_party/quiche/quiche/spdy/core/http2_frame_decoder_adapter.h
-third_party/quiche/quiche/spdy/core/http2_header_block.cc
-third_party/quiche/quiche/spdy/core/http2_header_block.h
-third_party/quiche/quiche/spdy/core/http2_header_storage.cc
-third_party/quiche/quiche/spdy/core/http2_header_storage.h
 third_party/quiche/quiche/spdy/core/recording_headers_handler.cc
 third_party/quiche/quiche/spdy/core/recording_headers_handler.h
 third_party/quiche/quiche/spdy/core/spdy_alt_svc_wire_format.cc
@@ -819,8 +821,6 @@ third_party/quiche/quiche/spdy/core/spdy_prefixed_buffer_reader.cc
 third_party/quiche/quiche/spdy/core/spdy_prefixed_buffer_reader.h
 third_party/quiche/quiche/spdy/core/spdy_protocol.cc
 third_party/quiche/quiche/spdy/core/spdy_protocol.h
-third_party/quiche/quiche/spdy/core/spdy_simple_arena.cc
-third_party/quiche/quiche/spdy/core/spdy_simple_arena.h
 third_party/quiche/quiche/spdy/core/zero_copy_output_buffer.h
 )
 
