@@ -12,6 +12,8 @@ import { KNOWN_BYTES, KNOWN_BYTES_LENGTH } from './fixtures/known-bytes.js'
 describe('unidirectional streams', function () {
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
+  let forceReliable = false
+  if (process.env.USE_HTTP2 === 'true') forceReliable = true
 
   // @ts-ignore
   afterEach(async () => {
@@ -32,7 +34,9 @@ describe('unidirectional streams', function () {
               algorithm: 'sha-256',
               value: readCertHash(process.env.CERT_HASH)
             }
-          ]
+          ],
+          // @ts-ignore
+          forceReliable
         }
       )
       await client.ready
@@ -63,7 +67,9 @@ describe('unidirectional streams', function () {
             algorithm: 'sha-256',
             value: readCertHash(process.env.CERT_HASH)
           }
-        ]
+        ],
+        // @ts-ignore
+        forceReliable
       }
     )
     await client.ready
@@ -86,7 +92,9 @@ describe('unidirectional streams', function () {
             algorithm: 'sha-256',
             value: readCertHash(process.env.CERT_HASH)
           }
-        ]
+        ],
+        // @ts-ignore
+        forceReliable
       }
     )
     await client.ready

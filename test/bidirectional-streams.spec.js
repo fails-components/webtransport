@@ -15,6 +15,8 @@ import { KNOWN_BYTES, KNOWN_BYTES_LENGTH } from './fixtures/known-bytes.js'
  */
 
 describe('bidirectional streams', function () {
+  let forceReliable = false
+  if (process.env.USE_HTTP2 === 'true') forceReliable = true
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
 
@@ -36,7 +38,9 @@ describe('bidirectional streams', function () {
             algorithm: 'sha-256',
             value: readCertHash(process.env.CERT_HASH)
           }
-        ]
+        ],
+        // @ts-ignore
+        forceReliable
       }
     )
     await client.ready
@@ -63,7 +67,9 @@ describe('bidirectional streams', function () {
             algorithm: 'sha-256',
             value: readCertHash(process.env.CERT_HASH)
           }
-        ]
+        ],
+        // @ts-ignore
+        forceReliable
       }
     )
     await client.ready

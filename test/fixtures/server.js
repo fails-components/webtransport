@@ -1,5 +1,5 @@
 import { generateWebTransportCertificate } from './certificate.js'
-import { Http3Server } from '../../lib/index.js'
+import { Http2Server, Http3Server } from '../../lib/index.js'
 import { pTimeout } from './p-timeout.js'
 import { getReaderStream, getReaderValue } from './reader-value.js'
 import { writeStream } from './write-stream.js'
@@ -24,15 +24,29 @@ export async function createServer() {
     throw new Error('Certificate generation failed')
   }
 
-  const server = new Http3Server({
-    /*   port: 8080,
+  /** @type {Http2Server|Http3Server} */
+  let server
+  if (process.env.USE_HTTP2 === 'true') {
+    server = new Http2Server({
+      /*   port: 8080,
+      host: '0.0.0.0', */
+      port: 0,
+      host: '127.0.0.1',
+      secret: 'mysecret',
+      cert: certificate.cert, // unclear if it is the correct format
+      privKey: certificate.private
+    })
+  } else {
+    server = new Http3Server({
+      /*   port: 8080,
     host: '0.0.0.0', */
-    port: 0,
-    host: '127.0.0.1',
-    secret: 'mysecret',
-    cert: certificate.cert, // unclear if it is the correct format
-    privKey: certificate.private
-  })
+      port: 0,
+      host: '127.0.0.1',
+      secret: 'mysecret',
+      cert: certificate.cert, // unclear if it is the correct format
+      privKey: certificate.private
+    })
+  }
 
   server.ready
     .then(async () => {

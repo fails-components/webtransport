@@ -13,6 +13,8 @@ describe('session', function () {
   // FIXME: sometimes there are seemingly arbitrary 5s delays in
   // communicating with the server under node.js
   this.timeout(30000)
+  let forceReliable = false
+  if (process.env.USE_HTTP2 === 'true') forceReliable = true
 
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
@@ -32,7 +34,9 @@ describe('session', function () {
           algorithm: 'sha-256',
           value: readCertHash(process.env.CERT_HASH)
         }
-      ]
+      ],
+      // @ts-ignore
+      forceReliable
     })
     await client.ready
 
@@ -51,14 +55,18 @@ describe('session', function () {
             algorithm: 'sha-256',
             value: readCertHash(process.env.CERT_HASH)
           }
-        ]
+        ],
+        // @ts-ignore
+        forceReliable
       }
     )
     await client.ready
 
     const result = await client.closed
     expect(result).to.have.property('closeCode', 7)
-    expect(result).to.have.property('reason', 'this is the reason')
+    if (process.env.USE_HTTP2 !== 'true')
+      // unsupported for http2
+      expect(result).to.have.property('reason', 'this is the reason')
   })
 
   it('should error when connecting to a server that does not exist', async () => {
@@ -70,7 +78,9 @@ describe('session', function () {
         }
       ],
       quicConnectTimeout: 100,
-      webTransportConnectTimeout: 100
+      webTransportConnectTimeout: 100,
+      // @ts-ignore
+      forceReliable
     })
 
     const [closedResult, readyResult] = await Promise.all([
@@ -93,7 +103,9 @@ describe('session', function () {
           algorithm: 'sha-256',
           value: readCertHash(process.env.CERT_HASH)
         }
-      ]
+      ],
+      // @ts-ignore
+      forceReliable
     })
 
     const [closedResult, readyResult] = await Promise.all([
@@ -116,7 +128,9 @@ describe('session', function () {
           algorithm: 'sha-256',
           value: readCertHash(process.env.CERT_HASH + ':DE:AD:BE:EF')
         }
-      ]
+      ],
+      // @ts-ignore
+      forceReliable
     })
 
     const [closedResult, readyResult] = await Promise.all([
@@ -141,7 +155,9 @@ describe('session', function () {
             'DE:AD:BE:EF:' + process.env.CERT_HASH?.substring(12)
           )
         }
-      ]
+      ],
+      // @ts-ignore
+      forceReliable
     })
 
     const [closedResult, readyResult] = await Promise.all([
