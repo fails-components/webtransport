@@ -11,9 +11,10 @@
   "types": "./dist/lib/index.d.ts",
   "scripts": {
     "start": "node test/echoserver.js",
-    "test": "npm run test:node && npm run test:chromium",
-    "test:node": "node test/index.js node",
-    "test:chromium": "node test/index.js chromium",
+    "test": "npm run test:node && npm run test:node:http2 && npm run test:chromium",
+    "test:node": "node test/index.js node http3",
+    "test:node:http2": "node test/index.js node http2",
+    "test:chromium": "node test/index.js chromium http3",
     "oldtest": "node old_test/test.js",
     "oldtesthttp2": "node old_test/test.js http2",
     "install": "node build.js install",

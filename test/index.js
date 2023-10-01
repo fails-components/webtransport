@@ -5,16 +5,17 @@ import { execa } from 'execa'
  * getting stuck waiting for the custom event loop to end.
  */
 async function startServer() {
+  let http2 = false
+  if (process.argv[3] === 'http2') http2 = true
   return new Promise((resolve, reject) => {
     let foundAddress = false
 
-    const server = execa(
-      'node',
-      ['./test/fixtures/server.js', '--trace-uncaught'],
-      {
-        stdio: ['inherit', 'inherit', 'inherit', 'ipc']
+    const server = execa('node', ['./test/fixtures/server.js'], {
+      stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
+      env: {
+        USE_HTTP2: http2 ? 'true' : 'false'
       }
-    )
+    })
     server.on('message', (data) => {
       if (!foundAddress) {
         foundAddress = true
@@ -31,6 +32,8 @@ async function startServer() {
  */
 async function runTests(certificate, serverAddress) {
   const env = process.argv[2]
+  let http2 = false
+  if (process.argv[3] === 'http2') http2 = true
   /** @type {string} */
   let command = ''
   /** @type {string[]} */
@@ -41,13 +44,15 @@ async function runTests(certificate, serverAddress) {
     args = [
       process.env.CI ? '--no-colors' : '--colors',
       './test/*.spec.js',
-      ...process.argv.slice(3)
+      './test/*.node.js',
+      ...process.argv.slice(4)
     ]
     const tests = execa(command, args, {
       env: {
         DEBUG_COLORS: process.env.CI ? '' : 'true',
         CERT_HASH: certificate,
-        SERVER_URL: serverAddress
+        SERVER_URL: serverAddress,
+        USE_HTTP2: http2 ? 'true' : 'false'
       },
       stdio: ['inherit', 'inherit', 'inherit']
     })
@@ -55,12 +60,13 @@ async function runTests(certificate, serverAddress) {
     await tests
   } else if (env === 'chromium') {
     command = 'playwright-test'
-    args = ['./test/*.spec.js', ...process.argv.slice(3)]
+    args = ['./test/*.spec.js', ...process.argv.slice(4)]
     const tests = execa(command, args, {
       env: {
         DEBUG_COLORS: process.env.CI ? '' : 'true',
         CERT_HASH: certificate,
-        SERVER_URL: serverAddress
+        SERVER_URL: serverAddress,
+        USE_HTTP2: http2 ? 'true' : 'false'
       },
       stdio: ['inherit', 'inherit', 'inherit']
     })
