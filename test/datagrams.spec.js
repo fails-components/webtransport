@@ -14,6 +14,8 @@ import { pTimeout } from './fixtures/p-timeout.js'
 describe('datagrams', function () {
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
+  let forceReliable = false
+  if (process.env.USE_HTTP2 === 'true') forceReliable = true
 
   // @ts-ignore
   afterEach(async () => {
@@ -32,7 +34,9 @@ describe('datagrams', function () {
             algorithm: 'sha-256',
             value: readCertHash(process.env.CERT_HASH)
           }
-        ]
+        ],
+        // @ts-ignore
+        forceReliable
       }
     )
     await client.ready
@@ -73,7 +77,9 @@ describe('datagrams', function () {
             algorithm: 'sha-256',
             value: readCertHash(process.env.CERT_HASH)
           }
-        ]
+        ],
+        // @ts-ignore
+        forceReliable
       }
     )
     await client.ready
