@@ -517,10 +517,6 @@ third_party/quiche/quiche/quic/core/http/http_decoder.h
 third_party/quiche/quiche/quic/core/http/http_encoder.cc
 third_party/quiche/quiche/quic/core/http/http_encoder.h
 third_party/quiche/quiche/quic/core/http/http_frames.h
-third_party/quiche/quiche/quic/core/http/quic_client_promised_info.cc
-third_party/quiche/quiche/quic/core/http/quic_client_promised_info.h
-third_party/quiche/quiche/quic/core/http/quic_client_push_promise_index.cc
-third_party/quiche/quiche/quic/core/http/quic_client_push_promise_index.h
 third_party/quiche/quiche/quic/core/http/quic_header_list.cc
 third_party/quiche/quiche/quic/core/http/quic_header_list.h
 third_party/quiche/quiche/quic/core/http/quic_headers_stream.cc

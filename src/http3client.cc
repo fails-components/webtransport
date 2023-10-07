@@ -235,24 +235,6 @@ namespace quic
     void Http3Client::GetOrCreateStreamAndSendRequest(
         const spdy::Http2HeaderBlock *headers, absl::string_view body, bool fin)
     {
-        if (headers)
-        {
-            QuicClientPushPromiseIndex::TryHandle *handle;
-            QuicAsyncStatus rv =
-                push_promise_index_.Try(*headers, this, &handle);
-            if (rv == QUIC_SUCCESS)
-                return;
-            if (rv == QUIC_PENDING)
-            {
-                // May need to retry request if asynchronous rendezvous fails.
-                std::unique_ptr<spdy::Http2HeaderBlock> new_headers(
-                    new spdy::Http2HeaderBlock(headers->Clone()));
-                push_promise_data_to_resend_ = std::make_unique<Http3ClientDataToResend>(
-                    std::move(new_headers), body, fin, this);
-                return;
-            }
-        }
-
         std::shared_ptr<spdy::Http2HeaderBlock> spdy_headers;
         bool hasheaders = false;
         if (headers != nullptr)
@@ -907,7 +889,7 @@ namespace quic
 
     bool Http3Client::HaveActiveStream()
     {
-        return push_promise_data_to_resend_.get() || !open_streams_.empty();
+        return !open_streams_.empty();
     }
 
     void Http3Client::OnSocketEvent(QuicEventLoop *event_loop, QuicUdpSocketFd fd,
@@ -1099,29 +1081,6 @@ namespace quic
                     client_stream->header_bytes_written(),
                 client_stream->data().size())));
         open_streams_.erase(id);
-    }
-
-    bool Http3Client::CheckVary(
-        const spdy::Http2HeaderBlock & /*client_request*/,
-        const spdy::Http2HeaderBlock & /*promise_request*/,
-        const spdy::Http2HeaderBlock & /*promise_response*/)
-    {
-        return true;
-    }
-
-    void Http3Client::OnRendezvousResult(QuicSpdyStream *stream)
-    {
-        std::unique_ptr<Http3ClientDataToResend> data_to_resend =
-            std::move(push_promise_data_to_resend_);
-        SetLatestCreatedStream(static_cast<QuicSpdyClientStream *>(stream));
-        if (stream)
-        {
-            stream->OnBodyAvailable();
-        }
-        else if (data_to_resend)
-        {
-            data_to_resend->Resend();
-        }
     }
 
     bool Http3Client::MigrateSocket(const QuicIpAddress &new_host)
