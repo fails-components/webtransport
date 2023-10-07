@@ -12,6 +12,7 @@
 #include "src/http3eventloop.h"
 #include "src/http3dispatcher.h"
 #include "src/http3wtsessionvisitor.h"
+#include "src/napialarmfactory.h"
 #include "quiche/quic/tools/quic_simple_crypto_server_stream_helper.h"
 #include "quiche/quic/core/crypto/proof_source_x509.h"
 #include "quiche/common/platform/api/quiche_reference_counted.h"
@@ -56,6 +57,7 @@ namespace quic
     Http3ClientJS::InitExports(env, exports);
     Http3WTSessionJS::InitExports(env, exports, constr);
     Http3WTStreamJS::InitExports(env, exports, constr);
+    NapiAlarmJS::InitExports(env, exports, constr);
 
     env.SetInstanceData<Http3Constructors>(constr);
   }
@@ -275,30 +277,6 @@ namespace quic
       progress_->Send(&report, 1);
   }
 
-  void Http3EventLoop::informAboutNewSessionRequest(Http3Server *server, WebTransportSession *session, spdy::Http2HeaderBlock *reqheadcopy, WebTransportRespPromisePtr promise)
-  {
-    Http3ProgressReport report;
-    report.type = Http3ProgressReport::NewSessionRequest;
-    report.webtsession = session;
-    report.serverobj = server;
-    report.headerblock = reqheadcopy;
-    report.promise = new WebTransportRespPromisePtr(promise);
-    if (progress_)
-      progress_->Send(&report, 1);
-  }
-
-  void Http3EventLoop::informAboutNewSession(Http3Server *server, Http3WTSession *session, absl::string_view path, Napi::Reference<Napi::Value> *header)
-  {
-    Http3ProgressReport report;
-    report.type = Http3ProgressReport::NewSession;
-    report.serverobj = server;
-    report.session = session;
-    report.header = header;
-    report.para = new std::string(path);
-    if (progress_)
-      progress_->Send(&report, 1);
-  }
-
   void Http3EventLoop::informNewClientSession(Http3Client *client, Http3WTSession *session)
   {
     Http3ProgressReport report;
@@ -326,17 +304,6 @@ namespace quic
     Http3ProgressReport report;
     report.type = Http3ProgressReport::SessionReady;
     report.sessionobj = sessionobj;
-    if (progress_)
-      progress_->Send(&report, 1);
-  }
-
-  void Http3EventLoop::informServerStatus(Http3Server *serverobj, NetworkStatus status, ServerStatusDetails *details)
-  {
-    Http3ProgressReport report;
-    report.type = Http3ProgressReport::ServerStatus;
-    report.serverobj = serverobj;
-    report.status = status;
-    report.details = details;
     if (progress_)
       progress_->Send(&report, 1);
   }
@@ -681,81 +648,6 @@ namespace quic
     delete timestamp;
   }
 
-  void Http3EventLoop::processNewSessionRequest(Http3Server *serverobj, WebTransportSession *session, spdy::Http2HeaderBlock *reqheadcopy, WebTransportRespPromisePtr *promise)
-  {
-    if (!checkQw())
-      return;
-    HandleScope scope(qw_->Env());
-
-    Napi::Object objVal = serverobj->getJS()->Value();
-
-    Napi::Object retObj = Napi::Object::New(qw_->Env());
-
-    retObj.Set("purpose", "SessionRequest");
-    // header
-
-    Napi::Object headObj = Napi::Object::New(qw_->Env());
-    for (auto pair : *reqheadcopy)
-    {
-      // we iterate over all header fields
-      headObj.Set(std::string(pair.first), std::string(pair.second));
-    }
-    retObj.Set("header", headObj);
-    delete reqheadcopy; // we own it and must free it!
-
-    // promise
-    Napi::External<WebTransportRespPromisePtr> promObj =
-        Napi::External<WebTransportRespPromisePtr>::New(qw_->Env(), promise,
-                                                        [](Napi::Env /*env*/, WebTransportRespPromisePtr *ref)
-                                                        {
-                                                          delete ref; // we own it and must delete it
-                                                        });
-    retObj.Set("promise", promObj);
-
-    Napi::External<WebTransportSession> wtsObj =
-        Napi::External<WebTransportSession>::New(qw_->Env(), session,
-                                                 [](Napi::Env /*env*/, WebTransportSession *ref)
-                                                 {
-                                                   // we do not own it! And do not delete it.
-                                                   // does it outlife everything?
-                                                 });
-    retObj.Set("session", wtsObj);
-
-    retObj.Set("object", objVal);
-
-    cbtransport_.Call({retObj});
-  }
-
-  void Http3EventLoop::processNewSession(Http3Server *serverobj, Http3WTSession *session, const std::string &path, Napi::Reference<Napi::Value> *header)
-  {
-    if (!checkQw())
-      return;
-    HandleScope scope(qw_->Env());
-
-    Http3Constructors *constr = qw_->Env().GetInstanceData<Http3Constructors>();
-    Napi::Object sessionobj = constr->session.New({});
-    Http3WTSessionJS *sessionjs = Napi::ObjectWrap<Http3WTSessionJS>::Unwrap(sessionobj);
-    sessionjs->setObj(session);
-    sessionjs->Ref();
-    session->setJS(sessionjs);
-
-    Napi::Object objVal = serverobj->getJS()->Value();
-
-    Napi::Object retObj = Napi::Object::New(qw_->Env());
-    retObj.Set("purpose", "Http3WTSessionVisitor");
-    retObj.Set("session", sessionobj);
-    retObj.Set("path", path);
-    retObj.Set("object", objVal);
-    if (header)
-    {
-      retObj.Set("header", header->Value());
-      header->Unref();
-      delete header;
-    }
-
-    cbtransport_.Call({retObj});
-  }
-
   void Http3EventLoop::processNewClientSession(Http3Client *clientobj, Http3WTSession *session)
   {
     if (!checkQw())
@@ -820,50 +712,6 @@ namespace quic
     cbsession_.Call({retObj});
   }
 
-  void Http3EventLoop::processServerStatus(Http3Server *serverobj, NetworkStatus status, ServerStatusDetails *details)
-  {
-    if (!checkQw())
-      return;
-    HandleScope scope(qw_->Env());
-
-    Napi::Object objVal = serverobj->getJS()->Value();
-
-    Napi::Object retObj = Napi::Object::New(qw_->Env());
-    retObj.Set("purpose", "ServerStatus");
-    retObj.Set("object", objVal);
-    Napi::Number portVal = Napi::Number::New(qw_->Env(), details->port);
-    retObj.Set("port", portVal);
-    Napi::String hostVal = Napi::String::New(qw_->Env(), details->host);
-    retObj.Set("host", hostVal);
-
-    delete details; // we own it and must throw it away
-    switch (status)
-    {
-    case NetError:
-    {
-      retObj.Set("status", "error");
-    }
-    break;
-    case NetListening:
-    {
-      retObj.Set("status", "listening");
-    }
-    break;
-    case NetClose:
-    {
-      retObj.Set("status", "close");
-    }
-    break;
-    default:
-    {
-      Napi::Error::New(Env(), "Unknown status from server").ThrowAsJavaScriptException();
-      return;
-    }
-    break;
-    };
-    cbtransport_.Call({retObj});
-  }
-
   void Http3EventLoop::HandleProgressCallback(const Http3ProgressReport *data, size_t count)
   {
     for (int i = 0; i < count; i++)
@@ -884,16 +732,6 @@ namespace quic
       case Http3ProgressReport::NewClientSession:
       {
         processNewClientSession(cur.clientobj, cur.session);
-      }
-      break;
-      case Http3ProgressReport::NewSessionRequest:
-      {
-        processNewSessionRequest(cur.serverobj, cur.webtsession, cur.headerblock, cur.promise);
-      }
-      break;
-      case Http3ProgressReport::NewSession:
-      {
-        processNewSession(cur.serverobj, cur.session, *cur.para, cur.header);
       }
       break;
       case Http3ProgressReport::SessionReady:
@@ -924,12 +762,6 @@ namespace quic
       case Http3ProgressReport::OutgoUniDiStream:
       {
         processStream(false, false, cur.sessionobj, cur.stream);
-      }
-      break;
-      case Http3ProgressReport::ServerStatus:
-      {
-        processServerStatus(cur.serverobj, cur.status, cur.details);
-        cur.para = nullptr; // take ownership of the data
       }
       break;
       case Http3ProgressReport::StreamRecvSignal:

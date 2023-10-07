@@ -69,8 +69,7 @@ namespace quic
     using WebTransportRespPromise = JSlikePromise<WebTransportResponse>;
     using WebTransportRespPromisePtr = std::shared_ptr<WebTransportRespPromise>;
 
-    Http3ServerBackend(Http3EventLoop *eventloop) : eventloop_(eventloop),
-                                                    server_(nullptr), jshandlerequesthandler_(false) {}
+    Http3ServerBackend() : server_(nullptr), jshandlerequesthandler_(false) {}
 
     ~Http3ServerBackend();
 
@@ -88,7 +87,6 @@ namespace quic
 
   protected:
     Http3Server *server_;       // unowned
-    Http3EventLoop *eventloop_; // unowned
     bool jshandlerequesthandler_;
     std::set<std::string> paths_;
   };
