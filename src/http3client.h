@@ -86,7 +86,6 @@ namespace quic
 
     class Http3Client : public QuicSpdyStream::Visitor,
                         public QuicSocketEventListener,
-                        public QuicClientPushPromiseIndex::Delegate,
                         public ProcessPacketInterface
     {
         friend class Http3ClientJS;
@@ -218,12 +217,6 @@ namespace quic
         void OnCompleteResponse(
             QuicStreamId id, const spdy::Http2HeaderBlock &response_headers,
             const absl::string_view &response_body);
-
-        // From QuicClientPushPromiseIndex::Delegate
-        bool CheckVary(const spdy::Http2HeaderBlock &client_request,
-                       const spdy::Http2HeaderBlock &promise_request,
-                       const spdy::Http2HeaderBlock &promise_response) override;
-        void OnRendezvousResult(QuicSpdyStream *) override;
 
         // Returns nullptr if the maximum number of streams have already been created.
         // QuicSpdyClientStream *GetOrCreateStream();
@@ -416,9 +409,6 @@ namespace quic
         bool auto_reconnect_;
         // Should we buffer the response body? Defaults to true.
         bool buffer_body_;
-        // For async push promise rendezvous, validation may fail in which
-        // case the request should be retried.
-        std::unique_ptr<Http3ClientDataToResend> push_promise_data_to_resend_;
 
         // Keeps track of any data that must be resent upon a subsequent successful
         // connection, in case the client receives a stateless reject.
