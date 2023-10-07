@@ -179,26 +179,17 @@ export interface ServerSessionRequestEvent {
  * The Http3 server is listening on the specified port
  */
 export interface Http3ServerListeningEvent {
-  purpose: 'Http3ServerListening'
+  port: number | undefined
+  host: string | undefined
 }
 
-/**
- * The Http3 server has stopped listening on the specified port
- */
- export interface ServerStatusEvent {
-  port: number | null
-  host: string | null
-  purpose: 'ServerStatus',
-  status: 'error' | 'listening' | 'close'
-}
 
 
 export interface Http3ServerEventHandler {
   onHttp3WTSessionVisitor: (evt: Http3WTServerSessionVisitorEvent) => void
   onServerError: () => void
-  onServerListening: () => void
+  onServerListening: (evt: Http3ServerListeningEvent) => void
   onServerClose: () => void
-  onServerStatus: (evt: ServerStatusEvent) => void
 }
 
 /**

@@ -1,0 +1,140 @@
+// modifications
+// Copyright (c) 2022 Marten Richter or other contributers (see commit). All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// original copyright used only portions, see LICENSE.chromium
+// Copyright (c) 2021 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef NAPI_ALARM_FACTORY_H_
+#define NAPI_ALARM_FACTORY_H_
+
+#include "src/http3eventloop.h"
+
+#include "quiche/quic/core/quic_clock.h"
+#include "quiche/quic/core/quic_alarm.h"
+#include "quiche/quic/core/quic_alarm_factory.h"
+#include <napi.h>
+
+namespace quic {
+
+ class NapiAlarm;
+
+ class EnvGetter {
+ public:
+    virtual Napi::Env getEnv() = 0;
+ };
+
+ class NapiAlarmFactory : public QuicAlarmFactory {
+   public:
+    NapiAlarmFactory(QuicClock* clock, EnvGetter* envg) :clock_(clock), envg_(envg) {
+        
+    }
+
+    // QuicAlarmFactory interface.
+    QuicAlarm* CreateAlarm(QuicAlarm::Delegate* delegate) override;
+    QuicArenaScopedPtr<QuicAlarm> CreateAlarm(
+        QuicArenaScopedPtr<QuicAlarm::Delegate> delegate,
+        QuicConnectionArena* arena) override;
+
+   private:
+      QuicClock* clock_;
+      EnvGetter* envg_;
+  };
+
+class NapiAlarmJS: public Napi::ObjectWrap<NapiAlarmJS> {
+public:
+  NapiAlarmJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<NapiAlarmJS>(info), alarm_(nullptr)
+  {
+
+  }
+
+  void init(NapiAlarm* alarm) {
+    alarm_ = std::unique_ptr<NapiAlarm>(alarm);
+  }
+
+  void fireJS(const Napi::CallbackInfo &info);
+  static void InitExports(Napi::Env env, Napi::Object exports, Http3Constructors * constr)
+  {
+    Napi::Function tplna =
+        DefineClass(env, "NapiAlarmJS",
+                    {InstanceMethod<&NapiAlarmJS::fireJS>("fireJS")});
+    constr->napialarm  = Napi::Persistent(tplna); 
+    exports.Set("NapiAlarmJS", tplna);
+  }
+
+  NapiAlarm *alarm() {
+    return alarm_.get();
+  }
+
+protected:
+    std::unique_ptr<NapiAlarm> alarm_;
+};
+
+class NapiAlarm : public QuicAlarm {
+ public:
+  NapiAlarm(NapiAlarmJS* alarmjs,  QuicClock* clock, QuicArenaScopedPtr<QuicAlarm::Delegate> delegate)
+      : alarmjs_(alarmjs), clock_(clock), QuicAlarm(std::move(delegate)), timerset_(false)
+  {
+    alarmjs->init(this);
+    alarmjs->Ref();
+  }
+
+  ~NapiAlarm() {
+     alarmUnref();
+  }
+
+  void FireJS() {
+    Fire();
+  }
+
+
+ protected:
+  void SetImpl() override {
+    if (!alarmjs_) return;
+    absl::Duration timeout =
+        absl::Microseconds((deadline() - clock_->Now()).ToMicroseconds());
+    double timedelay = absl::ToDoubleMilliseconds(timeout);
+    if (timerset_) {
+        alarmref_.Unref();
+        timerset_=false;
+    }
+
+    Napi::Value timeoutobj = alarmjs_->Env().Global().Get("setTimeout")
+                        .As<Napi::Function>().Call({ 
+                        alarmjs_->Value().Get("fireJS").As<Napi::Function>(),
+                        Napi::Value::From(alarmjs_->Env(),timedelay),
+                        alarmjs_->Value()});
+    alarmref_=Reference<Object>::New(timeoutobj.As<Object>());
+  }
+
+  void CancelImpl() override {
+     if (timerset_) {
+        Napi::Value timeoutobj = alarmjs_->Env().Global().Get("clearTimeout")
+                        .As<Napi::Function>().Call({alarmref_.Value()});
+        alarmref_.Unref();
+        timerset_=false;
+     }
+  }
+
+  void alarmUnref() {
+    alarmjs_->Unref();
+    alarmjs_ = nullptr;
+    if (timerset_) {
+        alarmref_.Unref();
+        timerset_=false;
+    }
+  }
+
+ private:
+   NapiAlarmJS* alarmjs_;
+   Napi::ObjectReference alarmref_;
+   QuicClock* clock_;
+   bool timerset_;
+};
+
+}
+
+#endif

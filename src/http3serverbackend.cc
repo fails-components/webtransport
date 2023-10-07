@@ -72,21 +72,21 @@ namespace quic
     { // to do handle our web transport paths
       std::unique_ptr<WebTransportResponse> response = std::make_unique<WebTransportResponse>();
       Http3WTSession *wtsession = new Http3WTSession();
-      wtsession->init(session, eventloop_);
+      wtsession->init(session);
       response->response_headers[":status"] = "200";
       response->visitor =
           std::make_unique<Http3WTSession::Visitor>(wtsession);
-      eventloop_->informAboutNewSession(server_, static_cast<Http3WTSession *>(wtsession), path, nullptr);
+      server_->getJS()->processNewSession(static_cast<Http3WTSession *>(wtsession), path, nullptr);
       promise->resolve(std::move(response));
       return promise;
     }
     else if (jshandlerequesthandler_)
     {
       // first step pass header block along, due to thread safety, we need to copy
-      spdy::Http2HeaderBlock *reqheadcopy = new Http2HeaderBlock(request_headers.Clone());
+      // not necessary anymore
 
       // second step inform the js side
-      eventloop_->informAboutNewSessionRequest(server_, session, reqheadcopy, promise);
+      server_->getJS()->processNewSessionRequest(session, request_headers, &promise);
       return promise;
     }
 
