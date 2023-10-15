@@ -11,7 +11,6 @@
 #include "src/http3serverbackend.h"
 #include "src/http3wtsessionvisitor.h"
 #include "src/http3server.h"
-#include "src/http3eventloop.h"
 
 #include <utility>
 
@@ -22,7 +21,7 @@
 #include "quiche/quic/core/http/spdy_utils.h"
 #include "quiche/quic/platform/api/quic_bug_tracker.h"
 #include "quiche/quic/platform/api/quic_logging.h"
-//#include "quic/tools/web_transport_test_visitors.h"
+// #include "quic/tools/web_transport_test_visitors.h"
 #include "quiche/common/platform/api/quiche_file_utils.h"
 #include "quiche/common/quiche_text_utils.h"
 

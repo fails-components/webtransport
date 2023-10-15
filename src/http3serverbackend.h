@@ -86,7 +86,7 @@ namespace quic
     void addPath(std::string path) { paths_.insert(path); }
 
   protected:
-    Http3Server *server_;       // unowned
+    Http3Server *server_; // unowned
     bool jshandlerequesthandler_;
     std::set<std::string> paths_;
   };

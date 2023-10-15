@@ -15,12 +15,11 @@
 
 #include <string>
 
+#include "src/librarymain.h"
 #include "quiche/common/simple_buffer_allocator.h"
 #include "quiche/quic/core/web_transport_interface.h"
 #include "quiche/quic/platform/api/quic_logging.h"
 #include "quiche/common/quiche_circular_deque.h"
-
-#include "src/http3eventloop.h"
 
 namespace quic
 {
@@ -33,15 +32,13 @@ namespace quic
         friend Http3WTStreamJS;
 
     public:
-        Http3WTStream(WebTransportStream *stream, Http3EventLoop *eventloop) : 
-            stream_(stream),
-            eventloop_(eventloop), 
-            js_(nullptr), 
-            readpos_(0),
-            writepos_(0),
-            bufferlen_(0),
-            readbufsize_(0),
-            readbufdata_(nullptr)
+        Http3WTStream(WebTransportStream *stream) : stream_(stream),
+                                                    js_(nullptr),
+                                                    readpos_(0),
+                                                    writepos_(0),
+                                                    bufferlen_(0),
+                                                    readbufsize_(0),
+                                                    readbufdata_(nullptr)
         {
         }
 
@@ -97,112 +94,54 @@ namespace quic
             }
         }
 
-
-        inline bool readBufferFull() {
+        inline bool readBufferFull()
+        {
             return !readbufdata_ || bufferlen_ >= readbufsize_;
         }
 
         void tryRead()
         {
             pause_reading_ = false;
-            if (stream_ && ((stream_->ReadableBytes() > 0) || can_read_pending_)
-               && !readBufferFull())
+            if (stream_ && ((stream_->ReadableBytes() > 0) || can_read_pending_) && !readBufferFull())
             {
                 can_read_pending_ = false;
                 doCanRead();
             }
         }
 
-        Http3WTStreamJS  *getJS()
+        Http3WTStreamJS *getJS()
         {
             return js_;
         }
 
-        void setJS(Http3WTStreamJS  *js) { 
-            js_ = js; 
+        void setJS(Http3WTStreamJS *js)
+        {
+            js_ = js;
         };
 
-        bool gone() {
+        bool gone()
+        {
             return !stream_;
         }
 
-        void setReadBuffer(void * data, size_t length) {
-            std::function<void()> task = [this, data, length]()
-            {
-                readbufsize_ = length;
-                readbufdata_ = data;
-                tryRead();
-            };
-            eventloop_->Schedule(task);
+        void setReadBuffer(void *data, size_t length)
+        {
+            readbufsize_ = length;
+            readbufdata_ = data;
+            tryRead();
         }
-
 
     protected:
         // internal functions called by js object
-        void startReadingInt()
-        {
-
-            std::function<void()> task = [this]()
-            { if (!stream_) return; // we do not have to cancel a promise?
-                    tryRead(); };
-            eventloop_->Schedule(task);
-        }
-        void stopReadingInt()
-        {
-            std::function<void()> task = [this]()
-            { doStopReading(); };
-            eventloop_->Schedule(task);
-        }
-
-        void writeChunkIntJS(char *buffer, size_t len, Napi::ObjectReference *bufferhandle)
-        {
-            std::function<void()> task = [this, bufferhandle, buffer, len]()
-            { writeChunkInt(buffer, len, bufferhandle); };
-            eventloop_->Schedule(task);
-        }
-
-        void updateReadPosIntJS(size_t readbytes, uint32_t readpos)
-        {
-            std::function<void()> task = [this, readpos, readbytes]()
-            { updateReadPosInt(readbytes, readpos); };
-            eventloop_->Schedule(task);
-        }
 
         void streamFinalInt()
         {
-            std::function<void()> task = [this]()
-            {
-                send_fin_ = true;
-                tryWrite();
-            };
-            eventloop_->Schedule(task);
+            send_fin_ = true;
+            tryWrite();
         }
 
-        void stopSendingInt(unsigned int reason)
-        {
-            std::function<void()> task = [this, reason]()
-            {
-                if (stream_)
-                {
-                    stream_->SendStopSending(reason);
-                    eventloop_->informAboutStreamNetworkFinish(this, NetworkTask::stopSending);
-                }
-            };
-            eventloop_->Schedule(task);
-        }
-
-        void resetStreamInt(unsigned int reason)
-        {
-            std::function<void()> task = [this, reason]()
-            {
-                if (stream_)
-                {
-                    stream_->ResetWithUserCode(reason);
-                    eventloop_->informAboutStreamNetworkFinish(this, NetworkTask::resetStream);
-                }
-            };
-            eventloop_->Schedule(task);
-        }
+        void stopSendingInt(unsigned int reason);
+        void resetStreamInt(unsigned int reason);
 
         WebTransportStream *stream() { return stream_; }
 
@@ -247,11 +186,9 @@ namespace quic
         void cancelWrite(Napi::ObjectReference *handle);
 
     private:
-       
         Http3WTStreamJS *js_;
 
         WebTransportStream *stream_;
-        Http3EventLoop *eventloop_;
         bool send_fin_ = false;
         bool fin_was_sent_ = false;
         bool stop_sending_received_ = false;
@@ -260,16 +197,19 @@ namespace quic
         bool stream_was_reset_ = false;
         std::deque<WChunks> chunks_;
 
-        //reading stream
+        // reading stream
         uint32_t readpos_;
         uint32_t writepos_;
         uint32_t bufferlen_;
         size_t readbufsize_;
-        void * readbufdata_;
+        void *readbufdata_;
     };
 
-    class Http3WTStreamJS : public Napi::ObjectWrap<Http3WTStreamJS>, public LifetimeHelper
+    class Http3WTStreamJS : public Napi::ObjectWrap<Http3WTStreamJS>
     {
+        friend Http3WTStream;
+        friend Http3WTStream::Visitor;
+
     public:
         Http3WTStreamJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Http3WTStreamJS>(info)
         {
@@ -281,12 +221,12 @@ namespace quic
 
         void startReading(const Napi::CallbackInfo &info)
         {
-            wtstream_->startReadingInt();
+            wtstream_->tryRead();
         }
 
         void stopReading(const Napi::CallbackInfo &info)
         {
-            wtstream_->stopReadingInt();
+            wtstream_->doStopReading();
         }
 
         void writeChunk(const Napi::CallbackInfo &info)
@@ -300,7 +240,7 @@ namespace quic
             char *buffer = bufferlocal.As<Napi::Buffer<char>>().Data();
             size_t len = bufferlocal.As<Napi::Buffer<char>>().Length();
 
-            wtstream_->writeChunkIntJS(buffer, len, bufferhandle);
+            wtstream_->writeChunkInt(buffer, len, bufferhandle);
         }
 
         void updateReadPos(const Napi::CallbackInfo &info)
@@ -313,7 +253,9 @@ namespace quic
             {
                 Napi::Number readbytesl = info[0].ToNumber();
                 readbytes = readbytesl.Uint32Value();
-            } else {
+            }
+            else
+            {
                 return Napi::Error::New(Env(), "No readbytes passed").ThrowAsJavaScriptException();
             }
 
@@ -321,11 +263,13 @@ namespace quic
             {
                 Napi::Number readposl = info[1].ToNumber();
                 readpos = readposl.Uint32Value();
-            } else {
+            }
+            else
+            {
                 return Napi::Error::New(Env(), "No readpos passed").ThrowAsJavaScriptException();
             }
 
-            wtstream_->updateReadPosIntJS(readbytes, readpos);
+            wtstream_->updateReadPosInt(readbytes, readpos);
         }
 
         void streamFinal(const Napi::CallbackInfo &info)
@@ -360,23 +304,23 @@ namespace quic
             wtstream_->resetStreamInt(reason);
         }
 
-        static void InitExports(Napi::Env env, Napi::Object exports, Http3Constructors * constr)
+        static void InitExports(Napi::Env env, Napi::Object exports, Http3Constructors *constr)
         {
             Napi::Function tplwtsv =
                 DefineClass(env, "Http3WTStreamVisitor",
                             {InstanceMethod<&Http3WTStreamJS::writeChunk>("writeChunk",
                                                                           static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                              InstanceMethod<&Http3WTStreamJS::updateReadPos>("updateReadPos",
-                                                                          static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                                             static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                              InstanceMethod<&Http3WTStreamJS::resetStream>("resetStream",
                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                              InstanceMethod<&Http3WTStreamJS::stopSending>("stopSending", static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                              InstanceMethod<&Http3WTStreamJS::streamFinal>("streamFinal", static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                              InstanceMethod<&Http3WTStreamJS::startReading>("startReading",
-                                                                           static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                              InstanceMethod<&Http3WTStreamJS::stopReading>("stopReading",
                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
-            constr->stream  = Napi::Persistent(tplwtsv); 
+            constr->stream = Napi::Persistent(tplwtsv);
             exports.Set("Http3WTStreamVisitor", tplwtsv);
         }
 
@@ -390,13 +334,13 @@ namespace quic
             return wtstream_.get();
         }
 
-        void doUnref() override
-        {
-            Unref();
-        }
-
     protected:
         std::unique_ptr<Http3WTStream> wtstream_;
+
+        void processStreamRead(size_t buffergrow, bool fin, bool success);
+        void processStreamWrite(Napi::ObjectReference *bufferhandle, bool success);
+        void processStreamNetworkFinish(NetworkTask task);
+        void processStreamRecvSignal(WebTransportStreamError error_code, NetworkTask task);
     };
 }
 

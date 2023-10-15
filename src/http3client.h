@@ -18,7 +18,10 @@
 #include <string>
 #include <queue>
 
-#include "src/http3eventloop.h"
+#include "src/librarymain.h"
+#include "src/napialarmfactory.h"
+#include "src/socketjswriter.h"
+#include "src/http3wtsessionvisitor.h"
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
 #include "quiche/quic/core/crypto/crypto_handshake.h"
@@ -46,33 +49,54 @@ namespace quic
     class Http3Client;
 
     class Http3ClientJS : public Napi::ObjectWrap<Http3ClientJS>,
-                          public LifetimeHelper
+                          public EnvGetter
     {
+        friend class Http3Client;
+
     public:
         Http3ClientJS(const Napi::CallbackInfo &info);
+
+        ~Http3ClientJS() {
+        }
+
+        Napi::Env getEnv() override
+        {
+            return Env();
+        }
+
+        Napi::Object getValue() override
+        {
+            return Value();
+        }
 
         // js stuff
 
         void openWTSession(const Napi::CallbackInfo &info);
         void closeClient(const Napi::CallbackInfo &info);
 
+        void recvPaket(const Napi::CallbackInfo &info);
+        void onCanWrite(const Napi::CallbackInfo &info);
+
+        void setHostname(const Napi::CallbackInfo &info);
+
         static void InitExports(Napi::Env env, Napi::Object exports)
         {
             Napi::Function tplcl =
                 ObjectWrap<Http3ClientJS>::DefineClass(env, "Http3WebTransportClient",
                                                        {
-                                                           Napi::InstanceWrap<Http3ClientJS>::InstanceMethod<&Http3ClientJS::openWTSession>("openWTSession",
-                                                                                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                                                           Napi::InstanceWrap<Http3ClientJS>::InstanceMethod<&Http3ClientJS::closeClient>("closeClient",
-                                                                                                                                          static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                           InstanceMethod<&Http3ClientJS::setHostname>("setHostname",
+                                                                                                       static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                           InstanceMethod<&Http3ClientJS::openWTSession>("openWTSession",
+                                                                                                         static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                           InstanceMethod<&Http3ClientJS::recvPaket>("recvPaket",
+                                                                                                     static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                           InstanceMethod<&Http3ClientJS::onCanWrite>("onCanWrite",
+                                                                                                      static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                           InstanceMethod<&Http3ClientJS::closeClient>("closeClient",
+                                                                                                       static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
 
                                                        });
             exports.Set("Http3WebTransportClient", tplcl);
-        }
-
-        void doUnref() override
-        {
-            Unref();
         }
 
         Http3Client *getObj()
@@ -82,28 +106,29 @@ namespace quic
 
     protected:
         std::unique_ptr<Http3Client> client_;
+
+        void processClientConnected(bool success);
+        void processClientWebtransportSupport();
+        void processNewClientSession(Http3WTSession *session);
     };
 
     class Http3Client : public QuicSpdyStream::Visitor,
-                        public QuicSocketEventListener,
                         public ProcessPacketInterface
     {
         friend class Http3ClientJS;
 
     public:
-        Http3Client(Http3EventLoop *eventloop, QuicSocketAddress server_address,
-                    const std::string &server_hostname,
-                    int local_port,
-                    std::unique_ptr<ProofVerifier> proof_verifier,
-                    std::unique_ptr<SessionCache> session_cache,
-                    std::unique_ptr<QuicConnectionHelperInterface> helper);
+        Http3Client(Http3ClientJS *js,
+            std::unique_ptr<ProofVerifier> proof_verifier,
+            std::unique_ptr<SessionCache> session_cache,
+            std::unique_ptr<QuicConnectionHelperInterface> helper);
 
         ~Http3Client() override;
 
-        // From OnRegistration
+        void setHostname(QuicSocketAddress server_address,
+                         const std::string &server_hostname);
 
-        void OnSocketEvent(QuicEventLoop *event_loop, QuicUdpSocketFd fd,
-                           QuicSocketEventMask events) override;
+        void OnCanWrite();
 
         // From ProcessPacketInterface. This will be called for each received
         // packet.
@@ -152,15 +177,11 @@ namespace quic
         // completes.
         void StartConnect();
 
-        void ResetConnection();
-        void Disconnect();
-
         // Returns true if the crypto handshake has yet to establish encryption.
         // Returns false if encryption is active (even if the server hasn't confirmed
         // the handshake) or if the connection has been closed.
         bool EncryptionBeingEstablished();
 
-        QuicSocketAddress local_address() const;
         void ClearPerRequestState();
         // ssize_t Send(absl::string_view data);
         bool connected() const;
@@ -183,28 +204,6 @@ namespace quic
         size_t bytes_read() const;
         size_t bytes_written() const;
 
-        // If the client has at least one UDP socket, return the latest created one.
-        // Otherwise, return -1.
-        int GetLatestFD() const;
-
-        bool CreateUDPSocketAndBind(QuicSocketAddress server_address,
-                                    QuicIpAddress bind_to_address,
-                                    int bind_to_port);
-        void CleanUpAllUDPSockets();
-        // If |fd| is an open UDP socket, unregister and close it. Otherwise, do
-        // nothing.
-        void CleanUpUDPSocket(int fd);
-
-        QuicSocketAddress GetLatestClientAddress() const;
-
-        // Migrate local address to <|new_host|, a random port>.
-        // Return whether the migration succeeded.
-        bool MigrateSocket(const QuicIpAddress &new_host);
-        // Migrate local address to <|new_host|, |port|>.
-        // Return whether the migration succeeded.
-        bool MigrateSocketWithSpecifiedPort(const QuicIpAddress &new_host, int port);
-        QuicIpAddress bind_to_address() const;
-        void set_bind_to_address(QuicIpAddress address);
         const QuicSocketAddress &address() const;
 
         // Returns a newly created QuicSpdyClientStream to callback
@@ -334,9 +333,6 @@ namespace quic
         // version.
         bool CanReconnectWithDifferentVersion(ParsedQuicVersion *version) const;
 
-        std::unique_ptr<QuicPacketWriter> CreateWriterForNewNetwork(
-            const QuicIpAddress &new_host, int port);
-
         // Returns true if the corresponding of this client has active requests.
         bool HasActiveRequests();
 
@@ -376,10 +372,6 @@ namespace quic
         // Received responses of closed streams.
         quiche::QuicheLinkedHashMap<QuicStreamId, PerStreamState>
             closed_stream_states_;
-
-        // Map mapping created UDP sockets to their addresses. By using linked hash
-        // map, the order of socket creation can be recorded.
-        quiche::QuicheLinkedHashMap<int, QuicSocketAddress> fd_address_map_;
 
         QuicRstStreamErrorCode stream_error_;
 
@@ -430,12 +422,6 @@ namespace quic
 
         // Address of the server.
         QuicSocketAddress server_address_;
-
-        // If initialized, the address to bind to.
-        QuicIpAddress bind_to_address_;
-
-        // Local port to bind to. Initialize to 0.
-        int local_port_;
 
         // config_ and crypto_config_ contain configuration and cached state about
         // servers.
@@ -529,12 +515,13 @@ namespace quic
         DeterministicConnectionIdGenerator connection_id_generator_{
             kQuicDefaultConnectionIdLength};
 
-        Http3EventLoop *eventloop_;
         // connection workflow
         bool wait_for_encryption_;
         bool connection_in_progress_;
         uint32_t num_attempts_connect_;
         bool webtransport_server_support_inform_;
+
+        bool connectionrecheck_;
 
         std::queue<std::function<void(QuicSpdyClientStream *)>> finish_stream_open_;
     };

@@ -39,7 +39,7 @@ namespace quic
     QUICHE_DCHECK(http3_server_backend_);
   }
 
-  Http3ServerSession::~Http3ServerSession() {  DeleteConnection(); }
+  Http3ServerSession::~Http3ServerSession() { DeleteConnection(); }
 
   std::unique_ptr<QuicCryptoServerStreamBase>
   Http3ServerSession::CreateQuicCryptoServerStream(

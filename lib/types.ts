@@ -33,33 +33,23 @@ export type Purpose = 'StreamRecvSignal' | 'StreamRead' | 'StreamWrite' | 'Strea
 export type NetTask = 'stopSending' | 'resetStream' | 'streamFinal'
 
 export interface StreamRecvSignalEvent {
-  object: NativeHttp3WTStream
-  purpose: 'StreamRecvSignal'
   code: number
   nettask: NetTask
 }
 
 export interface StreamReadEvent {
-  object: NativeHttp3WTStream
-  purpose: 'StreamRead'
   buffergrow?: number
   fin?: boolean
   success?: boolean
 }
 
 export interface StreamWriteEvent {
-  object: NativeHttp3WTStream
-  purpose: 'StreamWrite'
 }
 
 export interface StreamResetEvent {
-  object: NativeHttp3WTStream
-  purpose: 'StreamReset'
 }
 
 export interface StreamNetworkFinishEvent {
-  object: NativeHttp3WTStream
-  purpose: 'StreamNetworkFinish'
   nettask: NetTask
 }
 
@@ -73,19 +63,14 @@ export interface WebTransportStreamEventHandler {
 
 export interface SessionReadyEvent {
   object: NativeHttp3WTSession
-  purpose: 'SessionReady'
 }
 
 export interface SessionCloseEvent {
-  object: NativeHttp3WTSession
-  purpose: 'SessionClose'
   errorcode: number
   error: string
 }
 
 export interface SessionStatsEvent {
-  object: NativeHttp3WTSession
-  purpose: 'SessionStats'
   timestamp: number
   expiredOutgoing: bigint
   lostOutgoing: bigint
@@ -98,32 +83,22 @@ export interface SessionStatsEvent {
 }
 
 export interface DatagramStatsEvent {
-  object: NativeHttp3WTSession
-  purpose: 'DatagramStats'
   timestamp: number
   expiredOutgoing: bigint
   lostOutgoing: bigint
 }
 
 export interface DatagramReceivedEvent {
-  object: NativeHttp3WTSession
-  purpose: 'DatagramReceived'
   datagram: Uint8Array
 }
 
 export interface DatagramSendEvent {
-  object: NativeHttp3WTSession
-  purpose: 'DatagramSend'
 }
 
 export interface GoawayReceivedEvent {
-  object: NativeHttp3WTSession
-  purpose: 'GoawayReceived'
 }
 
 export interface NewStreamEvent {
-  object: NativeHttp3WTSession
-  purpose: 'Http3WTStreamVisitor'
   stream: NativeHttp3WTStream
   transport: object
   bidirectional: boolean
@@ -143,16 +118,13 @@ export interface WebTransportSessionEventHandler {
 }
 
 export interface ClientConnectedEvent {
-  purpose: 'ClientConnected'
   success: boolean
 }
 
 export interface ClientWebtransportSupportEvent {
-  purpose: 'ClientWebtransportSupport'
 }
 
 export interface Http3WTSessionVisitorEvent {
-  purpose: 'Http3WTSessionVisitor'
   session: NativeHttp3WTSession
 }
 
@@ -169,10 +141,17 @@ export interface Http3WTServerSessionVisitorEvent extends Http3WTSessionVisitorE
 }
 
 export interface ServerSessionRequestEvent {
-  purpose: 'SessionRequest'
   header: Object
   promise: any
   session: any
+}
+
+export interface UDPServerSocketSend {
+  msg:  Uint8Array
+  offset: number
+  length: number
+  port:number
+  address: string
 }
 
 /**
@@ -212,6 +191,8 @@ export interface Http3WebTransportInit extends WebTransportOptions {
   host: string
   port: string | number
   quicheLogVerbose?: number
+  forceIpv6?: boolean
+  localPort?: number
 }
 
 // see Http3ServerJS C++ type

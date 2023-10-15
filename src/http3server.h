@@ -14,9 +14,10 @@
 
 #include <napi.h>
 
+#include "src/librarymain.h"
 #include "src/http3serverbackend.h"
-#include "src/http3eventloop.h"
 #include "src/napialarmfactory.h"
+#include "src/socketjswriter.h"
 #include "quiche/quic/core/crypto/quic_crypto_server_config.h"
 #include "quiche/quic/core/deterministic_connection_id_generator.h"
 #include "quiche/quic/core/quic_udp_socket.h"
@@ -32,33 +33,44 @@ namespace quic
     class Http3EventLoop;
 
     class Http3Server;
+    class Http3ServerJS;
     class Http3WTSession;
 
+   
+
     class Http3ServerJS : public Napi::ObjectWrap<Http3ServerJS>,
-                          public LifetimeHelper,
                           public EnvGetter
     {
+        friend class Http3Server;
+
     public:
         using WebTransportRespPromise = JSlikePromise<Http3ServerBackend::WebTransportResponse>;
         using WebTransportRespPromisePtr = std::shared_ptr<Http3ServerBackend::WebTransportRespPromise>;
         Http3ServerJS(const Napi::CallbackInfo &info);
         ~Http3ServerJS();
 
-
         Http3Server *getObj()
         {
             return server_.get();
         }
 
-        Napi::Env getEnv() {
+        Napi::Env getEnv() override
+        {
             return Env();
         }
 
+        Napi::Object getValue() override
+        {
+            return Value();
+        }
 
+        void destroy(const Napi::CallbackInfo &info);
 
         void addPath(const Napi::CallbackInfo &info);
 
         Napi::Value recvPaket(const Napi::CallbackInfo &info);
+
+        void onCanWrite(const Napi::CallbackInfo &info);
 
         void finishSessionRequest(const Napi::CallbackInfo &info);
 
@@ -68,23 +80,8 @@ namespace quic
 
         static void InitExports(Napi::Env env, Napi::Object exports)
         {
-            Napi::Function tplsrv = DefineClass(env, "Http3WebTransportServer", {
-                                                 InstanceMethod<&Http3ServerJS::addPath>("addPath",
-                                                                                         static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                                                 InstanceMethod<&Http3ServerJS::recvPaket>("recvPaket",
-                                                                                         static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                                                InstanceMethod<&Http3ServerJS::processBufferedChlos>("processBufferedChlost",
-                                                                                         static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                                                 InstanceMethod<&Http3ServerJS::finishSessionRequest>("finishSessionRequest",
-                                                                                                      static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                                                 InstanceMethod<&Http3ServerJS::setJSRequestHandler>("setJSRequestHandler",
-                                                                                                     static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
+            Napi::Function tplsrv = DefineClass(env, "Http3WebTransportServer", {InstanceMethod<&Http3ServerJS::destroy>("destroy", static_cast<napi_property_attributes>(napi_writable | napi_configurable)), InstanceMethod<&Http3ServerJS::addPath>("addPath", static_cast<napi_property_attributes>(napi_writable | napi_configurable)), InstanceMethod<&Http3ServerJS::recvPaket>("recvPaket", static_cast<napi_property_attributes>(napi_writable | napi_configurable)), InstanceMethod<&Http3ServerJS::processBufferedChlos>("processBufferedChlos", static_cast<napi_property_attributes>(napi_writable | napi_configurable)), InstanceMethod<&Http3ServerJS::onCanWrite>("onCanWrite", static_cast<napi_property_attributes>(napi_writable | napi_configurable)), InstanceMethod<&Http3ServerJS::finishSessionRequest>("finishSessionRequest", static_cast<napi_property_attributes>(napi_writable | napi_configurable)), InstanceMethod<&Http3ServerJS::setJSRequestHandler>("setJSRequestHandler", static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
             exports.Set("Http3WebTransportServer", tplsrv);
-        }
-
-        void doUnref() override
-        {
-            Unref();
         }
 
         void processNewSession(Http3WTSession *session, const std::string &path, Napi::Reference<Napi::Value> *header);
@@ -94,12 +91,13 @@ namespace quic
         std::unique_ptr<Http3Server> server_;
     };
 
-    class Http3Server : public QuicSocketEventListener
+    class Http3Server
     {
         friend class Http3ServerJS;
 
     public:
-        Http3Server(std::unique_ptr<ProofSource> proof_source,
+        Http3Server(Http3ServerJS *js, 
+                    std::unique_ptr<ProofSource> proof_source,
                     const char *secret,
                     QuicConfig config);
 
@@ -110,20 +108,16 @@ namespace quic
 
         void Destroy();
 
-        // From QuicSocketEventListener
-        void OnSocketEvent(QuicEventLoop *event_loop, QuicUdpSocketFd fd,
-                           QuicSocketEventMask events) override;
-
-        bool ProcessPacket(const QuicSocketAddress& self_address,
-                           const QuicSocketAddress& peer_address,
-                           const QuicReceivedPacket& packet);
+        bool ProcessPacket(const QuicSocketAddress &self_address,
+                           const QuicSocketAddress &peer_address,
+                           const QuicReceivedPacket &packet);
         void ProcessBufferedChlos();
+
+        void OnCanWrite();
 
         Http3ServerJS *getJS() { return js_; };
 
     private:
-
-        void setJS(Http3ServerJS *js) { js_ = js; };
         Http3ServerJS *js_;
 
         QuicPacketCount packets_dropped_;
