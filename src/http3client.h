@@ -21,7 +21,6 @@
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
 #include "quiche/quic/core/crypto/crypto_handshake.h"
-#include "quiche/quic/core/http/quic_client_push_promise_index.h"
 #include "quiche/quic/core/http/quic_spdy_client_session.h"
 #include "quiche/quic/core/http/quic_spdy_client_stream.h"
 #include "quiche/quic/core/quic_config.h"
@@ -329,9 +328,6 @@ namespace quic
             uint64_t bytes_written;
             int64_t response_body_size;
         };
-
-        // Index of pending promised streams. Must outlive |session_|.
-        QuicClientPushPromiseIndex push_promise_index_;
 
         // Returns true and set |version| if client can reconnect with a different
         // version.

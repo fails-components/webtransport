@@ -543,8 +543,6 @@ third_party/quiche/quiche/quic/core/http/quic_spdy_stream.cc
 third_party/quiche/quiche/quic/core/http/quic_spdy_stream.h
 third_party/quiche/quiche/quic/core/http/quic_spdy_stream_body_manager.cc
 third_party/quiche/quiche/quic/core/http/quic_spdy_stream_body_manager.h
-third_party/quiche/quiche/quic/core/http/spdy_server_push_utils.cc
-third_party/quiche/quiche/quic/core/http/spdy_server_push_utils.h
 third_party/quiche/quiche/quic/core/http/spdy_utils.cc
 third_party/quiche/quiche/quic/core/http/spdy_utils.h
 third_party/quiche/quiche/quic/core/http/web_transport_http3.cc
