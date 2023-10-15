@@ -28,14 +28,12 @@ namespace quic
                        QuicConnection *connection,
                        const QuicServerId &server_id,
                        QuicCryptoClientConfig *crypto_config,
-                       QuicClientPushPromiseIndex *push_promise_index,
                        bool drop_response_body);
     Http3ClientSession(const QuicConfig &config,
                        const ParsedQuicVersionVector &supported_versions,
                        QuicConnection *connection,
                        const QuicServerId &server_id,
                        QuicCryptoClientConfig *crypto_config,
-                       QuicClientPushPromiseIndex *push_promise_index,
                        bool drop_response_body, bool enable_web_transport);
 
     std::unique_ptr<QuicSpdyClientStream> CreateClientStream() override;
