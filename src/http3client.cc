@@ -753,7 +753,7 @@ namespace quic
             config_, client_supported_versions, new QuicConnection(newconnid, QuicSocketAddress(), server_address_, helper_.get(), alarm_factory_.get(), writer,
                                                                    /* owns_writer= */ false, Perspective::IS_CLIENT, client_supported_versions, connection_id_generator_),
             server_id_, &crypto_config_,
-            &push_promise_index_, false /*drop_response_body_*/, true /* enable_web_transport */);
+            false /*drop_response_body_*/, true /* enable_web_transport */);
 
         if (can_reconnect_with_different_version)
         {
