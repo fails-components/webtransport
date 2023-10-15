@@ -58,29 +58,29 @@ export type Purpose = 'StreamRecvSignal' | 'StreamRead' | 'StreamWrite' | 'Strea
 export type NetTask = 'stopSending' | 'resetStream' | 'streamFinal'
 
 export interface StreamRecvSignalEvent {
-  object: NativeHttpWTStream
-  purpose: 'StreamRecvSignal'
+  object?: NativeHttpWTStream
+  purpose?: 'StreamRecvSignal'
   code: number
   nettask: NetTask
 }
 
 export interface StreamReadEvent {
-  object: NativeHttpWTStream
-  purpose: 'StreamRead'
+  object?: NativeHttpWTStream
+  purpose?: 'StreamRead'
   buffergrow?: number
   fin?: boolean
   success?: boolean
 }
 
 export interface StreamWriteEvent {
-  object: NativeHttpWTStream
-  purpose: 'StreamWrite'
+  object?: NativeHttpWTStream
+  purpose?: 'StreamWrite'
   success?: boolean
 }
 
 export interface StreamNetworkFinishEvent {
-  object: NativeHttpWTStream
-  purpose: 'StreamNetworkFinish'
+  object?: NativeHttpWTStream
+  purpose?: 'StreamNetworkFinish'
   nettask: NetTask
 }
 
@@ -92,20 +92,20 @@ export interface WebTransportStreamEventHandler {
 }
 
 export interface SessionReadyEvent {
-  object: NativeHttpWTSession
-  purpose: 'SessionReady'
+  object?: NativeHttpWTSession
+  purpose?: 'SessionReady'
 }
 
 export interface SessionCloseEvent {
-  object: NativeHttpWTSession
-  purpose: 'SessionClose'
+  object?: NativeHttpWTSession
+  purpose?: 'SessionClose'
   errorcode: number
   error: string
 }
 
 export interface SessionStatsEvent {
-  object: NativeHttpWTSession
-  purpose: 'SessionStats'
+  object?: NativeHttpWTSession
+  purpose?: 'SessionStats'
   timestamp: number
   expiredOutgoing: bigint
   lostOutgoing: bigint
@@ -118,32 +118,32 @@ export interface SessionStatsEvent {
 }
 
 export interface DatagramStatsEvent {
-  object: NativeHttpWTSession
-  purpose: 'DatagramStats'
+  object?: NativeHttpWTSession
+  purpose?: 'DatagramStats'
   timestamp: number
   expiredOutgoing: bigint
   lostOutgoing: bigint
 }
 
 export interface DatagramReceivedEvent {
-  object: NativeHttpWTSession
-  purpose: 'DatagramReceived'
+  object?: NativeHttpWTSession
+  purpose?: 'DatagramReceived'
   datagram: Uint8Array
 }
 
 export interface DatagramSendEvent {
-  object: NativeHttpWTSession
-  purpose: 'DatagramSend'
+  object?: NativeHttpWTSession
+  purpose?: 'DatagramSend'
 }
 
 export interface GoawayReceivedEvent {
-  object: NativeHttpWTSession
-  purpose: 'GoawayReceived'
+  object?: NativeHttpWTSession
+  purpose?: 'GoawayReceived'
 }
 
 export interface NewStreamEvent {
-  object: NativeHttpWTSession
-  purpose: 'Http2WTStreamVisitor' | 'Http3WTStreamVisitor'
+  object?: NativeHttpWTSession
+  purpose?: 'Http2WTStreamVisitor' | 'Http3WTStreamVisitor'
   stream: NativeHttpWTStream
   bidirectional: boolean
   incoming: boolean
@@ -162,16 +162,16 @@ export interface WebTransportSessionEventHandler {
 }
 
 export interface ClientConnectedEvent {
-  purpose: 'ClientConnected'
+  purpose?: 'ClientConnected'
   success: boolean
 }
 
 export interface ClientWebtransportSupportEvent {
-  purpose: 'ClientWebtransportSupport'
+  purpose?: 'ClientWebtransportSupport'
 }
 
 export interface HttpWTSessionVisitorEvent {
-  purpose: 'Http2WTSessionVisitor' | 'Http3WTSessionVisitor'
+  purpose?: 'Http2WTSessionVisitor' | 'Http3WTSessionVisitor'
   session: NativeHttpWTSession
   reliable?: boolean
 }
@@ -189,7 +189,7 @@ export interface HttpWTServerSessionVisitorEvent extends HttpWTSessionVisitorEve
 }
 
 export interface ServerSessionRequestEvent {
-  purpose: 'SessionRequest'
+  purpose?: 'SessionRequest'
   header: Object
   promise: any
   session: any
@@ -200,7 +200,7 @@ export interface ServerSessionRequestEvent {
  * The Http server is listening on the specified port
  */
 export interface HttpServerListeningEvent {
-  purpose: 'HttpServerListening'
+  purpose?: 'HttpServerListening'
 }
 
 /**
@@ -209,7 +209,7 @@ export interface HttpServerListeningEvent {
  export interface ServerStatusEvent {
   port: number | null
   host: string | null
-  purpose: 'ServerStatus',
+  purpose?: 'ServerStatus',
   status: 'error' | 'listening' | 'close'
 }
 
