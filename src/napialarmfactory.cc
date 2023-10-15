@@ -11,36 +11,39 @@
 #include "src/napialarmfactory.h"
 #include "quiche/quic/core/quic_alarm.h"
 
-namespace quic {
-
-
-void NapiAlarmJS::fireJS(const Napi::CallbackInfo &info)
+namespace quic
 {
+
+  void NapiAlarmJS::fireJS(const Napi::CallbackInfo &info)
+  {
     alarm_->FireJS();
-}
-
-QuicAlarm* NapiAlarmFactory::CreateAlarm(
-    QuicAlarm::Delegate* delegate) {
-  Http3Constructors *constr = envg_->getEnv().GetInstanceData<Http3Constructors>();
-  Napi::Object alarmobj = constr->napialarm.New({});
-  NapiAlarmJS *napialarmjs = Napi::ObjectWrap<NapiAlarmJS>::Unwrap(alarmobj);
-
-  NapiAlarm *alarm = new NapiAlarm(napialarmjs, clock_, 
-      QuicArenaScopedPtr<QuicAlarm::Delegate>(delegate));
-  return alarm;
-}
-
-QuicArenaScopedPtr<QuicAlarm> NapiAlarmFactory::CreateAlarm(
-    QuicArenaScopedPtr<QuicAlarm::Delegate> delegate,
-    QuicConnectionArena* arena) {
-  Http3Constructors *constr = envg_->getEnv().GetInstanceData<Http3Constructors>();
-  Napi::Object alarmobj = constr->napialarm.New({});
-  NapiAlarmJS *napialarmjs = Napi::ObjectWrap<NapiAlarmJS>::Unwrap(alarmobj);
-  if (arena != nullptr) {
-    return arena->New<NapiAlarm>(napialarmjs, clock_, std::move(delegate));
   }
-  return QuicArenaScopedPtr<QuicAlarm>(
-      new NapiAlarm(napialarmjs, clock_, std::move(delegate)));
-}
+
+  QuicAlarm *NapiAlarmFactory::CreateAlarm(
+      QuicAlarm::Delegate *delegate)
+  {
+    Http3Constructors *constr = envg_->getEnv().GetInstanceData<Http3Constructors>();
+    Napi::Object alarmobj = constr->napialarm.New({});
+    NapiAlarmJS *napialarmjs = Napi::ObjectWrap<NapiAlarmJS>::Unwrap(alarmobj);
+
+    NapiAlarm *alarm = new NapiAlarm(napialarmjs, clock_,
+                                     QuicArenaScopedPtr<QuicAlarm::Delegate>(delegate));
+    return alarm;
+  }
+
+  QuicArenaScopedPtr<QuicAlarm> NapiAlarmFactory::CreateAlarm(
+      QuicArenaScopedPtr<QuicAlarm::Delegate> delegate,
+      QuicConnectionArena *arena)
+  {
+    Http3Constructors *constr = envg_->getEnv().GetInstanceData<Http3Constructors>();
+    Napi::Object alarmobj = constr->napialarm.New({});
+    NapiAlarmJS *napialarmjs = Napi::ObjectWrap<NapiAlarmJS>::Unwrap(alarmobj);
+    if (arena != nullptr)
+    {
+      return arena->New<NapiAlarm>(napialarmjs, clock_, std::move(delegate));
+    }
+    return QuicArenaScopedPtr<QuicAlarm>(
+        new NapiAlarm(napialarmjs, clock_, std::move(delegate)));
+  }
 
 }

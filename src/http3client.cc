@@ -8,7 +8,6 @@
 // found in the LICENSE file.
 
 #include "src/http3client.h"
-#include "src/http3eventloop.h"
 #include "src/http3clientsession.h"
 #include "src/http3wtsessionvisitor.h"
 #include "src/http3sessioncache.h"
@@ -35,7 +34,7 @@
 #include "quiche/quic/platform/api/quic_flags.h"
 #include "quiche/quic/platform/api/quic_logging.h"
 #include "quiche/quic/platform/api/quic_stack_trace.h"
-//#include "quiche/quic/test_tools/crypto_test_utils.h"
+// #include "quiche/quic/test_tools/crypto_test_utils.h"
 #include "quiche/quic/core/quic_udp_socket.h"
 #include "quiche/quic/tools/quic_url.h"
 #include "quiche/common/quiche_text_utils.h"
@@ -44,43 +43,6 @@ using spdy::Http2HeaderBlock;
 
 namespace quic
 {
-
-    // taken from libquiche
-    namespace
-    {
-
-        // For level-triggered I/O, we need to manually rearm the kSocketEventWritable
-        // listener whenever the socket gets blocked.
-        class LevelTriggeredPacketWriter : public QuicDefaultPacketWriter
-        {
-        public:
-            explicit LevelTriggeredPacketWriter(int fd, QuicEventLoop *event_loop)
-                : QuicDefaultPacketWriter(fd), event_loop_(event_loop)
-            {
-                QUICHE_DCHECK(!event_loop->SupportsEdgeTriggered());
-            }
-
-            WriteResult WritePacket(const char *buffer, size_t buf_len,
-                                    const QuicIpAddress &self_address,
-                                    const QuicSocketAddress &peer_address,
-                                    PerPacketOptions *options,
-                                    const quic::QuicPacketWriterParams& wparams) override
-            {
-                WriteResult result = QuicDefaultPacketWriter::WritePacket(
-                    buffer, buf_len, self_address, peer_address, options, wparams);
-                if (IsWriteBlockedStatus(result.status))
-                {
-                    bool success = event_loop_->RearmSocket(fd(), kSocketEventWritable);
-                    QUICHE_DCHECK(success);
-                }
-                return result;
-            }
-
-        private:
-            QuicEventLoop *event_loop_;
-        };
-
-    } // namespace
 
     // taken from chromium to behave like the browser
     // A version of WebTransportFingerprintProofVerifier that enforces
@@ -118,15 +80,11 @@ namespace quic
                QuicUtils::StreamIdDelta(version) * num;
     }
 
-    Http3Client::Http3Client(Http3EventLoop *eventloop,
-                             QuicSocketAddress server_address, const std::string &server_hostname,
-                             int local_port,
+    Http3Client::Http3Client(Http3ClientJS *js, 
                              std::unique_ptr<ProofVerifier> proof_verifier,
                              std::unique_ptr<SessionCache> session_cache,
-                             std::unique_ptr<QuicConnectionHelperInterface> helper)
-        : server_id_(QuicServerId(server_hostname, server_address.port(), false)),
+                             std::unique_ptr<QuicConnectionHelperInterface> helper) :
           initialized_(false),
-          local_port_(local_port),
           store_response_(false),
           latest_response_code_(-1),
           overflow_supported_(false),
@@ -134,12 +92,11 @@ namespace quic
           packet_reader_(new QuicPacketReader()),
           crypto_config_(std::move(proof_verifier), std::move(session_cache)),
           helper_(std::move(helper)),
-          eventloop_(eventloop),
-          alarm_factory_(eventloop->getQuicEventLoop()->CreateAlarmFactory()),
+          alarm_factory_(new NapiAlarmFactory(QuicDefaultClock::Get(), js)),
           supported_versions_({ParsedQuicVersion::RFCv1()}),
           initial_max_packet_length_(0),
           num_sent_client_hellos_(0),
-          js_(nullptr),
+          js_(js),
           connection_error_(QUIC_NO_ERROR),
           connected_or_attempting_connect_(false),
           server_connection_id_length_(kQuicDefaultConnectionIdLength),
@@ -147,18 +104,25 @@ namespace quic
           max_reads_per_loop_(std::numeric_limits<int>::max()),
           wait_for_encryption_(false),
           connection_in_progress_(false),
+          connectionrecheck_(false),
           num_attempts_connect_(0),
           webtransport_server_support_inform_(false),
           connection_debug_visitor_(nullptr),
           priority_(HttpStreamPriority())
     {
-        set_server_address(server_address);
-        Initialize();
+       
     }
 
     Http3Client::~Http3Client()
     {
         // printf("client destruct %x\n", this);
+    }
+
+    void Http3Client::setHostname(QuicSocketAddress server_address, const std::string &server_hostname)
+    {
+        server_id_ = QuicServerId(server_hostname, server_address.port(), false);
+        set_server_address(server_address);
+        Initialize();
     }
 
     bool Http3Client::closeClientInt()
@@ -177,9 +141,7 @@ namespace quic
         // the session before the push promise index goes out of scope.
         ResetSession();
 
-        CleanUpAllUDPSockets();
-
-        eventloop_->informUnref(this->getJS());
+        this->getJS()->Unref();
         return true;
     }
 
@@ -436,127 +398,8 @@ namespace quic
                 kSessionMaxRecvWindowSize);
         }
 
-        if (!CreateUDPSocketAndBind(server_address_,
-                                    bind_to_address_, local_port_))
-        {
-            eventloop_->informAboutClientConnected(this, false);
-            return false;
-        }
-
         initialized_ = true;
         return true;
-    }
-
-    bool Http3Client::CreateUDPSocketAndBind(
-        QuicSocketAddress server_address, QuicIpAddress bind_to_address,
-        int bind_to_port)
-    {
-
-        QuicUdpSocketApi api;
-        QuicUdpSocketFd fd = api.Create(server_address.host().AddressFamilyToInt(),
-                                        /*receive_buffer_size =*/kDefaultSocketReceiveBuffer,
-                                        /*send_buffer_size =*/kDefaultSocketReceiveBuffer);
-        if (fd == kQuicInvalidSocketFd)
-        {
-            return false;
-        }
-
-        overflow_supported_ = api.EnableDroppedPacketCount(fd);
-        api.EnableReceiveTimestamp(fd);
-
-        auto closer = absl::MakeCleanup([fd]
-                                        { QuicUdpSocketApi api;api.Destroy(fd); });
-
-        QuicSocketAddress client_address;
-        if (bind_to_address.IsInitialized())
-        {
-            client_address = QuicSocketAddress(bind_to_address, local_port_);
-        }
-        else if (server_address.host().address_family() == IpAddressFamily::IP_V4)
-        {
-            client_address = QuicSocketAddress(QuicIpAddress::Any4(), bind_to_port);
-        }
-        else
-        {
-            client_address = QuicSocketAddress(QuicIpAddress::Any6(), bind_to_port);
-        }
-
-        // Some platforms expect that the addrlen given to bind() exactly matches the
-        // size of the associated protocol family's sockaddr struct.
-        // TODO(b/179430548): Revert this when affected platforms are updated to
-        // to support binding with an addrelen of sizeof(sockaddr_storage)
-        socklen_t addrlen;
-        switch (client_address.host().address_family())
-        {
-        case IpAddressFamily::IP_V4:
-            addrlen = sizeof(sockaddr_in);
-            break;
-        case IpAddressFamily::IP_V6:
-            addrlen = sizeof(sockaddr_in6);
-            break;
-        case IpAddressFamily::IP_UNSPEC:
-            addrlen = 0;
-            break;
-        }
-
-        if (!api.Bind(fd, client_address))
-        {
-            QUIC_LOG(ERROR) << "Bind failed"
-                            << " bind_to_address:" << bind_to_address
-                            << ", bind_to_port:" << bind_to_port
-                            << ", client_address:" << client_address;
-            return false;
-        }
-
-        if (client_address.FromSocket(fd) != 0)
-        {
-            QUIC_LOG(ERROR) << "Unable to get self address.  Error: "
-                            << strerror(errno);
-        }
-        const int kEpollFlags = kSocketEventReadable | kSocketEventWritable; // there is no analogue to EPOLLET in libuv hopefully not a problem
-
-        if (eventloop_->getQuicEventLoop()->RegisterSocket(fd, kEpollFlags, this))
-        {
-            fd_address_map_[fd] = client_address;
-            std::move(closer).Cancel();
-            return true;
-        }
-        return false;
-    }
-
-    void Http3Client::CleanUpUDPSocket(int fd)
-    {
-        CleanUpUDPSocketImpl(fd);
-        fd_address_map_.erase(fd);
-    }
-
-    void Http3Client::CleanUpAllUDPSockets()
-    {
-        for (std::pair<int, QuicSocketAddress> fd_address : fd_address_map_)
-        {
-            CleanUpUDPSocketImpl(fd_address.first);
-        }
-        fd_address_map_.clear();
-    }
-
-    void Http3Client::CleanUpUDPSocketImpl(QuicUdpSocketFd fd)
-    {
-        if (fd != kQuicInvalidSocketFd)
-        {
-            eventloop_->getQuicEventLoop()->UnregisterSocket(fd);
-            QuicUdpSocketApi api;
-            api.Destroy(fd);
-        }
-    }
-
-    QuicSocketAddress Http3Client::GetLatestClientAddress() const
-    {
-        if (fd_address_map_.empty())
-        {
-            return QuicSocketAddress();
-        }
-
-        return fd_address_map_.back().second;
     }
 
     void Http3Client::Connect()
@@ -578,6 +421,7 @@ namespace quic
             server_id_ = QuicServerId(override_sni_, address().port(), false);
         }
         connection_in_progress_ = true;
+        connectionrecheck_ = true;
         wait_for_encryption_ = false;
     }
 
@@ -598,7 +442,7 @@ namespace quic
                     connection_in_progress_ = false;
                     connect_attempted_ = true;
                     QUIC_BUG(quic_bug_10906_1) << "Missing session after Connect";
-                    eventloop_->informAboutClientConnected(this, false);
+                    getJS()->processClientConnected(false);
                 }
             }
             if (wait_for_encryption_)
@@ -613,13 +457,13 @@ namespace quic
                     // cannot reconnect with a different version.  Give up trying.
                     connection_in_progress_ = false;
                     connect_attempted_ = true;
-                    eventloop_->informAboutClientConnected(this, false);
+                    getJS()->processClientConnected(false);
                 }
                 else if (session_ != nullptr && session_->connection()->connected())
                 {
                     connect_attempted_ = true;
                     connection_in_progress_ = false;
-                    eventloop_->informAboutClientConnected(this, true);
+                    getJS()->processClientConnected(true);
                     webtransport_server_support_inform_ = true;
                     recheck = true;
                 }
@@ -634,7 +478,7 @@ namespace quic
         {
             if (session_->SupportsWebTransport())
             {
-                eventloop_->informClientWebtransportSupport(this);
+                getJS()->processClientWebtransportSupport();
                 webtransport_server_support_inform_ = false;
             }
             else
@@ -668,7 +512,7 @@ namespace quic
                     WebTransportHttp3 *wtsession = session_->GetWebTransportSession(id);
                     if (wtsession == nullptr)
                     {
-                        eventloop_->informNewClientSession(this, nullptr);
+                        getJS()->processNewClientSession(nullptr);
                         // may be throw error
                     }
                     else
@@ -677,9 +521,8 @@ namespace quic
                         Http3WTSession *wtsessionobj =
                             new Http3WTSession();
                         wtsessionobj->init(
-                            static_cast<WebTransportSession *>(wtsession),
-                            eventloop_);
-                        eventloop_->informNewClientSession(this, wtsessionobj);
+                            static_cast<WebTransportSession *>(wtsession));
+                        getJS()->processNewClientSession(wtsessionobj);
                         auto visitor = std::make_unique<Http3WTSession::Visitor>(wtsessionobj);
                         wtsession->SetVisitor(std::move(visitor));
                     }
@@ -703,29 +546,11 @@ namespace quic
         SendMessageAsync(headers, "", /*fin=*/false);
     }
 
-    int Http3Client::GetLatestFD() const
-    {
-        if (fd_address_map_.empty())
-        {
-            return -1;
-        }
-
-        return fd_address_map_.back().first;
-    }
-
     void Http3Client::StartConnect()
     {
         QUICHE_DCHECK(initialized_);
         QUICHE_DCHECK(!connected());
-        QuicPacketWriter *writer;
-        if (eventloop_->getQuicEventLoop()->SupportsEdgeTriggered())
-        {
-            writer = new QuicDefaultPacketWriter(GetLatestFD());
-        }
-        else
-        {
-            writer = new LevelTriggeredPacketWriter(GetLatestFD(), eventloop_->getQuicEventLoop());
-        }
+        QuicPacketWriter *writer = new SocketJSWriter(getJS());
         ParsedQuicVersion mutual_version = UnsupportedQuicVersion();
         const bool can_reconnect_with_different_version =
             CanReconnectWithDifferentVersion(&mutual_version);
@@ -796,34 +621,6 @@ namespace quic
         session_->CryptoConnect();
     }
 
-    void Http3Client::ResetConnection()
-    {
-        Disconnect();
-        Connect();
-    }
-
-    void Http3Client::Disconnect()
-    {
-        ClearPerConnectionState();
-        if (initialized_)
-        {
-            QUICHE_DCHECK(initialized_);
-
-            initialized_ = false;
-            if (connected())
-            {
-                session_->connection()->CloseConnection(
-                    QUIC_PEER_GOING_AWAY, "Client disconnecting",
-                    ConnectionCloseBehavior::SEND_CONNECTION_CLOSE_PACKET);
-            }
-
-            ClearDataToResend();
-
-            CleanUpAllUDPSockets();
-        }
-        connect_attempted_ = false;
-    }
-
     bool Http3Client::CanReconnectWithDifferentVersion(
         ParsedQuicVersion *version) const
     {
@@ -864,11 +661,6 @@ namespace quic
         return session_->HasActiveRequestStreams();
     }
 
-    QuicSocketAddress Http3Client::local_address() const
-    {
-        return GetLatestClientAddress();
-    }
-
     void Http3Client::ClearPerRequestState()
     {
         stream_error_ = QUIC_STREAM_NO_ERROR;
@@ -892,10 +684,90 @@ namespace quic
         return !open_streams_.empty();
     }
 
+    void Http3ClientJS::recvPaket(const Napi::CallbackInfo &info)
+    {
+        QuicTime now = QuicDefaultClock::Get()->Now();
+        // Got a packet replace OnSocketEvent for readable
+        if (info[0].IsUndefined())
+        {
+            Napi::Error::New(Env(), "No obj passed to recvPaket").ThrowAsJavaScriptException();
+        }
+        Napi::Object lobj = info[0].ToObject();
+        if (lobj.IsEmpty())
+        {
+            Napi::Error::New(Env(), "Obj for recvPaket is empty").ThrowAsJavaScriptException();
+        }
+        if (!lobj.Has("selfaddress"))
+        {
+            Napi::Error::New(Env(), "No Selfaddress for recvPaket").ThrowAsJavaScriptException();
+        }
+        Napi::Object selfaddress = (lobj).Get("selfaddress").As<Napi::Object>();
+        if (selfaddress.IsEmpty())
+        {
+            Napi::Error::New(Env(), "Selfaddress for recvPaket empty").ThrowAsJavaScriptException();
+        }
+        int port = selfaddress.Get("port").As<Napi::Number>().Int32Value();
+        std::string selfipaddress = selfaddress.Get("address").As<Napi::String>();
+
+        QuicIpAddress self_ip;
+        self_ip.FromString(selfipaddress);
+        QuicSocketAddress self_address(self_ip, port);
+
+        if (!lobj.Has("rinfo"))
+        {
+            Napi::Error::New(Env(), "No rinfo for recvPaket").ThrowAsJavaScriptException();
+        }
+
+        Napi::Object rinfo = (lobj).Get("rinfo").As<Napi::Object>();
+        if (rinfo.IsEmpty())
+        {
+            Napi::Error::New(Env(), "Rinfo for recvPaket empty").ThrowAsJavaScriptException();
+        }
+        int peerport = rinfo.Get("port").As<Napi::Number>().Int32Value();
+        std::string peeripaddress = rinfo.Get("address").As<Napi::String>();
+
+        QuicIpAddress peer_ip;
+        peer_ip.FromString(peeripaddress);
+        QuicSocketAddress peer_address(peer_ip, peerport);
+
+        Napi::Object bufferlocal = lobj.Get("msg").As<Napi::Object>();
+
+        QuicReceivedPacket packet(
+            bufferlocal.As<Napi::Buffer<char>>().Data(), rinfo.Get("size").As<Napi::Number>().Uint32Value(), now,
+            /*owns_buffer=*/false, 0 /*ttl*/, false /*has_ttl*/, nullptr /*headers*/, 0 /*headers_length*/,
+            /*owns_header_buffer=*/false, ECN_NOT_ECT);
+
+        client_->ProcessPacket(self_address, peer_address, packet);
+
+        if (client_->connectionrecheck_)
+        {
+            client_->connectionrecheck_ = !client_->handleConnecting();
+        }
+    }
+
+    void Http3ClientJS::onCanWrite(const Napi::CallbackInfo &info)
+    {
+        if (client_->connectionrecheck_)
+        {
+            client_->connectionrecheck_ = !client_->handleConnecting();
+        }
+        client_->OnCanWrite();
+    }
+
+    void Http3Client::OnCanWrite()
+    {
+        writer_->SetWritable();
+        if (connected())
+        {
+            session_->connection()->OnCanWrite();
+        }
+    }
+
+/*
     void Http3Client::OnSocketEvent(QuicEventLoop *event_loop, QuicUdpSocketFd fd,
                                     QuicSocketEventMask events)
     {
-        if (events & kSocketEventReadable)
+        /*if (events & kSocketEventReadable)
         {
             QUIC_DVLOG(1) << "Read packets on kSocketEventReadable";
             int times_to_read = max_reads_per_loop_;
@@ -921,13 +793,14 @@ namespace quic
                 bool success =
                     event_loop->ArtificiallyNotifyEvent(fd, kSocketEventReadable);
                 QUICHE_DCHECK(success);
-            } else if (!event_loop->SupportsEdgeTriggered())
+            }
+            else if (!event_loop->SupportsEdgeTriggered())
             {
                 bool success = event_loop->RearmSocket(fd, kSocketEventReadable);
                 QUICHE_DCHECK(success);
             }
-        }
-        if (connected() && (events & kSocketEventWritable))
+        }*/
+        /*if (connected() && (events & kSocketEventWritable))
         {
             writer_->SetWritable();
             session_->connection()->OnCanWrite();
@@ -939,13 +812,13 @@ namespace quic
                 event_loop->ArtificiallyNotifyEvent(fd, kSocketEventReadable);
             QUICHE_DCHECK(success);
         }
-    }
+    }*/
 
     void Http3Client::ProcessPacket(
         const QuicSocketAddress &self_address,
         const QuicSocketAddress &peer_address, const QuicReceivedPacket &packet)
     {
-        session_->ProcessUdpPacket(self_address, peer_address, packet);
+        if (connected()) session_->ProcessUdpPacket(self_address, peer_address, packet);
     }
 
     bool Http3Client::response_headers_complete() const
@@ -1083,72 +956,6 @@ namespace quic
         open_streams_.erase(id);
     }
 
-    bool Http3Client::MigrateSocket(const QuicIpAddress &new_host)
-    {
-        return MigrateSocketWithSpecifiedPort(new_host, local_port_);
-    }
-
-    bool Http3Client::MigrateSocketWithSpecifiedPort(
-        const QuicIpAddress &new_host, int port)
-    {
-        local_port_ = port;
-        if (!connected())
-        {
-            QUICHE_DVLOG(1)
-                << "MigrateSocketWithSpecifiedPort failed as connection has closed";
-            return false;
-        }
-
-        CleanUpAllUDPSockets();
-        std::unique_ptr<QuicPacketWriter> writer =
-            CreateWriterForNewNetwork(new_host, port);
-        if (writer == nullptr)
-        {
-            QUICHE_DVLOG(1)
-                << "MigrateSocketWithSpecifiedPort failed from writer creation";
-            return false;
-        }
-        if (!session_->MigratePath(GetLatestClientAddress(),
-                                   session_->connection()->peer_address(),
-                                   writer.get(), false))
-        {
-            QUICHE_DVLOG(1)
-                << "MigrateSocketWithSpecifiedPort failed from session()->MigratePath";
-            return false;
-        }
-        writer_ = std::move(writer);
-        // set_writer(writer.release());
-        return true;
-    }
-
-    std::unique_ptr<QuicPacketWriter> Http3Client::CreateWriterForNewNetwork(
-        const QuicIpAddress &new_host, int port)
-    {
-        set_bind_to_address(new_host);
-        local_port_ = port;
-        if (!CreateUDPSocketAndBind(server_address_,
-                                    bind_to_address_, port))
-        {
-            return nullptr;
-        }
-
-        QuicPacketWriter *writer = new QuicDefaultPacketWriter(GetLatestFD());
-        QUIC_LOG_IF(WARNING, writer == writer_.get())
-            << "The new writer is wrapped in the same wrapper as the old one, thus "
-               "appearing to have the same address as the old one.";
-        return std::unique_ptr<QuicPacketWriter>(writer);
-    }
-
-    QuicIpAddress Http3Client::bind_to_address() const
-    {
-        return bind_to_address_;
-    }
-
-    void Http3Client::set_bind_to_address(QuicIpAddress address)
-    {
-        bind_to_address_ = address;
-    }
-
     const QuicSocketAddress &Http3Client::address() const
     {
         return server_address_;
@@ -1250,14 +1057,9 @@ namespace quic
 
     Http3ClientJS::Http3ClientJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Http3ClientJS>(info)
     {
-
-        std::string port = "443";
         bool allowPooling = false;
         std::vector<WebTransportHash> serverCertificateHashes;
         std::string privkey;
-        std::string hostname = "localhost";
-        int local_port = 0;
-        bool forceipv6 = false;
         auto env = info.Env();
         if (!info[0].IsUndefined())
         {
@@ -1269,34 +1071,6 @@ namespace quic
                 {
                     Napi::Value poolValue = (lobj).Get("allowPooling");
                     allowPooling = poolValue.As<Napi::Boolean>().Value();
-                }
-
-                if (lobj.Has("forceIpv6") && !(lobj).Get("forceIpv6").IsEmpty())
-                {
-                    Napi::Value ipv6Value = (lobj).Get("forceIpv6");
-                    forceipv6 = ipv6Value.As<Napi::Boolean>().Value();
-                }
-
-                if (lobj.Has("port") && !(lobj).Get("port").IsEmpty())
-                {
-                    Napi::Value portValue = (lobj).Get("port");
-                    port = portValue.ToString().Utf8Value();
-                }
-                else
-                {
-                    Napi::Error::New(env, "no port specified").ThrowAsJavaScriptException();
-                    return;
-                }
-
-                if (lobj.Has("host") && !(lobj).Get("host").IsEmpty())
-                {
-                    Napi::Value hostnameValue = (lobj).Get("host");
-                    hostname = hostnameValue.ToString().Utf8Value();
-                }
-                else
-                {
-                    Napi::Error::New(env, "no hostname specified").ThrowAsJavaScriptException();
-                    return;
                 }
 
                 if (lobj.Has("serverCertificateHashes") && !(lobj).Get("serverCertificateHashes").IsEmpty())
@@ -1348,34 +1122,10 @@ namespace quic
                         return;
                     }
                 }
-
-                if (lobj.Has("localPort") && !(lobj).Get("localPort").IsEmpty())
-                {
-                    Napi::Value localPortValue = (lobj).Get("localPort");
-                    if (localPortValue.IsNumber())
-                        local_port = localPortValue.As<Napi::Number>().Int32Value();
-                    else
-                    {
-                        Napi::Error::New(env, "localPort is not a number").ThrowAsJavaScriptException();
-                        return;
-                    }
-                }
             }
         }
 
         // Callback *callback, int port, std::unique_ptr<ProofSource> proof_source,  const char *secret
-
-        Http3EventLoop *eventloop = nullptr;
-        if (!info[1].IsUndefined())
-        {
-            Napi::Object lobj = info[1].ToObject();
-            eventloop = dynamic_cast<Http3EventLoop *>(Napi::ObjectWrap<Http3EventLoop>::Unwrap(lobj));
-        }
-        else
-        {
-            Napi::Error::New(env, "No eventloop arguments passed to Http3Client").ThrowAsJavaScriptException();
-            return;
-        }
 
         std::unique_ptr<QuicConnectionHelperInterface> helper =
             std::make_unique<QuicDefaultConnectionHelper>();
@@ -1404,49 +1154,68 @@ namespace quic
 
         std::unique_ptr<Http3SessionCache> cache;
 
-        /* Http3Client(Http3EventLoop *eventloop, QuicSocketAddress server_address,
-            const std::string &server_hostname,
-            std::unique_ptr<ProofVerifier> proof_verifier,
-            std::unique_ptr<SessionCache> session_cache);*/
-
-        QuicSocketAddress address;
-
-        addrinfo hint;
-        memset(&hint, 0, sizeof(hint));
-        hint.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
-        if (forceipv6)
-            hint.ai_family = AF_INET6;
-        hint.ai_protocol = IPPROTO_UDP;
-
-        addrinfo *info_list = nullptr;
-        int result = getaddrinfo(hostname.c_str(), port.c_str(), &hint, &info_list);
-        if (result != 0)
-        {
-            QUIC_LOG(ERROR) << "Failed to look up " << hostname << ": "
-                            << gai_strerror(result);
-            info_list = nullptr;
-            Napi::Error::New(env, "URL host lookup failed").ThrowAsJavaScriptException();
-            return;
-        }
-
-        QUICHE_CHECK(info_list != nullptr);
-        address = QuicSocketAddress(info_list->ai_addr, info_list->ai_addrlen);
-        freeaddrinfo(info_list);
-
-        client_ = std::make_unique<Http3Client>(eventloop, address, hostname, local_port,
-                                                std::move(verifier), std::move(cache), std::move(helper));
+        client_ = std::make_unique<Http3Client>(this, std::move(verifier), std::move(cache), std::move(helper));
         client_->SetUserAgentID("fails-components/webtransport");
-
-        client_->setJS(this);
 
         Ref(); // do not garbage collect
 
-        std::function<void()> task = [this]()
-        {
-            client_->Connect();
-        };
-        client_->eventloop_->Schedule(task);
+        client_->Connect();
         return;
+    }
+
+    void Http3ClientJS::setHostname(const Napi::CallbackInfo &info) {
+        int port = 443;
+        std::string serveraddress;
+        std::string hostname = "localhost";
+        auto env = info.Env();
+        if (!info[0].IsUndefined())
+        {
+            Napi::Object lobj = info[0].ToObject();
+            if (!lobj.IsEmpty())
+            {
+
+               
+
+                if (lobj.Has("port") && !(lobj).Get("port").IsEmpty())
+                {
+                    Napi::Value portValue = (lobj).Get("port");
+                    port = portValue.As<Napi::Number>().Int32Value();
+                }
+                else
+                {
+                    Napi::Error::New(env, "no port specified").ThrowAsJavaScriptException();
+                    return;
+                }
+
+                if (lobj.Has("host") && !(lobj).Get("host").IsEmpty())
+                {
+                    Napi::Value hostnameValue = (lobj).Get("host");
+                    hostname = hostnameValue.ToString().Utf8Value();
+                }
+                else
+                {
+                    Napi::Error::New(env, "no hostname specified").ThrowAsJavaScriptException();
+                    return;
+                }
+
+                if (lobj.Has("serveraddress") && !(lobj).Get("serveraddress").IsEmpty())
+                {
+                    Napi::Value serveraddressValue = (lobj).Get("serveraddress");
+                    serveraddress = serveraddressValue.ToString().Utf8Value();
+                }
+                else
+                {
+                    Napi::Error::New(env, "no serveraddress specified").ThrowAsJavaScriptException();
+                    return;
+                }
+            }
+        }
+
+        QuicIpAddress server_ip;
+        server_ip.FromString(serveraddress);
+        QuicSocketAddress address(server_ip, port);
+
+        client_ ->setHostname(address, hostname);                            
     }
 
     void Http3ClientJS::openWTSession(const Napi::CallbackInfo &info)
@@ -1457,11 +1226,8 @@ namespace quic
         if (!info[0].IsUndefined())
         {
             std::string lpath(info[0].ToString().Utf8Value());
-            std::function<void()> task = [obj, lpath]()
-            {
-                obj->openWTSessionInt(lpath);
-            };
-            obj->eventloop_->Schedule(task);
+
+            obj->openWTSessionInt(lpath);
         }
         else
         {
@@ -1474,15 +1240,58 @@ namespace quic
     {
         Http3Client *obj = getObj();
         // got the object we can now start the server
-        std::function<void()> task = [obj]()
+
+        if (!obj->closeClientInt())
         {
-            if (!obj->closeClientInt())
-            {
-                printf("closeClientInt failed for Http3Client");
-                return;
-            }
-        };
-        obj->eventloop_->Schedule(task);
+            printf("closeClientInt failed for Http3Client");
+            return;
+        }
+    }
+
+    void Http3ClientJS::processClientConnected(bool success)
+    {
+        Napi::HandleScope scope(Env());
+
+        Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
+        Napi::Object retObj = Napi::Object::New(Env());
+        retObj.Set("success", success);
+
+        objVal.Get("onClientConnected")
+            .As<Napi::Function>()
+            .Call(objVal, {retObj.As<Napi::Value>()});
+    }
+
+    void Http3ClientJS::processClientWebtransportSupport()
+    {
+        Napi::HandleScope scope(Env());
+        Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
+        Napi::Object retObj = Napi::Object::New(Env());
+
+        objVal.Get("onClientWebTransportSupport")
+            .As<Napi::Function>()
+            .Call(objVal, {retObj});
+    }
+
+    void Http3ClientJS::processNewClientSession(Http3WTSession *session)
+    {
+        Napi::HandleScope scope(Env());
+
+        Napi::Object retObj = Napi::Object::New(Env());
+        retObj.Set("purpose", "Http3WTSessionVisitor");
+        if (session != nullptr)
+        {
+            Http3Constructors *constr = Env().GetInstanceData<Http3Constructors>();
+            Napi::Object sessionobj = constr->session.New({});
+            Http3WTSessionJS *sessionjs = Napi::ObjectWrap<Http3WTSessionJS>::Unwrap(sessionobj);
+            sessionjs->setObj(session);
+            sessionjs->Ref();
+            session->setJS(sessionjs);
+            Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
+            retObj.Set("session", sessionobj);
+            objVal.Get("onHttp3WTSessionVisitor")
+                .As<Napi::Function>()
+                .Call(objVal, {retObj});
+        }
     }
 
 } // namespace quic

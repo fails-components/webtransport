@@ -5,19 +5,10 @@
 // this file runs various tests
 
 import { generateWebTransportCertificate } from '../test/fixtures/certificate.js'
-import { Http3Server, WebTransport, testcheck } from '../lib/index.js'
+import { Http3Server, WebTransport } from '../lib/index.js'
 import { echoTestsConnection, runEchoServer } from './testsuite.js'
 
 async function run() {
-  setTimeout(() => {
-    if (!testcheck()) {
-      console.log('tests took too long, probably hanging')
-      process.exit(1)
-    } else {
-      console.log('global event loop gone, everything alright')
-      process.exit(0)
-    }
-  }, 50 * 1000)
   console.log('try connecting to server that does not exist')
   const badClient = new WebTransport('https://127.0.0.1:49823/echo', {
     serverCertificateHashes: [
