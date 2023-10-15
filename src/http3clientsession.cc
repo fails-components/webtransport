@@ -19,9 +19,9 @@ namespace quic
       const QuicConfig &config, const ParsedQuicVersionVector &supported_versions,
       QuicConnection *connection, const QuicServerId &server_id,
       QuicCryptoClientConfig *crypto_config,
-      QuicClientPushPromiseIndex *push_promise_index, bool drop_response_body)
+      bool drop_response_body)
       : Http3ClientSession(config, supported_versions, connection, server_id,
-                           crypto_config, push_promise_index,
+                           crypto_config,
                            drop_response_body,
                            /*enable_web_transport=*/false)
   {
@@ -31,10 +31,10 @@ namespace quic
       const QuicConfig &config, const ParsedQuicVersionVector &supported_versions,
       QuicConnection *connection, const QuicServerId &server_id,
       QuicCryptoClientConfig *crypto_config,
-      QuicClientPushPromiseIndex *push_promise_index, bool drop_response_body,
+      bool drop_response_body,
       bool enable_web_transport)
       : QuicSpdyClientSession(config, supported_versions, connection, server_id,
-                              crypto_config, push_promise_index),
+                              crypto_config),
         drop_response_body_(drop_response_body),
         enable_web_transport_(enable_web_transport) {}
 
