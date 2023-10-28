@@ -434,6 +434,10 @@ namespace quic
             {
                 if (!connected() && num_attempts_connect_ <= QuicCryptoClientStream::kMaxClientHellos)
                 {
+                    if (!connect_attempted_)
+                    {
+                        clientInitialize();
+                    }
                     StartConnect();
                     wait_for_encryption_ = true;
                 }
