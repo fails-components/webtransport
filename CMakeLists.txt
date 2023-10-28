@@ -87,6 +87,7 @@ platform/quiche_platform_impl/quiche_containers_impl.h
 platform/quiche_platform_impl/quiche_client_stats_impl.h
 platform/quiche_platform_impl/quiche_event_loop_impl.h
 platform/quiche_platform_impl/quiche_bug_tracker_impl.h
+platform/quiche_platform_impl/quiche_googleurl_impl.h
 platform/quiche_platform_impl/quiche_iovec_impl.h
 platform/quiche_platform_impl/quiche_mutex_impl.h
 platform/quiche_platform_impl/quiche_stack_trace_impl.h
