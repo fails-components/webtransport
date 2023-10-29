@@ -12,7 +12,7 @@ import type { IncomingHttpHeaders, Http2Stream } from 'http2'
   orderBidiStream: () => void
   orderSessionStats: () => void
   orderDatagramStats: () => void
-  notifySessionDraining(): () => void
+  notifySessionDraining: () => void
   close: (arg: { code: number, reason: string }) => void
 }
 
@@ -161,8 +161,7 @@ export interface HttpClientEventHandler {
 
 export interface HttpWTServerSessionVisitorEvent extends HttpWTSessionVisitorEvent {
   path: string
-  object: any
-  header?: any
+  header: Object
 }
 
 export interface ServerSessionRequestEvent {
@@ -250,8 +249,6 @@ export interface Logger {
 export interface Http2CapsuleParserInit {
   stream: Http2Stream
   isclient: boolean
-  sessioncallback: (args: SessionReadyEvent | SessionCloseEvent | DatagramReceivedEvent | DatagramSendEvent | GoawayReceivedEvent | NewStreamEvent) => void
-  streamcallback: (args: StreamRecvSignalEvent | StreamReadEvent | StreamWriteEvent  | StreamNetworkFinishEvent) => void
   nativesession: any
 }
 
