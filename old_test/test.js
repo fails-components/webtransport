@@ -10,7 +10,7 @@ import {
   Http2Server,
   WebTransport,
   testcheck
-} from '../lib/index.js'
+} from '../lib/index.node.js'
 import { echoTestsConnection, runEchoServer } from './testsuite.js'
 
 let http2 = false

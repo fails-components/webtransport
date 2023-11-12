@@ -10,9 +10,6 @@ import { expect } from './fixtures/chai.js'
  */
 
 describe('session', function () {
-  // FIXME: sometimes there are seemingly arbitrary 5s delays in
-  // communicating with the server under node.js
-  this.timeout(30000)
   let forceReliable = false
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
 
@@ -121,55 +118,58 @@ describe('session', function () {
       .with.property('message', 'Opening handshake failed.')
   })
 
-  it('should error when connecting with a bad certificate', async () => {
-    client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
-      serverCertificateHashes: [
-        {
-          algorithm: 'sha-256',
-          value: readCertHash(process.env.CERT_HASH + ':DE:AD:BE:EF')
-        }
-      ],
-      // @ts-ignore
-      forceReliable
+  if (process.env.USE_POLYFILL !== 'true') {
+    // deactivated in polyfill case, no test necessary
+    it('should error when connecting with a bad certificate', async () => {
+      client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
+        serverCertificateHashes: [
+          {
+            algorithm: 'sha-256',
+            value: readCertHash(process.env.CERT_HASH + ':DE:AD:BE:EF')
+          }
+        ],
+        // @ts-ignore
+        forceReliable
+      })
+
+      const [closedResult, readyResult] = await Promise.all([
+        client.closed.catch((err) => err),
+        client.ready.catch((err) => err)
+      ])
+
+      expect(closedResult)
+        .to.be.a('WebTransportError')
+        .with.property('message', 'Opening handshake failed.')
+      expect(readyResult)
+        .to.be.a('WebTransportError')
+        .with.property('message', 'Opening handshake failed.')
     })
 
-    const [closedResult, readyResult] = await Promise.all([
-      client.closed.catch((err) => err),
-      client.ready.catch((err) => err)
-    ])
+    it('should error when connecting with the wrong certificate', async () => {
+      client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
+        serverCertificateHashes: [
+          {
+            algorithm: 'sha-256',
+            value: readCertHash(
+              'DE:AD:BE:EF:' + process.env.CERT_HASH?.substring(12)
+            )
+          }
+        ],
+        // @ts-ignore
+        forceReliable
+      })
 
-    expect(closedResult)
-      .to.be.a('WebTransportError')
-      .with.property('message', 'Opening handshake failed.')
-    expect(readyResult)
-      .to.be.a('WebTransportError')
-      .with.property('message', 'Opening handshake failed.')
-  })
+      const [closedResult, readyResult] = await Promise.all([
+        client.closed.catch((err) => err),
+        client.ready.catch((err) => err)
+      ])
 
-  it('should error when connecting with the wrong certificate', async () => {
-    client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
-      serverCertificateHashes: [
-        {
-          algorithm: 'sha-256',
-          value: readCertHash(
-            'DE:AD:BE:EF:' + process.env.CERT_HASH?.substring(12)
-          )
-        }
-      ],
-      // @ts-ignore
-      forceReliable
+      expect(closedResult)
+        .to.be.a('WebTransportError')
+        .with.property('message', 'Opening handshake failed.')
+      expect(readyResult)
+        .to.be.a('WebTransportError')
+        .with.property('message', 'Opening handshake failed.')
     })
-
-    const [closedResult, readyResult] = await Promise.all([
-      client.closed.catch((err) => err),
-      client.ready.catch((err) => err)
-    ])
-
-    expect(closedResult)
-      .to.be.a('WebTransportError')
-      .with.property('message', 'Opening handshake failed.')
-    expect(readyResult)
-      .to.be.a('WebTransportError')
-      .with.property('message', 'Opening handshake failed.')
-  })
+  }
 })

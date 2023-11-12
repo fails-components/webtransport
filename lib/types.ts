@@ -1,5 +1,8 @@
 import type { WebTransport, WebTransportHash, WebTransportOptions } from './dom'
 import type { IncomingHttpHeaders, Http2Stream } from 'http2'
+import { ParserBase } from './http2/parserbase'
+import { Http2WebTransportSession } from './http2/session'
+import { HttpClient } from './client'
 
 
 /**
@@ -52,6 +55,8 @@ export interface NativeFinishSessionRequest {
    header: IncomingHttpHeaders
    session: Http2Stream
    status: number 
+   protocol: 'capsule' | 'websocket' | 'websocketoverhttp1' | 'http3'
+   head?: Buffer
 }
 
 export type Purpose = 'StreamRecvSignal' | 'StreamRead' | 'StreamWrite' | 'StreamReset' | 'StreamNetworkFinish'
@@ -166,9 +171,11 @@ export interface HttpWTServerSessionVisitorEvent extends HttpWTSessionVisitorEve
 
 export interface ServerSessionRequestEvent {
   header: Object
-  promise: any
+  head?: Buffer|undefined
+  promise?: any
   session: any
-  object: any // the actual transport object itself, actually present on all messages, but required here
+  object?: any // the actual transport object itself, actually present on all messages, but required here
+  protocol: string //'capsule' | 'websocket' | 'http3'
 }
 
 export interface UDPServerSocketSend {
@@ -236,8 +243,11 @@ export interface HttpServerInit extends HttpWebTransportInit {
 
 // see HttpClientJS C++ type
 export interface HttpClientInit extends HttpWebTransportInit {
+  forceReliable?: any
   forceIpv6?: boolean
   localPort?: number
+  createReliableClient?: (cklient: HttpClient) => any
+  createUnreliableClient?: (client: HttpClient) => any
 }
 
 export interface Logger {
@@ -246,10 +256,19 @@ export interface Logger {
   trace: (formatter: any, ...args: any[]) => void
 }
 
-export interface Http2CapsuleParserInit {
-  stream: Http2Stream
+export type CreateParserFunction = (nativesession: Http2WebTransportSession) => ParserBase
+
+export interface ParserInit {
   isclient: boolean
   nativesession: any
+}
+
+export interface ParserHttp2Init extends ParserInit {
+  stream: Http2Stream
+}
+
+export interface ParserWebsocketInit extends ParserInit {
+  ws: WebSocket
 }
 
 export interface ReadDataInt {
