@@ -899,6 +899,7 @@ PUBLIC third_party/boringssl/src/include
 PUBLIC third_party/abseil-cpp
 PUBLIC third_party/googleurl
 PUBLIC third_party/libevent/include
+PUBLIC third_party/zlib
 PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/third_party/libevent/include
 PUBLIC .
 PUBLIC ${Protobuf_INCLUDE_DIRS}
