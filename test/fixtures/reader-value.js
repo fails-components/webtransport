@@ -1,6 +1,6 @@
 /**
  * @template T
- * @typedef {import('node:stream/web').ReadableStream<T>} ReadableStream<T>
+ * @typedef {import('../../lib/webstreams').ReadableStream<T>} ReadableStream<T>
  */
 
 /**
