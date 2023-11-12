@@ -34,6 +34,13 @@ async function runTests(certificate, serverAddress) {
   const env = process.argv[2]
   let http2 = false
   if (process.argv[3] === 'http2') http2 = true
+  let polyfill = false
+  let slice = 4
+  if (process.argv.length > 3 && process.argv[4] === 'polyfill') {
+    polyfill = true
+    slice++
+    if (env === 'node') throw new Error('Polyfill not supported on node')
+  }
   /** @type {string} */
   let command = ''
   /** @type {string[]} */
@@ -60,13 +67,16 @@ async function runTests(certificate, serverAddress) {
     await tests
   } else if (env === 'chromium') {
     command = 'playwright-test'
-    args = ['./test/*.spec.js', ...process.argv.slice(4)]
+    const otheropts = []
+    if (polyfill) otheropts.push('--config', './test/pw-no-https-errors.json')
+    args = ['./test/*.spec.js', ...otheropts, ...process.argv.slice(slice)]
     const tests = execa(command, args, {
       env: {
         DEBUG_COLORS: process.env.CI ? '' : 'true',
         CERT_HASH: certificate,
         SERVER_URL: serverAddress,
-        USE_HTTP2: http2 ? 'true' : 'false'
+        USE_HTTP2: http2 ? 'true' : 'false',
+        USE_POLYFILL: polyfill ? 'true' : 'false'
       },
       stdio: ['inherit', 'inherit', 'inherit']
     })

@@ -2,8 +2,12 @@
   "name": "@fails-components/webtransport",
   "version": "0.3.1",
   "description": "A component to add webtransport support (server and client) to node.js using libquiche",
-  "main": "lib/index.js",
-  "module": "lib/index.js",
+  "exports": {
+    "module": {
+      "node" :  "./dist/lib/index.node.js",
+      "browser": "./dist/lib/index.browser.js"
+    } 
+  },
   "engines": {
     "node": ">=16.5"
   },
@@ -11,10 +15,11 @@
   "types": "./dist/lib/index.d.ts",
   "scripts": {
     "start": "node test/echoserver.js",
-    "test": "npm run test:node && npm run test:node:http2 && npm run test:chromium",
+    "test": "npm run test:node && npm run test:node:http2 && npm run test:chromium && npm run test:chromium:http2:polyfill",
     "test:node": "node test/index.js node http3",
     "test:node:http2": "node test/index.js node http2",
     "test:chromium": "node test/index.js chromium http3",
+    "test:chromium:http2:polyfill": "node test/index.js chromium http2 polyfill",
     "oldtest": "node old_test/test.js",
     "oldtesthttp2": "node old_test/test.js http2",
     "install": "node build.js install",
@@ -79,6 +84,7 @@
     ]
   },
   "browser": {
-    "./test/fixtures/webtransport.js": "./test/fixtures/webtransport.browser.js"
+    "./test/fixtures/webtransport.js": "./test/fixtures/webtransport.browser.js",
+    "./lib/webstreams.js": "./lib/webstreams.browser.js"
   }
 }
