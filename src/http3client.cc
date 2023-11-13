@@ -255,7 +255,7 @@ namespace quic
                 }
                 // QuicSpdyStreamPeer::set_ack_listener(stream, ack_listener);
 
-                ssize_t ret = 0;
+                size_t ret = 0;
                 if (hasheaders)
                 {
                     if ((*spdy_headers.get())[":authority"].as_string().empty())
