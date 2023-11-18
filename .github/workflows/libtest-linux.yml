@@ -41,6 +41,12 @@ jobs:
       - name: Build library
         run: npm run build
 
+      - name: Run node unit tests http2
+        run:  NODE_ENV=production npm run test:node:http2
+
+      - name: Run browser unit tests http2 polyfill
+        run:  NODE_ENV=production npm run test:chromium:http2:polyfill
+
       - name: Run node unit tests
         run:  NODE_ENV=production npm run test:node
 
@@ -79,3 +85,6 @@ jobs:
       
       - name: Run old unit tests
         run: NODE_ENV=production npm run oldtest
+
+      - name: Run old unit tests http2
+        run: NODE_ENV=production npm run oldtest http2

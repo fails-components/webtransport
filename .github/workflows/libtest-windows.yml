@@ -50,3 +50,13 @@ jobs:
         run: |
           $env:NODE_ENV="production"
           npm run oldtest
+
+      - name: Run node unit tests http2
+        run: |
+          $env:NODE_ENV="production"
+          npm run test:node:http2
+
+      - name: Run old unit tests http2
+        run: |
+          $env:NODE_ENV="production"
+          npm run oldtesthttp2
