@@ -890,7 +890,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quiche/quiche/quic/core/proto/source_add
 
 #target_sources(gquiche PRIVATE ${PROTO_SRCS})
 
-set_property(TARGET gquiche PROPERTY CXX_STANDARD 17)
+set_property(TARGET gquiche PROPERTY CXX_STANDARD 20)
 
 target_include_directories(gquiche
 PUBLIC platform
