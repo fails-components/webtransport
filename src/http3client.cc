@@ -67,6 +67,84 @@ namespace quic
         }
     };
 
+    class NodeJSProofVerifier : public quic::ProofVerifier
+    {
+    public:
+
+        NodeJSProofVerifier(EnvGetter *envg) : envg_(envg)
+        {
+
+        }
+
+        QuicAsyncStatus VerifyProof(
+            const std::string& hostname, const uint16_t port,
+            const std::string& server_config, QuicTransportVersion transport_version,
+            absl::string_view chlo_hash, const std::vector<std::string>& certs,
+            const std::string& cert_sct, const std::string& signature,
+            const ProofVerifyContext* context, std::string* error_details,
+            std::unique_ptr<ProofVerifyDetails>* details,
+            std::unique_ptr<ProofVerifierCallback> callback) {
+                auto env = envg_->getEnv();
+                Napi::HandleScope scope(env);
+                
+                Napi::Object retObj = Napi::Object::New(env);
+                retObj.Set("hostname", hostname);
+                retObj.Set("port", port);
+                retObj.Set("serverconfig", server_config);
+                // todo certs
+
+                Napi::Array jscerts = Napi::Array::New(env, certs.size());
+                for (size_t i = 0; i < certs.size(); i++) {
+                    jscerts.Set(i, certs[i]);
+                }
+                retObj.Set("signature", signature);
+
+                Napi::Value verifyres = env.Global().Get("FAILSVerifyProof").As<Napi::Function>().Call({
+                    retObj });
+                if (verifyres.As<Napi::Boolean>().Value()) {
+                    return QUIC_SUCCESS;
+
+                } else {
+                    return QUIC_FAILURE;
+                }
+        }
+
+        QuicAsyncStatus VerifyCertChain(
+            const std::string& hostname, const uint16_t port,
+            const std::vector<std::string>& certs, const std::string& ocsp_response,
+            const std::string& cert_sct, const ProofVerifyContext* context,
+            std::string* error_details, std::unique_ptr<ProofVerifyDetails>* details,
+            uint8_t* out_alert, std::unique_ptr<ProofVerifierCallback> callback) {
+                auto env = envg_->getEnv();
+                Napi::HandleScope scope(env);
+                
+                Napi::Object retObj = Napi::Object::New(env);
+                retObj.Set("hostname", hostname);
+                retObj.Set("port", port);
+                // todo certs
+
+                Napi::Array jscerts = Napi::Array::New(env, certs.size());
+                for (size_t i = 0; i < certs.size(); i++) {
+                    jscerts.Set(i, certs[i]);
+                }
+                Napi::Value verifyres = env.Global().Get("FAILSVerifyProof").As<Napi::Function>().Call({
+                    retObj });
+                if (verifyres.As<Napi::Boolean>().Value()) {
+                    return QUIC_SUCCESS;
+
+                } else {
+                    return QUIC_FAILURE;
+                }
+        }
+
+        std::unique_ptr<ProofVerifyContext> CreateDefaultContext() {
+            return nullptr;
+        }
+  
+    private:
+        EnvGetter *envg_;
+    };
+
     QuicStreamId GetNthClientInitiatedBidirectionalStreamId(
         QuicTransportVersion version, int n)
     {
@@ -1134,7 +1212,7 @@ namespace quic
         std::unique_ptr<QuicConnectionHelperInterface> helper =
             std::make_unique<QuicDefaultConnectionHelper>();
 
-        std::unique_ptr<ChromiumWebTransportFingerprintProofVerifier> verifier;
+        std::unique_ptr<ProofVerifier> verifier;
 
         if (serverCertificateHashes.size() > 0)
         {
@@ -1143,7 +1221,7 @@ namespace quic
             for (auto cur = serverCertificateHashes.begin();
                  cur != serverCertificateHashes.end(); cur++)
             {
-                if (!verifier->AddFingerprint(*cur))
+                if (!static_cast<ChromiumWebTransportFingerprintProofVerifier*>(verifier.get())->AddFingerprint(*cur))
                 {
                     Napi::Error::New(env, "serverCertificateHashes is not valid fingerprint").ThrowAsJavaScriptException();
                     return;
@@ -1152,8 +1230,7 @@ namespace quic
         }
         else
         {
-            Napi::Error::New(env, "No supported verification method included").ThrowAsJavaScriptException();
-            return;
+            verifier = std::make_unique<NodeJSProofVerifier>(this);
         }
 
         std::unique_ptr<Http3SessionCache> cache;

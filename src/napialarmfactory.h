@@ -124,7 +124,7 @@ namespace quic
         timerset_ = false;
       }
 
-      Napi::Value timeoutobj = alarmjs_->Env().Global().Get("setTimeoutAlarm").As<Napi::Function>().Call({
+      Napi::Value timeoutobj = alarmjs_->Env().Global().Get("FAILSsetTimeoutAlarm").As<Napi::Function>().Call({
           alarmjs_->Value().As<Napi::Object>(),
           Napi::Value::From(alarmjs_->Env(), timedelay),
       });
