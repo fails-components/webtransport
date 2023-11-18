@@ -944,7 +944,7 @@ add_definitions(-DNAPI_VERSION=${napi_build_version})
 
 if(MSVC AND CMAKE_JS_NODELIB_DEF AND CMAKE_JS_NODELIB_TARGET)
   # Generate node.lib
-  execute_process(COMMAND ${CMAKE_AR} /def:${CMAKE_JS_NODELIB_DEF} /out:${CMAKE_JS_NODELIB_TARGET} ${CMAKE_STATIC_LINKER_FLAGS})
+  execute_process(COMMAND ${CMAKE_LINKER} /def:${CMAKE_JS_NODELIB_DEF} /out:${CMAKE_JS_NODELIB_TARGET} ${CMAKE_STATIC_LINKER_FLAGS})
 endif()
 
 
@@ -963,7 +963,7 @@ PUBLIC ${CMAKE_JS_INC})
 target_link_libraries(${PROJECT_NAME} gquiche ssl zlibstatic crypto  ${CMAKE_JS_LIB} )
 set_target_properties(${PROJECT_NAME}  PROPERTIES LINKER_LANGUAGE CXX)
 IF (WIN32)
-  # place for custum window stuff
+  # place for custom window stuff
 ELSE(WIN32)
 IF(APPLE)
 ELSE(APPLE)
@@ -979,11 +979,6 @@ string(REPLACE "\n" "" NODE_ADDON_API_DIR ${NODE_ADDON_API_DIR})
 string(REPLACE "\"" "" NODE_ADDON_API_DIR ${NODE_ADDON_API_DIR})
 target_include_directories(${PROJECT_NAME}
  PRIVATE ${NODE_ADDON_API_DIR})
-
-if(MSVC AND CMAKE_JS_NODELIB_DEF AND CMAKE_JS_NODELIB_TARGET)
-  # Generate node.lib
-  execute_process(COMMAND ${CMAKE_AR} /def:${CMAKE_JS_NODELIB_DEF} /out:${CMAKE_JS_NODELIB_TARGET} ${CMAKE_STATIC_LINKER_FLAGS})
-endif()
 
 
 #add_definitions(-DNAPI_VERSION=3)
