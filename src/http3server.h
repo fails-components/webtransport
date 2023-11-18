@@ -13,7 +13,7 @@
 #include <memory>
 
 #include <napi.h>
-#include <uv.h>
+#include <evutil.h>
 
 #include "src/http3serverbackend.h"
 #include "src/http3eventloop.h"

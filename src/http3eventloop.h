@@ -13,7 +13,6 @@
 #include <memory>
 
 #include <napi.h>
-#include <uv.h>
 
 #include "src/http3serverbackend.h"
 #include "quiche/quic/core/crypto/quic_crypto_server_config.h"

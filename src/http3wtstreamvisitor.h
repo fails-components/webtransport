@@ -12,7 +12,6 @@
 #define HTTP3_WT_STREAM_VISITOR_H_
 
 #include <napi.h>
-#include <uv.h>
 
 #include <string>
 
