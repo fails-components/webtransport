@@ -82,7 +82,6 @@ const extractthirdparty = async () => {
       'third_party/quiche',
       'third_party/zlib',
       'third_party/googleurl',
-      'third_party/libevent',
       'third_party/protobuf'
     ]
     for (let mod in submodules) {

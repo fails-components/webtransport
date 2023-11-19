@@ -30,10 +30,6 @@ set(ABSL_PROPAGATE_CXX_STD ON)
 add_subdirectory(third_party/abseil-cpp EXCLUDE_FROM_ALL)
 
 
-# include libevent
-SET(EVENT__DISABLE_OPENSSL ON CACHE BOOL "Define if libevent should build without support for OpenSSL encryption")
-add_subdirectory(third_party/libevent EXCLUDE_FROM_ALL)
-
 # include protobuf
 SET(protobuf_WITH_ZLIB OFF CACHE BOOL "Build with zlib support")
 SET(protobuf_BUILD_TESTS OFF CACHE BOOL "Build tests")
@@ -70,9 +66,6 @@ endif(COMMAND cmake_policy)
 #third_party/quiche/quiche/quic/core/proto/crypto_server_config.proto
 #third_party/quiche/quiche/quic/core/proto/source_address_token.proto)
 
-
-
-add_compile_definitions(QUICHE_ENABLE_LIBEVENT)
 
 
 IF( NOT (WIN32 OR APPLE))
@@ -324,8 +317,8 @@ third_party/quiche/quiche/http2/http2_constants.h
 third_party/quiche/quiche/http2/http2_structures.cc
 third_party/quiche/quiche/http2/http2_structures.h
 #third_party/quiche/quiche/http2/platform/api/http2_macros.h
-third_party/quiche/quiche/quic/bindings/quic_libevent.h
-third_party/quiche/quiche/quic/bindings/quic_libevent.cc
+#third_party/quiche/quiche/quic/bindings/quic_libevent.h
+#third_party/quiche/quiche/quic/bindings/quic_libevent.cc
 third_party/quiche/quiche/quic/core/chlo_extractor.cc
 third_party/quiche/quiche/quic/core/chlo_extractor.h
 third_party/quiche/quiche/quic/core/quic_ping_manager.cc
@@ -898,10 +891,8 @@ PUBLIC third_party/quiche
 PUBLIC third_party/boringssl/src/include
 PUBLIC third_party/abseil-cpp
 PUBLIC third_party/googleurl
-PUBLIC third_party/libevent/include
 PUBLIC third_party/zlib
 PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/third_party/zlib
-PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/third_party/libevent/include
 PUBLIC .
 PUBLIC ${Protobuf_INCLUDE_DIRS}
 PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
