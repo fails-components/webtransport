@@ -38,33 +38,6 @@ const callGit = (args, opts) => {
   })
 }
 
-const printthirdpartyinfo = async () => {
-  let destdir = process.cwd() + '/third_party'
-  try {
-    const files = await readdir(destdir)
-    for (const file of files)
-      console.error('third_party file:', file);
-  } catch (err) {
-    console.error(err);
-  }
-  destdir = process.cwd() + '/third_party/quiche/quiche'
-  try {
-    const files = await readdir(destdir)
-    for (const file of files)
-      console.error('third_party quiche/quiche file :', file);
-  } catch (err) {
-    console.error(err);
-  }  
-  destdir = process.cwd() + '/third_party/quiche/quiche/common'
-  try {
-    const files = await readdir(destdir)
-    for (const file of files)
-      console.error('third_party quiche/quiche/common file :', file);
-  } catch (err) {
-    console.error(err);
-  }  
-}
-
 const extractthirdparty = async () => {
   let tmppath
   let fatal = false
@@ -144,16 +117,12 @@ const extractthirdparty = async () => {
     console.error('failed to get third party code from git', error)
     fatal = true
   }
-  console.error('debug third party 1')
-  await printthirdpartyinfo()
   try {
     await rm(tmppath, { recursive: true, maxRetries: 10 })
   } catch (error) {
     console.error('failed to remove temp dir ', error)
   }
   if (fatal) throw new Error('Cannot get thirdparty code')
-  console.error('debug third party 2')
-  await printthirdpartyinfo()
   console.error('Extracting third party lib code from git finished.')
 }
 
@@ -211,8 +180,6 @@ const buildTypes = async () => {
 }
 
 const execbuild = async (args) => {
-  console.error('debug third party 4')
-  await printthirdpartyinfo()
   return new Promise((resolve, reject) => {
     const cmakejs = 'cmake-js'
     // if (platform === 'win32') cmakejs = 'cmake-js.exe'
@@ -286,8 +253,6 @@ if (argv.length > 2) {
       try {
         // if we do not succeed, we have to build it ourselves
         await extractthirdparty()
-        console.error('debug third party 3')
-        await printthirdpartyinfo()
         await execbuild(['build', ...platformargs])
       } catch (error) {
         console.error('Building binary failed: ', error)
