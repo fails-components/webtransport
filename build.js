@@ -47,11 +47,19 @@ const printthirdpartyinfo = async () => {
   } catch (err) {
     console.error(err);
   }
-  destdir = process.cwd() + '/third_party/quiche/quiche/common/http'
+  destdir = process.cwd() + '/third_party/quiche/quiche'
   try {
     const files = await readdir(destdir)
     for (const file of files)
-      console.error('third_party quiche/quiche/common/http file :', file);
+      console.error('third_party quiche/quiche file :', file);
+  } catch (err) {
+    console.error(err);
+  }  
+  destdir = process.cwd() + '/third_party/quiche/quiche/common'
+  try {
+    const files = await readdir(destdir)
+    for (const file of files)
+      console.error('third_party quiche/quiche/common file :', file);
   } catch (err) {
     console.error(err);
   }  
