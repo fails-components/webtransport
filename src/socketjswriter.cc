@@ -19,13 +19,10 @@ namespace quic
     {
         Napi::Object retObj = Napi::Object::New(eg_->getEnv());
 
-        Napi::Object msgVal =
-            Napi::Uint8Array::New(eg_->getEnv(),
-                                  buf_len,
-                                  Napi::ArrayBuffer::New(eg_->getEnv(), (void *)const_cast<char *>(buffer), buf_len),
-                                  0);
+        Napi::Buffer<char> nbuffer = Napi::Buffer<char>::New(eg_->getEnv(), buf_len);
+        memcpy(nbuffer.Data(), buffer, buf_len);
 
-        retObj.Set("msg", msgVal);
+        retObj.Set("msg", nbuffer);
         retObj.Set("length", buf_len);
         retObj.Set("offset", 0);
         retObj.Set("port", peer_address.port());
