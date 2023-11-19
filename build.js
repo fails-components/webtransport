@@ -41,7 +41,7 @@ const callGit = (args, opts) => {
 const printthirdpartyinfo = async () => {
   let destdir = process.cwd() + '/third_party'
   try {
-    const files = await readdir(destdir))
+    const files = await readdir(destdir)
     for (const file of files)
       console.error('third_party file:', file);
   } catch (err) {
@@ -49,7 +49,7 @@ const printthirdpartyinfo = async () => {
   }
   destdir = process.cwd() + '/third_party/quiche/quiche'
   try {
-    const files = await readdir(destdir))
+    const files = await readdir(destdir)
     for (const file of files)
       console.error('third_party quiche/quiche file :', file);
   } catch (err) {
