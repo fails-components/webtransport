@@ -47,11 +47,11 @@ const printthirdpartyinfo = async () => {
   } catch (err) {
     console.error(err);
   }
-  destdir = process.cwd() + '/third_party/quiche/quiche'
+  destdir = process.cwd() + '/third_party/quiche/quiche/common/http'
   try {
     const files = await readdir(destdir)
     for (const file of files)
-      console.error('third_party quiche/quiche file :', file);
+      console.error('third_party quiche/quiche/common/http file :', file);
   } catch (err) {
     console.error(err);
   }  
@@ -203,6 +203,8 @@ const buildTypes = async () => {
 }
 
 const execbuild = async (args) => {
+  console.error('debug third party 4')
+  await printthirdpartyinfo()
   return new Promise((resolve, reject) => {
     const cmakejs = 'cmake-js'
     // if (platform === 'win32') cmakejs = 'cmake-js.exe'
@@ -276,6 +278,8 @@ if (argv.length > 2) {
       try {
         // if we do not succeed, we have to build it ourselves
         await extractthirdparty()
+        console.error('debug third party 3')
+        await printthirdpartyinfo()
         await execbuild(['build', ...platformargs])
       } catch (error) {
         console.error('Building binary failed: ', error)
