@@ -1,6 +1,6 @@
 import { arch, argv, env, platform } from 'node:process'
 import { spawn } from 'node:child_process'
-import { cp, rename, mkdtemp, rm, access } from 'node:fs/promises'
+import { cp, rename, mkdtemp, rm, access, readdir } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import path from 'node:path'
 import pkg from './package.json' assert { type: 'json' }
@@ -36,6 +36,25 @@ const callGit = (args, opts) => {
       }
     })
   })
+}
+
+const printthirdpartyinfo = async () => {
+  let destdir = process.cwd() + '/third_party'
+  try {
+    const files = await readdir(destdir))
+    for (const file of files)
+      console.error('third_party file:', file);
+  } catch (err) {
+    console.error(err);
+  }
+  destdir = process.cwd() + '/third_party/quiche/quiche'
+  try {
+    const files = await readdir(destdir))
+    for (const file of files)
+      console.error('third_party quiche/quiche file :', file);
+  } catch (err) {
+    console.error(err);
+  }  
 }
 
 const extractthirdparty = async () => {
@@ -117,12 +136,16 @@ const extractthirdparty = async () => {
     console.error('failed to get third party code from git', error)
     fatal = true
   }
+  console.error('debug third party 1')
+  await printthirdpartyinfo()
   try {
     await rm(tmppath, { recursive: true, maxRetries: 10 })
   } catch (error) {
     console.error('failed to remove temp dir ', error)
   }
   if (fatal) throw new Error('Cannot get thirdparty code')
+  console.error('debug third party 2')
+  await printthirdpartyinfo()
   console.error('Extracting third party lib code from git finished.')
 }
 
