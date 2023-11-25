@@ -8,9 +8,13 @@ async function startServer() {
   return new Promise((resolve, reject) => {
     let foundAddress = false
 
-    const server = execa('node', ['./test/fixtures/server.js'], {
-      stdio: ['inherit', 'inherit', 'inherit', 'ipc']
-    })
+    const server = execa(
+      'node',
+      ['./test/fixtures/server.js', '--trace-uncaught'],
+      {
+        stdio: ['inherit', 'inherit', 'inherit', 'ipc']
+      }
+    )
     server.on('message', (data) => {
       if (!foundAddress) {
         foundAddress = true
