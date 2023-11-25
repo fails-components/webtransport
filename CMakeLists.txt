@@ -927,7 +927,6 @@ protobuf::libprotobuf
 ssl 
 zlibstatic
 crypto
-event_core
 )
 
 
