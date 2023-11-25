@@ -11,7 +11,6 @@
 #define WT_HTTP3_CLIENT_H
 
 #include <napi.h>
-#include <evutil.h>
 
 #include <cstdint>
 #include <memory>
