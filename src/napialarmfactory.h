@@ -49,9 +49,16 @@ namespace quic
 
   class NapiAlarmJS : public Napi::ObjectWrap<NapiAlarmJS>
   {
+  friend class NapiAlarm;
   public:
     NapiAlarmJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<NapiAlarmJS>(info), alarm_()
     {
+      if (FAILSsetTimeoutAlarm_.IsEmpty()) {
+        FAILSsetTimeoutAlarm_ = Napi::Persistent(Env().Global().Get("FAILSsetTimeoutAlarm").As<Napi::Function>());
+      }
+      if (clearTimeout_.IsEmpty()) {
+        clearTimeout_ = Napi::Persistent(Env().Global().Get("clearTimeout").As<Napi::Function>());
+      }
     }
 
     void setAlarm(NapiAlarm *alarm)
@@ -76,6 +83,8 @@ namespace quic
 
   protected:
     NapiAlarm* alarm_; // unowned
+    static Napi::FunctionReference FAILSsetTimeoutAlarm_;
+    static Napi::FunctionReference clearTimeout_;
   };
 
   class NapiAlarm : public QuicAlarm
@@ -92,7 +101,7 @@ namespace quic
     {
       if (timerset_)
       {
-        alarmjs_->Env().Global().Get("clearTimeout").As<Napi::Function>().Call({alarmref_.Value()});
+        NapiAlarmJS::clearTimeout_.Call({alarmref_.Value()});
         alarmref_.Unref();
         timerset_ = false;
       }
@@ -124,7 +133,7 @@ namespace quic
         timerset_ = false;
       }
 
-      Napi::Value timeoutobj = alarmjs_->Env().Global().Get("FAILSsetTimeoutAlarm").As<Napi::Function>().Call({
+      Napi::Value timeoutobj = NapiAlarmJS::FAILSsetTimeoutAlarm_.Call({
           alarmjs_->Value().As<Napi::Object>(),
           Napi::Value::From(alarmjs_->Env(), timedelay),
       });
@@ -136,7 +145,7 @@ namespace quic
     {
       if (timerset_)
       {
-        alarmjs_->Env().Global().Get("clearTimeout").As<Napi::Function>().Call({alarmref_.Value()});
+        NapiAlarmJS::clearTimeout_.Call({alarmref_.Value()});
         alarmref_.Unref();
         timerset_ = false;
       }
