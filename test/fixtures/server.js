@@ -37,14 +37,17 @@ export async function createServer() {
   server.ready
     .then(async () => {
       // set up listeners for the different server paths used by the tests
+      console.log('server 1')
 
       await Promise.all(
         [
           // echo server, initiated by remote
           async () => {
+            console.log('server 2')
             for await (const session of getReaderStream(
               server.sessionStream('/bidirectional_client_initiated_echo')
             )) {
+              console.log('server 3')
               try {
                 const bidiStream = await getReaderValue(
                   session.incomingBidirectionalStreams
@@ -60,9 +63,11 @@ export async function createServer() {
 
           // echo server, initiated by local
           async () => {
+            console.log('server 4')
             for await (const session of getReaderStream(
               server.sessionStream('/bidirectional_server_initiated_echo')
             )) {
+              console.log('server 5')
               try {
                 const stream = await session.createBidirectionalStream()
 
@@ -93,9 +98,11 @@ export async function createServer() {
 
           // echo datagrams, initiated by remote
           async () => {
+            console.log('server 6')
             for await (const session of getReaderStream(
               server.sessionStream('/datagrams_client_send')
             )) {
+              console.log('server 7')
               // datagram transport is unreliable, at least one message should make it through
               const expected = 1
 
@@ -122,9 +129,11 @@ export async function createServer() {
 
           // echo datagrams, initiated by local
           async () => {
+            console.log('server 8')
             for await (const session of getReaderStream(
               server.sessionStream('/datagrams_server_send')
             )) {
+              console.log('server 9')
               const writer = session.datagrams.writable.getWriter()
               let closed = false
 
@@ -150,18 +159,22 @@ export async function createServer() {
 
           // cleanly close remote sessions
           async () => {
+            console.log('server 10')
             for await (const session of getReaderStream(
               server.sessionStream('/session_close')
             )) {
+              console.log('server 11')
               session.close()
             }
           },
 
           // cleanly close remote sessions
           async () => {
+            console.log('server 12')
             for await (const session of getReaderStream(
               server.sessionStream('/session_close_with_reason')
             )) {
+              console.log('server 13')
               session.close({
                 closeCode: 7,
                 reason: 'this is the reason'
@@ -171,9 +184,11 @@ export async function createServer() {
 
           // send data over unidirectional stream, initiated by remote
           async () => {
+            console.log('server 14')
             for await (const session of getReaderStream(
               server.sessionStream('/unidirectional_client_send')
             )) {
+              console.log('server 15')
               try {
                 const stream = await getReaderValue(
                   session.incomingUnidirectionalStreams
@@ -199,9 +214,11 @@ export async function createServer() {
 
           // send data over unidirectional stream, initiated by local
           async () => {
+            console.log('server 16')
             for await (const session of getReaderStream(
               server.sessionStream('/unidirectional_server_send')
             )) {
+              console.log('server 17')
               const stream = await session.createUnidirectionalStream()
 
               await writeStream(stream, KNOWN_BYTES)
@@ -210,9 +227,11 @@ export async function createServer() {
 
           // delays reading from stream after client writes
           async () => {
+            console.log('server 18')
             for await (const session of getReaderStream(
               server.sessionStream('/unidirectional_server_delay_before_read')
             )) {
+              console.log('server 19')
               const stream = await getReaderValue(
                 session.incomingUnidirectionalStreams
               )

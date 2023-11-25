@@ -35,22 +35,28 @@ export async function getReaderValue(readableStream) {
  */
 export async function* getReaderStream(readableStream) {
   const reader = readableStream.getReader()
+  console.log('reader stream 1')
 
   try {
     while (true) {
+      console.log('reader stream 2')
       const { done, value } = await reader.read()
+      console.log('reader stream 3')
 
       if (done) {
+        console.log('reader stream 4')
         return
       }
 
       if (!value) {
+        console.log('reader stream 5')
         throw new Error('Stream value was undefined')
       }
 
       yield value
     }
   } finally {
+    console.log('reader stream 6')
     reader.releaseLock()
   }
 }

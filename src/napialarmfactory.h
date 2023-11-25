@@ -54,14 +54,10 @@ namespace quic
     NapiAlarmJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<NapiAlarmJS>(info), alarm_()
     {
       if (FAILSsetTimeoutAlarm_.IsEmpty()) {
-        printf("FSTA 1\n");
         FAILSsetTimeoutAlarm_ = Napi::Persistent(Env().Global().Get("FAILSsetTimeoutAlarm").As<Napi::Function>());
-        printf("FSTA 2\n");
       }
       if (clearTimeout_.IsEmpty()) {
-        printf("CT 1\n");
         clearTimeout_ = Napi::Persistent(Env().Global().Get("clearTimeout").As<Napi::Function>());
-        printf("CT 2\n");
       }
     }
 
