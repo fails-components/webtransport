@@ -56,7 +56,6 @@ namespace quic
         Http3ClientJS(const Napi::CallbackInfo &info);
 
         ~Http3ClientJS() {
-            printf("~Http3ClientJS\n");
         }
 
         Napi::Env getEnv() override

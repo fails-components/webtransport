@@ -185,8 +185,7 @@ namespace quic
   }
 
   Http3ServerJS::~Http3ServerJS()
-  {
-    printf("~Http3ServerJS\n");  
+  {  
   }
 
   void Http3ServerJS::destroy(const Napi::CallbackInfo &info)

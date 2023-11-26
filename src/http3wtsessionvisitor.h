@@ -43,7 +43,7 @@ namespace quic
 
         ~Http3WTSession()
         {
-            printf("session destruct %x\n", this);
+            // printf("session destruct %x\n", this);
         }
 
         // need to be called immediately after new
@@ -140,10 +140,6 @@ namespace quic
     public:
         Http3WTSessionJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Http3WTSessionJS>(info)
         {
-        }
-
-        ~Http3WTSessionJS() {
-            printf("~Http3WTSessionJS\n");
         }
 
         void setObj(Http3WTSession *wtsession)
