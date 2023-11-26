@@ -80,9 +80,9 @@ try {
     // was not an execa error
     throw err
   }
-  console.log('Error cause', err)
 
   if (err.failed || err.timedOut || err.isCancelled || err.isKilled) {
+    console.log('Error cause mocha process', err)
     success = false
   }
 } finally {

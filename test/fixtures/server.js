@@ -15,17 +15,14 @@ export async function createServer() {
     { shortName: 'O', value: 'WebTransport Test Server' },
     { shortName: 'CN', value: '127.0.0.1' }
   ]
-  console.log('server nmark1')
 
   const certificate = await generateWebTransportCertificate(attrs, {
     days: 13
   })
-  console.log('server nmark2')
 
   if (certificate == null) {
     throw new Error('Certificate generation failed')
   }
-  console.log('server nmark3')
 
   const server = new Http3Server({
     /*   port: 8080,
@@ -37,12 +34,9 @@ export async function createServer() {
     privKey: certificate.private
   })
 
-  console.log('server nmark4')
-
   server.ready
     .then(async () => {
       // set up listeners for the different server paths used by the tests
-      console.log('server nmark5')
 
       await Promise.all(
         [
