@@ -166,7 +166,7 @@ export interface Http3ServerListeningEvent {
 
 export interface Http3ServerEventHandler {
   onHttp3WTSessionVisitor: (evt: Http3WTServerSessionVisitorEvent) => void
-  onServerError: () => void
+  onServerError: (error?: Error) => void
   onServerListening: (evt: Http3ServerListeningEvent) => void
   onServerClose: () => void
 }
