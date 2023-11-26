@@ -80,6 +80,7 @@ try {
     // was not an execa error
     throw err
   }
+  console.log('Error cause', err)
 
   if (err.failed || err.timedOut || err.isCancelled || err.isKilled) {
     success = false
