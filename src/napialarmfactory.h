@@ -55,9 +55,11 @@ namespace quic
     {
       if (FAILSsetTimeoutAlarm_.IsEmpty()) {
         FAILSsetTimeoutAlarm_ = Napi::Persistent(Env().Global().Get("FAILSsetTimeoutAlarm").As<Napi::Function>());
+        FAILSsetTimeoutAlarm_.SuppressDestruct();
       }
       if (clearTimeout_.IsEmpty()) {
         clearTimeout_ = Napi::Persistent(Env().Global().Get("clearTimeout").As<Napi::Function>());
+        clearTimeout_.SuppressDestruct();
       }
     }
 
