@@ -17,14 +17,14 @@
 
 #include <string>
 
+#include "src/librarymain.h"
 #include "src/http3wtstreamvisitor.h"
+#include "src/http3wtsessionvisitor.h"
 
 #include "quiche/quic/core/web_transport_interface.h"
 #include "quiche/quic/platform/api/quic_logging.h"
 #include "quiche/common/quiche_circular_deque.h"
 #include "quiche/common/platform/api/quiche_mem_slice.h"
-
-#include "src/http3eventloop.h"
 
 namespace quic
 {
@@ -37,7 +37,7 @@ namespace quic
 
     public:
         Http3WTSession()
-            : ordBidiStreams(0), ordUnidiStreams(0), session_(nullptr), eventloop_(nullptr), js_(nullptr)
+            : ordBidiStreams(0), ordUnidiStreams(0), session_(nullptr), js_(nullptr)
         {
         }
 
@@ -47,16 +47,7 @@ namespace quic
         }
 
         // need to be called immediately after new
-        void init(WebTransportSession *session, Http3EventLoop *eventloop)
-        {
-            session_ = session;
-            eventloop_ = eventloop;
-            if (session_) {
-                session_->SetOnDraining([this]() {
-                    eventloop_->informGoawayReceived(this);
-                }); 
-            }
-        }
+        void init(WebTransportSession *session);
 
         class Visitor : public WebTransportVisitor
         {
@@ -70,60 +61,11 @@ namespace quic
             void OnSessionClosed(WebTransportSessionError error_code,
                                  const std::string &error_message) override;
 
-            void OnIncomingBidirectionalStreamAvailable() override
-            {
-                if (!session_->session_)
-                    return;
-                while (true)
-                {
-                    WebTransportStream *stream =
-                        session_->session_->AcceptIncomingBidirectionalStream();
-                    if (stream == nullptr)
-                    {
-                        return;
-                    }
-                    Http3WTStream *wtstream = new Http3WTStream(stream, session_->eventloop_);
-                    QUIC_DVLOG(1)
-                        << "Http3WTSession received a bidirectional stream "
-                        << stream->GetStreamId();
-                    stream->SetVisitor(
-                        std::make_unique<Http3WTStream::Visitor>(wtstream));
-                    session_->eventloop_->informAboutStream(true, true, session_, static_cast<Http3WTStream *>(wtstream));
-                    stream->visitor()->OnCanRead();
-                }
-            }
+            void OnIncomingBidirectionalStreamAvailable() override;
 
-            void OnIncomingUnidirectionalStreamAvailable() override
-            {
-                if (!session_->session_)
-                    return;
-                while (true)
-                {
-                    WebTransportStream *stream =
-                        session_->session_->AcceptIncomingUnidirectionalStream();
-                    if (stream == nullptr)
-                    {
-                        return;
-                    }
-                    Http3WTStream *wtstream = new Http3WTStream(stream, session_->eventloop_);
-                    QUIC_DVLOG(1)
-                        << "Http3WTSession received a unidirectional stream";
-                    stream->SetVisitor(
-                        std::make_unique<Http3WTStream::Visitor>(wtstream));
-                    session_->eventloop_->informAboutStream(true, false, session_, static_cast<Http3WTStream *>(wtstream));
-                    stream->visitor()->OnCanRead();
-                }
-            }
+            void OnIncomingUnidirectionalStreamAvailable() override;
 
-            void OnDatagramReceived(absl::string_view datagram) override
-            {
-                // printf("OnDatagramReceived %d %x %x\n", getpid(), this, session_);
-                session_->eventloop_->informDatagramReceived(session_, datagram);
-                /*auto buffer = MakeUniqueBuffer(&allocator_, datagram.size());
-                memcpy(buffer.get(), datagram.data(), datagram.size());
-                quiche::QuicheMemSlice slice(std::move(buffer), datagram.size());
-                session_->SendOrQueueDatagram(std::move(slice));*/
-            }
+            void OnDatagramReceived(absl::string_view datagram) override;
 
             void OnCanCreateNewOutgoingBidirectionalStream() override
             {
@@ -153,135 +95,48 @@ namespace quic
             TrySendingUnidirectionalStreams();
         }
 
-        void TrySendingBidirectionalStreams()
-        {
-            if (!session_)
-                return;
-            while (ordBidiStreams > 0 &&
-                   session_->CanOpenNextOutgoingBidirectionalStream())
-            {
-                QUIC_DVLOG(1)
-                    << "Http3WTSessionVisitor opens a bidirectional stream";
-                WebTransportStream *stream = session_->OpenOutgoingBidirectionalStream();
-                Http3WTStream *wtstream = new Http3WTStream(stream, eventloop_);
-                stream->SetVisitor(
-                    std::make_unique<Http3WTStream::Visitor>(wtstream));
-                eventloop_->informAboutStream(false, true, this, static_cast<Http3WTStream *>(wtstream));
-                stream->visitor()->OnCanWrite();
-                ordBidiStreams--;
-            }
-        }
+        void TrySendingBidirectionalStreams();
 
-        void TrySendingUnidirectionalStreams()
-        {
-            if (!session_)
-                return;
-            // move to some where else?
-            while (ordUnidiStreams > 0 &&
-                   session_->CanOpenNextOutgoingUnidirectionalStream())
-            {
-                QUIC_DVLOG(1)
-                    << "Http3WTSessionVisitor opened a unidirectional stream";
-                WebTransportStream *stream = session_->OpenOutgoingUnidirectionalStream();
-                Http3WTStream *wtstream = new Http3WTStream(stream, eventloop_);
-                stream->SetVisitor(
-                    std::make_unique<Http3WTStream::Visitor>(wtstream));
-
-                eventloop_->informAboutStream(false, false, this, static_cast<Http3WTStream *>(wtstream));
-                stream->visitor()->OnCanWrite();
-                ordUnidiStreams--;
-            }
-        }
+        void TrySendingUnidirectionalStreams();
 
         Http3WTSessionJS *getJS() { return js_; };
-        void setJS(Http3WTSessionJS *js) { 
-            js_ = js; 
+        void setJS(Http3WTSessionJS *js)
+        {
+            js_ = js;
         };
 
     private:
-        
         Http3WTSessionJS *js_;
-
-        void orderBidiStreamInt()
-        {
-            std::function<void()> task = [this]()
-            { tryOpenBidiStream(); };
-            eventloop_->Schedule(task);
-        }
-
-        void orderUnidiStreamInt()
-        {
-            std::function<void()> task = [this]()
-            { tryOpenUnidiStream(); };
-            eventloop_->Schedule(task);
-        }
-
-        void writeDatagramIntJS(char *buffer, size_t len, Napi::ObjectReference *bufferhandle)
-        {
-            std::function<void()> task = [this, bufferhandle, buffer, len]()
-            { writeDatagramInt(buffer, len, bufferhandle); };
-            eventloop_->Schedule(task);
-        }
 
         void notifySessionDrainingInt()
         {
-            std::function<void()> task = [this]()
-            { if (session_) session_->NotifySessionDraining(); };
-            eventloop_->Schedule(task);
+            if (session_)
+                session_->NotifySessionDraining();
         }
 
-        void orderSessionStatsInt()
-        {
-            std::function<void()> task = [this](){
-                if (session_) {
-                    webtransport::SessionStats * stats = new webtransport::SessionStats();
-                    *stats = session_->GetSessionStats();
-                    eventloop_->informSessionStats(this, stats);
-            }};
-            eventloop_->Schedule(task);
-        }
+        void orderSessionStatsInt();
 
-        void orderDatagramStatsInt()
-        {
-            std::function<void()> task = [this]()
-            {  if (session_) {
-                webtransport::DatagramStats * stats = new webtransport::DatagramStats();
-                *stats = session_->GetDatagramStats();
-                eventloop_->informDatagramStats(this, stats);
-            } };
-            eventloop_->Schedule(task);
-        }
+        void orderDatagramStatsInt();
 
         void closeInt(int code, std::string &reason)
         {
-            std::function<void()> task = [this, code, reason]()
-            { if (session_) session_->CloseSession(code, reason); };
-            eventloop_->Schedule(task);
+            if (session_)
+                session_->CloseSession(code, reason);
         }
 
-        void writeDatagramInt(char *buffer, size_t len, Napi::ObjectReference *bufferhandle)
-        {
-            // printf("Datagram write %d %x %x\n", getpid(), this, session_ );
-            if (!session_)
-            {
-                // printf("Datagram session gone %d %x %x\n", getpid(), this, session_);
-                eventloop_->informDatagramSend(this, bufferhandle);
-                return;
-            }
-            auto status=session_->SendOrQueueDatagram(absl::string_view(buffer, len));
-            // printf("Datagram status %d %d %s %x %x\n", getpid(), status.code, status.error_message.c_str(), this, session_);
-            eventloop_->informDatagramSend(this, bufferhandle);
-        }
+        void writeDatagramInt(char *buffer, size_t len, Napi::ObjectReference *bufferhandle);
 
         WebTransportSession *session_;
         bool echo_stream_opened_ = false;
-        Http3EventLoop *eventloop_;
         uint32_t ordBidiStreams;
         uint32_t ordUnidiStreams;
     };
 
-    class Http3WTSessionJS : public Napi::ObjectWrap<Http3WTSessionJS>, public LifetimeHelper
+    class Http3WTSessionJS : public Napi::ObjectWrap<Http3WTSessionJS>
     {
+        friend class Http3WTSession;
+        friend class Http3WTSession::Visitor;
+
     public:
         Http3WTSessionJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Http3WTSessionJS>(info)
         {
@@ -299,12 +154,12 @@ namespace quic
 
         void orderBidiStream(const Napi::CallbackInfo &info)
         {
-            wtsession_->orderBidiStreamInt();
+            wtsession_->tryOpenBidiStream();
         }
 
         void orderUnidiStream(const Napi::CallbackInfo &info)
         {
-            wtsession_->orderUnidiStreamInt();
+            wtsession_->tryOpenUnidiStream();
         }
 
         void writeDatagram(const Napi::CallbackInfo &info)
@@ -316,7 +171,7 @@ namespace quic
                 *bufferhandle = Napi::Persistent(bufferlocal);
                 char *buffer = bufferlocal.As<Napi::Buffer<char>>().Data();
                 size_t len = bufferlocal.As<Napi::Buffer<char>>().Length();
-                wtsession_->writeDatagramIntJS(buffer, len, bufferhandle);
+                wtsession_->writeDatagramInt(buffer, len, bufferhandle);
             }
         }
 
@@ -327,12 +182,12 @@ namespace quic
 
         void orderSessionStats(const Napi::CallbackInfo &info)
         {
-             wtsession_->orderSessionStatsInt();
+            wtsession_->orderSessionStatsInt();
         }
 
         void orderDatagramStats(const Napi::CallbackInfo &info)
         {
-             wtsession_->orderDatagramStatsInt();
+            wtsession_->orderDatagramStatsInt();
         }
 
         void close(const Napi::CallbackInfo &info)
@@ -361,7 +216,7 @@ namespace quic
             wtsession_->closeInt(code, reason);
         }
 
-        static void InitExports(Napi::Env env, Napi::Object exports, Http3Constructors * constr)
+        static void InitExports(Napi::Env env, Napi::Object exports, Http3Constructors *constr)
         {
             Napi::Function tplwt =
                 ObjectWrap<Http3WTSessionJS>::DefineClass(env, "Http3WTSessionVisitor",
@@ -372,25 +227,31 @@ namespace quic
                                                            InstanceMethod<&Http3WTSessionJS::writeDatagram>("writeDatagram",
                                                                                                             static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                                            InstanceMethod<&Http3WTSessionJS::notifySessionDraining>("notifySessionDraining",
-                                                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                                                            InstanceMethod<&Http3WTSessionJS::orderSessionStats>("orderSessionStats",
-                                                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                                                            InstanceMethod<&Http3WTSessionJS::orderDatagramStats>("orderDatagramStats",
-                                                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                                                                                    static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                           InstanceMethod<&Http3WTSessionJS::orderSessionStats>("orderSessionStats",
+                                                                                                                static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                           InstanceMethod<&Http3WTSessionJS::orderDatagramStats>("orderDatagramStats",
+                                                                                                                 static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                                            InstanceMethod<&Http3WTSessionJS::close>("close",
                                                                                                     static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
-            constr->session  = Napi::Persistent(tplwt);                                                                                      
+            constr->session = Napi::Persistent(tplwt);
             exports.Set("Http3WTSessionVisitor", tplwt);
-
-        }
-
-        void doUnref() override
-        {
-            Unref();
         }
 
     protected:
         std::unique_ptr<Http3WTSession> wtsession_;
+
+        static void freeData(Napi::Env env, void *data, std::string *hint);
+
+        void processStream(bool incom, bool bidi, Http3WTStream *stream);
+        void processSessionStats(webtransport::SessionStats sessstats);
+        void processDatagramStats(webtransport::DatagramStats datastats);
+        void processGoawayReceived();
+        void processDatagramSend(Napi::ObjectReference *bufferhandle);
+        void processDatagramReceived(std::string *datagram);
+        void processSessionReady();
+        void processSessionClose(uint32_t errorcode, const std::string &error);
     };
+
 }
 #endif

@@ -11,7 +11,6 @@
 #include "src/http3serverbackend.h"
 #include "src/http3wtsessionvisitor.h"
 #include "src/http3server.h"
-#include "src/http3eventloop.h"
 
 #include <utility>
 
@@ -22,7 +21,7 @@
 #include "quiche/quic/core/http/spdy_utils.h"
 #include "quiche/quic/platform/api/quic_bug_tracker.h"
 #include "quiche/quic/platform/api/quic_logging.h"
-//#include "quic/tools/web_transport_test_visitors.h"
+// #include "quic/tools/web_transport_test_visitors.h"
 #include "quiche/common/platform/api/quiche_file_utils.h"
 #include "quiche/common/quiche_text_utils.h"
 
@@ -72,21 +71,21 @@ namespace quic
     { // to do handle our web transport paths
       std::unique_ptr<WebTransportResponse> response = std::make_unique<WebTransportResponse>();
       Http3WTSession *wtsession = new Http3WTSession();
-      wtsession->init(session, eventloop_);
+      wtsession->init(session);
       response->response_headers[":status"] = "200";
       response->visitor =
           std::make_unique<Http3WTSession::Visitor>(wtsession);
-      eventloop_->informAboutNewSession(server_, static_cast<Http3WTSession *>(wtsession), path, nullptr);
+      server_->getJS()->processNewSession(static_cast<Http3WTSession *>(wtsession), path, nullptr);
       promise->resolve(std::move(response));
       return promise;
     }
     else if (jshandlerequesthandler_)
     {
       // first step pass header block along, due to thread safety, we need to copy
-      spdy::Http2HeaderBlock *reqheadcopy = new Http2HeaderBlock(request_headers.Clone());
+      // not necessary anymore
 
       // second step inform the js side
-      eventloop_->informAboutNewSessionRequest(server_, session, reqheadcopy, promise);
+      server_->getJS()->processNewSessionRequest(session, request_headers, &promise);
       return promise;
     }
 

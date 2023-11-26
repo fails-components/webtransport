@@ -1,6 +1,6 @@
 import { arch, argv, env, platform } from 'node:process'
 import { spawn } from 'node:child_process'
-import { cp, rename, mkdtemp, rm, access } from 'node:fs/promises'
+import { cp, rename, mkdtemp, rm, access, readdir } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import path from 'node:path'
 import pkg from './package.json' assert { type: 'json' }
@@ -82,7 +82,6 @@ const extractthirdparty = async () => {
       'third_party/quiche',
       'third_party/zlib',
       'third_party/googleurl',
-      'third_party/libevent',
       'third_party/protobuf'
     ]
     for (let mod in submodules) {

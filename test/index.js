@@ -8,9 +8,13 @@ async function startServer() {
   return new Promise((resolve, reject) => {
     let foundAddress = false
 
-    const server = execa('node', ['./test/fixtures/server.js'], {
-      stdio: ['inherit', 'inherit', 'inherit', 'ipc']
-    })
+    const server = execa(
+      'node',
+      ['./test/fixtures/server.js', '--trace-uncaught'],
+      {
+        stdio: ['inherit', 'inherit', 'inherit', 'ipc']
+      }
+    )
     server.on('message', (data) => {
       if (!foundAddress) {
         foundAddress = true
@@ -37,7 +41,6 @@ async function runTests(certificate, serverAddress) {
     args = [
       process.env.CI ? '--no-colors' : '--colors',
       './test/*.spec.js',
-      './test/*.node.js',
       ...process.argv.slice(3)
     ]
     const tests = execa(command, args, {
@@ -79,6 +82,7 @@ try {
   }
 
   if (err.failed || err.timedOut || err.isCancelled || err.isKilled) {
+    console.log('Error cause mocha process', err)
     success = false
   }
 } finally {

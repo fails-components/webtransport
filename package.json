@@ -1,6 +1,6 @@
 {
   "name": "@fails-components/webtransport",
-  "version": "0.3.1",
+  "version": "0.3.2-noeventloop.0",
   "description": "A component to add webtransport support (server and client) to node.js using libquiche",
   "main": "lib/index.js",
   "module": "lib/index.js",
@@ -39,6 +39,7 @@
   "dependencies": {
     "@types/debug": "^4.1.7",
     "bindings": "^1.5.0",
+    "cmake-js": "^7.2.1",
     "debug": "^4.3.4",
     "node-addon-api": "^7.0.0",
     "prebuild-install": "^7.1.1"
@@ -53,7 +54,6 @@
     "@types/node": "^18.15.3",
     "chai": "^4.3.6",
     "chai-as-promised": "^7.1.1",
-    "cmake-js": "^7.2.1",
     "dirty-chai": "^2.0.1",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^7.2.0",
