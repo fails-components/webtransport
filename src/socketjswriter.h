@@ -27,7 +27,7 @@ namespace quic
         }
 
         ~SocketJSWriter()  override {
-
+            printf("~SocketJSWriter\n");
         }
 
         void setCanWrite()

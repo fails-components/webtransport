@@ -42,7 +42,7 @@ namespace quic
         {
         }
 
-        ~Http3WTStream(){/*printf("stream destruct %x\n", this);*/};
+        ~Http3WTStream(){printf("stream destruct %x\n", this);};
 
         class Visitor : public WebTransportStreamVisitor
         {
@@ -213,6 +213,10 @@ namespace quic
     public:
         Http3WTStreamJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Http3WTStreamJS>(info)
         {
+        }
+
+        ~Http3WTStreamJS() {
+            printf("~Http3WTStreamJS\n");
         }
 
         void init(Http3WTStream *wtstream);
