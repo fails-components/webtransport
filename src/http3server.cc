@@ -356,7 +356,7 @@ namespace quic
       retObj.Set("header", header->Value());
       header->Unref();
     }
-    objVal.Get("onHttp3WTSessionVisitor")
+    objVal.Get("onHttpWTSessionVisitor")
         .As<Napi::Function>()
         .Call(objVal, {retObj});
   }

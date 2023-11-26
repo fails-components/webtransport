@@ -1358,7 +1358,6 @@ namespace quic
         Napi::HandleScope scope(Env());
 
         Napi::Object retObj = Napi::Object::New(Env());
-        retObj.Set("purpose", "Http3WTSessionVisitor");
         if (session != nullptr)
         {
             Http3Constructors *constr = Env().GetInstanceData<Http3Constructors>();
@@ -1369,7 +1368,7 @@ namespace quic
             session->setJS(sessionjs);
             Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
             retObj.Set("session", sessionobj);
-            objVal.Get("onHttp3WTSessionVisitor")
+            objVal.Get("onHttpWTSessionVisitor")
                 .As<Napi::Function>()
                 .Call(objVal, {retObj});
         }
