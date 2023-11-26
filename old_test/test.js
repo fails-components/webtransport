@@ -5,12 +5,7 @@
 // this file runs various tests
 
 import { generateWebTransportCertificate } from '../test/fixtures/certificate.js'
-import {
-  Http3Server,
-  Http2Server,
-  WebTransport,
-  testcheck
-} from '../lib/index.node.js'
+import { Http3Server, Http2Server, WebTransport } from '../lib/index.node.js'
 import { echoTestsConnection, runEchoServer } from './testsuite.js'
 
 let http2 = false
