@@ -37,11 +37,12 @@ export async function createServer() {
     privKey: certificate.private
   })
 
-  console.log('server nmark3')
+  console.log('server nmark4')
 
   server.ready
     .then(async () => {
       // set up listeners for the different server paths used by the tests
+      console.log('server nmark5')
 
       await Promise.all(
         [
