@@ -100,7 +100,7 @@ They are:
 * [getStats()](https://www.w3.org/TR/webtransport/#dom-webtransport-getstats)
 * [reliability](https://www.w3.org/TR/webtransport/#dom-webtransport-reliability)
 
-The WebTransport client only supports certification validation using fingerprints for http/3, for http/2 fingerprints are not yet supported. Without a fingerprint, an experimental implementation checks the certificates against the root certificates integrated with node.
+The WebTransport client only supports certification validation using fingerprints. Without a fingerprint, an experimental implementation for http/3 checks the certificates against the root certificates integrated with node.
 
 ### WebTransportDatagramDuplexStream
 
