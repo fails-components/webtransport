@@ -250,6 +250,13 @@ export interface HttpClientInit extends HttpWebTransportInit {
   createUnreliableClient?: (client: HttpClient) => any
 }
 
+export interface TransportHttp3Quiche {
+  checkQuicheInit: () => void
+
+  Http3WebTransportServer: new (init: HttpServerInit) => any
+  Http3WebTransportServerSocket: new (init: HttpServerInit) => any
+}
+
 export interface Logger {
   (formatter: any, ...args: any[]): void
   error: (formatter: any, ...args: any[]) => void

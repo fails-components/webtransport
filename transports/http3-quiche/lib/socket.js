@@ -1,5 +1,5 @@
 import { X509Certificate, createVerify } from 'node:crypto'
-import { logger } from '../utils.js'
+import { logger } from './utils.js'
 import { rootCertificates } from 'node:tls'
 const log = logger(`webtransport:Http3WebTransportSocket(${process.pid})`)
 

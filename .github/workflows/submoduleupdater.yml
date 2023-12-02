@@ -28,19 +28,19 @@ jobs:
           
       - name: Git Submodule Update Boring SSL
         run:
-          git submodule update --remote third_party/boringssl/src
+          git submodule update --remote transports/http3-quiche/third_party/boringssl/src
       
       - name: Git Submodule Update quiche
         run:
-          git submodule update --remote third_party/quiche
+          git submodule update --remote transports/http3-quiche/third_party/quiche
 
       - name: Git Submodule Update zlib
         run:
-          git submodule update --remote third_party/zlib
+          git submodule update --remote transports/http3-quiche/third_party/zlib
           
       - name: Git Submodule Update googleurl
         run:
-          git submodule update --remote third_party/googleurl
+          git submodule update --remote transports/http3-quiche/third_party/googleurl
           
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v4

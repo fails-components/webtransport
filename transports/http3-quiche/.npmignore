@@ -1,6 +1,9 @@
 .env
 files
 /node_modules
+/build_*
+/build
+!/third_party/googleurl/build
 *.crt
 *.csr
 *.key
@@ -10,7 +13,10 @@ certs/out/*
 *.pb.*
 chrome.bat
 certificatecache.json
+/third_party
 .git*
 .*
 Dockerf*
+archives
+prebuilds
 */tsconfig.tsbuildinfo

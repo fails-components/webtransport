@@ -39,7 +39,7 @@ jobs:
         run: npm install
 
       - name: Build library
-        run: npm run build
+        run: npm run build  --workspaces
 
       - name: Run node unit tests
         run: |

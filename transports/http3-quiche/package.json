@@ -1,0 +1,67 @@
+{
+  "name": "@fails-components/webtransport-transport-http3-quiche",
+  "version": "0.3.2-http2.1",
+  "description": "A component to add webtransport support (server and client) to node.js, transport using libquiche",
+  "exports": {
+    ".": {
+      "node": "./lib/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=16.5"
+  },
+  "type": "module",
+  "types": "./dist/lib/index.d.ts",
+  "scripts": {
+    "start": "node test/echoserver.js",
+    "install": "node build.js install",
+    "build": "node build.js build",
+    "rebuild": "node build.js rebuild",
+    "rebuild-debug": "node build.js rebuild-debug -D",
+    "build-debug": "node build.js build-debug",
+    "types": "tsc",
+    "lint": "eslint lib test old_test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fails-components/webtransport.git"
+  },
+  "keywords": [
+    "webtransport"
+  ],
+  "author": "Marten Richter",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/fails-components/webtransport/issues"
+  },
+  "homepage": "https://github.com/fails-components/webtransport#readme",
+  "dependencies": {
+    "@types/debug": "^4.1.7",
+    "bindings": "^1.5.0",
+    "cmake-js": "^7.2.1",
+    "debug": "^4.3.4",
+    "node-addon-api": "^7.0.0",
+    "prebuild-install": "^7.1.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.17.10",
+    "@babel/eslint-parser": "^7.17.0",
+    "@babel/plugin-syntax-import-attributes": "^7.23.3",
+    "@types/node": "^18.15.3",
+    "eslint": "^7.32.0",
+    "eslint-config-prettier": "^7.2.0",
+    "eslint-config-standard": "^16.0.2",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^3.4.1",
+    "eslint-plugin-promise": "^4.3.1",
+    "eslint-plugin-standard": "^4.1.0",
+    "prettier": "^2.4.1",
+    "typescript": "^4.8.4"
+  },
+  "binary": {
+    "napi_versions": [
+      6
+    ]
+  }
+}

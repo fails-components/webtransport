@@ -1,7 +1,7 @@
 import { createSocket } from 'node:dgram'
 import { lookup } from 'node:dns/promises'
 
-import { logger } from '../utils.js'
+import { logger } from './utils.js'
 import { Http3WebTransportSocket } from './socket.js'
 
 const log = logger(`webtransport:Http3WebTransportServerSocket(${process.pid})`)

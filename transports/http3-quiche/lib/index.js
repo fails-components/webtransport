@@ -3,16 +3,16 @@ import { createRequire } from 'module'
 import * as path from 'path'
 import * as url from 'url'
 import { arch, platform } from 'node:process'
-import { logger } from '../utils.js'
+import { logger } from './utils.js'
 
 const log = logger(`webtransport:native(${process?.pid})`)
 
 const binplatform = platform + '_' + arch
 const require = createRequire(import.meta.url)
 const dirname = url.fileURLToPath(new URL('.', import.meta.url))
-let buildpath = '../../build_' + binplatform
+let buildpath = '../build_' + binplatform
 
-if (!existsSync(path.join(dirname, buildpath))) buildpath = '../../build' // use precompiled only if own compilation does not exist
+if (!existsSync(path.join(dirname, buildpath))) buildpath = '../build' // use precompiled only if own compilation does not exist
 
 let wtpath = buildpath + '/Release/webtransport.node'
 

@@ -199,19 +199,23 @@ jobs:
         if: needs.version-check.outputs.changed == 'true'
         run: npm run types
 
-      - run: npm publish --tag stable
+      - run: npm publish --workspaces --tag stable
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: npm publish --tag next
+      - run: npm publish --workspaces --tag next
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latest
+      - run: |
+          npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latest
+          npm dist-tag add @fails-components/webtransport-transport-http3-quiche@${{ needs.version-check.outputs.version }} latest
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latestunstable
+      - run: |
+          npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latestunstable
+          npm dist-tag add @fails-components/webtransport-transport-http3-quiche@${{ needs.version-check.outputs.version }} latestunstable
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
