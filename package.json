@@ -22,11 +22,6 @@
     "test:chromium:http2:polyfill": "node test/index.js chromium http2 polyfill",
     "oldtest": "node old_test/test.js",
     "oldtesthttp2": "node old_test/test.js http2",
-    "install": "node build.js install",
-    "build": "node build.js build",
-    "rebuild": "node build.js rebuild",
-    "rebuild-debug": "node build.js rebuild-debug -D",
-    "build-debug": "node build.js build-debug",
     "types": "tsc",
     "lint": "eslint lib test old_test"
   },
@@ -46,10 +41,7 @@
   "dependencies": {
     "@types/debug": "^4.1.7",
     "bindings": "^1.5.0",
-    "cmake-js": "^7.2.1",
-    "debug": "^4.3.4",
-    "node-addon-api": "^7.0.0",
-    "prebuild-install": "^7.1.1"
+    "debug": "^4.3.4"
   },
   "devDependencies": {
     "@babel/core": "^7.17.10",
@@ -86,5 +78,6 @@
   "browser": {
     "./test/fixtures/webtransport.js": "./test/fixtures/webtransport.browser.js",
     "./lib/webstreams.js": "./lib/webstreams.browser.js"
-  }
+  },
+  "workspaces": ["transports/*"]
 }

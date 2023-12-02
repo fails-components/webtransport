@@ -1,0 +1,28 @@
+{
+  "parser": "@babel/eslint-parser",
+  "extends": ["standard", "plugin:prettier/recommended", "prettier/standard"],
+  "env": {
+    "node": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "ecmaFeatures": {
+      "legacyDecorators": true,
+      "jsx": true
+    },
+    "requireConfigFile": false,
+    "babelOptions": {
+      "plugins": ["@babel/plugin-syntax-import-attributes"]
+    }
+  },
+  "settings": {
+    "react": {
+      "version": "16"
+    }
+  },
+  "rules": {
+    "space-before-function-paren": 0,
+    "import/export": 0,
+    "promise/catch-or-return": "error"
+  }
+}

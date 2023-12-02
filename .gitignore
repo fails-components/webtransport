@@ -1,9 +1,9 @@
 .env
 files
 /node_modules
-/build_*
-/build
-!/third_party/googleurl/build
+build_*
+build
+!/transports/http3-quiche/third_party/googleurl/build
 *.crt
 *.csr
 *.key
