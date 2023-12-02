@@ -218,8 +218,8 @@ third_party/quiche/quiche/http2/adapter/http2_session.h
 third_party/quiche/quiche/http2/adapter/http2_util.cc
 third_party/quiche/quiche/http2/adapter/http2_util.h
 third_party/quiche/quiche/http2/adapter/http2_visitor_interface.h
-third_party/quiche/quiche/http2/adapter/noop_header_validator.h
-third_party/quiche/quiche/http2/adapter/noop_header_validator.cc
+third_party/quiche/quiche/http2/adapter/minimal_header_validator.h
+third_party/quiche/quiche/http2/adapter/minimal_header_validator.cc
 third_party/quiche/quiche/http2/adapter/oghttp2_adapter.cc
 third_party/quiche/quiche/http2/adapter/oghttp2_adapter.h
 third_party/quiche/quiche/http2/adapter/oghttp2_session.cc
