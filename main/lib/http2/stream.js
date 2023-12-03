@@ -10,6 +10,9 @@ import { ParserBase } from './parserbase.js'
  *  @typedef {import('../types').ReadDataInt} ReadDataInt
  */
 
+let processnextTick = (func) => setTimeout(func, 0)
+if (typeof process !== 'undefined') processnextTick = process.nextTick
+
 export class Http2WebTransportStream {
   /**
    * @param {{streamid: Number, capsuleParser: ParserBase}} args
@@ -134,7 +137,7 @@ export class Http2WebTransportStream {
       headerVints: [this.streamid, code],
       payload: undefined
     })
-    process.nextTick(() =>
+    processnextTick(() =>
       this.jsobj.onStreamNetworkFinish({
         nettask: 'stopSending'
       })
@@ -150,7 +153,7 @@ export class Http2WebTransportStream {
       headerVints: [this.streamid, code],
       payload: undefined
     })
-    process.nextTick(() =>
+    processnextTick(() =>
       this.jsobj.onStreamNetworkFinish({
         nettask: 'resetStream'
       })
@@ -185,7 +188,7 @@ export class Http2WebTransportStream {
       headerVints: [this.streamid],
       payload: undefined
     })
-    process.nextTick(() =>
+    processnextTick(() =>
       this.jsobj.onStreamNetworkFinish({
         nettask: 'streamFinal'
       })
