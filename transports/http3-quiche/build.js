@@ -12,6 +12,9 @@ console.log(
   'Webtransport binary handler: We are working on platform ',
   binplatform
 )
+console.log(
+  'Webtransport executed in dir:', process.cwd()
+)
 
 const callGit = (args, opts) => {
   // console.log('callgit', args)
