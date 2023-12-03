@@ -341,6 +341,7 @@ export class HttpServer {
             socket.jsobj = this
             // @ts-ignore
             const server2 = new Http2WebTransportServer(this.args)
+            server2.jsobj = this
             this.transportInt = new TransportIntServerProxy([server2, server3])
           }
           break
