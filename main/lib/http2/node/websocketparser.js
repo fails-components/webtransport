@@ -100,7 +100,7 @@ function applyMask(ms, buffer, offset, length) {
     const data64 = new new BigUint64Array(
       buffer.buffer,
       run + offset,
-      Math.floor((buffer.length - run - offset) / 8) * 8
+      Math.floor((buffer.length - run - offset) / 8)
     )()
     const workmask64 = new BigUint64Array(workmask.buffer)
     let run64 = 0
