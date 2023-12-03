@@ -28,8 +28,9 @@ export function defer() {
  * @returns {import('./types').Logger}
  */
 export function logger(name) {
+  const dtrace = !!(typeof process === 'undefined' || process.env.DEBUG_TRACE)
   return Object.assign(debug(name), {
     error: debug(`${name}:error`),
-    trace: process?.env.DEBUG_TRACE ? debug(`${name}:trace`) : () => {}
+    trace: dtrace ? debug(`${name}:trace`) : () => {}
   })
 }
