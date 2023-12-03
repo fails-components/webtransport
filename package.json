@@ -15,7 +15,7 @@
     "url": "https://github.com/fails-components/webtransport/issues"
   },
   "scripts": {
-    "version": "npm version $npm_package_version --workspaces && git add **/package.json"
+    "version": "npm version $npm_package_version --workspaces && git add **/package.json && git add transports/**/package.json"
   },
   "homepage": "https://github.com/fails-components/webtransport/main/#readme",
   "workspaces": [
