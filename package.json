@@ -1,6 +1,6 @@
 {
   "name": "@fails-components/webtransport-workspace",
-  "version": "0.3.2-http2.1",
+  "version": "0.3.2-http2.2",
   "description": "A component to add webtransport support (server and client) to node.js using libquiche",
   "repository": {
     "type": "git",
@@ -18,5 +18,8 @@
     "version": "npm version $npm_package_version --workspaces && git add **/package.json"
   },
   "homepage": "https://github.com/fails-components/webtransport/main/#readme",
-  "workspaces": ["transports/*", "main"]
+  "workspaces": [
+    "transports/*",
+    "main"
+  ]
 }
