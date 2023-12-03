@@ -36,58 +36,58 @@ jobs:
         run: npm install
 
       - name: Lint files
-        run: npm run lint --workspaces --include-workspace-root
+        run: npm run lint --workspaces
 
       - name: Build types
-        run: npm run types --workspaces --include-workspace-root
+        run: npm run types --workspaces
 
       - name: Build library
-        run: npm run build --workspaces --include-workspace-root
+        run: npm run build --workspace main
 
       - name: Run node unit tests http2
-        run:  NODE_ENV=production npm run test:node:http2
+        run:  NODE_ENV=production npm run test:node:http2 --workspace main
 
       - name: Run browser unit tests http2 polyfill
-        run:  NODE_ENV=production npm run test:chromium:http2:polyfill
+        run:  NODE_ENV=production npm run test:chromium:http2:polyfill --workspace main
 
       - name: Run node unit tests
-        run:  NODE_ENV=production npm run test:node
+        run:  NODE_ENV=production npm run test:node --workspace main
 
       - name: Run browser unit tests
-        run:  NODE_ENV=production npm run test:chromium
+        run:  NODE_ENV=production npm run test:chromium --workspace main
       
       - name: Run browser unit tests 1
-        run:  NODE_ENV=production npm run test:chromium
+        run:  NODE_ENV=production npm run test:chromium --workspace main
       
       - name: Run browser unit tests 2
-        run:  NODE_ENV=production npm run test:chromium
+        run:  NODE_ENV=production npm run test:chromium --workspace main
       
       - name: Run browser unit tests 3
-        run:  NODE_ENV=production npm run test:chromium
+        run:  NODE_ENV=production npm run test:chromium --workspace main
       
       - name: Run browser unit tests 4
-        run:  NODE_ENV=production npm run test:chromium
+        run:  NODE_ENV=production npm run test:chromium --workspace main
       
       - name: Run browser unit tests 5
-        run:  NODE_ENV=production npm run test:chromium
+        run:  NODE_ENV=production npm run test:chromium --workspace main
       
       - name: Run browser unit tests 6
-        run:  NODE_ENV=production npm run test:chromium
+        run:  NODE_ENV=production npm run test:chromium --workspace main
       
       - name: Run browser unit tests 7
-        run:  NODE_ENV=production npm run test:chromium
+        run:  NODE_ENV=production npm run test:chromium --workspace main
         
       - name: Run browser unit tests 8
-        run:  NODE_ENV=production npm run test:chromium
+        run:  NODE_ENV=production npm run test:chromium --workspace main
       
       - name: Run browser unit tests 9
-        run:  NODE_ENV=production npm run test:chromium
+        run:  NODE_ENV=production npm run test:chromium --workspace main
         
       - name: Run browser unit tests 10
-        run:  NODE_ENV=production npm run test:chromium 
+        run:  NODE_ENV=production npm run test:chromium --workspace main
       
       - name: Run old unit tests
-        run: NODE_ENV=production npm run oldtest
+        run: NODE_ENV=production npm run oldtest --workspace main
 
       - name: Run old unit tests http2
-        run: NODE_ENV=production npm run oldtest http2
+        run: NODE_ENV=production npm run oldtesthttp2 --workspace main

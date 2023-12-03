@@ -35,19 +35,19 @@ jobs:
         run: npm install
 
       - name: Build library
-        run: npm run build --workspaces
+        run: npm run build --workspace main
 
       - name: Test architecture
-        run: lipo -info build_darwin_x64/Release/webtransport.node
+        run: lipo -info transports/http3-quiche/build_darwin_x64/Release/webtransport.node
 
       - name: Run node unit tests
-        run: NODE_ENV=production npm run test:node
+        run: NODE_ENV=production npm run test:node  --workspace main
 
       - name: Run old unit tests
-        run: NODE_ENV=production npm run oldtest
+        run: NODE_ENV=production npm run oldtest  --workspace main
 
       - name: Run node unit tests http2
-        run: NODE_ENV=production npm run test:node:http2
+        run: NODE_ENV=production npm run test:node:http2 --workspace main
 
       - name: Run old unit tests http2
-        run: NODE_ENV=production npm run oldtesthttp2
+        run: NODE_ENV=production npm run oldtesthttp2 --workspace main
