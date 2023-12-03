@@ -39,7 +39,9 @@ export interface NativeServerOptions {
   secret?: string
   host: string
   cert: string
+  certhttp2?: string // if http2 has a different cert
   privKey: string
+  privKeyhttp2?: string // if http2 has a different cert
 }
 
 export interface NativeClientOptions {
