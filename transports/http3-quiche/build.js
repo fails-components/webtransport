@@ -80,12 +80,12 @@ const extractthirdparty = async () => {
     )
     const copath = tmppath + '/webtransport'
     const submodules = [
-      'third_party/boringssl/src',
-      'third_party/abseil-cpp',
-      'third_party/quiche',
-      'third_party/zlib',
-      'third_party/googleurl',
-      'third_party/protobuf'
+      'transports/http3-quiche/third_party/boringssl/src',
+      'transports/http3-quiche/third_party/abseil-cpp',
+      'transports/http3-quiche/third_party/quiche',
+      'transports/http3-quiche/third_party/zlib',
+      'transports/http3-quiche/third_party/googleurl',
+      'transports/http3-quiche/third_party/protobuf'
     ]
     for (let mod in submodules) {
       const sub = submodules[mod]
@@ -109,11 +109,11 @@ const extractthirdparty = async () => {
       console.log('destdir does not exist (only warning, ignore): ', err)
     }
     try {
-      await rename(path.join(copath, '/third_party'), destdir)
+      await rename(path.join(copath, '/transports/http3-quiche/third_party'), destdir)
     } catch (error) {
       console.log('rename tmp dir failed:', error)
       console.log('copy instead start... (can take a while)...')
-      await cp(path.join(copath, '/third_party'), destdir, {recursive: true})
+      await cp(path.join(copath, '/transports/http3-quiche/third_party'), destdir, {recursive: true})
       console.log('copy instead finished')
     }
   } catch (error) {
