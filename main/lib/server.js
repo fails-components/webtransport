@@ -68,11 +68,15 @@ class TransportIntServerProxy {
   }
 
   startServer() {
-    this.transportsInts.forEach((transport) => transport.startServer())
+    this.transportsInts.forEach((transport) => {
+      if (transport.startServer) transport.startServer()
+    })
   }
 
   stopServer() {
-    this.transportsInts.forEach((transport) => transport.stopServer())
+    this.transportsInts.forEach((transport) => {
+      if (transport.stopServer) transport.stopServer()
+    })
   }
 
   /**
@@ -81,9 +85,9 @@ class TransportIntServerProxy {
    * @param {boolean} http2only
    * */
   updateCert(cert, privKey, http2only) {
-    this.transportsInts.forEach((transport) =>
-      transport.updateCert(cert, privKey, http2only)
-    )
+    this.transportsInts.forEach((transport) => {
+      if (transport.updateCert) transport.updateCert(cert, privKey, http2only)
+    })
   }
 
   /**

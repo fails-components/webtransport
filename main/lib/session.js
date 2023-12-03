@@ -439,7 +439,7 @@ export class HttpWTSession {
     this.state = 'closed'
 
     const wtError = new WebTransportError(
-      `Session closed (on process ${process.pid}) with code ` +
+      `Session closed (on process ${pid}) with code ` +
         args.errorcode +
         ' and reason' +
         args.error
