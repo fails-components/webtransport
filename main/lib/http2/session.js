@@ -3,6 +3,9 @@
  */
 import { ParserBase } from './parserbase.js'
 
+let processnextTick = (func) => setTimeout(func, 0)
+if (typeof process !== 'undefined') processnextTick = process.nextTick
+
 export class Http2WebTransportSession {
   /**
    * @param {Object} obj
@@ -26,7 +29,7 @@ export class Http2WebTransportSession {
     if (stream) {
       if (isclient) {
         stream.on('response', (headers) => {
-          process.nextTick(() => {
+          processnextTick(() => {
             if (headers[':status'] === 200) {
               // on ready
               this.jsobj.onReady({})
@@ -39,7 +42,7 @@ export class Http2WebTransportSession {
           })
         })
       } else {
-        process.nextTick(() => {
+        processnextTick(() => {
           this.jsobj.onReady({})
         })
       }
@@ -61,7 +64,7 @@ export class Http2WebTransportSession {
       headerVints: [],
       payload: chunk
     })
-    process.nextTick(() => {
+    processnextTick(() => {
       this.jsobj.onDatagramSend({})
     })
   }
