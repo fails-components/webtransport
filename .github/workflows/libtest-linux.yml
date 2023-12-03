@@ -36,13 +36,13 @@ jobs:
         run: npm install
 
       - name: Lint files
-        run: npm run lint 
+        run: npm run lint --workspaces --include-workspace-root
 
-      - name: Lint files workspaces
-        run: npm run lint --workspaces
+      - name: Build types
+        run: npm run types --workspaces --include-workspace-root
 
       - name: Build library
-        run: npm run build --workspaces
+        run: npm run build --workspaces --include-workspace-root
 
       - name: Run node unit tests http2
         run:  NODE_ENV=production npm run test:node:http2

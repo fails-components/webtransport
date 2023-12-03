@@ -97,7 +97,7 @@ jobs:
        env:
          BUILDARCH: ${{ matrix.arch }}
          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-       run: node build.js prebuild
+       run: npm run prebuild --workspaces
 
 # code is not ready... if anyone needs it, I am open for PR
 #  prebuild-cross:
@@ -157,19 +157,23 @@ jobs:
         if: needs.version-check.outputs.changed == 'true'
         run: npm run types
 
-      - run: npm publish --tag stable
+      - run: npm publish --workspaces --include-workspace-root --tag stable
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: npm publish --tag next
+      - run: npm publish --workspaces --include-workspace-root --tag next
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latest
+      - run: |
+          npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latest
+          npm dist-tag add @fails-components/webtransport-transport-http3-quiche@${{ needs.version-check.outputs.version }} latest
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latestunstable
+      - run: |
+          npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latestunstable
+          npm dist-tag add @fails-components/webtransport-transport-http3-quiche@${{ needs.version-check.outputs.version }} latestunstable
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -197,13 +201,13 @@ jobs:
 
       - name: Build types
         if: needs.version-check.outputs.changed == 'true'
-        run: npm run types
+        run: npm run types --workspaces --include-workspace-root 
 
-      - run: npm publish --workspaces --tag stable
+      - run: npm publish --workspaces --include-workspace-root --tag stable
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: npm publish --workspaces --tag next
+      - run: npm publish --workspaces --include-workspace-root --tag next
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
