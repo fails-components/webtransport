@@ -131,14 +131,18 @@ export class HttpWTStream {
             if (this.writableclosed) {
               return Promise.resolve()
             }
-            if (chunk instanceof Uint8Array) {
+            let wchunk = chunk
+            if (wchunk instanceof ArrayBuffer) {
+              wchunk = new Uint8Array(wchunk)
+            }
+            if (wchunk instanceof Uint8Array) {
               this.pendingoperation = new Promise((resolve, reject) => {
                 this.pendingres = resolve
               })
               this.parentobj
                 .waitForDatagramsSend()
                 .finally(() => {
-                  this.objint.writeChunk(chunk)
+                  this.objint.writeChunk(wchunk)
                 })
                 .catch((/** @type {any} */ err) => {
                   log.error(err)
@@ -146,7 +150,9 @@ export class HttpWTStream {
               return this.pendingoperation
             } else {
               log.trace('chunk info:', chunk)
-              throw new Error('chunk is not of instanceof Uint8Array ')
+              throw new Error(
+                'chunk is not of instanceof Uint8Array or Arraybuffer'
+              )
             }
           },
           close: () => {
