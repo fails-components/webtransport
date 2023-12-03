@@ -77,7 +77,7 @@ export class Http2WebTransportStream {
         bytesRead += len
       } else {
         // readpos_ > writepos_
-        len = Math.min(this.writepos_ - this.readpos_, cur.data.byteLength)
+        len = Math.min(this.readpos_ - this.writepos_, cur.data.byteLength)
         const destview = new Uint8Array(
           this.readbuffer,
           0 + this.writepos_,
@@ -99,7 +99,7 @@ export class Http2WebTransportStream {
           data: new Uint8Array(
             cur.data.buffer,
             cur.data.byteOffset + len,
-            cur.data.byteLength
+            cur.data.byteLength - len
           ),
           fin: cur.fin
         }
