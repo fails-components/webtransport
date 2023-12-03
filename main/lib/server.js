@@ -36,6 +36,10 @@ const quicheLoaded = new Promise((resolve, reject) => {
       }
     )
     .catch((error) => {
+      console.error('Problem loading http3-quiche transport')
+      console.error(
+        'Did you install @fails-components/webtransport-transport-http3-quiche?'
+      )
       log('Problem loading http3-quiche transport', error)
       log(
         'Did you install @fails-components/webtransport-transport-http3-quiche?'
