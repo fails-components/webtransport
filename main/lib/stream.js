@@ -2,7 +2,8 @@ import { ReadableStream, WritableStream } from './webstreams.js'
 import { logger } from './utils.js'
 import { WebTransportError } from './error.js'
 
-const log = logger(`webtransport:http3wtstream(${process?.pid})`)
+const pid = typeof process !== 'undefined' ? process.pid : 0
+const log = logger(`webtransport:http3wtstream(${pid})`)
 
 /**
  * WebTransport stream events

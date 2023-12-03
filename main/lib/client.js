@@ -1,7 +1,8 @@
 import { WebTransportError } from './error.js'
 import { logger } from './utils.js'
 
-const log = logger(`webtransport:httpclient(${process?.pid})`)
+const pid = typeof process !== 'undefined' ? process.pid : 0
+const log = logger(`webtransport:httpclient(${pid})`)
 
 /**
  * @typedef {import('./session').HttpWTSession} HttpWTSession
