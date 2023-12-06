@@ -90,6 +90,10 @@ export class WebTransport extends WebTransportBase {
       })
   }
 
+  get supportsReliableOnly() {
+    return true
+  }
+
   /**
    * @param{import('./types.js').HttpWebTransportInit} args
    * @return {{sessionint: HttpWTSession, client: HttpClient}}
