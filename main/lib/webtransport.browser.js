@@ -112,7 +112,7 @@ export class WebTransportPolyfill {
         if (this.allowFallback && !this.closeset) {
           if (
             !this.initiatedFallback &&
-            this.curtransport?.reliability !== 'reliable-only' // way how browser signals support for http/2, no polyfill needed in this cases
+            !this.curtransport?.reliability.supportsReliableOnly // way how browser signals support for http/2, no polyfill needed in this cases
           ) {
             initiateFallback()
           }
@@ -128,7 +128,7 @@ export class WebTransportPolyfill {
         if (this.allowFallback && !this.closeset) {
           if (
             !this.initiatedFallback &&
-            this.curtransport?.reliability !== 'reliable-only' // way how browser signals support for http/2, no polyfill needed in this cases
+            !this.curtransport?.reliability.supportsReliableOnly // way how browser signals support for http/2, no polyfill needed in this cases
           ) {
             initiateFallback()
           }
@@ -226,6 +226,10 @@ export class WebTransportPolyfill {
   get reliability() {
     // @ts-ignore
     return this.curtransport?.reliability || undefined
+  }
+
+  get supportsReliableOnly() {
+    return true
   }
 
   getStats() {
