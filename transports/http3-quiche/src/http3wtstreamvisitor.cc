@@ -115,7 +115,7 @@ namespace quic
             }
             else
             { // readpos_ > writepos_
-                size_t len = writepos_ - readpos_;
+                size_t len = readpos_ - writepos_;
                 WebTransportStream::ReadResult result =
                     stream_->Read(absl::Span<char>(((char *)readbufdata_) + writepos_, len));
                 QUIC_DVLOG(1) << "Attempted reading on WebTransport stream "
