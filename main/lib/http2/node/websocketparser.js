@@ -192,7 +192,10 @@ export class WebSocketParser extends ParserBaseHttp2 {
           {
             // we are at frame start
             if (bufferstate.size < 2 + bufferstate.offset) {
-              this.saveddata = cdata
+              this.saveddata = Buffer.from(
+                bufferstate.buffer,
+                bufferstate.offset
+              )
               return
             }
             let curbyte = readByte(bufferstate)
@@ -208,20 +211,29 @@ export class WebSocketParser extends ParserBaseHttp2 {
             let plength = curbyte & 0x7f
             if (plength === 126) {
               if (bufferstate.size < 2 + bufferstate.offset) {
-                this.saveddata = cdata
+                this.saveddata = Buffer.from(
+                  bufferstate.buffer,
+                  bufferstate.offset
+                )
                 return
               }
               plength = readWord(bufferstate)
             }
             if (plength === 127) {
               if (bufferstate.size < 8 + bufferstate.offset) {
-                this.saveddata = cdata
+                this.saveddata = Buffer.from(
+                  bufferstate.buffer,
+                  bufferstate.offset
+                )
                 return
               }
               plength = readQWord(bufferstate)
             }
             if (bufferstate.size < mlength + bufferstate.offset) {
-              this.saveddata = cdata
+              this.saveddata = Buffer.from(
+                bufferstate.buffer,
+                bufferstate.offset
+              )
               return
             }
             if (mask) {
@@ -253,7 +265,10 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 length = bufferstate.offset - bufferstate.size // only process current frame
               } else {
                 if (bufferstate.size < length + bufferstate.offset) {
-                  this.saveddata = cdata
+                  this.saveddata = Buffer.from(
+                    bufferstate.buffer,
+                    bufferstate.offset
+                  )
                   return
                 }
               }
@@ -336,7 +351,10 @@ export class WebSocketParser extends ParserBaseHttp2 {
 
               if (opcode === WebSocketParser.WS_BINARY) {
                 if (bufferstate.size < 2 + bufferstate.offset) {
-                  this.saveddata = cdata
+                  this.saveddata = Buffer.from(
+                    bufferstate.buffer,
+                    bufferstate.offset
+                  )
                   return
                 }
                 continuep = false
@@ -350,7 +368,10 @@ export class WebSocketParser extends ParserBaseHttp2 {
                   typeof type === 'undefined' ||
                   bufferstate.size < 1 + bufferstate.offset
                 ) {
-                  this.saveddata = cdata
+                  this.saveddata = Buffer.from(
+                    bufferstate.buffer,
+                    bufferstate.offset
+                  )
                   return
                 }
                 this.curtype = type
@@ -386,7 +407,10 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 return
               }
               if (bufferstate.size < checklength + bufferstate.offset) {
-                this.saveddata = cdata
+                this.saveddata = Buffer.from(
+                  bufferstate.buffer,
+                  bufferstate.offset
+                )
                 return
               }
               // all safeguards passed now apply the mask
@@ -481,11 +505,15 @@ export class WebSocketParser extends ParserBaseHttp2 {
                     // TODO submit data
                     if (offsetend - bufferstate.offset >= 0) {
                       object.recvData({
-                        data: new Uint8Array(
-                          bufferstate.buffer.buffer,
-                          bufferstate.buffer.byteOffset + bufferstate.offset,
-                          offsetend - bufferstate.offset
-                        ),
+                        data:
+                          offsetend - bufferstate.offset > 0
+                            ? new Uint8Array(
+                                bufferstate.buffer.buffer,
+                                bufferstate.buffer.byteOffset +
+                                  bufferstate.offset,
+                                offsetend - bufferstate.offset
+                              )
+                            : undefined,
                         fin:
                           type === ParserBase.WT_STREAM_WFIN &&
                           bufferstate.size >= length + offsetbegin
@@ -611,13 +639,13 @@ export class WebSocketParser extends ParserBaseHttp2 {
               // TODO submit data
               object.recvData({
                 data: new Uint8Array(
-                  bufferstate.buffer,
+                  bufferstate.buffer.buffer,
                   bufferstate.buffer.byteOffset + bufferstate.offset,
                   clength
                 ),
                 fin:
                   this.rtype === ParserBase.WT_STREAM_WFIN &&
-                  this.remainlength >= clength
+                  this.remainlength === clength
               })
             }
 

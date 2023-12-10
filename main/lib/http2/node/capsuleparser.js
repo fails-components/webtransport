@@ -30,7 +30,10 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
           {
             // we are at capsule start
             if (bufferstate.size < 2 + bufferstate.offset) {
-              this.saveddata = cdata
+              this.saveddata = Buffer.from(
+                bufferstate.buffer,
+                bufferstate.offset
+              )
               return
             }
             const type = readVarInt(bufferstate)
@@ -38,12 +41,18 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               typeof type === 'undefined' ||
               bufferstate.size < 1 + bufferstate.offset
             ) {
-              this.saveddata = cdata
+              this.saveddata = Buffer.from(
+                bufferstate.buffer,
+                bufferstate.offset
+              )
               return
             }
             const length = readVarInt(bufferstate)
             if (typeof length === 'undefined') {
-              this.saveddata = cdata
+              this.saveddata = Buffer.from(
+                bufferstate.buffer,
+                bufferstate.offset
+              )
               return
             }
             let checklength = length // we want to read most times the full capsule
@@ -69,7 +78,10 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               return
             }
             if (bufferstate.size < checklength + bufferstate.offset) {
-              this.saveddata = cdata
+              this.saveddata = Buffer.from(
+                bufferstate.buffer,
+                bufferstate.offset
+              )
               return
             }
             let streamid
@@ -103,12 +115,17 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                   }
                   // TODO submit data
                   if (offsetend - bufferstate.offset >= 0) {
+                    this.datacounter += offsetend - bufferstate.offset
                     object.recvData({
-                      data: new Uint8Array(
-                        bufferstate.buffer.buffer,
-                        bufferstate.buffer.byteOffset + bufferstate.offset,
-                        offsetend - bufferstate.offset
-                      ),
+                      data:
+                        offsetend - bufferstate.offset > 0
+                          ? new Uint8Array(
+                              bufferstate.buffer.buffer,
+                              bufferstate.buffer.byteOffset +
+                                bufferstate.offset,
+                              offsetend - bufferstate.offset
+                            )
+                          : undefined,
                       fin:
                         type === Http2CapsuleParser.WT_STREAM_WFIN &&
                         bufferstate.size >= length + offsetbegin
@@ -212,13 +229,13 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               // TODO submit data
               object.recvData({
                 data: new Uint8Array(
-                  bufferstate.buffer,
+                  bufferstate.buffer.buffer,
                   bufferstate.buffer.byteOffset + bufferstate.offset,
                   clength
                 ),
                 fin:
                   this.rtype === Http2CapsuleParser.WT_STREAM_WFIN &&
-                  this.remainlength >= clength
+                  this.remainlength === clength
               })
             }
 

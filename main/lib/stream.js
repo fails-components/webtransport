@@ -412,7 +412,7 @@ export class HttpWTStream {
         if (this.pendingoperationRead || this.pendingresRead)
           throw new Error('We have pendingoperationRead and a filled buffer?')
 
-        this.drainBuffer()
+        while (this.incomingbufferfilled > 0) this.drainBuffer()
       }
       if (this.cancelres) {
         const res = this.cancelres
