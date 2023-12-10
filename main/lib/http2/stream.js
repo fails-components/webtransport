@@ -33,6 +33,8 @@ export class Http2WebTransportStream {
     this.capsuleParser = capsuleParser
     /** @type {Array<Uint8Array>} */
     this.outgochunks = []
+
+    this.final = false
   }
 
   /**
@@ -54,67 +56,75 @@ export class Http2WebTransportStream {
     let fin = false
 
     while (this.incomdata.length > 0 && this.bufferlen_ < this.readbufsize_) {
-      const cur = this.incomdata[0]
-      let len
+      const cur = this.incomdata.shift()
+      if (cur.data) {
+        let len
 
-      if (this.writepos_ >= this.readpos_) {
-        len = Math.min(this.readbufsize_ - this.writepos_, cur.data.byteLength)
+        if (this.writepos_ >= this.readpos_) {
+          len = Math.min(
+            this.readbufsize_ - this.writepos_,
+            cur.data.byteLength
+          )
 
-        const destview = new Uint8Array(
-          this.readbuffer,
-          0 + this.writepos_,
-          len
-        )
-        const srcview = new Uint8Array(
-          cur.data.buffer,
-          cur.data.byteOffset,
-          len
-        )
-        destview.set(srcview)
-
-        this.writepos_ = (this.writepos_ + len) % this.readbufsize_
-        this.bufferlen_ = this.bufferlen_ + len
-        bytesRead += len
-      } else {
-        // readpos_ > writepos_
-        len = Math.min(this.readpos_ - this.writepos_, cur.data.byteLength)
-        const destview = new Uint8Array(
-          this.readbuffer,
-          0 + this.writepos_,
-          len
-        )
-        const srcview = new Uint8Array(
-          cur.data.buffer,
-          cur.data.byteOffset,
-          len
-        )
-        destview.set(srcview)
-
-        this.writepos_ = (this.writepos_ + len) % this.readbufsize_
-        this.bufferlen_ = this.bufferlen_ + len
-        bytesRead += len
-      }
-      if (cur.data.byteLength !== len) {
-        this.incomdata[0] = {
-          data: new Uint8Array(
+          const destview = new Uint8Array(
+            this.readbuffer,
+            0 + this.writepos_,
+            len
+          )
+          const srcview = new Uint8Array(
             cur.data.buffer,
-            cur.data.byteOffset + len,
-            cur.data.byteLength - len
-          ),
-          fin: cur.fin
+            cur.data.byteOffset,
+            len
+          )
+          destview.set(srcview)
+
+          this.writepos_ = (this.writepos_ + len) % this.readbufsize_
+          this.bufferlen_ = this.bufferlen_ + len
+          bytesRead += len
+        } else {
+          // readpos_ > writepos_
+          len = Math.min(this.readpos_ - this.writepos_, cur.data.byteLength)
+          const destview = new Uint8Array(
+            this.readbuffer,
+            0 + this.writepos_,
+            len
+          )
+          const srcview = new Uint8Array(
+            cur.data.buffer,
+            cur.data.byteOffset,
+            len
+          )
+          destview.set(srcview)
+
+          this.writepos_ = (this.writepos_ + len) % this.readbufsize_
+          this.bufferlen_ = this.bufferlen_ + len
+          bytesRead += len
+        }
+        if (cur.data.byteLength !== len) {
+          this.incomdata.unshift({
+            data: new Uint8Array(
+              cur.data.buffer,
+              cur.data.byteOffset + len,
+              cur.data.byteLength - len
+            ),
+            fin: cur.fin
+          })
+          fin = false // next round
+        } else {
+          fin = fin || cur.fin
         }
       } else {
         fin = fin || cur.fin
-        this.incomdata.pop()
       }
     }
 
-    if (bytesRead > 0 || fin)
+    if (bytesRead > 0 || fin) {
       this.jsobj.onStreamRead({
         buffergrow: bytesRead,
         fin,
         success: true
       })
+    }
   }
 
   /**
@@ -164,17 +174,21 @@ export class Http2WebTransportStream {
    * @param {Uint8Array} buf
    */
   writeChunk(buf) {
-    this.outgochunks.push(buf)
+    this.outgochunks.push({ buf, fin: false })
     this.drainWrites()
   }
 
   drainWrites() {
-    while (this.outgochunks.length > 0 && !this.capsuleParser.blocked) {
-      const cur = this.outgochunks.pop()
+    while (
+      this.outgochunks.length > 0 &&
+      (!this.capsuleParser.blocked || this.final)
+    ) {
+      const cur = this.outgochunks.shift()
+      const payload = cur.buf
       this.capsuleParser.writeCapsule({
-        type: ParserBase.WT_STREAM_WOFIN,
+        type: cur?.fin ? ParserBase.WT_STREAM_WFIN : ParserBase.WT_STREAM_WOFIN,
         headerVints: [this.streamid],
-        payload: cur
+        payload
       })
       this.jsobj.onStreamWrite({
         success: true
@@ -183,11 +197,9 @@ export class Http2WebTransportStream {
   }
 
   streamFinal() {
-    this.capsuleParser.writeCapsule({
-      type: ParserBase.WT_STREAM_WFIN,
-      headerVints: [this.streamid],
-      payload: undefined
-    })
+    this.final = true
+    this.outgochunks.push({ fin: true })
+    this.drainWrites()
     processnextTick(() =>
       this.jsobj.onStreamNetworkFinish({
         nettask: 'streamFinal'
