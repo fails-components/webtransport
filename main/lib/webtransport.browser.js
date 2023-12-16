@@ -102,6 +102,23 @@ export class WebTransportPolyfill {
         .then((val) => this.drainingRes(val))
         .catch((error) => this.drainingRej(error))
     }
+    // if browser takes too long for waiting for client, we use the ponyfill
+    setTimeout(() => {
+      if (this.allowFallback && !this.closeset) {
+        if (
+          !this.initiatedFallback &&
+          !this.curtransport?.supportsReliableOnly // way how browser signals support for http/2, no polyfill needed in this cases
+        ) {
+          const oldtransport = this.curtransport
+          oldtransport.ready
+            .then(async () => {
+              oldtransport.close().catch(() => {})
+            })
+            .catch(() => {})
+          initiateFallback()
+        }
+      }
+    }, 2000)
 
     this.curtransport.ready
       .then((val) => {
@@ -112,7 +129,7 @@ export class WebTransportPolyfill {
         if (this.allowFallback && !this.closeset) {
           if (
             !this.initiatedFallback &&
-            !this.curtransport?.reliability.supportsReliableOnly // way how browser signals support for http/2, no polyfill needed in this cases
+            !this.curtransport?.supportsReliableOnly // way how browser signals support for http/2, no polyfill needed in this cases
           ) {
             initiateFallback()
           }
@@ -128,7 +145,7 @@ export class WebTransportPolyfill {
         if (this.allowFallback && !this.closeset) {
           if (
             !this.initiatedFallback &&
-            !this.curtransport?.reliability?.supportsReliableOnly // way how browser signals support for http/2, no polyfill needed in this cases
+            !this.curtransport?.supportsReliableOnly // way how browser signals support for http/2, no polyfill needed in this cases
           ) {
             initiateFallback()
           }

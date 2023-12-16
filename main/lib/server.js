@@ -46,6 +46,8 @@ const quicheLoaded = new Promise((resolve, reject) => {
       )
       reject(error)
     })
+}).catch((error) => {
+  console.log('http3 loader:', error)
 })
 
 /**

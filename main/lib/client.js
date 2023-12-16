@@ -137,7 +137,7 @@ export class HttpClient {
           new WebTransportError('Opening handshake failed.')
         )
       delete this.quicconnectedProm
-    } else
+    } else if (args.success)
       throw new WebTransportError('Client connected with no pending promise')
   }
 

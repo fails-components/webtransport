@@ -43,6 +43,8 @@ const quicheLoaded = new Promise((resolve, reject) => {
       log('Problem loading http3-quiche transport', error)
       reject(error)
     })
+}).catch((error) => {
+  console.log('http3 loader:', error)
 })
 
 /**
