@@ -104,6 +104,7 @@ export class Http2WebTransportBrowser {
   }
 
   closeClient() {
-    if (this.clientInt) this.clientInt.close()
+    if (this.clientInt && this.clientInt.readyState === 1)
+      this.clientInt.close()
   }
 }

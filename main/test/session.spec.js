@@ -94,32 +94,30 @@ describe('session', function () {
   })
 
   // This is a workaround, as this test causes subsequent browser tests to fail
-  if (process.env.USE_POLYFILL !== 'true') {
-    it('should error when connecting to a path that does not exist', async () => {
-      client = new WebTransport(`${process.env.SERVER_URL}/non_existant`, {
-        serverCertificateHashes: [
-          {
-            algorithm: 'sha-256',
-            value: readCertHash(process.env.CERT_HASH)
-          }
-        ],
-        // @ts-ignore
-        forceReliable
-      })
-
-      const [closedResult, readyResult] = await Promise.all([
-        client.closed.catch((err) => err),
-        client.ready.catch((err) => err)
-      ])
-
-      expect(closedResult)
-        .to.be.a('WebTransportError')
-        .with.property('message', 'Opening handshake failed.')
-      expect(readyResult)
-        .to.be.a('WebTransportError')
-        .with.property('message', 'Opening handshake failed.')
+  it('should error when connecting to a path that does not exist', async () => {
+    client = new WebTransport(`${process.env.SERVER_URL}/non_existant`, {
+      serverCertificateHashes: [
+        {
+          algorithm: 'sha-256',
+          value: readCertHash(process.env.CERT_HASH)
+        }
+      ],
+      // @ts-ignore
+      forceReliable
     })
-  }
+
+    const [closedResult, readyResult] = await Promise.all([
+      client.closed.catch((err) => err),
+      client.ready.catch((err) => err)
+    ])
+
+    expect(closedResult)
+      .to.be.a('WebTransportError')
+      .with.property('message', 'Opening handshake failed.')
+    expect(readyResult)
+      .to.be.a('WebTransportError')
+      .with.property('message', 'Opening handshake failed.')
+  })
 
   if (process.env.USE_POLYFILL !== 'true') {
     // deactivated in polyfill case, no test necessary
