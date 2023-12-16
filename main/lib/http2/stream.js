@@ -134,6 +134,8 @@ export class Http2WebTransportStream {
   updateReadPos(bytesread, pos) {
     this.readpos_ = pos
     this.bufferlen_ -= bytesread
+    // well a good time to try to read again
+    this.processRead()
   }
 
   startReading() {}

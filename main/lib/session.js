@@ -411,6 +411,8 @@ export class HttpWTSession {
     }
 
     log('onClose')
+    this.streamObjs.forEach((ele) => ele.finalDrain())
+
     const error = new WebTransportError('Session closed')
 
     for (const rej of this.rejectBiDi) rej(error)

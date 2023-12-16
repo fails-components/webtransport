@@ -706,12 +706,12 @@ export class WebSocketParser extends ParserBaseHttp2 {
       headlength += 4
       mask = 1
     }
+    if (payload) plength += payload.byteLength
     if (plength > 0xffff) {
       headlength += 8
     } else if (plength > 125) {
       headlength += 2
     }
-    if (payload) plength += payload.byteLength
 
     const cdata = Buffer.alloc(headlength)
     const bufferstate = { offset: 0, size: cdata.length, buffer: cdata }
