@@ -54,8 +54,6 @@ export class HttpWTStream {
     this.pendingoperationRead = null
     this.pendingresRead = null
 
-    this.pulledbytes = 0
-
     if (this.bidirectional || this.incoming) {
       /** @type {Number} */
       this.incomingbufferfilled = 0
@@ -87,15 +85,11 @@ export class HttpWTStream {
               })
               await this.pendingoperationRead
             }
-            console.log('pull 1')
             if (this.incomingbufferfilled === 0) return Promise.resolve()
-            console.log('pull 2', this.incomingbufferfilled)
 
             this.drainBuffer()
-            console.log('pull 3', this.incomingbufferfilled)
           },
           cancel: (/** @type {{ code: number; }} */ reason) => {
-            console.log('read cancel')
             /** @type {Promise<void>} */
             const promise = new Promise((resolve, reject) => {
               this.cancelres = resolve
@@ -126,8 +120,6 @@ export class HttpWTStream {
       this.parentobj.addReceiveStream(this.readable, this.readableController)
     }
     if (this.bidirectional || !this.incoming) {
-      let writeablesend = 0
-      let writeabletrysend = 0
       /** @type {WebTransportSendStream} */
       // @ts-expect-error `getStats` property is missing from WritableStream
       this.writable = new WritableStream(
@@ -147,14 +139,10 @@ export class HttpWTStream {
               this.pendingoperation = new Promise((resolve, reject) => {
                 this.pendingres = resolve
               })
-              writeabletrysend += wchunk.byteLength
-              console.log('try wchunk', writeabletrysend, wchunk.byteLength)
               this.parentobj
                 .waitForDatagramsSend()
                 .finally(() => {
                   this.objint.writeChunk(wchunk)
-                  writeablesend += wchunk.byteLength
-                  console.log('wchunk', writeablesend, wchunk.byteLength)
                 })
                 .catch((/** @type {any} */ err) => {
                   log.error(err)
@@ -274,13 +262,6 @@ export class HttpWTStream {
       // @ts-ignore
       byob.respond(read)
       this.incomingbufferfilled -= read
-      this.pulledbytes += read
-      console.log(
-        'pulled bytes',
-        process.pid,
-        this.pulledbytes,
-        this.incomingbufferfilled
-      )
       this.objint.updateReadPos(read, this.incomingbufferreadpos)
     } else {
       let toread = this.incomingbufferfilled
@@ -331,7 +312,6 @@ export class HttpWTStream {
 
       this.incomingbufferfilled -= read
       this.pulledbytes += read
-      console.log('pulled bytes 2', this.pulledbytes)
       this.objint.updateReadPos(read, this.incomingbufferreadpos)
     }
   }
