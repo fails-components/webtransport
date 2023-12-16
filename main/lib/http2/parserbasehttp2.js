@@ -91,11 +91,18 @@ export class ParserBaseHttp2 extends ParserBase {
     })
 
     this.stream.on('close', () => {
-      // writable close
-      this.session.jsobj.onClose({
-        errorcode: this.stream.rstCode || 0,
-        error: ''
-      })
+      if (
+        !(
+          this.session.jsobj.state === 'failed' ||
+          this.session.jsobj.state === 'closed'
+        )
+      ) {
+        // writable close
+        this.session.jsobj.onClose({
+          errorcode: this.stream.rstCode || 0,
+          error: ''
+        })
+      }
     })
   }
 }

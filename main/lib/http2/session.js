@@ -47,10 +47,12 @@ export class Http2WebTransportSession {
         })
       }
       stream.on('close', () => {
-        this.jsobj.onClose({
-          errorcode: 0,
-          error: 'Session http/2 stream closed'
-        })
+        if (!(this.jsobj.state === 'failed' || this.jsobj.state === 'closed')) {
+          this.jsobj.onClose({
+            errorcode: 0,
+            error: 'Session http/2 stream closed'
+          })
+        }
       })
     }
   }
@@ -122,13 +124,12 @@ export class Http2WebTransportSession {
    * @param {{ code: number, reason: string }} arg
    */
   close({ code, reason }) {
-    this.capsParser.sendClose({ code, reason })
+    this.capsParser.sendClose({ code, reason }) // thid includes for ws closing the session!
     // what to do with the reason
     if (this.stream) {
       if (this.stream.close) this.stream.close(code)
       else if (this.stream.end) this.stream.end()
       else throw new Error('http2:session not close method')
     }
-    if (this.ws) this.ws.close(code === 0 ? 1000 : 1003, reason)
   }
 }
