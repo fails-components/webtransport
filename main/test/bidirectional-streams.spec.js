@@ -98,8 +98,6 @@ describe('bidirectional streams', function () {
   })
 
   it('sends and receives data over an incoming bidirectional stream', async () => {
-    /** @type {Deferred<Uint8Array[]>} */
-
     // client context - waits for the server to open a bidi stream then pipes it back to them
     client = new WebTransport(
       `${process.env.SERVER_URL}/bidirectional_server_initiated_echo`,
