@@ -83,11 +83,6 @@ export class WebTransportPolyfill {
       this.drainingRej = reject
     })
 
-    /** @type {WebTransport|WebTransportPonyfill} */
-    // @ts-ignore
-    // eslint-disable-next-line no-undef
-    this.curtransport = new WebTransport(url, args)
-
     const initiateFallback = () => {
       this.initiatedFallback = true
       this.curtype = 'websocket'
@@ -102,66 +97,76 @@ export class WebTransportPolyfill {
         .then((val) => this.drainingRes(val))
         .catch((error) => this.drainingRej(error))
     }
-    // if browser takes too long for waiting for client, we use the ponyfill
-    setTimeout(() => {
-      if (this.allowFallback && !this.closeset) {
-        if (
-          !this.initiatedFallback &&
-          !this.curtransport?.supportsReliableOnly // way how browser signals support for http/2, no polyfill needed in this cases
-        ) {
-          const oldtransport = this.curtransport
-          oldtransport.ready
-            .then(async () => {
-              oldtransport.close().catch(() => {})
-            })
-            .catch(() => {})
-          initiateFallback()
-        }
-      }
-    }, 2000)
 
-    this.curtransport.ready
-      .then((val) => {
-        this.allowFallback = false
-        this.readyRes(val)
-      })
-      .catch((error) => {
-        if (this.allowFallback && !this.closeset) {
-          if (
-            !this.initiatedFallback &&
-            !this.curtransport?.supportsReliableOnly // way how browser signals support for http/2, no polyfill needed in this cases
-          ) {
-            initiateFallback()
-          }
-        } else {
-          this.readyRej(error)
-        }
-      })
-    this.curtransport.closed
-      .then((val) => {
-        if (this.curtype === 'native') this.closeRes(val)
-      })
-      .catch((error) => {
-        if (this.allowFallback && !this.closeset) {
-          if (
-            !this.initiatedFallback &&
-            !this.curtransport?.supportsReliableOnly // way how browser signals support for http/2, no polyfill needed in this cases
-          ) {
-            initiateFallback()
-          }
-        } else {
-          this.closeRej(error)
-        }
-      })
-    if (this.curtransport.draining) {
+    if (globalThis.WebTransport) {
+      /** @type {WebTransport|WebTransportPonyfill} */
       // @ts-ignore
-      this.curtransport.draining
-        .then((/** @type {any} */ val) => {
-          if (this.curtype === 'native') this.drainingRes(val)
+      // eslint-disable-next-line no-undef
+      this.curtransport = new WebTransport(url, args)
+      // if browser takes too long for waiting for client, we use the ponyfill
+      setTimeout(() => {
+        if (this.allowFallback && !this.closeset) {
+          if (
+            !this.initiatedFallback &&
+            !this.curtransport?.supportsReliableOnly // way how browser signals support for http/2, no polyfill needed in this cases
+          ) {
+            const oldtransport = this.curtransport
+            if (oldtransport)
+              oldtransport.ready
+                .then(async () => {
+                  oldtransport.close().catch(() => {})
+                })
+                .catch(() => {})
+            initiateFallback()
+          }
+        }
+      }, 2000)
+
+      this.curtransport.ready
+        .then((val) => {
+          this.allowFallback = false
+          this.readyRes(val)
         })
-        .catch((/** @type {WebTransportError} */ error) => {
-          if (this.curtype === 'native') this.drainingRej(error)
+        .catch((error) => {
+          if (this.allowFallback && !this.closeset) {
+            if (
+              !this.initiatedFallback &&
+              !this.curtransport?.supportsReliableOnly // way how browser signals support for http/2, no polyfill needed in this cases
+            ) {
+              initiateFallback()
+            }
+          } else {
+            this.readyRej(error)
+          }
         })
+      this.curtransport.closed
+        .then((val) => {
+          if (this.curtype === 'native') this.closeRes(val)
+        })
+        .catch((error) => {
+          if (this.allowFallback && !this.closeset) {
+            if (
+              !this.initiatedFallback &&
+              !this.curtransport?.supportsReliableOnly // way how browser signals support for http/2, no polyfill needed in this cases
+            ) {
+              initiateFallback()
+            }
+          } else {
+            this.closeRej(error)
+          }
+        })
+      if (this.curtransport.draining) {
+        // @ts-ignore
+        this.curtransport.draining
+          .then((/** @type {any} */ val) => {
+            if (this.curtype === 'native') this.drainingRes(val)
+          })
+          .catch((/** @type {WebTransportError} */ error) => {
+            if (this.curtype === 'native') this.drainingRej(error)
+          })
+      }
+    } else {
+      initiateFallback()
     }
     /** @type {import('./dom').WebTransportDatagramDuplexStream} */
     // @ts-ignore
