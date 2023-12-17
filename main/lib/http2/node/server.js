@@ -60,6 +60,9 @@ export class Http2WebTransportServer {
       const retObj = {}
       // @ts-ignore
       this.jsobj.onServerError(retObj)
+      /* TODO (stream) => {
+        stream.close(constants.NGHTTP2_CONNECT_ERROR)
+      }) */
     })
 
     this.serverInt.on('close', () => {
@@ -215,12 +218,9 @@ export class Http2WebTransportServer {
         })
         stream.end()
         stream.close()
+        // eslint-disable-next-line no-useless-return
         return
       }
-
-      this.serverInt.on('error', (error_) => {
-        stream.close(constants.NGHTTP2_CONNECT_ERROR)
-      })
     })
   }
 
