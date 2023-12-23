@@ -10,7 +10,9 @@ import { ParserBase } from './parserbase.js'
  *  @typedef {import('../types').ReadDataInt} ReadDataInt
  */
 
-let processnextTick = (func) => setTimeout(func, 0)
+let processnextTick = (/** @type {{ (): void;  }} */ func) =>
+  setTimeout(func, 0)
+// @ts-ignore
 if (typeof process !== 'undefined') processnextTick = process.nextTick
 
 export class Http2WebTransportStream {
@@ -26,7 +28,7 @@ export class Http2WebTransportStream {
     this.incomdata = []
 
     this.capsuleParser = capsuleParser
-    /** @type {Array<Uint8Array>} */
+    /** @type {Array<{buf?:Uint8Array,fin:boolean}>} */
     this.outgochunks = []
 
     this.final = false
@@ -82,7 +84,7 @@ export class Http2WebTransportStream {
         }
       }
       const cur = this.incomdata.shift()
-      if (cur.data && cur.data.byteLength > 0) {
+      if (cur?.data && cur.data.byteLength > 0 && buffer && buffer.buffer) {
         const len = Math.min(
           buffer.buffer.byteLength - bufferoffset,
           cur.data.byteLength
@@ -95,6 +97,7 @@ export class Http2WebTransportStream {
         const destview = new Uint8Array(buffer.buffer.buffer, bufferoffset, len)
         destview.set(srcview)
         bufferoffset += len
+        // @ts-ignore
         buffer.readBytes += len
         buffer.drained = true
         if (cur.data.byteLength !== len) {
@@ -109,7 +112,7 @@ export class Http2WebTransportStream {
           })
           buffer.fin = false // next round
         } else {
-          buffer.fin |= cur.fin
+          buffer.fin ||= cur.fin
         }
         if (this.incomdata.length > 0) buffer.drained = false
         if (
@@ -122,7 +125,7 @@ export class Http2WebTransportStream {
           bufferoffset = 0
         }
         this.recvBytes += len
-      } else if (cur.fin) {
+      } else if (cur?.fin) {
         this.jsobj.commitReadBuffer({ fin: true })
       }
     }
@@ -189,15 +192,19 @@ export class Http2WebTransportStream {
       (!this.capsuleParser.blocked || this.final)
     ) {
       const cur = this.outgochunks.shift()
-      const payload = cur.buf
-      this.capsuleParser.writeCapsule({
-        type: cur?.fin ? ParserBase.WT_STREAM_WFIN : ParserBase.WT_STREAM_WOFIN,
-        headerVints: [this.streamid],
-        payload
-      })
-      this.jsobj.onStreamWrite({
-        success: true
-      })
+      if (cur) {
+        const payload = cur.buf
+        this.capsuleParser.writeCapsule({
+          type: cur?.fin
+            ? ParserBase.WT_STREAM_WFIN
+            : ParserBase.WT_STREAM_WOFIN,
+          headerVints: [this.streamid],
+          payload
+        })
+        this.jsobj.onStreamWrite({
+          success: true
+        })
+      }
     }
   }
 

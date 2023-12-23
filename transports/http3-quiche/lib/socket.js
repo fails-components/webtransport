@@ -69,7 +69,7 @@ globalThis.FAILSVerifyProof = (
 
 export class Http3WebTransportSocket {
   /**
-   * @param {import('../types.js').HttpWebTransportInit|undefined} args
+   * @param {import('../../../main/lib/types.js').HttpWebTransportInit|undefined} args
    */
   constructor(args) {
     /** @type {import('node:dgram').Socket} */
@@ -90,7 +90,7 @@ export class Http3WebTransportSocket {
   }
 
   /**
-   * @param {import('../types').UDPServerSocketSend} args
+   * @param {import('./types').UDPServerSocketSend} args
    */
 
   sendPacket({ msg, offset, length, port, address }) {

@@ -14,7 +14,7 @@ export const KNOWN_BYTES_LENGTH = KNOWN_BYTES.reduce(
   0
 )
 
-const createBytesChunk = function (length) {
+const createBytesChunk = function (/** @type {number} */ length) {
   const workArray = new Array(length / 2)
   for (let i = 0; i < length / 4; i++) {
     workArray[2 * i + 1] = length % 0xffff

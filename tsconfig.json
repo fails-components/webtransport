@@ -33,7 +33,11 @@
       "resolveJsonModule": true
   },
   "include": [
-      "lib",
-      "test"
+      "main/lib",
+      "main/test",
+      "transports/http3-quiche/lib"
+  ],
+  "exclude": [
+    "main/test/testinone.js"
   ]
 }

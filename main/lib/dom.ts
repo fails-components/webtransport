@@ -88,7 +88,7 @@ export interface WebTransportOptions {
   congestionControl?: WebTransportCongestionControl
 }
 
-export interface WebTransport {
+export interface WebTransportSession {
   getStats: () => Promise<WebTransportStats>
   readonly ready: Promise<void>
   readonly reliability: WebTransportReliabilityMode
@@ -105,6 +105,10 @@ export interface WebTransport {
   createUnidirectionalStream: () => Promise<WebTransportSendStream>
   /* a ReadableStream of WebTransportReceiveStream objects */
   readonly incomingUnidirectionalStreams: ReadableStream<WebTransportReceiveStream>
+}
+
+export interface WebTransport extends WebTransportSession {
+  readonly supportsReliableOnly: boolean
 }
 
 export type WebTransportReliabilityMode = 'pending' | 'reliable-only' | 'supports-unreliable'

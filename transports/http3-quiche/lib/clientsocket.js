@@ -8,7 +8,7 @@ const log = logger(`webtransport:Http3WebTransportClientSocket(${process.pid})`)
 
 export class Http3WebTransportClientSocket extends Http3WebTransportSocket {
   /**
-   * @param {import('../types.js').HttpWebTransportInit} args
+   * @param {import('../../../main/lib/types.js').HttpWebTransportInit} args
    */
   constructor(args) {
     super(args)
@@ -18,7 +18,7 @@ export class Http3WebTransportClientSocket extends Http3WebTransportSocket {
     this.host = args?.host || 'localhost'
     this.localPort = args?.localPort
     this.forceIpv6 = args?.forceIpv6 || false
-    /** @type {import('../session.js').HttpClient} */
+    /** @type {import('../../../main/lib/session.js').HttpClient} */
     // @ts-ignore
     this.jsobj = undefined // the transport will set this
 

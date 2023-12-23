@@ -14,6 +14,7 @@ const log = logger(`webtransport:http3wtstream(${pid})`)
  * @typedef {import('./types').StreamNetworkFinishEvent} StreamNetworkFinishEvent
  *
  * @typedef {import('./types').NativeHttpWTStream} NativeHttpWTStream
+ * @typedef {import('./types').ReadBuffer} ReadBuffer
  *
  * @typedef {import('./dom').WebTransportReceiveStream} WebTransportReceiveStream
  * @typedef {import('./dom').WebTransportSendStream} WebTransportSendStream
@@ -200,6 +201,7 @@ export class HttpWTStream {
 
   /**
    * @param {{byteSize: number}} args
+   * @returns {ReadBuffer}
    */
   getReadBuffer({ byteSize }) {
     const byob = this.readableController.byobRequest
@@ -210,25 +212,25 @@ export class HttpWTStream {
       if (!(buffer instanceof Uint8Array)) {
         throw new Error('byob view is not a Uint8Array')
       }
-      return { buffer, byob }
+      return { buffer, byob, readBytes: 0, fin: false }
     } else {
       const buffer = new Uint8Array(byteSize)
-      return { buffer, byob: undefined }
+      return { buffer, byob: undefined, readBytes: 0, fin: false }
     }
   }
 
   /**
-   * @param {{buffer?: Uint8Array, byob?: boolean, drained: boolean, readBytes: number, fin: boolean}} args
+   * @param {ReadBuffer} args
    */
   commitReadBuffer({ buffer, byob, drained, readBytes, fin }) {
-    if (byob) {
+    if (byob && readBytes !== undefined) {
       byob.respond(readBytes)
     } else if (buffer) {
       this.readableController.enqueue(buffer)
     }
     const retObj = {}
 
-    if (readBytes > 0 && !this.readableclosed) {
+    if (readBytes !== undefined && readBytes > 0 && !this.readableclosed) {
       log.trace('commitReadbuffer', readBytes)
       // console.log('stream read received', args.data, Date.now())
       if (this.pendingoperationRead && drained) {
@@ -255,116 +257,6 @@ export class HttpWTStream {
     }
     return retObj
   }
-  /* 
-  drainBuffer() {
-    const byob = this.readableController.byobRequest
-    if (byob) {
-      // @ts-ignore
-      const view = byob?.view
-      // @ts-ignore
-      if (!(view instanceof Uint8Array)) {
-        throw new Error('byob view is not a Uint8Array')
-      }
-      let toread = Math.min(view.byteLength, this.incomingbufferfilled)
-      let read = 0
-      if (!this.objint.readbuffer)
-        throw new Error('No readbuffer in read for read stream')
-      if (
-        this.incomingbufferreadpos + toread >
-        this.objint.readbuffer.byteLength
-      ) {
-        /** @type {Number} *
-        const firstread =
-          this.objint.readbuffer.byteLength - this.incomingbufferreadpos
-        read += firstread
-        toread -= firstread
-        const destview = new Uint8Array(
-          view.buffer,
-          0 + view.byteOffset,
-          firstread
-        )
-        const srcview = new Uint8Array(
-          this.objint.readbuffer,
-          this.incomingbufferreadpos,
-          firstread
-        )
-        destview.set(srcview)
-        this.incomingbufferreadpos = 0
-      }
-      {
-        const destview = new Uint8Array(
-          view.buffer,
-          read + view.byteOffset,
-          toread
-        )
-        const srcview = new Uint8Array(
-          this.objint.readbuffer,
-          this.incomingbufferreadpos,
-          toread
-        )
-        destview.set(srcview)
-        read += toread
-        this.incomingbufferreadpos =
-          (this.incomingbufferreadpos + toread) %
-          this.objint.readbuffer.byteLength
-      }
-      // @ts-ignore
-      byob.respond(read)
-      this.incomingbufferfilled -= read
-      this.objint.updateReadPos(read, this.incomingbufferreadpos)
-    } else {
-      let toread = this.incomingbufferfilled
-      const toqueue = new Uint8Array(toread)
-      let read = 0
-      if (!this.objint.readbuffer)
-        throw new Error('No readbuffer in read for read stream')
-      if (
-        this.incomingbufferreadpos + toread >
-        this.objint.readbuffer.byteLength
-      ) {
-        /** @type {Number} *
-        const firstread =
-          this.objint.readbuffer.byteLength - this.incomingbufferreadpos
-        read += firstread
-        toread -= firstread
-        const destview = new Uint8Array(
-          toqueue.buffer,
-          0 + toqueue.byteOffset,
-          firstread
-        )
-        const srcview = new Uint8Array(
-          this.objint.readbuffer,
-          this.incomingbufferreadpos,
-          firstread
-        )
-        destview.set(srcview)
-        this.incomingbufferreadpos = 0
-      }
-      {
-        const destview = new Uint8Array(
-          toqueue.buffer,
-          read + toqueue.byteOffset,
-          toread
-        )
-        const srcview = new Uint8Array(
-          this.objint.readbuffer,
-          this.incomingbufferreadpos,
-          toread
-        )
-        destview.set(srcview)
-        read += toread
-        this.incomingbufferreadpos =
-          (this.incomingbufferreadpos + toread) %
-          this.objint.readbuffer.byteLength
-      }
-      this.readableController.enqueue(toqueue)
-
-      this.incomingbufferfilled -= read
-      this.pulledbytes += read
-      this.objint.updateReadPos(read, this.incomingbufferreadpos)
-    }
-  }
-  */
 
   /**
    * @param {import('./types').StreamRecvSignalEvent} args
@@ -435,49 +327,6 @@ export class HttpWTStream {
       }
     }
   }
-
-  /**
-   * @param {StreamReadEvent} args
-   * @returns {void}
-   */
-  /*
-  onStreamRead(args) {
-    if (args.buffergrow && !this.readableclosed) {
-      log.trace('stream read received', args.buffergrow)
-      this.incomingbufferfilled += args.buffergrow
-      // console.log('stream read received', args.data, Date.now())
-      if (this.pendingoperationRead) {
-        // this.readableController.enqueue(data)
-        const res = this.pendingresRead
-        this.pendingoperationRead = null
-        this.pendingresRead = null
-        if (res) res()
-      }
-      if (
-        this.readableController.desiredSize != null &&
-        this.readableController.desiredSize < 0
-      )
-        this.objint.stopReading()
-    }
-    if (args.fin) {
-      if (this.incomingbufferfilled > 0) {
-        log.trace('Warning buffer filled and we got a fin')
-        if (this.pendingoperationRead || this.pendingresRead)
-          throw new Error('We have pendingoperationRead and a filled buffer?')
-
-        this.finalDrain()
-      }
-      if (this.cancelres) {
-        const res = this.cancelres
-        this.cancelres = null
-        res()
-      }
-      if (!this.readableclosed) {
-        this.readableController.close()
-        this.readableclosed = true
-      }
-    }
-  } */
 
   finalDrain() {
     this.finaldrain_ = true
