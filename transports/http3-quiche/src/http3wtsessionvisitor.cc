@@ -184,13 +184,6 @@ namespace quic
         if (!stream->gone())
             strjs->Ref();
 
-        if (incom || bidi)
-        { // we have a read stream
-            // same size of a pipe in chromium, but the WT Pipe thre is 256 kbyte, the default 64 kbyte
-            Napi::ArrayBuffer arraybuf = Napi::ArrayBuffer::New(Env(), 64 * 1024);
-            strobj.Set("readbuffer", arraybuf); // so the lifecycle is bound to the JS Obj!
-            stream->setReadBuffer(arraybuf.Data(), arraybuf.ByteLength());
-        }
         stream->setJS(strjs);
 
         Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();

@@ -28,11 +28,16 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
       switch (this.mode) {
         case 's':
           {
+            const capsulestart =
+              bufferstate.offset + bufferstate.buffer.byteOffset
+            const capsulemaxlength =
+              bufferstate.buffer.byteLength - bufferstate.offset
             // we are at capsule start
             if (bufferstate.size < 2 + bufferstate.offset) {
               this.saveddata = Buffer.from(
-                bufferstate.buffer,
-                bufferstate.offset
+                bufferstate.buffer.buffer,
+                capsulestart,
+                capsulemaxlength
               )
               return
             }
@@ -42,16 +47,18 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               bufferstate.size < 1 + bufferstate.offset
             ) {
               this.saveddata = Buffer.from(
-                bufferstate.buffer,
-                bufferstate.offset
+                bufferstate.buffer.buffer,
+                capsulestart,
+                capsulemaxlength
               )
               return
             }
             const length = readVarInt(bufferstate)
             if (typeof length === 'undefined') {
               this.saveddata = Buffer.from(
-                bufferstate.buffer,
-                bufferstate.offset
+                bufferstate.buffer.buffer,
+                capsulestart,
+                capsulemaxlength
               )
               return
             }
@@ -69,7 +76,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
             ) {
               checklength = Math.min(length, 64) // stream id + some Data
             }
-            if (checklength > 263140) {
+            if (checklength > 263140 || length > 1000000) {
               // too long skip, could be an attack vector
               this.mode = 'c'
               this.rstreamid = undefined
@@ -79,8 +86,9 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
             }
             if (bufferstate.size < checklength + bufferstate.offset) {
               this.saveddata = Buffer.from(
-                bufferstate.buffer,
-                bufferstate.offset
+                bufferstate.buffer.buffer,
+                capsulestart,
+                capsulemaxlength
               )
               return
             }
@@ -115,7 +123,6 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                   }
                   // TODO submit data
                   if (offsetend - bufferstate.offset >= 0) {
-                    this.datacounter += offsetend - bufferstate.offset
                     object.recvData({
                       data:
                         offsetend - bufferstate.offset > 0

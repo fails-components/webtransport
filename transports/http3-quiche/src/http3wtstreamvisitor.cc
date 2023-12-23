@@ -25,8 +25,6 @@ namespace quic
             stream_->chunks_.pop_front();
         }
 
-        stream_->getJS()->processStreamRead(0, false, false);
-
         if (!stream_->stop_sending_received_)
         {
             stream_->getJS()->processStreamRecvSignal(0, NetworkTask::stopSending);
@@ -86,46 +84,33 @@ namespace quic
     {
         // if (pause_reading_) return ; // back pressure folks!
 
-        if (pause_reading_)
+        if (pause_reading_ && !drain_reads_)
         {
             can_read_pending_ = true;
             return; // back pressure folks!
         }
-        // first figure out if we have readable data
-        if (bufferlen_ >= readbufsize_ || !readbufdata_)
-        {
-            can_read_pending_ = true;
-            return; // no space here
-        }
         size_t readable = stream_->ReadableBytes();
         bool read = false;
-        while (readable > 0 && bufferlen_ < readbufsize_)
+        while (readable > 0)
         {
-            if (writepos_ >= readpos_)
-            {
-                size_t len = readbufsize_ - writepos_;
+            Http3WTStreamJS::StreamReadBuffer rbuf(js_);
+            rbuf.getBuffer(readable);
+
+            size_t remainSize = rbuf.bufferSize();
+            uint32_t writepos = 0;
+
+            while (readable > 0 && remainSize > 0) {
+                size_t len = remainSize;
                 WebTransportStream::ReadResult result =
-                    stream_->Read(absl::Span<char>(((char *)readbufdata_) + writepos_, len));
+                    stream_->Read(absl::Span<char>(((char *)rbuf.bufferData()) + writepos, len));
                 QUIC_DVLOG(1) << "Attempted reading on WebTransport stream "
                               << ", bytes read: " << result.bytes_read;
-                writepos_ = (writepos_ + result.bytes_read) % readbufsize_;
-                bufferlen_ = bufferlen_ + result.bytes_read;
-                getJS()->processStreamRead(result.bytes_read,
-                                           result.fin, true);
+                writepos += result.bytes_read;
+                remainSize -= result.bytes_read;
+                readable = stream_->ReadableBytes();
+                if (result.fin) rbuf.setFin();
             }
-            else
-            { // readpos_ > writepos_
-                size_t len = readpos_ - writepos_;
-                WebTransportStream::ReadResult result =
-                    stream_->Read(absl::Span<char>(((char *)readbufdata_) + writepos_, len));
-                QUIC_DVLOG(1) << "Attempted reading on WebTransport stream "
-                              << ", bytes read: " << result.bytes_read;
-                writepos_ = (writepos_ + result.bytes_read) % readbufsize_;
-                bufferlen_ = bufferlen_ + result.bytes_read;
-                getJS()->processStreamRead(result.bytes_read,
-                                           result.fin, true);
-            }
-            readable = stream_->ReadableBytes();
+            rbuf.commitBuffer(writepos, readable == 0);
         }
     }
 
@@ -250,20 +235,6 @@ namespace quic
         objVal.Get("onStreamRecvSignal").As<Napi::Function>().Call(objVal, {retObj});
     }
 
-    void Http3WTStreamJS::processStreamRead(size_t buffergrow, bool fin, bool success)
-    {
-        Napi::HandleScope scope(Env());
-
-        Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
-
-        Napi::Object retObj = Napi::Object::New(Env());
-        retObj.Set("fin", fin);
-        retObj.Set("buffergrow", buffergrow);
-        retObj.Set("success", success);
-
-        objVal.Get("onStreamRead").As<Napi::Function>().Call(objVal, {retObj});
-    }
-
     void Http3WTStreamJS::processStreamWrite(Napi::ObjectReference *bufferhandle, bool success)
     {
         Napi::HandleScope scope(Env());
@@ -276,6 +247,40 @@ namespace quic
         retObj.Set("success", success);
 
         objVal.Get("onStreamWrite").As<Napi::Function>().Call(objVal, {retObj});
+    }
+
+    void  Http3WTStreamJS::StreamReadBuffer::getBuffer(size_t reqsize) {
+        Napi::HandleScope scope(jsobj_->Env());
+        Napi::Object objVal = jsobj_->Value().Get("jsobj").As<Napi::Object>();
+
+        Napi::Object argObj = Napi::Object::New(jsobj_->Env());
+        argObj.Set("byteSize", reqsize);
+
+        Napi::Value bufferVal = objVal.Get("getReadBuffer").As<Napi::Function>().Call(objVal, {argObj});
+        bufferObj = Napi::Persistent(bufferVal.As<Napi::Object>());
+        Napi::Object locBuf = bufferVal.As<Napi::Object>();
+        fin = locBuf.Get("fin").As<Napi::Boolean>();
+        if (locBuf.Has("buffer")) {
+            Napi::Uint8Array buffer = locBuf.Get("buffer").As<Napi::Uint8Array>();
+            buffer_ = buffer.Data();
+            buffersize_ =buffer.ByteLength();
+        }
+        // buffer
+        // byob
+        // readBytes
+        // fin
+    }
+
+    void  Http3WTStreamJS::StreamReadBuffer::commitBuffer(uint32_t readbytes, bool drained) {
+        Napi::HandleScope scope(jsobj_->Env());
+        Napi::Object objVal = jsobj_->Value().Get("jsobj").As<Napi::Object>();
+
+        bufferObj.Set("fin", fin);
+        bufferObj.Set("readBytes", Napi::Value::From(jsobj_->Env(),readbytes));
+        bufferObj.Set("drained", drained);
+        Napi::Value bufferVal = objVal.Get("commitReadBuffer").As<Napi::Function>().Call(objVal, {bufferObj.Value()});
+
+
     }
 
 }
