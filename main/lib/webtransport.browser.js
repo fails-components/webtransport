@@ -36,6 +36,10 @@ export class WebTransportPonyfill extends WebTransportBase {
       })
   }
 
+  get supportsReliableOnly() {
+    return true
+  }
+
   /**
    * @param{import('./types.js').HttpWebTransportInit} args
    * @return {{sessionint: HttpWTSession, client: HttpClient}}
@@ -97,7 +101,7 @@ export class WebTransportPolyfill {
         .then((val) => this.drainingRes(val))
         .catch((error) => this.drainingRej(error))
     }
-
+    // @ts-ignore
     if (globalThis.WebTransport) {
       /** @type {WebTransport|WebTransportPonyfill} */
       // @ts-ignore
@@ -114,7 +118,7 @@ export class WebTransportPolyfill {
             if (oldtransport)
               oldtransport.ready
                 .then(async () => {
-                  oldtransport.close().catch(() => {})
+                  oldtransport.close()
                 })
                 .catch(() => {})
             initiateFallback()

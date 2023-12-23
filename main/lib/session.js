@@ -31,7 +31,7 @@ const log = logger(`webtransport:httpwtsession(${pid})`)
  * @typedef {import('./types').NativeHttpWTSession} NativeHttpWTSession
  *
  * Public API
- * @typedef {import('./types').WebTransportSession} WebTransportSession
+ * @typedef {import('./types').WebTransportSessionImpl} WebTransportSession
  *
  * @typedef {import('./server').HttpServer} HttpServer
  * @typedef {import('./client').HttpClient} HttpClient
@@ -88,6 +88,7 @@ export class HttpWTSession {
     })
 
     /** @type {ReadableStream<WebTransportBidirectionalStream>} */
+    // @ts-ignore
     this.incomingBidirectionalStreams = new ReadableStream({
       /** @param {ReadableStreamDefaultController<WebTransportBidirectionalStream>} controller */
       start: (controller) => {
@@ -95,6 +96,7 @@ export class HttpWTSession {
       }
     })
     /** @type {ReadableStream<WebTransportReceiveStream>} */
+    // @ts-ignore
     this.incomingUnidirectionalStreams = new ReadableStream({
       /** @param {ReadableStreamDefaultController<WebTransportReceiveStream>} controller */
       start: (controller) => {
@@ -112,6 +114,7 @@ export class HttpWTSession {
     /** @type {WebTransportDatagramDuplexStream} */
     this.datagrams = {
       /** @type {ReadableStream<Uint8Array>} */
+      // @ts-ignore
       readable: new ReadableStream({
         start: (
           /** @type {import("stream/web").ReadableByteStreamController} */ controller

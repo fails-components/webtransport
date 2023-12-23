@@ -1,4 +1,4 @@
-import type { WebTransport, WebTransportHash, WebTransportOptions } from './dom'
+import type { WebTransportSession, WebTransportHash, WebTransportOptions } from './dom'
 import type { IncomingHttpHeaders, Http2Stream } from 'http2'
 import { ParserBase } from './http2/parserbase'
 import { Http2WebTransportSession } from './http2/session'
@@ -26,8 +26,8 @@ export interface NativeHttpWTStream {
   jsobj: WebTransportStreamEventHandler
   readbuffer: ArrayBuffer | undefined
   startReading: () => void
+  drainReads: () => void
   stopReading: () => void
-  updateReadPos: (bytesread: number, pos: number) => void
   stopSending: (code: number) => void
   resetStream: (code: number) => void
   writeChunk: (buf: Uint8Array) => void
@@ -51,6 +51,14 @@ export interface NativeClientOptions {
   localPort: number
   allowPooling: boolean
   forceIpv6: boolean
+}
+
+export interface ReadBuffer {
+  buffer?: Uint8Array
+  readBytes?: number
+  byob?: ReadableStreamBYOBRequest
+  drained?: boolean
+  fin:boolean
 }
 
 export interface NativeFinishSessionRequest {
@@ -88,7 +96,6 @@ export interface StreamNetworkFinishEvent {
 
 export interface WebTransportStreamEventHandler {
   onStreamRecvSignal: (evt: StreamRecvSignalEvent) => void
-  onStreamRead: (evt: StreamReadEvent) => void
   onStreamWrite: (evt: StreamWriteEvent) => void
   onStreamNetworkFinish: (evt: StreamNetworkFinishEvent) => void
 }
@@ -180,13 +187,6 @@ export interface ServerSessionRequestEvent {
   protocol: string //'capsule' | 'websocket' | 'http3'
 }
 
-export interface UDPServerSocketSend {
-  msg:  Uint8Array
-  offset: number
-  length: number
-  port:number
-  address: string
-}
 
 /**
  * The Http server is listening on the specified port
@@ -216,7 +216,7 @@ export interface Deferred<T = unknown> {
 // https://www.w3.org/TR/webtransport/#dom-webtransport-state-slot
 export type WebTransportSessionState =  'connecting' | 'connected' | 'draining' | 'closed' | 'failed'
 
-export interface WebTransportSession extends WebTransport {
+export interface WebTransportSessionImpl extends WebTransportSession {
   state: WebTransportSessionState
 }
 

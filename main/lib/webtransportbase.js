@@ -89,6 +89,12 @@ export class WebTransportBase {
     return session.congestionControl
   }
 
+  get supportsReliableOnly() {
+    throw new Error('Implement supportsReliableOnly')
+    // eslint-disable-next-line no-unreachable
+    return false
+  }
+
   getStats() {
     const session = this.sessionint
 

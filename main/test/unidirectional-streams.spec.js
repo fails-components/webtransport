@@ -51,7 +51,7 @@ describe('unidirectional streams', function () {
 
     // the remote will close the session
     const result = await client.closed
-    client = null
+    client = undefined
 
     // should receive the default close info
     expect(result).to.have.property('reason', '')
@@ -121,7 +121,7 @@ describe('unidirectional streams', function () {
 
     // the remote will close the session cleanly if everything was ok
     await client.closed
-    client = null
+    client = undefined
 
     // should receive the default close info, not true on chromium
     // expect(result).to.have.property('reason', '')

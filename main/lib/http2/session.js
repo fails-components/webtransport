@@ -3,7 +3,9 @@
  */
 import { ParserBase } from './parserbase.js'
 
-let processnextTick = (func) => setTimeout(func, 0)
+let processnextTick = (/** @type {{ (args: any[]): any }} */ func) =>
+  setTimeout(func, 0)
+// @ts-ignore
 if (typeof process !== 'undefined') processnextTick = process.nextTick
 
 export class Http2WebTransportSession {

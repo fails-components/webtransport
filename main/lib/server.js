@@ -51,7 +51,7 @@ const quicheLoaded = new Promise((resolve, reject) => {
 })
 
 /**
- * @typedef {import('./types').WebTransportSession} WebTransportSession
+ * @typedef {import('./types').WebTransportSessionImpl} WebTransportSession
  * @typedef {import('./types').NativeHttpWTSession} NativeHttpWTSession
  * @typedef {import('./types').HttpServerEventHandler} HttpServerEventHandler
  * @typedef {import('./types').HttpWTServerSessionVisitorEvent} HttpWTServerSessionVisitorEvent

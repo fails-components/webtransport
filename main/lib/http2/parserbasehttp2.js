@@ -9,15 +9,15 @@ import { ParserBase } from './parserbase.js'
  */
 export function readVarInt(bs) {
   if (bs.offset + 1 > bs.size) return undefined
-  let val = bs.buffer.readUInt8(bs.offset)
+  let val = BigInt(bs.buffer.readUInt8(bs.offset))
   bs.offset++
-  const prefix = val >>> 6
+  const prefix = Number(val) >>> 6
   const intlength = 1 << prefix
 
   if (bs.offset + intlength - 1 > bs.size) {
     return undefined
   }
-  val = BigInt(val & 0x3f)
+  val = val & 0x3fn
   for (let i = 0; i < intlength - 1; i++) {
     val = (val << 8n) | BigInt(bs.buffer.readUInt8(bs.offset))
     bs.offset++
