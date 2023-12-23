@@ -1,5 +1,6 @@
 import { Http2WebTransportSession } from '../session.js'
 import { BrowserParser } from './browserparser.js'
+import { supportedVersions } from '../websocketcommon.js'
 
 export class Http2WebTransportBrowser {
   /**
@@ -24,8 +25,14 @@ export class Http2WebTransportBrowser {
       let url = 'wss://' + this.hostname + ':' + this.port
       if (path) url = url + '/' + path
       // eslint-disable-next-line no-undef
-      this.clientInt = new WebSocket(url, ['webtransport'])
+      this.clientInt = new WebSocket(
+        url,
+        supportedVersions.map(
+          (/** @type {string} */ el) => 'webtransport_' + el
+        )
+      )
     } catch (error) {
+      console.log('ct prob', error)
       this.jsobj.onClientConnected({
         success: false
       })
@@ -35,15 +42,27 @@ export class Http2WebTransportBrowser {
     this.clientInt.binaryType = 'arraybuffer'
 
     this.clientInt.addEventListener('open', (event) => {
-      if (this.clientInt?.protocol === 'webtransport') {
-        this.jsobj.onClientWebTransportSupport({})
-        this.jsobj.onClientConnected({
-          success: true
-        })
-      } else {
+      const protocol = this.clientInt?.protocol
+      if (!protocol) {
         if (this.clientInt) this.clientInt.close()
         this.jsobj.onClientConnected({
           success: false
+        })
+      }
+      const aprotocol = protocol.split('_')
+      if (
+        aprotocol.length !== 2 ||
+        aprotocol[0] !== 'webtransport' ||
+        !supportedVersions.includes(aprotocol[1])
+      ) {
+        if (this.clientInt) this.clientInt.close()
+        this.jsobj.onClientConnected({
+          success: false
+        })
+      } else {
+        this.jsobj.onClientWebTransportSupport({})
+        this.jsobj.onClientConnected({
+          success: true
         })
       }
     })
