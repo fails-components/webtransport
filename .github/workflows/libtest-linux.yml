@@ -50,6 +50,9 @@ jobs:
       - name: Run browser unit tests http2 polyfill
         run:  NODE_ENV=production npm run test:chromium:http2:polyfill --workspace main
 
+      - name: Run browser unit tests http2 ponyfill
+        run:  NODE_ENV=production npm run test:chromium:http2:ponyfill --workspace main
+
       - name: Run node unit tests
         run:  NODE_ENV=production npm run test:node --workspace main
 

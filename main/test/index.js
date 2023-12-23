@@ -35,11 +35,17 @@ async function runTests(certificate, serverAddress) {
   let http2 = false
   if (process.argv[3] === 'http2') http2 = true
   let polyfill = false
+  let ponyfill = false
   let slice = 4
   if (process.argv.length > 3 && process.argv[4] === 'polyfill') {
     polyfill = true
     slice++
     if (env === 'node') throw new Error('Polyfill not supported on node')
+  }
+  if (process.argv.length > 3 && process.argv[4] === 'ponyfill') {
+    ponyfill = true
+    slice++
+    if (env === 'node') throw new Error('Ponyfill not supported on node')
   }
   /** @type {string} */
   let command = ''
@@ -68,7 +74,8 @@ async function runTests(certificate, serverAddress) {
   } else if (env === 'chromium') {
     command = 'playwright-test'
     const otheropts = []
-    if (polyfill) otheropts.push('--config', './test/pw-no-https-errors.json')
+    if (polyfill || ponyfill)
+      otheropts.push('--config', './test/pw-no-https-errors.json')
     args = ['./test/*.spec.js', ...otheropts, ...process.argv.slice(slice)]
     const tests = execa(command, args, {
       env: {
@@ -76,7 +83,8 @@ async function runTests(certificate, serverAddress) {
         CERT_HASH: certificate,
         SERVER_URL: serverAddress,
         USE_HTTP2: http2 ? 'true' : 'false',
-        USE_POLYFILL: polyfill ? 'true' : 'false'
+        USE_POLYFILL: polyfill ? 'true' : 'false',
+        USE_PONYFILL: ponyfill ? 'true' : 'false'
       },
       stdio: ['inherit', 'inherit', 'inherit']
     })
