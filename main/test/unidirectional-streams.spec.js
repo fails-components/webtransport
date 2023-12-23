@@ -85,7 +85,11 @@ describe('unidirectional streams', function () {
 
   it('handles fin when paused due to backpressure', async function () {
     let addpolyfill = 0
-    if (process.env.USE_POLYFILL === 'true') addpolyfill = 4000
+    if (
+      process.env.USE_POLYFILL === 'true' ||
+      process.env.USE_PONYFILL === 'true'
+    )
+      addpolyfill = 4000
     this.timeout(6000 + addpolyfill)
     client = new WebTransport(
       `${process.env.SERVER_URL}/unidirectional_server_delay_before_read`,

@@ -119,7 +119,10 @@ describe('session', function () {
       .with.property('message', 'Opening handshake failed.')
   })
 
-  if (process.env.USE_POLYFILL !== 'true') {
+  if (
+    process.env.USE_POLYFILL !== 'true' &&
+    process.env.USE_PONYFILL !== 'true'
+  ) {
     // deactivated in polyfill case, no test necessary
     it('should error when connecting with a bad certificate', async () => {
       client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
