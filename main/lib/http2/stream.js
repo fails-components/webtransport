@@ -21,11 +21,6 @@ export class Http2WebTransportStream {
     /** @type {import('../stream').HttpWTStream} */
     // @ts-ignore
     this.jsobj = undefined // the creator will set this
-    this.readbuffer = new ArrayBuffer(64 * 1024)
-    this.readpos_ = 0
-    this.writepos_ = 0
-    this.bufferlen_ = 0
-    this.readbufsize_ = this.readbuffer.byteLength
     this.streamid = streamid
     /** @type {Array<ReadDataInt>} */
     this.incomdata = []
@@ -35,6 +30,9 @@ export class Http2WebTransportStream {
     this.outgochunks = []
 
     this.final = false
+    this.stopReading_ = true
+    this.drainReads_ = true
+    this.recvBytes = 0
   }
 
   /**
@@ -48,98 +46,103 @@ export class Http2WebTransportStream {
     if (this.incomdata.length > 0) {
       // TODO tell the peer to stop sending by sending a capsule
       // TODO SEND WT_STREAM_DATA_BLOCKED:
+      if (!this.stopReading_) this.processRead()
+      else {
+        this.capsuleParser.writeCapsule({
+          type: ParserBase.WT_STREAM_DATA_BLOCKED,
+          headerVints: [this.streamid, this.recvBytes],
+          payload: undefined
+        })
+      }
     }
   }
 
   processRead() {
-    let bytesRead = 0
-    let fin = false
-
-    while (this.incomdata.length > 0 && this.bufferlen_ < this.readbufsize_) {
-      const cur = this.incomdata.shift()
-      if (cur.data) {
-        let len
-
-        if (this.writepos_ >= this.readpos_) {
-          len = Math.min(
-            this.readbufsize_ - this.writepos_,
-            cur.data.byteLength
-          )
-
-          const destview = new Uint8Array(
-            this.readbuffer,
-            0 + this.writepos_,
-            len
-          )
-          const srcview = new Uint8Array(
-            cur.data.buffer,
-            cur.data.byteOffset,
-            len
-          )
-          destview.set(srcview)
-
-          this.writepos_ = (this.writepos_ + len) % this.readbufsize_
-          this.bufferlen_ = this.bufferlen_ + len
-          bytesRead += len
-        } else {
-          // readpos_ > writepos_
-          len = Math.min(this.readpos_ - this.writepos_, cur.data.byteLength)
-          const destview = new Uint8Array(
-            this.readbuffer,
-            0 + this.writepos_,
-            len
-          )
-          const srcview = new Uint8Array(
-            cur.data.buffer,
-            cur.data.byteOffset,
-            len
-          )
-          destview.set(srcview)
-
-          this.writepos_ = (this.writepos_ + len) % this.readbufsize_
-          this.bufferlen_ = this.bufferlen_ + len
-          bytesRead += len
+    if (!this.jsobj) return
+    let buffer
+    let bufferoffset = 0
+    while (
+      this.incomdata.length > 0 &&
+      (!this.stopReading_ || this.drainReads_)
+    ) {
+      if (!buffer) {
+        const bytes = this.incomdata.reduce(
+          (prevVal, val) => prevVal + val.data?.byteLength,
+          0
+        )
+        if (bytes > 0) {
+          buffer = this.jsobj.getReadBuffer({
+            byteSize: this.incomdata.reduce(
+              (prevVal, val) => prevVal + val.data?.byteLength,
+              0
+            )
+          })
+          buffer.readBytes = 0
+          bufferoffset = 0
         }
+      }
+      const cur = this.incomdata.shift()
+      if (cur.data && cur.data.byteLength > 0) {
+        const len = Math.min(
+          buffer.buffer.byteLength - bufferoffset,
+          cur.data.byteLength
+        )
+        const srcview = new Uint8Array(
+          cur.data.buffer,
+          cur.data.byteOffset,
+          len
+        )
+        const destview = new Uint8Array(buffer.buffer.buffer, bufferoffset, len)
+        destview.set(srcview)
+        bufferoffset += len
+        buffer.readBytes += len
+        buffer.drained = true
         if (cur.data.byteLength !== len) {
+          buffer.drained = false
           this.incomdata.unshift({
             data: new Uint8Array(
               cur.data.buffer,
               cur.data.byteOffset + len,
               cur.data.byteLength - len
             ),
-            fin: cur.fin
+            fin: false || cur.fin
           })
-          fin = false // next round
+          buffer.fin = false // next round
         } else {
-          fin = fin || cur.fin
+          buffer.fin |= cur.fin
         }
-      } else {
-        fin = fin || cur.fin
+        if (this.incomdata.length > 0) buffer.drained = false
+        if (
+          bufferoffset === buffer.buffer.byteLength ||
+          this.incomdata.length === 0
+        ) {
+          const { stopReading } = this.jsobj.commitReadBuffer(buffer)
+          if (stopReading) this.stopReading_ = true
+          buffer = undefined
+          bufferoffset = 0
+        }
+        this.recvBytes += len
+      } else if (cur.fin) {
+        this.jsobj.commitReadBuffer({ fin: true })
       }
-    }
-
-    if (bytesRead > 0 || fin) {
-      this.jsobj.onStreamRead({
-        buffergrow: bytesRead,
-        fin,
-        success: true
-      })
     }
   }
 
-  /**
-   * @param {Number} bytesread
-   * @param {Number} pos
-   */
-  updateReadPos(bytesread, pos) {
-    this.readpos_ = pos
-    this.bufferlen_ -= bytesread
-    // well a good time to try to read again
+  startReading() {
+    this.stopReading_ = false
     this.processRead()
   }
 
-  startReading() {}
-  stopReading() {}
+  drainReads() {
+    this.drainReads_ = true
+    this.stopReading_ = false
+    this.processRead()
+  }
+
+  stopReading() {
+    this.stopReading_ = true
+  }
+
   /**
    * @param {Number} code
    */

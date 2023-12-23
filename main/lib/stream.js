@@ -55,12 +55,6 @@ export class HttpWTStream {
     this.pendingresRead = null
 
     if (this.bidirectional || this.incoming) {
-      /** @type {Number} */
-      this.incomingbufferfilled = 0
-      /** @type {Number} */
-      this.incomingbufferreadpos = 0
-      if (!this.objint.readbuffer)
-        throw new Error('No readbuffer for read stream')
       /** @type {WebTransportReceiveStream} */
       // @ts-expect-error `getStats` property is missing from ReadableStream
       this.readable = new ReadableStream(
@@ -78,16 +72,11 @@ export class HttpWTStream {
               return Promise.resolve()
             }
 
-            /** @type {Uint8Array} */
-            if (this.incomingbufferfilled === 0) {
-              this.pendingoperationRead = new Promise((resolve, reject) => {
-                this.pendingresRead = resolve
-              })
-              await this.pendingoperationRead
-            }
-            if (this.incomingbufferfilled === 0) return Promise.resolve()
-
-            this.drainBuffer()
+            this.pendingoperationRead = new Promise((resolve, reject) => {
+              this.pendingresRead = resolve
+            })
+            this.objint.startReading()
+            await this.pendingoperationRead
           },
           cancel: (/** @type {{ code: number; }} */ reason) => {
             /** @type {Promise<void>} */
@@ -205,8 +194,68 @@ export class HttpWTStream {
     this.pendingres = null
     /** @type {(() => void) | null} */
     this.abortres = null
+
+    this.finaldrain_ = false
   }
 
+  /**
+   * @param {{byteSize: number}} args
+   */
+  getReadBuffer({ byteSize }) {
+    const byob = this.readableController.byobRequest
+    if (byob) {
+      // @ts-ignore
+      const buffer = byob?.view
+      // @ts-ignore
+      if (!(buffer instanceof Uint8Array)) {
+        throw new Error('byob view is not a Uint8Array')
+      }
+      return { buffer, byob }
+    } else {
+      const buffer = new Uint8Array(byteSize)
+      return { buffer, byob: undefined }
+    }
+  }
+
+  /**
+   * @param {{buffer?: Uint8Array, byob?: boolean, drained: boolean, readBytes: number, fin: boolean}} args
+   */
+  commitReadBuffer({ buffer, byob, drained, readBytes, fin }) {
+    if (byob) {
+      byob.respond(readBytes)
+    } else if (buffer) {
+      this.readableController.enqueue(buffer)
+    }
+    const retObj = {}
+
+    if (readBytes > 0 && !this.readableclosed) {
+      log.trace('commitReadbuffer', readBytes)
+      // console.log('stream read received', args.data, Date.now())
+      if (this.pendingoperationRead && drained) {
+        if (this.readableController.desiredSize != null && !this.finaldrain_) {
+          if (this.readableController.desiredSize < 0) retObj.stopReading = true
+        }
+        // this.readableController.enqueue(data)
+        const res = this.pendingresRead
+        this.pendingoperationRead = null
+        this.pendingresRead = null
+        if (res) res()
+      }
+    }
+    if (fin) {
+      if (this.cancelres) {
+        const res = this.cancelres
+        this.cancelres = null
+        res()
+      }
+      if (!this.readableclosed) {
+        this.readableController.close()
+        this.readableclosed = true
+      }
+    }
+    return retObj
+  }
+  /* 
   drainBuffer() {
     const byob = this.readableController.byobRequest
     if (byob) {
@@ -224,7 +273,7 @@ export class HttpWTStream {
         this.incomingbufferreadpos + toread >
         this.objint.readbuffer.byteLength
       ) {
-        /** @type {Number} */
+        /** @type {Number} *
         const firstread =
           this.objint.readbuffer.byteLength - this.incomingbufferreadpos
         read += firstread
@@ -273,7 +322,7 @@ export class HttpWTStream {
         this.incomingbufferreadpos + toread >
         this.objint.readbuffer.byteLength
       ) {
-        /** @type {Number} */
+        /** @type {Number} *
         const firstread =
           this.objint.readbuffer.byteLength - this.incomingbufferreadpos
         read += firstread
@@ -315,6 +364,7 @@ export class HttpWTStream {
       this.objint.updateReadPos(read, this.incomingbufferreadpos)
     }
   }
+  */
 
   /**
    * @param {import('./types').StreamRecvSignalEvent} args
@@ -333,6 +383,7 @@ export class HttpWTStream {
     switch (args.nettask) {
       case 'resetStream':
         if (this.readable) {
+          this.finalDrain()
           if (parentcleanup)
             this.parentobj.removeReceiveStream(
               this.readable,
@@ -389,6 +440,7 @@ export class HttpWTStream {
    * @param {StreamReadEvent} args
    * @returns {void}
    */
+  /*
   onStreamRead(args) {
     if (args.buffergrow && !this.readableclosed) {
       log.trace('stream read received', args.buffergrow)
@@ -425,10 +477,11 @@ export class HttpWTStream {
         this.readableclosed = true
       }
     }
-  }
+  } */
 
   finalDrain() {
-    while (this.incomingbufferfilled > 0) this.drainBuffer()
+    this.finaldrain_ = true
+    this.objint.drainReads()
   }
 
   /**

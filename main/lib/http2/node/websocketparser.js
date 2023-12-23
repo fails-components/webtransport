@@ -190,11 +190,16 @@ export class WebSocketParser extends ParserBaseHttp2 {
       switch (this.mode) {
         case 's':
           {
+            const framestart =
+              bufferstate.offset + bufferstate.buffer.byteOffset
+            const framemaxlength =
+              bufferstate.buffer.byteLength - bufferstate.offset
             // we are at frame start
             if (bufferstate.size < 2 + bufferstate.offset) {
               this.saveddata = Buffer.from(
-                bufferstate.buffer,
-                bufferstate.offset
+                bufferstate.buffer.buffer,
+                framestart,
+                framemaxlength
               )
               return
             }
@@ -212,8 +217,9 @@ export class WebSocketParser extends ParserBaseHttp2 {
             if (plength === 126) {
               if (bufferstate.size < 2 + bufferstate.offset) {
                 this.saveddata = Buffer.from(
-                  bufferstate.buffer,
-                  bufferstate.offset
+                  bufferstate.buffer.buffer,
+                  framestart,
+                  framemaxlength
                 )
                 return
               }
@@ -222,8 +228,9 @@ export class WebSocketParser extends ParserBaseHttp2 {
             if (plength === 127) {
               if (bufferstate.size < 8 + bufferstate.offset) {
                 this.saveddata = Buffer.from(
-                  bufferstate.buffer,
-                  bufferstate.offset
+                  bufferstate.buffer.buffer,
+                  framestart,
+                  framemaxlength
                 )
                 return
               }
@@ -231,8 +238,9 @@ export class WebSocketParser extends ParserBaseHttp2 {
             }
             if (bufferstate.size < mlength + bufferstate.offset) {
               this.saveddata = Buffer.from(
-                bufferstate.buffer,
-                bufferstate.offset
+                bufferstate.buffer.buffer,
+                framestart,
+                framemaxlength
               )
               return
             }
@@ -266,8 +274,9 @@ export class WebSocketParser extends ParserBaseHttp2 {
               } else {
                 if (bufferstate.size < length + bufferstate.offset) {
                   this.saveddata = Buffer.from(
-                    bufferstate.buffer,
-                    bufferstate.offset
+                    bufferstate.buffer.buffer,
+                    framestart,
+                    framemaxlength
                   )
                   return
                 }
@@ -352,8 +361,9 @@ export class WebSocketParser extends ParserBaseHttp2 {
               if (opcode === WebSocketParser.WS_BINARY) {
                 if (bufferstate.size < 2 + bufferstate.offset) {
                   this.saveddata = Buffer.from(
-                    bufferstate.buffer,
-                    bufferstate.offset
+                    bufferstate.buffer.buffer,
+                    framestart,
+                    framemaxlength
                   )
                   return
                 }
@@ -369,8 +379,9 @@ export class WebSocketParser extends ParserBaseHttp2 {
                   bufferstate.size < 1 + bufferstate.offset
                 ) {
                   this.saveddata = Buffer.from(
-                    bufferstate.buffer,
-                    bufferstate.offset
+                    bufferstate.buffer.buffer,
+                    framestart,
+                    framemaxlength
                   )
                   return
                 }
@@ -408,8 +419,9 @@ export class WebSocketParser extends ParserBaseHttp2 {
               }
               if (bufferstate.size < checklength + bufferstate.offset) {
                 this.saveddata = Buffer.from(
-                  bufferstate.buffer,
-                  bufferstate.offset
+                  bufferstate.buffer.buffer,
+                  framestart,
+                  framemaxlength
                 )
                 return
               }
