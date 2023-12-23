@@ -4,6 +4,7 @@ import { Http2CapsuleParser } from './capsuleparser.js'
 import { WebSocketParser } from './websocketparser.js'
 import { log } from 'node:console'
 import { webcrypto as crypto } from 'crypto'
+import { supportedVersions } from '../websocketcommon.js'
 
 export class Http2WebTransportServer {
   /**
@@ -80,7 +81,8 @@ export class Http2WebTransportServer {
           stream.destroy()
           return
         }
-        if (header['sec-websocket-protocol'] !== 'webtransport') {
+        const websocketProt = this.checkProtocolHeader(header)
+        if (!websocketProt) {
           stream.destroy()
           return
         }
@@ -88,7 +90,7 @@ export class Http2WebTransportServer {
           path = path?.slice(1)
         }
         if (this.paths[path]) {
-          this.sendHttp1Headers({ stream, header })
+          this.sendHttp1Headers({ stream, header, protocol: websocketProt })
             .then(() => {
               const retObj = {
                 session: new Http2WebTransportSession({
@@ -142,20 +144,17 @@ export class Http2WebTransportServer {
         stream.close(constants.NGHTTP2_REFUSED_STREAM)
         return
       }
-      let webtransportOverWebSocket = false
+      /**
+       * @type {string|undefined}
+       */
+      let websocketProt
       if (
         header[':protocol'] === 'websocket' &&
-        header['Sec-WebSocket-Protocol'] &&
-        (header['Sec-WebSocket-Protocol'] === 'webtransport' ||
-          (Array.isArray(header['Sec-WebSocket-Protocol']) &&
-            header['Sec-WebSocket-Protocol'].includes('webtransport')))
+        header['Sec-WebSocket-Protocol']
       ) {
-        webtransportOverWebSocket = true
+        websocketProt = this.checkProtocolHeader(header)
       }
-      if (
-        header[':protocol'] !== 'webtransport' &&
-        !webtransportOverWebSocket
-      ) {
+      if (header[':protocol'] !== 'webtransport' && !websocketProt) {
         stream.respond({
           ':status': '406'
         })
@@ -178,7 +177,7 @@ export class Http2WebTransportServer {
             createParser: (
               /** @type {Http2WebTransportSession} */ nativesession
             ) => {
-              if (!webtransportOverWebSocket) {
+              if (!websocketProt) {
                 return new Http2CapsuleParser({
                   stream,
                   nativesession,
@@ -198,19 +197,25 @@ export class Http2WebTransportServer {
           reliable: true,
           object: this // My server
         }
-        stream.respond({
+        const resp = {
           ':status': '200'
-        })
+        }
+        // @ts-ignore
+        if (websocketProt) resp['Sec-WebSocket-Protocol'] = websocketProt
+        stream.respond(resp)
         this.jsobj.onHttpWTSessionVisitor(retObj)
       } else if (this.hasrequesthandler) {
         const retObj = {
           header,
           session: stream,
-          protocol: webtransportOverWebSocket ? 'websocket' : 'capsule'
+          protocol: websocketProt ? 'websocket' : 'capsule'
         }
-        stream.respond({
+        const resp = {
           ':status': '200'
-        })
+        }
+        // @ts-ignore
+        if (websocketProt) resp['Sec-WebSocket-Protocol'] = websocketProt
+        stream.respond(resp)
         this.jsobj.onSessionRequest(retObj)
       } else {
         stream.respond({
@@ -222,6 +227,25 @@ export class Http2WebTransportServer {
         return
       }
     })
+  }
+
+  /**
+   * @param {import("http2").IncomingHttpHeaders} header
+   */
+  checkProtocolHeader(header) {
+    const sechead = header['sec-websocket-protocol']
+    let prots
+    if (!Array.isArray(sechead)) {
+      prots = [sechead]
+    } else {
+      prots = sechead
+    }
+    prots = prots
+      .map((el) => (el ? el.split('_') : [undefined, undefined]))
+      .filter((el) => el[0] === 'webtransport')
+      .filter((el) => (el[1] ? supportedVersions.includes(el[1]) : false))
+    if (prots.length > 0) return prots[0].join('_')
+    else return undefined
   }
 
   startServer() {
@@ -257,9 +281,9 @@ export class Http2WebTransportServer {
   }
 
   /**
-   * @param {{stream: import('net').Socket, header: any}} args
+   * @param {{stream: import('net').Socket, header: any, protocol: string}} args
    */
-  async sendHttp1Headers({ stream, header }) {
+  async sendHttp1Headers({ stream, header, protocol }) {
     try {
       const digi = await crypto.subtle.digest(
         'SHA-1',
@@ -272,7 +296,9 @@ export class Http2WebTransportServer {
         'HTTP/1.1 101 Switching Protocols\r\n' +
           'Upgrade: websocket\r\n' +
           'Connection: Upgrade\r\n' +
-          'Sec-WebSocket-Protocol: webtransport\r\n' +
+          'Sec-WebSocket-Protocol: ' +
+          protocol +
+          '\r\n' +
           'Sec-WebSocket-Accept: ' +
           wstoken +
           '\r\n' +
