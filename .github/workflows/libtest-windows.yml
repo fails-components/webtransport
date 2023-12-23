@@ -39,24 +39,24 @@ jobs:
         run: npm install
 
       - name: Build library
-        run: npm run build  --workspace main
+        run: npm run build  
 
       - name: Run node unit tests
         run: |
           $env:NODE_ENV="production"
-          npm run test:node  --workspace main
+          npm run test:node  
 
       - name: Run old unit tests
         run: |
           $env:NODE_ENV="production"
-          npm run oldtest  --workspace main
+          npm run oldtest  
 
       - name: Run node unit tests http2
         run: |
           $env:NODE_ENV="production"
-          npm run test:node:http2  --workspace main
+          npm run test:node:http2  
 
       - name: Run old unit tests http2
         run: |
           $env:NODE_ENV="production"
-          npm run oldtesthttp2  --workspace main
+          npm run oldtesthttp2  
