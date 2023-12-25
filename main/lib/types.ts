@@ -1,22 +1,26 @@
-import type { WebTransportSession, WebTransportHash, WebTransportOptions } from './dom'
+import type {
+  WebTransportSession,
+  WebTransportHash,
+  WebTransportOptions
+} from './dom'
 import type { IncomingHttpHeaders, Http2Stream } from 'http2'
 import { ParserBase } from './http2/parserbase'
 import { Http2WebTransportSession } from './http2/session'
 import { HttpClient } from './client'
 
-
 /**
  * Native HttpWTSession counterpart
  */
- export interface NativeHttpWTSession {
+export interface NativeHttpWTSession {
   jsobj: WebTransportSessionEventHandler
+  sendInitialParameters?: () => void
   writeDatagram: (chunk: Uint8Array) => void
   orderUnidiStream: () => void
   orderBidiStream: () => void
   orderSessionStats: () => void
   orderDatagramStats: () => void
   notifySessionDraining: () => void
-  close: (arg: { code: number, reason: string }) => void
+  close: (arg: { code: number; reason: string }) => void
 }
 
 /**
@@ -25,6 +29,7 @@ import { HttpClient } from './client'
 export interface NativeHttpWTStream {
   jsobj: WebTransportStreamEventHandler
   readbuffer: ArrayBuffer | undefined
+  sendInitialParameters?: () => void
   startReading: () => void
   drainReads: () => void
   stopReading: () => void
@@ -42,6 +47,12 @@ export interface NativeServerOptions {
   certhttp2?: string // if http2 has a different cert
   privKey: string
   privKeyhttp2?: string // if http2 has a different cert
+  initialStreamFlowControlWindow?: number
+  streamShouldAutoTuneReceiveWindow?: boolean
+  streamFlowControlWindowSizeLimit?: number
+  initialSessionFlowControlWindow?: number
+  sessionShouldAutoTuneReceiveWindow?: boolean
+  sessionFlowControlWindowSizeLimit?: number
 }
 
 export interface NativeClientOptions {
@@ -51,6 +62,20 @@ export interface NativeClientOptions {
   localPort: number
   allowPooling: boolean
   forceIpv6: boolean
+  initialStreamFlowControlWindow?: number
+  streamShouldAutoTuneReceiveWindow?: boolean
+  streamFlowControlWindowSizeLimit?: number
+  initialSessionFlowControlWindow?: number
+  sessionShouldAutoTuneReceiveWindow?: boolean
+  sessionFlowControlWindowSizeLimit?: number
+}
+
+export interface FlowControlable {
+  sendWindowUpdate: (windowOffset: bigint) => void
+  sendBlocked: (windowOffSet: bigint) => void
+  connected: () => boolean
+  closeConnection: (arg: { code: number; reason: string }) => void
+  smoothedRtt: () => number
 }
 
 export interface ReadBuffer {
@@ -58,18 +83,23 @@ export interface ReadBuffer {
   readBytes?: number
   byob?: ReadableStreamBYOBRequest
   drained?: boolean
-  fin:boolean
+  fin: boolean
 }
 
 export interface NativeFinishSessionRequest {
-   header: IncomingHttpHeaders
-   session: Http2Stream
-   status: number 
-   protocol: 'capsule' | 'websocket' | 'websocketoverhttp1' | 'http3'
-   head?: Buffer
+  header: IncomingHttpHeaders
+  session: Http2Stream
+  status: number
+  protocol: 'capsule' | 'websocket' | 'websocketoverhttp1' | 'http3'
+  head?: Buffer
 }
 
-export type Purpose = 'StreamRecvSignal' | 'StreamRead' | 'StreamWrite' | 'StreamReset' | 'StreamNetworkFinish'
+export type Purpose =
+  | 'StreamRecvSignal'
+  | 'StreamRead'
+  | 'StreamWrite'
+  | 'StreamReset'
+  | 'StreamNetworkFinish'
 export type NetTask = 'stopSending' | 'resetStream' | 'streamFinal'
 
 export interface StreamRecvSignalEvent {
@@ -87,8 +117,7 @@ export interface StreamWriteEvent {
   success?: boolean
 }
 
-export interface StreamResetEvent {
-}
+export interface StreamResetEvent {}
 
 export interface StreamNetworkFinishEvent {
   nettask: NetTask
@@ -131,11 +160,9 @@ export interface DatagramReceivedEvent {
   datagram: Uint8Array
 }
 
-export interface DatagramSendEvent {
-}
+export interface DatagramSendEvent {}
 
-export interface GoawayReceivedEvent {
-}
+export interface GoawayReceivedEvent {}
 
 export interface NewStreamEvent {
   stream: NativeHttpWTStream
@@ -159,8 +186,7 @@ export interface ClientConnectedEvent {
   success: boolean
 }
 
-export interface ClientWebtransportSupportEvent {
-}
+export interface ClientWebtransportSupportEvent {}
 
 export interface HttpWTSessionVisitorEvent {
   session: NativeHttpWTSession
@@ -173,20 +199,20 @@ export interface HttpClientEventHandler {
   onHttpWTSessionVisitor: (evt: HttpWTSessionVisitorEvent) => void
 }
 
-export interface HttpWTServerSessionVisitorEvent extends HttpWTSessionVisitorEvent {
+export interface HttpWTServerSessionVisitorEvent
+  extends HttpWTSessionVisitorEvent {
   path: string
   header: Object
 }
 
 export interface ServerSessionRequestEvent {
   header: Object
-  head?: Buffer|undefined
+  head?: Buffer | undefined
   promise?: any
   session: any
   object?: any // the actual transport object itself, actually present on all messages, but required here
   protocol: string //'capsule' | 'websocket' | 'http3'
 }
-
 
 /**
  * The Http server is listening on the specified port
@@ -195,7 +221,6 @@ export interface HttpServerListeningEvent {
   port: number | undefined
   host: string | undefined
 }
-
 
 export interface HttpServerEventHandler {
   onHttpWTSessionVisitor: (evt: HttpWTServerSessionVisitorEvent) => void
@@ -214,7 +239,12 @@ export interface Deferred<T = unknown> {
 }
 
 // https://www.w3.org/TR/webtransport/#dom-webtransport-state-slot
-export type WebTransportSessionState =  'connecting' | 'connected' | 'draining' | 'closed' | 'failed'
+export type WebTransportSessionState =
+  | 'connecting'
+  | 'connected'
+  | 'draining'
+  | 'closed'
+  | 'failed'
 
 export interface WebTransportSessionImpl extends WebTransportSession {
   state: WebTransportSessionState
@@ -228,7 +258,10 @@ export interface HttpWebTransportInit extends WebTransportOptions {
   localPort?: number
 }
 
-export type WebTransportServerReliability = 'unreliableOnly' | 'reliableOnly' | 'both'
+export type WebTransportServerReliability =
+  | 'unreliableOnly'
+  | 'reliableOnly'
+  | 'both'
 
 // see HttpServerJS C++ type
 export interface HttpServerInit extends HttpWebTransportInit {
@@ -239,7 +272,11 @@ export interface HttpServerInit extends HttpWebTransportInit {
   privKey: string
   maxConnections?: number
   initialStreamFlowControlWindow?: number
+  streamShouldAutoTuneReceiveWindow?: boolean
+  streamFlowControlWindowSizeLimit?: number
   initialSessionFlowControlWindow?: number
+  sessionShouldAutoTuneReceiveWindow?: boolean
+  sessionFlowControlWindowSizeLimit?: number
   reliability?: WebTransportServerReliability
 }
 
@@ -248,6 +285,12 @@ export interface HttpClientInit extends HttpWebTransportInit {
   forceReliable?: any
   forceIpv6?: boolean
   localPort?: number
+  initialStreamFlowControlWindow?: number
+  streamShouldAutoTuneReceiveWindow?: boolean
+  streamFlowControlWindowSizeLimit?: number
+  initialSessionFlowControlWindow?: number
+  sessionShouldAutoTuneReceiveWindow?: boolean
+  sessionFlowControlWindowSizeLimit?: number
   createReliableClient?: (cklient: HttpClient) => any
   createUnreliableClient?: (client: HttpClient) => any
 }
@@ -265,11 +308,17 @@ export interface Logger {
   trace: (formatter: any, ...args: any[]) => void
 }
 
-export type CreateParserFunction = (nativesession: Http2WebTransportSession) => ParserBase
+export type CreateParserFunction = (
+  nativesession: Http2WebTransportSession
+) => ParserBase
 
 export interface ParserInit {
   isclient: boolean
   nativesession: any
+  initialStreamSendWindowOffset: number
+  initialStreamReceiveWindowOffset: number
+  streamShouldAutoTuneReceiveWindow: boolean
+  streamReceiveWindowSizeLimit: number
 }
 
 export interface ParserHttp2Init extends ParserInit {

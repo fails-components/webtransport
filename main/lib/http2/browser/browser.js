@@ -9,6 +9,20 @@ export class Http2WebTransportBrowser {
   constructor(args) {
     this.port = args?.port || 443
     this.hostname = args?.host || 'localhost'
+    this.initialStreamFlowControlWindow =
+      args?.initialStreamFlowControlWindow || 16 * 1024 // 16 KB
+    this.initialSessionFlowControlWindow =
+      args?.initialSessionFlowControlWindow || 16 * 1024 // 16 KB
+
+    this.streamShouldAutoTuneReceiveWindow =
+      args.streamShouldAutoTuneReceiveWindow || false
+    this.streamFlowControlWindowSizeLimit =
+      args?.streamFlowControlWindowSizeLimit || 6 * 1024 * 1024
+
+    this.sessionShouldAutoTuneReceiveWindow =
+      args.sessionShouldAutoTuneReceiveWindow || false
+    this.sessionFlowControlWindowSizeLimit =
+      args?.sessionFlowControlWindowSizeLimit || 15 * 1024 * 1024
     /** @type {import('../../session.js').HttpClient} */
     // @ts-ignore
     this.jsobj = undefined // the transport will set this
@@ -32,7 +46,6 @@ export class Http2WebTransportBrowser {
         )
       )
     } catch (error) {
-      console.log('ct prob', error)
       this.jsobj.onClientConnected({
         success: false
       })
@@ -92,7 +105,13 @@ export class Http2WebTransportBrowser {
           const session = new BrowserParser({
             ws: this.clientInt,
             nativesession,
-            isclient: true
+            isclient: true,
+            initialStreamSendWindowOffset: this.initialStreamFlowControlWindow,
+            initialStreamReceiveWindowOffset:
+              this.initialStreamFlowControlWindow,
+            streamShouldAutoTuneReceiveWindow:
+              this.streamShouldAutoTuneReceiveWindow,
+            streamReceiveWindowSizeLimit: this.streamFlowControlWindowSizeLimit
           })
           if (this.clientInt)
             this.clientInt.addEventListener('close', (event) => {
@@ -112,7 +131,11 @@ export class Http2WebTransportBrowser {
               })
             })
           return session
-        }
+        },
+        sendWindowOffset: this.sessionFlowControlWindowSizeLimit,
+        receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
+        shouldAutoTuneReceiveWindow: this.sessionShouldAutoTuneReceiveWindow,
+        receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
       }),
       reliable: true
     }

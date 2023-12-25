@@ -1,4 +1,9 @@
+import { FlowController } from './flowcontroller.js'
 import { ParserBase } from './parserbase.js'
+import { logger } from '../utils.js'
+
+const pid = typeof process !== 'undefined' ? process.pid : 0
+const log = logger(`webtransport:http2webtransportstream(${pid})`)
 /**
  * WebTransport stream events
  * @typedef {import('../types').WebTransportStreamEventHandler} WebTransportStreamEventHandler
@@ -17,9 +22,22 @@ if (typeof process !== 'undefined') processnextTick = process.nextTick
 
 export class Http2WebTransportStream {
   /**
-   * @param {{streamid: Number, capsuleParser: ParserBase}} args
+   * @param {{streamid: Number, capsuleParser: ParserBase
+   * sendWindowOffset: Number,
+   * receiveWindowOffset: Number,
+   * shouldAutoTuneReceiveWindow: boolean
+   * receiveWindowSizeLimit: Number,
+   * sessionFlowController: FlowController}} args
    * */
-  constructor({ streamid, capsuleParser }) {
+  constructor({
+    streamid,
+    capsuleParser,
+    sendWindowOffset,
+    receiveWindowOffset,
+    shouldAutoTuneReceiveWindow,
+    receiveWindowSizeLimit,
+    sessionFlowController
+  }) {
     /** @type {import('../stream').HttpWTStream} */
     // @ts-ignore
     this.jsobj = undefined // the creator will set this
@@ -31,10 +49,24 @@ export class Http2WebTransportStream {
     /** @type {Array<{buf?:Uint8Array,fin:boolean}>} */
     this.outgochunks = []
 
+    this.flowController = new FlowController({
+      tocontrol: this,
+      sendWindowOffset,
+      receiveWindowOffset,
+      shouldAutoTuneReceiveWindow,
+      receiveWindowSizeLimit,
+      sessionFlowController
+    })
+    this.sessionFlowController = sessionFlowController
+
     this.final = false
     this.stopReading_ = true
     this.drainReads_ = true
     this.recvBytes = 0
+  }
+
+  sendInitialParameters() {
+    this.flowController.sendWindowUpdate()
   }
 
   /**
@@ -44,18 +76,32 @@ export class Http2WebTransportStream {
    */
   recvData({ data, fin }) {
     this.incomdata.push({ data, fin })
+    if (data?.byteLength > 0) {
+      const checkstream = this.flowController.updateHighestReceivedOffset(
+        data?.byteLength
+      )
+      const checksession =
+        this.sessionFlowController.updateHighestReceivedOffset(data?.byteLength)
+      if (checksession && checkstream) {
+        // As the highest received offset has changed, check to see if this is a
+        // violation of flow control.
+
+        if (
+          this.flowController.flowControlViolation() ||
+          this.sessionFlowController.flowControlViolation()
+        ) {
+          this.closeConnection({
+            code: 63 /* QUIC_FLOW_CONTROL_SENT_TOO_MUCH_DATA */,
+            reason: 'Flow control violation after increasing offset'
+          })
+
+          return
+        }
+      }
+    }
     this.processRead()
     if (this.incomdata.length > 0) {
-      // TODO tell the peer to stop sending by sending a capsule
-      // TODO SEND WT_STREAM_DATA_BLOCKED:
       if (!this.stopReading_) this.processRead()
-      else {
-        this.capsuleParser.writeCapsule({
-          type: ParserBase.WT_STREAM_DATA_BLOCKED,
-          headerVints: [this.streamid, this.recvBytes],
-          payload: undefined
-        })
-      }
     }
   }
 
@@ -119,6 +165,8 @@ export class Http2WebTransportStream {
           bufferoffset === buffer.buffer.byteLength ||
           this.incomdata.length === 0
         ) {
+          this.flowController.addBytesConsumed(buffer.readBytes || 0)
+          this.sessionFlowController.addBytesConsumed(buffer.readBytes || 0)
           const { stopReading } = this.jsobj.commitReadBuffer(buffer)
           if (stopReading) this.stopReading_ = true
           buffer = undefined
@@ -189,11 +237,43 @@ export class Http2WebTransportStream {
   drainWrites() {
     while (
       this.outgochunks.length > 0 &&
-      (!this.capsuleParser.blocked || this.final)
+      (!this.capsuleParser.blocked || this.final) &&
+      this.flowController.sendWindowSize() > 0 &&
+      this.sessionFlowController.sendWindowSize() > 0
     ) {
       const cur = this.outgochunks.shift()
       if (cur) {
-        const payload = cur.buf
+        let payload = cur.buf
+        if (payload) {
+          const sessWindow = this.sessionFlowController.sendWindowSize()
+          const streamWindow = this.flowController.sendWindowSize()
+          if (
+            payload?.byteLength > streamWindow ||
+            payload?.byteLength > sessWindow
+          ) {
+            const len =
+              sessWindow > streamWindow
+                ? Number(streamWindow)
+                : Number(sessWindow)
+            // ok we have to split
+            {
+              const src = new Uint8Array(
+                payload.buffer,
+                payload.byteOffset + len,
+                payload.byteLength - len
+              )
+              const dest = new Uint8Array(payload.byteLength - len)
+              dest.set(src)
+              this.outgochunks.unshift({ fin: cur.fin, buf: dest })
+            }
+            cur.fin = false
+            payload = cur.buf = new Uint8Array(
+              payload.buffer,
+              payload.byteOffset,
+              len
+            )
+          }
+        }
         this.capsuleParser.writeCapsule({
           type: cur?.fin
             ? ParserBase.WT_STREAM_WFIN
@@ -201,10 +281,15 @@ export class Http2WebTransportStream {
           headerVints: [this.streamid],
           payload
         })
-        this.jsobj.onStreamWrite({
-          success: true
-        })
+
+        if (payload) {
+          this.flowController.addBytesSent(payload?.byteLength)
+          this.sessionFlowController.addBytesSent(payload?.byteLength)
+        }
       }
+      this.jsobj.onStreamWrite({
+        success: true
+      })
     }
   }
 
@@ -217,5 +302,53 @@ export class Http2WebTransportStream {
         nettask: 'streamFinal'
       })
     )
+  }
+
+  /**
+   * @param {bigint} windowOffset
+   */
+  sendWindowUpdate(windowOffset) {
+    this.capsuleParser.writeCapsule({
+      type: ParserBase.WT_MAX_STREAM_DATA,
+      headerVints: [this.streamid, windowOffset],
+      payload: undefined
+    })
+  }
+
+  /**
+   * @param {bigint} windowOffset
+   */
+  sendBlocked(windowOffset) {
+    this.capsuleParser.writeCapsule({
+      type: ParserBase.WT_STREAM_DATA_BLOCKED,
+      headerVints: [this.streamid, windowOffset],
+      payload: undefined
+    })
+  }
+
+  /**
+   * @param {bigint} pos
+   */
+  reportBlocked(pos) {
+    log('Stream id: ', this.streamid, ' was blocked at:', pos)
+  }
+
+  connected() {
+    return this.jsobj.parentobj.state === 'connected'
+  }
+
+  /**
+   * @param {{ code: number, reason: string }} arg
+   */
+  closeConnection({ code, reason }) {
+    if (this.jsobj.parentobj?.objint)
+      // @ts-ignore
+      this.jsobj.parentobj.objint.closeConnection({ code, reason })
+  }
+
+  smoothedRtt() {
+    if (this.jsobj.parentobj?.objint)
+      // @ts-ignore
+      return this.jsobj.parentobj.objint.smoothedRtt()
   }
 }

@@ -5,6 +5,7 @@ import { WebSocketParser } from './websocketparser.js'
 import { log } from 'node:console'
 import { webcrypto as crypto } from 'crypto'
 import { supportedVersions } from '../websocketcommon.js'
+import { clearInterval } from 'node:timers'
 
 export class Http2WebTransportServer {
   /**
@@ -22,8 +23,20 @@ export class Http2WebTransportServer {
     const key = args?.privKeyhttp2 ? args?.privKeyhttp2 : args?.privKey
     if (!key) throw new Error('No privKey set for Http2Server')
     // this.maxConnections = args?.maxConnections
-    // this.initialStreamFlowControlWindow = args?.initialStreamFlowControlWindow
-    // this.initialSessionFlowControlWindow = args?.initialSessionFlowControlWindow
+    this.initialStreamFlowControlWindow =
+      args?.initialStreamFlowControlWindow || 16 * 1024 // 16 KB
+    this.initialSessionFlowControlWindow =
+      args?.initialSessionFlowControlWindow || 16 * 1024 // 16 KB
+
+    this.streamShouldAutoTuneReceiveWindow =
+      args.streamShouldAutoTuneReceiveWindow || false
+    this.streamFlowControlWindowSizeLimit =
+      args?.streamFlowControlWindowSizeLimit || 6 * 1024 * 1024
+
+    this.sessionShouldAutoTuneReceiveWindow =
+      args.sessionShouldAutoTuneReceiveWindow || false
+    this.sessionFlowControlWindowSizeLimit =
+      args?.sessionFlowControlWindowSizeLimit || 15 * 1024 * 1024
 
     /** @type {Record<string, boolean>} */
     this.paths = {}
@@ -66,6 +79,32 @@ export class Http2WebTransportServer {
       }) */
     })
 
+    this.serverInt.on('session', (session) => {
+      let rtt = 100
+      let adjust = 1
+      // ok we got a session and want to measure RTT
+      let pingsender = setInterval(() => {
+        if (!session.closed)
+          session.ping((err, duration, payload) => {
+            if (!err) {
+              rtt = adjust * duration + (1 - adjust) * rtt
+              adjust = 0.2
+              // @ts-ignore
+              session.WTrtt = rtt
+            }
+          })
+        else {
+          clearInterval(pingsender)
+          // @ts-ignore
+          pingsender = undefined
+        }
+      }, 1000)
+
+      session.on('close', () => {
+        if (pingsender) clearInterval(pingsender)
+      })
+    })
+
     this.serverInt.on('close', () => {
       const retObj = {}
       // @ts-ignore
@@ -102,11 +141,24 @@ export class Http2WebTransportServer {
                     const parse = (this.capsParser = new WebSocketParser({
                       stream,
                       nativesession,
-                      isclient: false
+                      isclient: false,
+                      initialStreamSendWindowOffset:
+                        this.initialStreamFlowControlWindow,
+                      initialStreamReceiveWindowOffset:
+                        this.initialStreamFlowControlWindow,
+                      streamShouldAutoTuneReceiveWindow:
+                        this.streamShouldAutoTuneReceiveWindow,
+                      streamReceiveWindowSizeLimit:
+                        this.streamFlowControlWindowSizeLimit
                     }))
                     if (head.byteLength > 0) parse.parseData(head)
                     return parse
-                  }
+                  },
+                  sendWindowOffset: this.sessionFlowControlWindowSizeLimit,
+                  receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
+                  shouldAutoTuneReceiveWindow:
+                    this.sessionShouldAutoTuneReceiveWindow,
+                  receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
                 }),
                 path,
                 header,
@@ -181,16 +233,37 @@ export class Http2WebTransportServer {
                 return new Http2CapsuleParser({
                   stream,
                   nativesession,
-                  isclient: false
+                  isclient: false,
+                  initialStreamSendWindowOffset:
+                    this.initialStreamFlowControlWindow,
+                  initialStreamReceiveWindowOffset:
+                    this.initialStreamFlowControlWindow,
+                  streamShouldAutoTuneReceiveWindow:
+                    this.streamShouldAutoTuneReceiveWindow,
+                  streamReceiveWindowSizeLimit:
+                    this.streamFlowControlWindowSizeLimit
                 })
               } else {
                 return (this.capsParser = new WebSocketParser({
                   stream,
                   nativesession,
-                  isclient: false
+                  isclient: false,
+                  initialStreamSendWindowOffset:
+                    this.initialStreamFlowControlWindow,
+                  initialStreamReceiveWindowOffset:
+                    this.initialStreamFlowControlWindow,
+                  streamShouldAutoTuneReceiveWindow:
+                    this.streamShouldAutoTuneReceiveWindow,
+                  streamReceiveWindowSizeLimit:
+                    this.streamFlowControlWindowSizeLimit
                 }))
               }
-            }
+            },
+            sendWindowOffset: this.sessionFlowControlWindowSizeLimit,
+            receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
+            shouldAutoTuneReceiveWindow:
+              this.sessionShouldAutoTuneReceiveWindow,
+            receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
           }),
           path,
           header,
@@ -336,11 +409,24 @@ export class Http2WebTransportServer {
                   const parse = (this.capsParser = new WebSocketParser({
                     stream,
                     nativesession,
-                    isclient: false
+                    isclient: false,
+                    initialStreamSendWindowOffset:
+                      this.initialStreamFlowControlWindow,
+                    initialStreamReceiveWindowOffset:
+                      this.initialStreamFlowControlWindow,
+                    streamShouldAutoTuneReceiveWindow:
+                      this.streamShouldAutoTuneReceiveWindow,
+                    streamReceiveWindowSizeLimit:
+                      this.streamFlowControlWindowSizeLimit
                   }))
                   if (head && head.byteLength > 0) parse.parseData(head)
                   return parse
-                }
+                },
+                sendWindowOffset: this.sessionFlowControlWindowSizeLimit,
+                receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
+                shouldAutoTuneReceiveWindow:
+                  this.sessionShouldAutoTuneReceiveWindow,
+                receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
               }),
               path: header[':path'],
               header
@@ -363,16 +449,37 @@ export class Http2WebTransportServer {
                 return new Http2CapsuleParser({
                   stream,
                   nativesession,
-                  isclient: false
+                  isclient: false,
+                  initialStreamSendWindowOffset:
+                    this.initialStreamFlowControlWindow,
+                  initialStreamReceiveWindowOffset:
+                    this.initialStreamFlowControlWindow,
+                  streamShouldAutoTuneReceiveWindow:
+                    this.streamShouldAutoTuneReceiveWindow,
+                  streamReceiveWindowSizeLimit:
+                    this.streamFlowControlWindowSizeLimit
                 })
               } else {
                 return (this.capsParser = new WebSocketParser({
                   stream,
                   nativesession,
-                  isclient: false
+                  isclient: false,
+                  initialStreamSendWindowOffset:
+                    this.initialStreamFlowControlWindow,
+                  initialStreamReceiveWindowOffset:
+                    this.initialStreamFlowControlWindow,
+                  streamShouldAutoTuneReceiveWindow:
+                    this.streamShouldAutoTuneReceiveWindow,
+                  streamReceiveWindowSizeLimit:
+                    this.streamFlowControlWindowSizeLimit
                 }))
               }
-            }
+            },
+            sendWindowOffset: this.sessionFlowControlWindowSizeLimit,
+            receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
+            shouldAutoTuneReceiveWindow:
+              this.sessionShouldAutoTuneReceiveWindow,
+            receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
           }),
           path: header[':path'],
           header

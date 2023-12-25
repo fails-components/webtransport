@@ -1,14 +1,14 @@
 import { Http2WebTransportStream } from './stream.js'
 
 /**
- * @param{Number} int
+ * @param{Number|bigint} int
  * @returns {Number}
  */
 export function lengthVarInt(int) {
-  if (int < 64) return 1
-  if (int < 16384) return 2
-  if (int < 1073741824) return 4
-  /* if (int < 4611686018427387904 ) */
+  if (BigInt(int) < 64n) return 1
+  if (BigInt(int) < 16384n) return 2
+  if (BigInt(int) < 1073741824n) return 4
+  /* if (BigInt(int) < 4611686018427387904 ) */
   return 8
 }
 
@@ -31,11 +31,23 @@ export class ParserBase {
   /**
    * @param {import('../types').ParserInit} arg
    */
-  constructor({ nativesession, isclient }) {
+  constructor({
+    nativesession,
+    isclient,
+    initialStreamSendWindowOffset,
+    initialStreamReceiveWindowOffset,
+    streamShouldAutoTuneReceiveWindow,
+    streamReceiveWindowSizeLimit
+  }) {
     this.session = nativesession
     this.isclient = isclient
     /** @type {boolean} */
     this.blocked = false
+
+    this.initialStreamSendWindowOffset = initialStreamSendWindowOffset
+    this.initialStreamReceiveWindowOffset = initialStreamReceiveWindowOffset
+    this.streamShouldAutoTuneReceiveWindow = streamShouldAutoTuneReceiveWindow
+    this.streamReceiveWindowSizeLimit = streamReceiveWindowSizeLimit
 
     this.wtstreams = new Map()
   }
@@ -50,7 +62,7 @@ export class ParserBase {
 
   /**
    * @abstract
-   * @param{{type: Number, headerVints: Array<Number>, payload: Uint8Array|undefined}} bs
+   * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array|undefined}} bs
    */
   writeCapsule({ type, headerVints, payload }) {
     throw new Error('Implement writeCapsule in derived Class')
@@ -67,7 +79,12 @@ export class ParserBase {
   newStream(streamid) {
     const stream = new Http2WebTransportStream({
       streamid,
-      capsuleParser: this
+      capsuleParser: this,
+      sendWindowOffset: this.initialStreamSendWindowOffset,
+      receiveWindowOffset: this.initialStreamReceiveWindowOffset,
+      shouldAutoTuneReceiveWindow: this.streamShouldAutoTuneReceiveWindow,
+      receiveWindowSizeLimit: this.streamReceiveWindowSizeLimit,
+      sessionFlowController: this.session.flowController
     })
     this.wtstreams.set(streamid, stream)
     this.session.jsobj.onStream({
@@ -82,5 +99,41 @@ export class ParserBase {
     for (const stream of this.wtstreams.values()) {
       stream.drainWrites()
     }
+  }
+
+  /**
+   * @param {bigint|undefined} val
+   */
+  onMaxData(val) {
+    if (val && this.session.flowController.updateSendWindowOffset(val))
+      this.drainWrites()
+  }
+
+  /**
+   * @param {bigint|undefined} streamid
+   * @param {bigint|undefined} offset
+   */
+  onMaxStreamData(streamid, offset) {
+    const object = this.wtstreams.get(Number(streamid))
+    if (object && offset) {
+      if (object.flowController.updateSendWindowOffset(offset))
+        object.drainWrites()
+    }
+  }
+
+  /**
+   * @param {bigint|undefined} val
+   */
+  onDataBlocked(val) {
+    this.session.flowController.reportBlocked(val)
+  }
+
+  /**
+   * @param {bigint|undefined} streamid
+   * @param {bigint|undefined} offset
+   */
+  onStreamDataBlocked(streamid, offset) {
+    const object = this.wtstreams.get(Number(streamid))
+    if (object && offset) object.flowController.reportBlocked(offset)
   }
 }

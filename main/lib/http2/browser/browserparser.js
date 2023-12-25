@@ -1,20 +1,23 @@
 import { ParserBase, lengthVarInt } from '../parserbase.js'
+import { logger } from '../../utils.js'
 
+const log = logger(`webtransport:http2:browserparser`)
 /**
  * @param{{offset: Number, buffer: Uint8Array, size: Number}} bs
  */
 function readVarInt(bs) {
-  let val = bs.buffer[bs.offset]
+  if (bs.offset + 1 > bs.size) return undefined
+  let val = BigInt(bs.buffer[bs.offset])
   bs.offset++
-  const prefix = val >>> 6
+  const prefix = Number(val) >>> 6
   const intlength = 1 << prefix
 
   if (bs.offset + intlength - 1 > bs.size) {
     return undefined
   }
-  val = val & 0x3f
+  val = val & 0x3fn
   for (let i = 0; i < intlength - 1; i++) {
-    val = (val << 8) | bs.buffer[bs.offset]
+    val = (val << 8n) | BigInt(bs.buffer[bs.offset])
     bs.offset++
   }
   return val
@@ -22,26 +25,29 @@ function readVarInt(bs) {
 
 /**
  * @param{{offset: Number, buffer: Uint8Array, size: Number}} bs
- * @param{Number} int
+ * @param{Number|bigint} int
  */
 export function writeVarInt(bs, int) {
-  let numbytes = 8
-  let msb = 0xc0
-  if (int < 64) {
-    numbytes = 1
-    msb = 0x0
-  } else if (int < 16384) {
-    numbytes = 2
-    msb = 0x40
-  } else if (int < 1073741824) {
-    numbytes = 4
-    msb = 0x80
+  let numbytes = 8n
+  let msb = 0xc0n
+  const bint = BigInt(int)
+  if (bint < 64n) {
+    numbytes = 1n
+    msb = 0x0n
+  } else if (bint < 16384n) {
+    numbytes = 2n
+    msb = 0x40n
+  } else if (bint < 1073741824n) {
+    numbytes = 4n
+    msb = 0x80n
   }
-  bs.buffer[bs.offset] = msb | ((int >>> ((numbytes - 1) * 8)) & 0xff)
+  bs.buffer[bs.offset] = Number(
+    msb | ((bint >> ((numbytes - 1n) * 8n)) & 0xffn)
+  )
   bs.offset++
 
-  for (let i = numbytes - 2; i >= 0; i--) {
-    bs.buffer[bs.offset] = (int >>> (i * 8)) & 0xff
+  for (let i = numbytes - 2n; i >= 0n; i--) {
+    bs.buffer[bs.offset] = Number((bint >> (i * 8n)) & 0xffn)
     bs.offset++
   }
 }
@@ -56,8 +62,23 @@ export class BrowserParser extends ParserBase {
   /**
    * @param {import('../../types.js').ParserWebsocketInit} stream
    */
-  constructor({ ws, nativesession, isclient }) {
-    super({ nativesession, isclient })
+  constructor({
+    ws,
+    nativesession,
+    isclient,
+    initialStreamSendWindowOffset,
+    initialStreamReceiveWindowOffset,
+    streamShouldAutoTuneReceiveWindow,
+    streamReceiveWindowSizeLimit
+  }) {
+    super({
+      nativesession,
+      isclient,
+      initialStreamSendWindowOffset,
+      initialStreamReceiveWindowOffset,
+      streamShouldAutoTuneReceiveWindow,
+      streamReceiveWindowSizeLimit
+    })
     this.ws = ws
     /** @type {Buffer|undefined} */
     this.saveddata = undefined
@@ -72,7 +93,7 @@ export class BrowserParser extends ParserBase {
         this.parseData(new Uint8Array(event.data, 0, event.data.byteLength))
       } else {
         // text frame
-        console.log('Illegal text frame', event.data)
+        log('Illegal text frame', event.data)
       }
     })
   }
@@ -85,9 +106,7 @@ export class BrowserParser extends ParserBase {
 
     const offsetend = bufferstate.size
 
-    const type = readVarInt(bufferstate)
-
-    // all safeguards passed now apply the mask
+    const type = Number(readVarInt(bufferstate))
 
     switch (type) {
       case ParserBase.PADDING:
@@ -112,7 +131,7 @@ export class BrowserParser extends ParserBase {
       case ParserBase.WT_STREAM_WOFIN:
       case ParserBase.WT_STREAM_WFIN:
         {
-          const streamid = readVarInt(bufferstate)
+          const streamid = Number(readVarInt(bufferstate))
 
           if (typeof streamid !== 'undefined') {
             let object = this.wtstreams.get(streamid)
@@ -134,19 +153,10 @@ export class BrowserParser extends ParserBase {
         }
         break
       case ParserBase.WT_MAX_DATA:
-        // this.recvSession({ maxdata: readVarInt(bufferstate), type })
+        this.onMaxData(readVarInt(bufferstate))
         break
       case ParserBase.WT_MAX_STREAM_DATA:
-        /* {
-                  const streamid = readVarInt(bufferstate)
-                  const object = this.wtstreams.get(streamid)
-                  if (object)
-                    this.recvStream({
-                      maxstreamdata: readVarInt(bufferstate),
-                      type,
-                      object
-                    })
-                } */
+        this.onMaxStreamData(readVarInt(bufferstate), readVarInt(bufferstate))
         break
       case ParserBase.WT_MAX_STREAMS_BIDI:
         // this.recvSession({ maxstreams: readVarInt(bufferstate), type })
@@ -154,20 +164,14 @@ export class BrowserParser extends ParserBase {
       case ParserBase.WT_MAX_STREAMS_UNIDI:
         // this.recvSession({ maxstreams: readVarInt(bufferstate), type })
         break
-      case ParserBase.WT_DATA_BLOCKED: // TODO
-        // this.recvSession({ maxdata: readVarInt(bufferstate), type })
+      case ParserBase.WT_DATA_BLOCKED:
+        this.onDataBlocked(readVarInt(bufferstate))
         break
-      case ParserBase.WT_STREAM_DATA_BLOCKED: // TODO
-        /* {
-                  const streamid = readVarInt(bufferstate)
-                  const object = this.wtstreams.get(streamid)
-                  if (object)
-                    this.recvStream({
-                      maxstreamdata: readVarInt(bufferstate),
-                      type,
-                      object
-                    })
-                } */
+      case ParserBase.WT_STREAM_DATA_BLOCKED:
+        this.onStreamDataBlocked(
+          readVarInt(bufferstate),
+          readVarInt(bufferstate)
+        )
         break
       case ParserBase.WT_STREAMS_BLOCKED_UNIDI:
         /* {
@@ -211,7 +215,7 @@ export class BrowserParser extends ParserBase {
   }
 
   /**
-   * @param{{type: Number, headerVints: Array<Number>, payload: Uint8Array|undefined}} bs
+   * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array|undefined}} bs
    */
   writeCapsule({ type, headerVints, payload }) {
     let plength = 0

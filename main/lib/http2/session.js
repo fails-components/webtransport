@@ -2,6 +2,11 @@
  * @typedef {import('http2').Http2Stream} Http2Stream
  */
 import { ParserBase } from './parserbase.js'
+import { FlowController } from './flowcontroller.js'
+import { logger } from '../utils.js'
+
+const pid = typeof process !== 'undefined' ? process.pid : 0
+const log = logger(`webtransport:http2webtransportsession(${pid})`)
 
 let processnextTick = (/** @type {{ (args: any[]): any }} */ func) =>
   setTimeout(func, 0)
@@ -10,13 +15,23 @@ if (typeof process !== 'undefined') processnextTick = process.nextTick
 
 export class Http2WebTransportSession {
   /**
-   * @param {Object} obj
-   * @param {Http2Stream} [obj.stream]
-   * @param {WebSocket} [obj.ws]
-   * @param {boolean} obj.isclient
-   * @param {import('../types.js').CreateParserFunction} obj.createParser
-   */
-  constructor({ stream, ws, isclient, createParser }) {
+   * @param {{stream?: Http2Stream, ws?: WebSocket, isclient:boolean,
+   * createParser:import('../types.js').CreateParserFunction
+   * sendWindowOffset: Number,
+   * receiveWindowOffset: Number,
+   * shouldAutoTuneReceiveWindow: boolean
+   * receiveWindowSizeLimit: Number}} args
+   * */
+  constructor({
+    stream,
+    ws,
+    isclient,
+    createParser,
+    sendWindowOffset,
+    receiveWindowOffset,
+    shouldAutoTuneReceiveWindow,
+    receiveWindowSizeLimit
+  }) {
     // @ts-ignore
     this.jsobj = undefined // the creator will set this
     if (stream) {
@@ -28,6 +43,13 @@ export class Http2WebTransportSession {
     this.unidiId = 0
     this.bidiId = 0
     this.isclient = isclient
+    this.flowController = new FlowController({
+      tocontrol: this,
+      sendWindowOffset,
+      receiveWindowOffset,
+      shouldAutoTuneReceiveWindow,
+      receiveWindowSizeLimit
+    })
     if (stream) {
       if (isclient) {
         stream.on('response', (headers) => {
@@ -48,15 +70,16 @@ export class Http2WebTransportSession {
           this.jsobj.onReady({})
         })
       }
-      stream.on('close', () => {
-        if (!(this.jsobj.state === 'failed' || this.jsobj.state === 'closed')) {
-          this.jsobj.onClose({
-            errorcode: 0,
-            error: 'Session http/2 stream closed'
-          })
-        }
-      })
     }
+  }
+
+  sendInitialParameters() {
+    this.flowController.sendWindowUpdate()
+    this.capsParser.writeCapsule({
+      type: ParserBase.WT_MAX_STREAMS_BIDI,
+      headerVints: [0xffffff],
+      payload: undefined
+    })
   }
 
   /**
@@ -126,12 +149,72 @@ export class Http2WebTransportSession {
    * @param {{ code: number, reason: string }} arg
    */
   close({ code, reason }) {
-    this.capsParser.sendClose({ code, reason }) // thid includes for ws closing the session!
+    this.capsParser.sendClose({ code, reason }) // this includes for ws closing the session!
     // what to do with the reason
     if (this.stream) {
-      if (this.stream.close) this.stream.close(code)
-      else if (this.stream.end) this.stream.end()
+      if (this.stream.close) {
+        this.stream.close(code)
+        this.stream.destroy()
+      } else if (this.stream.end) this.stream.end()
       else throw new Error('http2:session not close method')
+    }
+  }
+
+  /**
+   * @param {bigint} windowOffset
+   */
+  sendWindowUpdate(windowOffset) {
+    this.capsParser.writeCapsule({
+      type: ParserBase.WT_MAX_DATA,
+      headerVints: [windowOffset],
+      payload: undefined
+    })
+  }
+
+  /**
+   * @param {bigint} pos
+   */
+  reportBlocked(pos) {
+    log('Session was blocked at:', pos)
+  }
+
+  /**
+   * @param {bigint} windowOffset
+   */
+  sendBlocked(windowOffset) {
+    this.capsParser.writeCapsule({
+      type: ParserBase.WT_DATA_BLOCKED,
+      headerVints: [windowOffset],
+      payload: undefined
+    })
+  }
+
+  connected() {
+    return this.jsobj.state === 'connected'
+  }
+
+  /**
+   * @param {{ code: number, reason: string }} arg
+   */
+  closeConnection({ code, reason }) {
+    console.trace()
+    // called in case of failure in parsing or flowcontrol
+    this.jsobj.onClose({
+      errorcode: code,
+      error: reason
+    })
+    this.close({ code, reason })
+  }
+
+  smoothedRtt() {
+    if (this.stream) {
+      // we are on node
+      // @ts-ignore
+      return this.stream.session?.WTrtt || 26
+    } else if (this.ws) {
+      // we are at the Browser, so we use the connection rtt?
+      // @ts-ignore
+      return navigator?.connection?.rtt || 26
     }
   }
 }

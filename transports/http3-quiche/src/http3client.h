@@ -120,7 +120,8 @@ namespace quic
         Http3Client(Http3ClientJS *js,
             std::unique_ptr<ProofVerifier> proof_verifier,
             std::unique_ptr<SessionCache> session_cache,
-            std::unique_ptr<QuicConnectionHelperInterface> helper);
+            std::unique_ptr<QuicConnectionHelperInterface> helper,
+            QuicConfig config);
 
         ~Http3Client() override;
 

@@ -167,7 +167,7 @@ export async function createServer() {
             for await (const session of getReaderStream(
               server.sessionStream('/session_close')
             )) {
-              session.close()
+              await session.close()
             }
           },
 
