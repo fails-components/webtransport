@@ -5,8 +5,24 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
   /**
    * @param {import('../../types.js').ParserHttp2Init} stream
    */
-  constructor({ stream, nativesession, isclient }) {
-    super({ stream, nativesession, isclient })
+  constructor({
+    stream,
+    nativesession,
+    isclient,
+    initialStreamSendWindowOffset,
+    initialStreamReceiveWindowOffset,
+    streamShouldAutoTuneReceiveWindow,
+    streamReceiveWindowSizeLimit
+  }) {
+    super({
+      stream,
+      nativesession,
+      isclient,
+      initialStreamSendWindowOffset,
+      initialStreamReceiveWindowOffset,
+      streamShouldAutoTuneReceiveWindow,
+      streamReceiveWindowSizeLimit
+    })
     this.mode = 's' // capsule start
     /** @type {Buffer|undefined} */
     this.saveddata = undefined
@@ -41,7 +57,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               )
               return
             }
-            const type = readVarInt(bufferstate)
+            const type = Number(readVarInt(bufferstate))
             if (
               typeof type === 'undefined' ||
               bufferstate.size < 1 + bufferstate.offset
@@ -53,7 +69,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               )
               return
             }
-            const length = readVarInt(bufferstate)
+            const length = Number(readVarInt(bufferstate))
             if (typeof length === 'undefined') {
               this.saveddata = Buffer.from(
                 bufferstate.buffer.buffer,
@@ -115,7 +131,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                 break
               case Http2CapsuleParser.WT_STREAM_WOFIN:
               case Http2CapsuleParser.WT_STREAM_WFIN:
-                streamid = readVarInt(bufferstate)
+                streamid = Number(readVarInt(bufferstate))
                 if (typeof streamid !== 'undefined') {
                   let object = this.wtstreams.get(streamid)
                   if (!object) {
@@ -141,19 +157,13 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                 }
                 break
               case Http2CapsuleParser.WT_MAX_DATA:
-                // this.recvSession({ maxdata: readVarInt(bufferstate), type })
+                this.onMaxData(readVarInt(bufferstate))
                 break
               case Http2CapsuleParser.WT_MAX_STREAM_DATA:
-                /* {
-                  const streamid = readVarInt(bufferstate)
-                  const object = this.wtstreams.get(streamid)
-                  if (object)
-                    this.recvStream({
-                      maxstreamdata: readVarInt(bufferstate),
-                      type,
-                      object
-                    })
-                } */
+                this.onMaxStreamData(
+                  readVarInt(bufferstate),
+                  readVarInt(bufferstate)
+                )
                 break
               case Http2CapsuleParser.WT_MAX_STREAMS_BIDI:
                 // this.recvSession({ maxstreams: readVarInt(bufferstate), type })
@@ -161,20 +171,14 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               case Http2CapsuleParser.WT_MAX_STREAMS_UNIDI:
                 // this.recvSession({ maxstreams: readVarInt(bufferstate), type })
                 break
-              case Http2CapsuleParser.WT_DATA_BLOCKED: // TODO
-                // this.recvSession({ maxdata: readVarInt(bufferstate), type })
+              case Http2CapsuleParser.WT_DATA_BLOCKED:
+                this.onDataBlocked(readVarInt(bufferstate))
                 break
-              case Http2CapsuleParser.WT_STREAM_DATA_BLOCKED: // TODO
-                /* {
-                  const streamid = readVarInt(bufferstate)
-                  const object = this.wtstreams.get(streamid)
-                  if (object)
-                    this.recvStream({
-                      maxstreamdata: readVarInt(bufferstate),
-                      type,
-                      object
-                    })
-                } */
+              case Http2CapsuleParser.WT_STREAM_DATA_BLOCKED:
+                this.onStreamDataBlocked(
+                  readVarInt(bufferstate),
+                  readVarInt(bufferstate)
+                )
                 break
               case Http2CapsuleParser.WT_STREAMS_BLOCKED_UNIDI:
                 /* {

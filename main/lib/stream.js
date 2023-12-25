@@ -42,6 +42,10 @@ export class HttpWTStream {
     this.incoming = args.incoming
     this.closed = false
 
+    if (this.objint.sendInitialParameters) {
+      this.objint.sendInitialParameters()
+    }
+
     /** @type {Promise<void> | null} */
     this.pendingoperation = null
     this.pendingres = null
@@ -223,10 +227,12 @@ export class HttpWTStream {
    * @param {ReadBuffer} args
    */
   commitReadBuffer({ buffer, byob, drained, readBytes, fin }) {
-    if (byob && readBytes !== undefined) {
-      byob.respond(readBytes)
-    } else if (buffer) {
-      this.readableController.enqueue(buffer)
+    if (!this.readableclosed) {
+      if (byob && readBytes !== undefined) {
+        byob.respond(readBytes)
+      } else if (buffer) {
+        this.readableController.enqueue(buffer)
+      }
     }
     const retObj = {}
 

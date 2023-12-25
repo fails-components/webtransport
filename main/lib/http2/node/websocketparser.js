@@ -1,7 +1,9 @@
 import { randomBytes } from 'node:crypto'
 import { ParserBase, lengthVarInt } from '../parserbase.js'
 import { ParserBaseHttp2, readVarInt, writeVarInt } from '../parserbasehttp2.js'
+import { logger } from '../../utils.js'
 
+const log = logger(`webtransport:http2:node:websocketparser(${process?.pid})`)
 /**
  * @typedef {import('node:http2').Http2Stream} Http2Stream
  */
@@ -167,8 +169,24 @@ export class WebSocketParser extends ParserBaseHttp2 {
   /**
    * @param {import('../../types.js').ParserHttp2Init} stream
    */
-  constructor({ stream, nativesession, isclient }) {
-    super({ stream, nativesession, isclient })
+  constructor({
+    stream,
+    nativesession,
+    isclient,
+    initialStreamSendWindowOffset,
+    initialStreamReceiveWindowOffset,
+    streamShouldAutoTuneReceiveWindow,
+    streamReceiveWindowSizeLimit
+  }) {
+    super({
+      stream,
+      nativesession,
+      isclient,
+      initialStreamSendWindowOffset,
+      initialStreamReceiveWindowOffset,
+      streamShouldAutoTuneReceiveWindow,
+      streamReceiveWindowSizeLimit
+    })
     this.mode = 's' // frame start
     /** @type {Buffer|undefined} */
     this.saveddata = undefined
@@ -207,7 +225,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
             const fin = (curbyte & 0x80) >>> 7
             const rsv = (curbyte & 0x30) >>> 4
             if (rsv !== 0) {
-              console.log('Rsv bits set, should not happen!')
+              log('Rsv bits set, should not happen!')
             }
             const opcode = curbyte & 0x0f
             curbyte = readByte(bufferstate)
@@ -352,7 +370,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
               let continuep
 
               if (plength === 0) {
-                console.log('warning empty data frame')
+                log('warning empty data frame')
                 // empty frame ?
                 bufferstate.offset += plength
                 continue
@@ -504,7 +522,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 case ParserBase.WT_STREAM_WOFIN:
                 case ParserBase.WT_STREAM_WFIN:
                   if (!continuep) {
-                    streamid = readVarInt(bufferstate)
+                    streamid = Number(readVarInt(bufferstate))
                     this.cstreamid = streamid
                   } else {
                     streamid = this.cstreamid
@@ -534,19 +552,13 @@ export class WebSocketParser extends ParserBaseHttp2 {
                   }
                   break
                 case ParserBase.WT_MAX_DATA:
-                  // this.recvSession({ maxdata: readVarInt(bufferstate), type })
+                  this.onMaxData(readVarInt(bufferstate))
                   break
                 case ParserBase.WT_MAX_STREAM_DATA:
-                  /* {
-                  const streamid = readVarInt(bufferstate)
-                  const object = this.wtstreams.get(streamid)
-                  if (object)
-                    this.recvStream({
-                      maxstreamdata: readVarInt(bufferstate),
-                      type,
-                      object
-                    })
-                } */
+                  this.onMaxStreamData(
+                    readVarInt(bufferstate),
+                    readVarInt(bufferstate)
+                  )
                   break
                 case ParserBase.WT_MAX_STREAMS_BIDI:
                   // this.recvSession({ maxstreams: readVarInt(bufferstate), type })
@@ -554,20 +566,14 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 case ParserBase.WT_MAX_STREAMS_UNIDI:
                   // this.recvSession({ maxstreams: readVarInt(bufferstate), type })
                   break
-                case ParserBase.WT_DATA_BLOCKED: // TODO
-                  // this.recvSession({ maxdata: readVarInt(bufferstate), type })
+                case ParserBase.WT_DATA_BLOCKED:
+                  this.onDataBlocked(readVarInt(bufferstate))
                   break
-                case ParserBase.WT_STREAM_DATA_BLOCKED: // TODO
-                  /* {
-                  const streamid = readVarInt(bufferstate)
-                  const object = this.wtstreams.get(streamid)
-                  if (object)
-                    this.recvStream({
-                      maxstreamdata: readVarInt(bufferstate),
-                      type,
-                      object
-                    })
-                } */
+                case ParserBase.WT_STREAM_DATA_BLOCKED:
+                  this.onStreamDataBlocked(
+                    readVarInt(bufferstate),
+                    readVarInt(bufferstate)
+                  )
                   break
                 case ParserBase.WT_STREAMS_BLOCKED_UNIDI:
                   /* {
@@ -706,7 +712,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
   }
 
   /**
-   * @param{{type: Number, headerVints: Array<Number>, payload: Uint8Array|undefined}} bs
+   * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array|undefined}} bs
    */
   writeCapsule({ type, headerVints, payload }) {
     let plength = 0

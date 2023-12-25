@@ -54,6 +54,9 @@ export class HttpWTSession {
     if (args.object) {
       this.objint = args.object
       this.objint.jsobj = this
+      if (this.objint.sendInitialParameters) {
+        this.objint.sendInitialParameters()
+      }
     }
     this.parentobj = args.parentobj
     /** @type {import('./types').WebTransportSessionState} */

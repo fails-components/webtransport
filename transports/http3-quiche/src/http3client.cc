@@ -161,13 +161,15 @@ namespace quic
     Http3Client::Http3Client(Http3ClientJS *js, 
                              std::unique_ptr<ProofVerifier> proof_verifier,
                              std::unique_ptr<SessionCache> session_cache,
-                             std::unique_ptr<QuicConnectionHelperInterface> helper) :
+                             std::unique_ptr<QuicConnectionHelperInterface> helper,
+                             QuicConfig config) :
           initialized_(false),
           store_response_(false),
           latest_response_code_(-1),
           overflow_supported_(false),
           packets_dropped_(0),
           packet_reader_(new QuicPacketReader()),
+          config_(config),
           crypto_config_(std::move(proof_verifier), std::move(session_cache)),
           helper_(std::move(helper)),
           alarm_factory_(new NapiAlarmFactory(QuicDefaultClock::Get(), js)),
@@ -1142,6 +1144,7 @@ namespace quic
         bool allowPooling = false;
         std::vector<WebTransportHash> serverCertificateHashes;
         std::string privkey;
+        QuicConfig cconfig;
         auto env = info.Env();
         if (!info[0].IsUndefined())
         {
@@ -1204,6 +1207,28 @@ namespace quic
                         return;
                     }
                 }
+                if (lobj.Has("initialStreamFlowControlWindow") && !(lobj).Get("initialStreamFlowControlWindow").IsEmpty())
+                {
+                    Napi::Value initialStreamFlowControlWindowValue = (lobj).Get("initialStreamFlowControlWindow");
+                    int initialStreamFlowControlWindow = initialStreamFlowControlWindowValue.As<Napi::Number>().Int32Value();
+                    cconfig.SetInitialStreamFlowControlWindowToSend(initialStreamFlowControlWindow);
+                }
+
+                if (lobj.Has("initialSessionFlowControlWindow") && !(lobj).Get("initialSessionFlowControlWindow").IsEmpty())
+                {
+                    Napi::Value initialSessionFlowControlWindowValue = (lobj).Get("initialSessionFlowControlWindow");
+                    int initialSessionFlowControlWindow = initialSessionFlowControlWindowValue.As<Napi::Number>().Int32Value();
+                    cconfig.SetInitialSessionFlowControlWindowToSend(initialSessionFlowControlWindow);
+                }
+
+                if (lobj.Has("streamFlowControlWindowSizeLimit") && !(lobj).Get("streamFlowControlWindowSizeLimit").IsEmpty())
+                {
+                    Napi::Value streamFlowControlWindowSizeLimitValue = (lobj).Get("streamFlowControlWindowSizeLimit");
+                    int streamFlowControlWindowSizeLimitWindow = streamFlowControlWindowSizeLimitValue.As<Napi::Number>().Int32Value();
+                    cconfig.SetInitialMaxStreamDataBytesOutgoingBidirectionalToSend(streamFlowControlWindowSizeLimitWindow);
+                    cconfig.SetInitialMaxStreamDataBytesIncomingBidirectionalToSend(streamFlowControlWindowSizeLimitWindow);
+                    cconfig.SetInitialMaxStreamDataBytesUnidirectionalToSend(streamFlowControlWindowSizeLimitWindow);
+                }
             }
         }
 
@@ -1235,7 +1260,7 @@ namespace quic
 
         std::unique_ptr<Http3SessionCache> cache;
 
-        client_ = std::make_unique<Http3Client>(this, std::move(verifier), std::move(cache), std::move(helper));
+        client_ = std::make_unique<Http3Client>(this, std::move(verifier), std::move(cache), std::move(helper), cconfig);
         client_->SetUserAgentID("fails-components/webtransport");
 
         Ref(); // do not garbage collect

@@ -18,6 +18,20 @@ export class Http2WebTransportClient {
     this.localPort = Number(args?.localPort) || undefined
     this.allowPooling = args?.allowPooling || false
     this.forceIpv6 = args?.forceIpv6 || false
+    this.initialStreamFlowControlWindow =
+      args?.initialStreamFlowControlWindow || 16 * 1024 // 16 KB
+    this.initialSessionFlowControlWindow =
+      args?.initialSessionFlowControlWindow || 16 * 1024 // 16 KB
+
+    this.streamShouldAutoTuneReceiveWindow =
+      args.streamShouldAutoTuneReceiveWindow || false
+    this.streamFlowControlWindowSizeLimit =
+      args?.streamFlowControlWindowSizeLimit || 6 * 1024 * 1024
+
+    this.sessionShouldAutoTuneReceiveWindow =
+      args.sessionShouldAutoTuneReceiveWindow || false
+    this.sessionFlowControlWindowSizeLimit =
+      args?.sessionFlowControlWindowSizeLimit || 15 * 1024 * 1024
     /** @type {import('../../session.js').HttpClient} */
     // @ts-ignore
     this.jsobj = undefined // the transport will set this
@@ -82,6 +96,31 @@ export class Http2WebTransportClient {
       'https://' + this.hostname + ':' + this.port,
       http2Options
     )
+
+    let rtt = 100
+    let adjust = 1
+    // ok we got a session and want to measure RTT
+    let pingsender = setInterval(() => {
+      if (this.clientInt && !this.clientInt.closed) {
+        this.clientInt.ping((err, duration, payload) => {
+          if (!err) {
+            rtt = adjust * duration + (1 - adjust) * rtt
+            adjust = 0.2
+            // @ts-ignore
+            this.clientInt.WTrtt = rtt
+          }
+        })
+      } else {
+        clearInterval(pingsender)
+        // @ts-ignore
+        pingsender = undefined
+      }
+    }, 1000)
+
+    this.clientInt.on('close', () => {
+      if (pingsender) clearInterval(pingsender)
+    })
+
     let authfail = false
     this.clientInt.socket.on('secureConnect', () => {
       /** @type {import('node:tls').TLSSocket} */
@@ -171,8 +210,18 @@ export class Http2WebTransportClient {
           new Http2CapsuleParser({
             stream,
             nativesession,
-            isclient: true
-          })
+            isclient: true,
+            initialStreamSendWindowOffset: this.initialStreamFlowControlWindow,
+            initialStreamReceiveWindowOffset:
+              this.initialStreamFlowControlWindow,
+            streamShouldAutoTuneReceiveWindow:
+              this.streamShouldAutoTuneReceiveWindow,
+            streamReceiveWindowSizeLimit: this.streamFlowControlWindowSizeLimit
+          }),
+        sendWindowOffset: this.sessionFlowControlWindowSizeLimit,
+        receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
+        shouldAutoTuneReceiveWindow: this.sessionShouldAutoTuneReceiveWindow,
+        receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
       }),
       reliable: true
     }

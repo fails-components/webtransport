@@ -151,6 +151,15 @@ namespace quic
           int initialSessionFlowControlWindow = initialSessionFlowControlWindowValue.As<Napi::Number>().Int32Value();
           sconfig.SetInitialSessionFlowControlWindowToSend(initialSessionFlowControlWindow);
         }
+
+        if (lobj.Has("streamFlowControlWindowSizeLimit") && !(lobj).Get("streamFlowControlWindowSizeLimit").IsEmpty())
+        {
+          Napi::Value streamFlowControlWindowSizeLimitValue = (lobj).Get("streamFlowControlWindowSizeLimit");
+          int streamFlowControlWindowSizeLimitWindow = streamFlowControlWindowSizeLimitValue.As<Napi::Number>().Int32Value();
+          sconfig.SetInitialMaxStreamDataBytesOutgoingBidirectionalToSend(streamFlowControlWindowSizeLimitWindow);
+          sconfig.SetInitialMaxStreamDataBytesIncomingBidirectionalToSend(streamFlowControlWindowSizeLimitWindow);
+          sconfig.SetInitialMaxStreamDataBytesUnidirectionalToSend(streamFlowControlWindowSizeLimitWindow);
+        }
       }
       // Callback *callback, int port, std::unique_ptr<ProofSource> proof_source,  const char *secret
 

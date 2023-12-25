@@ -93,7 +93,6 @@ describe('session', function () {
       .with.property('message', 'Opening handshake failed.')
   })
 
-  // This is a workaround, as this test causes subsequent browser tests to fail
   it('should error when connecting to a path that does not exist', async () => {
     client = new WebTransport(`${process.env.SERVER_URL}/non_existant`, {
       serverCertificateHashes: [

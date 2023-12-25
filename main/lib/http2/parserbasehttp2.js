@@ -22,31 +22,35 @@ export function readVarInt(bs) {
     val = (val << 8n) | BigInt(bs.buffer.readUInt8(bs.offset))
     bs.offset++
   }
-  return Number(val)
+  return val
 }
 
 /**
  * @param{{offset: Number, buffer: Buffer, size: Number}} bs
- * @param{Number} int
+ * @param{Number|bigint} int
  */
 export function writeVarInt(bs, int) {
-  let numbytes = 8
-  let msb = 0xc0
-  if (int < 64) {
-    numbytes = 1
-    msb = 0x0
-  } else if (int < 16384) {
-    numbytes = 2
-    msb = 0x40
-  } else if (int < 1073741824) {
-    numbytes = 4
-    msb = 0x80
+  let numbytes = 8n
+  let msb = 0xc0n
+  const bint = BigInt(int)
+  if (bint < 64) {
+    numbytes = 1n
+    msb = 0x0n
+  } else if (bint < 16384) {
+    numbytes = 2n
+    msb = 0x40n
+  } else if (bint < 1073741824) {
+    numbytes = 4n
+    msb = 0x80n
   }
-  bs.buffer.writeUInt8(msb | ((int >>> ((numbytes - 1) * 8)) & 0xff), bs.offset)
+  bs.buffer.writeUInt8(
+    Number(msb | ((bint >> ((numbytes - 1n) * 8n)) & 0xffn)),
+    bs.offset
+  )
   bs.offset++
 
-  for (let i = numbytes - 2; i >= 0; i--) {
-    bs.buffer.writeUInt8((int >>> (i * 8)) & 0xff, bs.offset)
+  for (let i = numbytes - 2n; i >= 0; i--) {
+    bs.buffer.writeUInt8(Number((bint >> (i * 8n)) & 0xffn), bs.offset)
     bs.offset++
   }
 }
@@ -55,8 +59,23 @@ export class ParserBaseHttp2 extends ParserBase {
   /**
    * @param {import('../types').ParserHttp2Init} stream
    */
-  constructor({ stream, nativesession, isclient }) {
-    super({ nativesession, isclient })
+  constructor({
+    stream,
+    nativesession,
+    isclient,
+    initialStreamSendWindowOffset,
+    initialStreamReceiveWindowOffset,
+    streamShouldAutoTuneReceiveWindow,
+    streamReceiveWindowSizeLimit
+  }) {
+    super({
+      nativesession,
+      isclient,
+      initialStreamSendWindowOffset,
+      initialStreamReceiveWindowOffset,
+      streamShouldAutoTuneReceiveWindow,
+      streamReceiveWindowSizeLimit
+    })
     this.stream = stream
     this.session = nativesession
     this.isclient = isclient
