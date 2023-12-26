@@ -278,16 +278,15 @@ export class WebSocketParser extends ParserBaseHttp2 {
               opcode === WebSocketParser.WS_PING ||
               opcode === WebSocketParser.WS_PONG
             ) {
-              let length = plength
+              const length = plength
 
               if (length > 263140 || length > 1000000) {
-                // too long skip, could be an attack vector
-                this.mode = 'c'
-                this.rstreamid = undefined
-                this.remainlength =
-                  bufferstate.offset + length - bufferstate.size
-                bufferstate.offset = bufferstate.size
-                length = bufferstate.offset - bufferstate.size // only process current frame
+                // too long abort, could be an attack vector
+                this.session.closeConnection({
+                  code: 63, // QUIC_FLOW_CONTROL_SENT_TOO_MUCH_DATA, // probably the right one...
+                  reason: 'Frame length too big :' + length
+                })
+                return
               } else {
                 if (bufferstate.size < length + bufferstate.offset) {
                   this.saveddata = Buffer.from(

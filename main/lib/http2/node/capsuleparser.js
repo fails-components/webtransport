@@ -93,11 +93,11 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               checklength = Math.min(length, 64) // stream id + some Data
             }
             if (checklength > 263140 || length > 1000000) {
-              // too long skip, could be an attack vector
-              this.mode = 'c'
-              this.rstreamid = undefined
-              this.remainlength = bufferstate.offset + length - bufferstate.size
-              bufferstate.offset = bufferstate.size
+              // too long abort, could be an attack vector
+              this.session.closeConnection({
+                code: 63, // QUIC_FLOW_CONTROL_SENT_TOO_MUCH_DATA, // probably the right one...
+                reason: 'Frame length too big :' + length
+              })
               return
             }
             if (bufferstate.size < checklength + bufferstate.offset) {
