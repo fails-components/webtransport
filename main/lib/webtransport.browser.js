@@ -45,6 +45,7 @@ export class WebTransportPonyfill extends WebTransportBase {
    * @return {{sessionint: HttpWTSession, client: HttpClient}}
    */
   createClient(args) {
+    this.curtype = 'websocket'
     const client = new HttpClient({
       createReliableClient: (client) => {
         // @ts-ignore
