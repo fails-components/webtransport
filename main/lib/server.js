@@ -107,6 +107,14 @@ class TransportIntServerProxy {
   addPath(path) {
     this.transportsInts.forEach((transport) => transport.addPath(path))
   }
+
+  set jsobj(newJSobj) {
+    this.transportsInts.forEach((transport) => (transport.jsobj = newJSobj))
+  }
+
+  get jsobj() {
+    return this.transportsInts.values().next().value
+  }
 }
 
 /**
