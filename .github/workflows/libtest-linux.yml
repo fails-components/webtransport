@@ -44,9 +44,6 @@ jobs:
       - name: Build types
         run: npm run types
 
-      - name: Build library
-        run: npm run build 
-
       - name: Run node unit tests http2
         run:  NODE_ENV=production npm run test:node:http2 
 
