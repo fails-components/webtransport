@@ -35,14 +35,11 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install dependencies for transport
-        run: npm install --workspace transports/http3-quiche
+      - name: Install dependencies
+        run: npm install --ignore-scripts
 
       - name: Build library
         run: npm run build 
-
-      - name: Install dependencies for main
-        run: npm install --workspace main
 
       - name: Run node unit tests
         run: |
