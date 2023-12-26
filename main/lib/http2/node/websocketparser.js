@@ -242,8 +242,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 return
               }
               plength = readWord(bufferstate)
-            }
-            if (plength === 127) {
+            } else if (plength === 127) {
               if (bufferstate.size < 8 + bufferstate.offset) {
                 this.saveddata = Buffer.from(
                   bufferstate.buffer.buffer,
@@ -281,7 +280,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
             ) {
               let length = plength
 
-              if (length > 263140) {
+              if (length > 263140 || length > 1000000) {
                 // too long skip, could be an attack vector
                 this.mode = 'c'
                 this.rstreamid = undefined
@@ -425,15 +424,6 @@ export class WebSocketParser extends ParserBaseHttp2 {
                   ParserBase.WT_STREAM_WFIN /* || type === ParserBase.DATAGRAM */
               ) {
                 checklength = Math.min(length, 64) // stream id + some Data
-              }
-              if (checklength > 263140) {
-                // too long skip, could be an attack vector
-                this.mode = 'c'
-                this.rstreamid = undefined
-                this.remainlength =
-                  bufferstate.offset + length - bufferstate.size
-                bufferstate.offset = bufferstate.size
-                return
               }
               if (bufferstate.size < checklength + bufferstate.offset) {
                 this.saveddata = Buffer.from(
