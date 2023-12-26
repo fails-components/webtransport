@@ -36,7 +36,7 @@ jobs:
         run:  npm install --ignore-scripts
 
       - name: Build library
-        run: npm run build 
+        run: npm run dobuild 
 
       - name: Lint files
         run: npm run lint

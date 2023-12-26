@@ -36,7 +36,7 @@ jobs:
         run: npm install --ignore-scripts
 
       - name: Build library
-        run: npm run build
+        run: npm run dobuild
 
       - name: Test architecture
         run: lipo -info transports/http3-quiche/build_darwin_x64/Release/webtransport.node
