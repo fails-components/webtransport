@@ -1,6 +1,9 @@
 import { Http2WebTransportSession } from '../session.js'
 import { BrowserParser } from './browserparser.js'
 import { supportedVersions } from '../websocketcommon.js'
+import { logger } from '../../utils.js'
+
+const log = logger(`webtransport:http2:browser`)
 
 export class Http2WebTransportBrowser {
   /**
@@ -46,6 +49,7 @@ export class Http2WebTransportBrowser {
         )
       )
     } catch (error) {
+      log('Failed on WebTransport/Websocket:', error)
       this.jsobj.onClientConnected({
         success: false
       })
@@ -80,10 +84,19 @@ export class Http2WebTransportBrowser {
       }
     })
 
-    this.clientInt.addEventListener('error', () => {
-      this.jsobj.onClientConnected({
-        success: false
-      })
+    this.clientInt.addEventListener('error', (error) => {
+      log('Failed on WebTransport/Websocket:', error)
+      if (this.jsobj?.sessionobjint?.state === 'connecting')
+        this.jsobj.onClientConnected({
+          success: false
+        })
+      else {
+        if (this?.jsobj?.sessionobjint?.objint)
+          this.jsobj.sessionobjint.close({
+            closeCode: 0,
+            reason: error.toString()
+          })
+      }
     })
   }
 
