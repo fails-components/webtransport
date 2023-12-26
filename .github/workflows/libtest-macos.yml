@@ -31,11 +31,15 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18
-      - name: Install dependencies
-        run: npm install
+
+      - name: Install dependencies for transport
+        run: npm install --workspace transports/http3-quiche
 
       - name: Build library
         run: npm run build 
+
+      - name: Install dependencies for main
+        run: npm install --workspace main
 
       - name: Test architecture
         run: lipo -info transports/http3-quiche/build_darwin_x64/Release/webtransport.node
