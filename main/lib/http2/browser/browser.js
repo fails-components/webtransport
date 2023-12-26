@@ -86,7 +86,10 @@ export class Http2WebTransportBrowser {
 
     this.clientInt.addEventListener('error', (error) => {
       log('Failed on WebTransport/Websocket:', error)
-      if (this.jsobj?.sessionobjint?.state === 'connecting')
+      if (
+        !this.jsobj?.sessionobjint ||
+        this.jsobj?.sessionobjint?.state === 'connecting'
+      )
         this.jsobj.onClientConnected({
           success: false
         })
