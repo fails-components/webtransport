@@ -26,9 +26,9 @@
     "oldtesthttp2": "npm run oldtesthttp2 --workspace main",
     "types": "npm run types --workspaces",
     "lint": "npm run lint --workspaces",
-    "doprebuild": "npm run prebuild --workspace transports/http3-quiche",
+    "prebuild": "npm run prebuild --workspace transports/http3-quiche",
     "build-debug": "npm run build-debug --workspace transports/http3-quiche",
-    "build": "npm run build --workspace transports/http3-quiche",
+    "dobuild": "npm run dobuild --workspace transports/http3-quiche",
     "rebuild": "npm run rebuild --workspace transports/http3-quiche",
     "rebuild-debug": "npm run rebuild-debug --workspace transports/http3-quiche"
   },
