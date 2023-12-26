@@ -32,8 +32,8 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install dependencies for transport
+        run: npm install --workspace transports/http3-quiche
 
       - name: Lint files
         run: npm run lint
@@ -43,6 +43,9 @@ jobs:
 
       - name: Build library
         run: npm run build 
+
+      - name: Install dependencies for main
+        run: npm install --workspace main
 
       - name: Run node unit tests http2
         run:  NODE_ENV=production npm run test:node:http2 
