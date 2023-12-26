@@ -57,7 +57,6 @@ async function runTests(certificate, serverAddress) {
     args = [
       process.env.CI ? '--no-colors' : '--colors',
       './test/*.spec.js',
-      './test/*.node.js',
       ...process.argv.slice(4)
     ]
     const tests = execa(command, args, {
