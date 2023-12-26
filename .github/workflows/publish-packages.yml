@@ -97,7 +97,7 @@ jobs:
        env:
          BUILDARCH: ${{ matrix.arch }}
          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-       run: npm run prebuild 
+       run: npm run doprebuild 
 
 # code is not ready... if anyone needs it, I am open for PR
 #  prebuild-cross:
