@@ -29,7 +29,7 @@ If you need a ponyfill check out the sister package [https://github.com/fails-co
 
 The interface for version 1.x.x is not changed compared to 0.x.x.
 However, it was heavily internally rewritten. 
-For example, the implementation does not use a separate event loop for quiche implementation anymore. Instead, it uses node.js native datagram sockets and the eventloop of node.js.
+For example, the implementation does not use a separate event loop for quiche implementation anymore. Instead, it uses node.js native datagram sockets and the event loop of node.js.
 So even though not intended, the library may behave unintended differently in detail.
 
 Furthermore, support for WebTransport over http/2 was added, which has to be considered experimental (and the protocol may change anytime), as there is yet no released browser implementation.
@@ -38,10 +38,8 @@ Use for the server side either `HttpServer` for http/2 and http/3 support (inclu
 For the client side pass the options `forceReliable`, `requireUnreliable` etc. to force/select a type of transport. 
 
 # Ponyfill/Polyfill
-Together with http/2 implementation of WebTransport, the underlying http/2 had been mapped to the WebSocket protocol,
-so that the packages can also be used as a ponyfill/polyfill on the browser side.
+Together with an experimental http/2 implementation of WebTransport, the underlying http/2 capsule protocol had been mapped to the WebSocket protocol, so that the packages can also be used as a ponyfill/polyfill on the browser side.
 Please use `WebTransportPonyfill` for a WebSocket only or `WebTransportPolyfill` as a replacement for `WebTransport`, which automatically falls back to the browser's implementation, if the corresponding features are supported in the browser.
-
 
 
 ## Installation and usage
@@ -83,7 +81,7 @@ When testing remember you might need to start a Chromium-based browser with cert
 ```
 chrome --ignore-certificate-errors-spki-list=FINGERPRINTOFYOURCERTIFICATE --ignore-certificate-errors --v=2 --enable-logging=stderr --origin-to-force-quic-on=192.168.1.50:8080
 ```
-of course, replace IP and fingerprint of your certificate accordingly. However, the author never got this to work and is using this without flags, but supplies instead a fingerprint when opening a WebTransport session. (PRs welcome).
+of course, replace IP and fingerprint of your certificate accordingly. However, the author never got this to work (except for http/2 websocket support, using only the `--ignore-certificate-errors` flag) and is using this without flags, but supplies instead a fingerprint when opening a WebTransport session. (PRs welcome).
 
 ## Specification divergence
 
