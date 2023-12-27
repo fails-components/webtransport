@@ -18,7 +18,7 @@
     "dobuild": "node build.js build",
     "rebuild": "node build.js rebuild",
     "rebuild-debug": "node build.js rebuild-debug -D",
-    "dobuild-debug": "node build.js build-debug",
+    "build-debug": "node build.js build-debug",
     "prebuild": "node build.js prebuild",
     "types": "tsc",
     "lint": "eslint lib"
