@@ -92,7 +92,11 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
             ) {
               checklength = Math.min(length, 64) // stream id + some Data
             }
-            if (checklength > 263140 || length > 1000000) {
+            if (
+              checklength >
+                4 * Number(this.session.flowController.receiveWindowSize) ||
+              length > 8 * Number(this.session.flowController.receiveWindowSize)
+            ) {
               // too long abort, could be an attack vector
               this.session.closeConnection({
                 code: 63, // QUIC_FLOW_CONTROL_SENT_TOO_MUCH_DATA, // probably the right one...

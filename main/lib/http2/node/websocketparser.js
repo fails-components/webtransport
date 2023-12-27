@@ -280,7 +280,10 @@ export class WebSocketParser extends ParserBaseHttp2 {
             ) {
               const length = plength
 
-              if (length > 263140 || length > 1000000) {
+              if (
+                length >
+                4 * Number(this.session.flowController.receiveWindowSize)
+              ) {
                 // too long abort, could be an attack vector
                 this.session.closeConnection({
                   code: 63, // QUIC_FLOW_CONTROL_SENT_TOO_MUCH_DATA, // probably the right one...
