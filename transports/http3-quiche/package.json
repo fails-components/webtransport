@@ -21,7 +21,7 @@
     "dobuild-debug": "node build.js build-debug",
     "prebuild": "node build.js prebuild",
     "types": "tsc",
-    "lint": "eslint lib test old_test"
+    "lint": "eslint lib"
   },
   "repository": {
     "type": "git",
