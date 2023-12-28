@@ -15,7 +15,7 @@
     "url": "https://github.com/fails-components/webtransport/issues"
   },
   "scripts": {
-    "version": "npm version $npm_package_version --workspaces && git add **/package.json && git add transports/**/package.json && git push && git push --tags",
+    "version": "npm version $npm_package_version --workspaces && git add **/package.json && git add transports/**/package.json",
     "test": "npm run test:node && npm run test:node:http2 && npm run test:chromium && npm run test:chromium:http2:polyfill && npm run test:chromium:http2:ponyfill",
     "test:node": "npm run test:node --workspace main",
     "test:node:http2": "npm run test:node:http2 --workspace main",
