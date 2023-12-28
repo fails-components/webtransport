@@ -30,7 +30,8 @@
     "build-debug": "npm run build-debug --workspace transports/http3-quiche",
     "dobuild": "npm run dobuild --workspace transports/http3-quiche",
     "rebuild": "npm run rebuild --workspace transports/http3-quiche",
-    "rebuild-debug": "npm run rebuild-debug --workspace transports/http3-quiche"
+    "rebuild-debug": "npm run rebuild-debug --workspace transports/http3-quiche",
+    "publish": "npm publish --workspace main --workspace transports/http3-quiche"
   },
   "homepage": "https://github.com/fails-components/webtransport/main/#readme",
   "workspaces": [
