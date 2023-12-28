@@ -17,7 +17,7 @@ A web-based lecture system developed out of university lectures.
 While FAILS as a whole is licensed via GNU Affero GPL version 3.0, this package is licensed under a BSD-style license that can be found in the LICENSE file, while code taken from other projects is still under their respective license (see LICENSE file for details).
 This package is licensed more permissive since it can be useful outside of the FAILS environment.
 
-This module started as a C++ node binding to libquiche [https://github.com/google/quiche](https://github.com/google/quiche)(note there is a second library with a similar purpose and the same name), which provides besides other network protocols HTTP/3 support. Now it can also handle Webtransport over HTTP/2 and a WebSocket mapping of the HTTP/2 protocol together with a polyfill and ponyfill for the browsers without reliable WebTransport support or no WebTRansport support at all.
+This module started as a C++ node binding to libquiche [https://github.com/google/quiche](https://github.com/google/quiche) (note there is a second library with a similar purpose and the same name), which provides besides other network protocols HTTP/3 support. Now it can also handle Webtransport over HTTP/2 and a WebSocket mapping of the HTTP/2 protocol together with a polyfill and ponyfill for the browsers without reliable WebTransport support or no WebTRansport support at all.
 This package currently provides support for WebTransport with an interface similar to the browser side (but not all features implemented), for the server as well as for the client, see `old_test/test.js`, `old_test/testsuite.js`, `old_test/echoclient.js`, `old_test/echoserver.js`  for examples.
 Note, that the client implementation only supports certificate checking via `certificateHashes`, however experimental support for rootCA-based checking is introduced with version 1.0.0.
 It may be possible in the future to also support normal HTTP/3 with not so much effort, however, there is no intention from the author to implement this since it will not be needed by FAILS. However, PR requests are welcome and will be supported by advice from the author.
@@ -37,12 +37,15 @@ Note, that it is only partially implemented and also some http2 features require
 Use for the server side either `HttpServer` for http/2 and http/3 support (including WebTransport over WebSocket), Http3Server for http/3 only and Http2Server for http/2 only.
 For the client side pass the options `forceReliable`, `requireUnreliable` etc. to force/select a type of transport. 
 
-# Ponyfill/Polyfill
+### Ponyfill/Polyfill
 Together with an experimental http/2 implementation of WebTransport, the underlying http/2 capsule protocol had been mapped to the WebSocket protocol, so that the packages can also be used as a ponyfill/polyfill on the browser side.
-Please use `WebTransportPonyfill` for a WebSocket only or `WebTransportPolyfill` as a replacement for `WebTransport`, which automatically falls back to the browser's implementation, if the corresponding features are supported in the browser.
+Please use `WebTransportPonyfill` for a WebSocket only or `WebTransportPolyfill` as a replacement for `WebTransport`, which automatically falls back to the browser's implementation, if the corresponding features are natively supported in the browser.
 
 
 ## Installation and usage
+
+### Installation
+
 You can install the package directly via npm from node.js or GitHub packages:
 In the case of GitHub packages, please add this to your `.npmrc`` file
 ```
@@ -73,7 +76,7 @@ This should work for Windows, Linux and Mac OS X.
 
 Of course,  PR for patches and for compiling instructions and necessary changes are welcome for all possible environments.
 
-** Warning the build time takes more than 15 minutes, on Windows and Mac even longer! (Due to the building of the third-party libraries). **
+**Warning the build time takes more than 15 minutes, on Windows and Mac even longer! (Due to the building of the third-party libraries).**
 
 In the directory `old_test` you find a simple echo server code. That answers to a series of WebTransport echos. Furthermore some example browser code and finally a unit test of the library including certificate generation.
 
@@ -81,7 +84,44 @@ When testing remember you might need to start a Chromium-based browser with cert
 ```
 chrome --ignore-certificate-errors-spki-list=FINGERPRINTOFYOURCERTIFICATE --ignore-certificate-errors --v=2 --enable-logging=stderr --origin-to-force-quic-on=192.168.1.50:8080
 ```
-of course, replace IP and fingerprint of your certificate accordingly. However, the author never got this to work (except for http/2 websocket support, using only the `--ignore-certificate-errors` flag) and is using this without flags, but supplies instead a fingerprint when opening a WebTransport session. (PRs welcome).
+of course, replace the IP and fingerprint of your certificate accordingly. However, the author never got this to work (except for http/2 websocket support, and uses only the `--ignore-certificate-errors` flag) and is using this without flags, but supplies instead a fingerprint when opening a WebTransport session. (PRs welcome).
+
+### Setting up a server
+To setup a server use either the class `HttpServer`, `Http3Server` or `Http2Server`.
+While `HttpServer` creates a server supporting http/2 and http/3 (so listening for TCP/IP and UDP), `Http3Server` only supports http/3 and  `Http2Server` supports http/2. (Though `HttpServer` is merely a proxy to separate server objects).
+
+For example:
+```
+const server = new Http3Server({
+      port: 0,
+      host: '127.0.0.1',
+      secret: 'mysecret',
+      cert: certificate.cert, // unclear if it is the correct format
+      privKey: certificate.private
+    })
+```
+create a new server listening on a random port (port `0` triggers that behavior) on host `127.0.0.1`. The secret is only relevant for http/3 and the underlying QUIC connection, the best is to choose a random value. `cert` and `privKey` are the certificate and private key for the server.
+
+Other but more expert options include:
+* `certhttp2` and `privKeyhttp2`: For providing a different certificate for the http/2 as the  http/2 implementation does not support certificate matching by fingerprints.
+* `initialStreamFlowControlWindow`, `initialSessionFlowControlWindow`, `streamShouldAutoTuneReceiveWindow`, `sessionShouldAutoTuneReceiveWindow`, `streamFlowControlWindowSizeLimit`, `sessionFlowControlWindowSizeLimit`: As expert's option for tweaking the internal flow control.
+
+The method `setRequestHandler(callback)` sets a callback, that inspects incoming headers and allows to change the incoming path header and also to throw an error if the session should not be opened. This method is considered to be experimental.
+In general, the HTTP header is attached as the `header` property to the WebTransport Session object.
+
+The method `updateCert(cert, privKey, http2only)` allows to change the certificate, while the server is running (not supported by all transports).
+
+With the methods `startServer` and `stopServer` the server can be started and stopped.
+`address()` gives information about the current server address.
+
+The properties `ready` and `closed` are Promises, that allow you to wait for the Server to be ready or closed.
+
+The method `sessionStream(path, args)` allows to register a `path` to receive WebTransportSessions, it returns a `ReadableStream` of `WebTransportSession` objects.
+The args object can be empty, or have the property `noAutoPaths` prevent the creation of new path streams (internal option, do not use in production).
+The `WebTransportSession` should behave most like a WebTransport object on the browser according to the spec with few additions and some missing features.
+
+### Using a client
+The `WebTransport` object for node or the `WebTransportPonyfill`,  `WebTransportPolyfill` objects for the browser, behave like the `WebTransport` client object for the browser with few additions and some missing features.
 
 ## Specification divergence
 
@@ -110,7 +150,7 @@ The WebTransport client only supports certification validation using fingerprint
 
 ## Development notes
 
-### Tests
+### Test
 
 The unit test suite can be run on both node.js and Chrome to ensure behavior is consistent between the two environments.
 
@@ -152,7 +192,7 @@ Disable headless mode to watch tests run in Chromium:
 $ npm run test:chromium -- --debug
 ```
 
-### Logging
+### Logging
 
 This module uses the [debug](https://www.npmjs.com/package/debug) module for logging.
 
