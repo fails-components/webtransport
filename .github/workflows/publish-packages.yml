@@ -157,11 +157,11 @@ jobs:
         if: needs.version-check.outputs.changed == 'true'
         run: npm run types
 
-      - run: npm publish --workspaces --include-workspace-root --tag stable
+      - run: npm publish --workspace main --workspace transports/http3-quiche --tag stable
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: npm publish --workspaces --include-workspace-root --tag next
+      - run: npm publish --workspace main --workspace transports/http3-quiche --tag next
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -203,11 +203,11 @@ jobs:
         if: needs.version-check.outputs.changed == 'true'
         run: npm run types --workspaces  
 
-      - run: npm publish --tag stable
+      - run: npm publish --tag stable --workspace main --workspace transports/http3-quiche
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: npm publish --tag next
+      - run: npm publish --tag next --workspace main --workspace transports/http3-quiche
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
