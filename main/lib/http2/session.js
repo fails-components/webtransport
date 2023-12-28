@@ -80,6 +80,11 @@ export class Http2WebTransportSession {
       headerVints: [0xffffff],
       payload: undefined
     })
+    this.capsParser.writeCapsule({
+      type: ParserBase.WT_MAX_STREAMS_UNIDI,
+      headerVints: [0xffffff],
+      payload: undefined
+    })
   }
 
   /**
