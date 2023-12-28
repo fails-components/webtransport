@@ -35,7 +35,9 @@ So even though not intended, the library may behave unintended differently in de
 Furthermore, support for WebTransport over http/2 was added, which has to be considered experimental (and the protocol may change anytime), as there is yet no released browser implementation.
 Note, that it is only partially implemented and also some http2 features require changes of node.js itself.
 Use for the server side either `HttpServer` for http/2 and http/3 support (including WebTransport over WebSocket), Http3Server for http/3 only and Http2Server for http/2 only.
-For the client side pass the options `forceReliable`, `requireUnreliable` etc. to force/select a type of transport. 
+For the client side pass the options `forceReliable`, `requireUnreliable` etc. to force/select a type of transport.
+
+ **Note, that the http/2 webtransport protocol (not supported by any browser yet), is implemented without the support of receiving initial settings, which can cause a problem with the initial flow control of the WebTransport streams. This is a current limitation in node.js. Note, that for sending the required initial setting you need a very recent (unreleased) version of node.js.** This limitation does not apply to the polyfill/ponyfill and the websocket protocol.
 
 ### Ponyfill/Polyfill
 Together with an experimental http/2 implementation of WebTransport, the underlying http/2 capsule protocol had been mapped to the WebSocket protocol, so that the packages can also be used as a ponyfill/polyfill on the browser side.
