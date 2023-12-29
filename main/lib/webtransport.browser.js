@@ -22,9 +22,11 @@ const log = logger(`webtransport:browser(${process?.pid})`)
 let serverCertificateHashesNotSupported = false
 let webtransportSupported = false
 
+// @ts-ignore
 if (globalThis.WebTransport) {
   webtransportSupported = true
   try {
+    // @ts-ignore
     // eslint-disable-next-line no-undef
     const transport = new WebTransport('https://example.org/test', {
       serverCertificateHashes: []
