@@ -361,7 +361,8 @@ export class HttpServer {
           break
       }
     } catch (/** @type {any} */ err) {
-      const error = new WebTransportError('Opening handshake failed.')
+      log('Problem opening transports:', err)
+      const error = new WebTransportError('Opening transport failed.')
       error.stack = err.stack
 
       throw error
