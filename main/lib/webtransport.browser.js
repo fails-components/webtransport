@@ -4,7 +4,7 @@ import { HttpClient } from './client.js'
 import { Http2WebTransportBrowser } from './http2/browser/browser.js'
 import { logger } from './utils.js'
 
-const log = logger(`webtransport:browser(${process?.pid})`)
+const log = logger(`webtransport:browser()`)
 
 /**
  * @typedef {import('./dom').WebTransport} WebTransport
