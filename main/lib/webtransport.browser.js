@@ -2,6 +2,9 @@ import { WebTransportBase } from './webtransportbase.js'
 import { HttpWTSession } from './session.js'
 import { HttpClient } from './client.js'
 import { Http2WebTransportBrowser } from './http2/browser/browser.js'
+import { logger } from './utils.js'
+
+const log = logger(`webtransport:browser(${process?.pid})`)
 
 /**
  * @typedef {import('./dom').WebTransport} WebTransport
@@ -15,6 +18,28 @@ import { Http2WebTransportBrowser } from './http2/browser/browser.js'
  * @template T
  * @typedef {import('node:stream/web').ReadableStream<T>} ReadableStream<T>
  */
+
+let serverCertificateHashesNotSupported = false
+let webtransportSupported = false
+
+if (globalThis.WebTransport) {
+  webtransportSupported = true
+  try {
+    // eslint-disable-next-line no-undef
+    const transport = new WebTransport('https://example.org/test', {
+      serverCertificateHashes: []
+    })
+    transport.close()
+  } catch (error) {
+    // @ts-ignore
+    if (error?.name === 'NotSupportedError') {
+      // note: we also do not support this, but http2 is a different transport
+      // so we assume that the UDP and TCP part have different capabilities
+      log('serverCertificateHashesNotSupported')
+      serverCertificateHashesNotSupported = true
+    }
+  }
+}
 
 /**
  * @typedef {import('./dom').WebTransport} WebTransportInterface
@@ -102,8 +127,10 @@ export class WebTransportPolyfill {
         .then((val) => this.drainingRes(val))
         .catch((error) => this.drainingRej(error))
     }
-    // @ts-ignore
-    if (globalThis.WebTransport) {
+    if (
+      webtransportSupported &&
+      (!args?.serverCertificateHashes || !serverCertificateHashesNotSupported)
+    ) {
       /** @type {WebTransport|WebTransportPonyfill} */
       // @ts-ignore
       // eslint-disable-next-line no-undef
