@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "../",
+  },
+  "extends": "../tsconfig.base.json",
+  "include": [
+      "lib",
+      "test",
+      "../transports/http3-quiche/lib"
+  ],
+  "exclude": [
+    "test/testinone.js"
+  ]
+}

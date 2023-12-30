@@ -201,7 +201,7 @@ jobs:
 
       - name: Build types
         if: needs.version-check.outputs.changed == 'true'
-        run: npm run types --workspaces  
+        run: npm run types  
 
       - run: npm publish --tag stable --workspace main --workspace transports/http3-quiche
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
