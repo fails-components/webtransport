@@ -1,3 +1,6 @@
+import type {
+  WebTransportOptions
+} from '../../../main/lib/dom'
 
 export interface UDPServerSocketSend {
     msg:  Uint8Array
@@ -11,5 +14,13 @@ export interface UDPServerSocketSend {
     (formatter: any, ...args: any[]): void
     error: (formatter: any, ...args: any[]) => void
     trace: (formatter: any, ...args: any[]) => void
+  }
+
+  export interface HttpWebTransportInit extends WebTransportOptions {
+    host: string
+    port: string | number
+    quicheLogVerbose?: number
+    forceIpv6?: boolean
+    localPort?: number
   }
   

@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "../.."
+  },
+  "extends" : "../../tsconfig.base.json",
+  "include": [
+      "lib",
+      "../../main/lib" 
+  ],
+  "references": [{ "path": "../../main" }]
+}
