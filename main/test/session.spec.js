@@ -14,7 +14,9 @@ describe('session', function () {
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
   const browser = process.env.BROWSER
   const handshakemess =
-    browser !== 'firefox'
+    browser !== 'firefox' ||
+    process.env.USE_POLYFILL === 'true' ||
+    process.env.USE_PONYFILL === 'true'
       ? 'Opening handshake failed.'
       : 'WebTransport connection rejected'
 
@@ -135,10 +137,10 @@ describe('session', function () {
 
       expect(closedResult)
         .to.be.a('WebTransportError')
-        .with.property('message', 'Opening handshake failed.')
+        .with.property('message', handshakemess)
       expect(readyResult)
         .to.be.a('WebTransportError')
-        .with.property('message', 'Opening handshake failed.')
+        .with.property('message', handshakemess)
     })
 
     it('should error when connecting with the wrong certificate', async () => {
