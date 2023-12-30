@@ -136,4 +136,11 @@ export class ParserBase {
     const object = this.wtstreams.get(Number(streamid))
     if (object && offset) object.flowController.reportBlocked(offset)
   }
+
+  /**
+   * @param {number} code
+   */
+  closeHttp2Stream(code) {
+    throw new Error('Implement closeHttp2Stream in derived Class')
+  }
 }

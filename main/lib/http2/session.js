@@ -157,13 +157,7 @@ export class Http2WebTransportSession {
     this.capsParser.sendClose({ code, reason }) // this includes for ws closing the session!
     // what to do with the reason
     if (this.stream) {
-      const stream = this.stream
-      if (stream.close) {
-        stream.setTimeout(1000, () =>
-          stream.close(0x00 /* aka NGHTTP2_NO_ERROR */)
-        )
-      } else if (stream.end) stream.end()
-      else throw new Error('http2:session not close method')
+      this.capsParser.closeHttp2Stream(code)
     }
   }
 

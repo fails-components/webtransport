@@ -827,4 +827,17 @@ export class WebSocketParser extends ParserBaseHttp2 {
     if (blocked) this.blocked = true
     return blocked
   }
+
+  /**
+   * @param {number} code
+   */
+  closeHttp2Stream(code) {
+    const stream = this.stream
+    if (stream.close) {
+      stream.setTimeout(1000, () =>
+        stream.close(0x00 /* aka NGHTTP2_NO_ERROR */)
+      )
+    } else if (stream.end) stream.end()
+    else throw new Error('http2:session not close method')
+  }
 }
