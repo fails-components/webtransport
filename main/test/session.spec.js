@@ -12,9 +12,29 @@ import { expect } from './fixtures/chai.js'
 describe('session', function () {
   let forceReliable = false
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
+  const browser = process.env.BROWSER
+  const handshakemess =
+    browser !== 'firefox'
+      ? 'Opening handshake failed.'
+      : 'WebTransport connection rejected'
 
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
+
+  const wtOptions = {
+    serverCertificateHashes: [
+      {
+        algorithm: 'sha-256',
+        value: readCertHash(process.env.CERT_HASH)
+      }
+    ],
+    // @ts-ignore
+    forceReliable
+  }
+
+  if (process.env.NO_CERT_HASHES === 'true')
+    // @ts-ignore
+    delete wtOptions.serverCertificateHashes
 
   // @ts-ignore
   afterEach(async () => {
@@ -25,16 +45,10 @@ describe('session', function () {
   })
 
   it('should detect session closure', async () => {
-    client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
-      serverCertificateHashes: [
-        {
-          algorithm: 'sha-256',
-          value: readCertHash(process.env.CERT_HASH)
-        }
-      ],
-      // @ts-ignore
-      forceReliable
-    })
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/session_close`,
+      wtOptions
+    )
     await client.ready
 
     const result = await client.closed
@@ -46,16 +60,7 @@ describe('session', function () {
     // client context - connects to the server, sends some datagrams and reads the response
     client = new WebTransport(
       `${process.env.SERVER_URL}/session_close_with_reason`,
-      {
-        serverCertificateHashes: [
-          {
-            algorithm: 'sha-256',
-            value: readCertHash(process.env.CERT_HASH)
-          }
-        ],
-        // @ts-ignore
-        forceReliable
-      }
+      wtOptions
     )
     await client.ready
 
@@ -65,19 +70,12 @@ describe('session', function () {
       // unsupported for http2
       expect(result).to.have.property('reason', 'this is the reason')
   })
-
+  if (browser === 'firefox') this.timeout(31000) // really firefox?
   it('should error when connecting to a server that does not exist', async () => {
     client = new WebTransport(`https://127.0.0.1:39821`, {
-      serverCertificateHashes: [
-        {
-          algorithm: 'sha-256',
-          value: readCertHash(process.env.CERT_HASH)
-        }
-      ],
       quicConnectTimeout: 100,
       webTransportConnectTimeout: 100,
-      // @ts-ignore
-      forceReliable
+      ...wtOptions
     })
 
     const [closedResult, readyResult] = await Promise.all([
@@ -87,23 +85,17 @@ describe('session', function () {
 
     expect(closedResult)
       .to.be.a('WebTransportError')
-      .with.property('message', 'Opening handshake failed.')
+      .with.property('message', handshakemess)
     expect(readyResult)
       .to.be.a('WebTransportError')
-      .with.property('message', 'Opening handshake failed.')
+      .with.property('message', handshakemess)
   })
 
   it('should error when connecting to a path that does not exist', async () => {
-    client = new WebTransport(`${process.env.SERVER_URL}/non_existant`, {
-      serverCertificateHashes: [
-        {
-          algorithm: 'sha-256',
-          value: readCertHash(process.env.CERT_HASH)
-        }
-      ],
-      // @ts-ignore
-      forceReliable
-    })
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/non_existant`,
+      wtOptions
+    )
 
     const [closedResult, readyResult] = await Promise.all([
       client.closed.catch((err) => err),
@@ -112,15 +104,16 @@ describe('session', function () {
 
     expect(closedResult)
       .to.be.a('WebTransportError')
-      .with.property('message', 'Opening handshake failed.')
+      .with.property('message', handshakemess)
     expect(readyResult)
       .to.be.a('WebTransportError')
-      .with.property('message', 'Opening handshake failed.')
+      .with.property('message', handshakemess)
   })
 
   if (
     process.env.USE_POLYFILL !== 'true' &&
-    process.env.USE_PONYFILL !== 'true'
+    process.env.USE_PONYFILL !== 'true' &&
+    wtOptions.serverCertificateHashes
   ) {
     // deactivated in polyfill case, no test necessary
     it('should error when connecting with a bad certificate', async () => {
@@ -169,10 +162,10 @@ describe('session', function () {
 
       expect(closedResult)
         .to.be.a('WebTransportError')
-        .with.property('message', 'Opening handshake failed.')
+        .with.property('message', handshakemess)
       expect(readyResult)
         .to.be.a('WebTransportError')
-        .with.property('message', 'Opening handshake failed.')
+        .with.property('message', handshakemess)
     })
   }
 })

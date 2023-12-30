@@ -70,12 +70,18 @@ async function runTests(certificate, serverAddress) {
     })
 
     await tests
-  } else if (env === 'chromium') {
+  } else if (env === 'chromium' || env === 'firefox') {
     command = 'playwright-test'
     const otheropts = []
-    if (polyfill || ponyfill)
+    if (polyfill || ponyfill || env === 'firefox')
       otheropts.push('--config', './test/pw-no-https-errors.json')
-    args = ['./test/*.spec.js', ...otheropts, ...process.argv.slice(slice)]
+    args = [
+      './test/*.spec.js',
+      '-b',
+      env /* the browser */,
+      ...otheropts,
+      ...process.argv.slice(slice)
+    ]
     const tests = execa(command, args, {
       env: {
         DEBUG_COLORS: process.env.CI ? '' : 'true',
@@ -83,7 +89,10 @@ async function runTests(certificate, serverAddress) {
         SERVER_URL: serverAddress,
         USE_HTTP2: http2 ? 'true' : 'false',
         USE_POLYFILL: polyfill ? 'true' : 'false',
-        USE_PONYFILL: ponyfill ? 'true' : 'false'
+        USE_PONYFILL: ponyfill ? 'true' : 'false',
+        NO_CERT_HASHES:
+          env === 'firefox' && !ponyfill && !polyfill ? 'true' : 'false',
+        BROWSER: env
       },
       stdio: ['inherit', 'inherit', 'inherit']
     })

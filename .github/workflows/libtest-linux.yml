@@ -47,46 +47,52 @@ jobs:
       - name: Run node unit tests http2
         run:  NODE_ENV=production npm run test:node:http2 
 
-      - name: Run browser unit tests http2 polyfill
+      - name: Run firefox unit tests http2 polyfill
+        run:  NODE_ENV=production npm run test:firefox:http2:polyfill 
+
+      - name: Run chromium unit tests http2 ponyfill
+        run:  NODE_ENV=production npm run test:firefox:http2:ponyfill 
+
+      - name: Run chromium unit tests http2 polyfill
         run:  NODE_ENV=production npm run test:chromium:http2:polyfill 
 
-      - name: Run browser unit tests http2 ponyfill
+      - name: Run chromium unit tests http2 ponyfill
         run:  NODE_ENV=production npm run test:chromium:http2:ponyfill 
 
       - name: Run node unit tests
         run:  NODE_ENV=production npm run test:node 
 
-      - name: Run browser unit tests
+      - name: Run chromium unit tests
         run:  NODE_ENV=production npm run test:chromium 
       
-      - name: Run browser unit tests 1
+      - name: Run chromium unit tests 1
         run:  NODE_ENV=production npm run test:chromium 
       
-      - name: Run browser unit tests 2
+      - name: Run chromium unit tests 2
         run:  NODE_ENV=production npm run test:chromium 
       
-      - name: Run browser unit tests 3
+      - name: Run chromium unit tests 3
         run:  NODE_ENV=production npm run test:chromium 
       
-      - name: Run browser unit tests 4
+      - name: Run chromium unit tests 4
         run:  NODE_ENV=production npm run test:chromium 
       
-      - name: Run browser unit tests 5
+      - name: Run chromium unit tests 5
         run:  NODE_ENV=production npm run test:chromium 
       
-      - name: Run browser unit tests 6
+      - name: Run chromium unit tests 6
         run:  NODE_ENV=production npm run test:chromium 
       
-      - name: Run browser unit tests 7
+      - name: Run chromium unit tests 7
         run:  NODE_ENV=production npm run test:chromium 
         
-      - name: Run browser unit tests 8
+      - name: Run chromium unit tests 8
         run:  NODE_ENV=production npm run test:chromium 
       
-      - name: Run browser unit tests 9
+      - name: Run chromium unit tests 9
         run:  NODE_ENV=production npm run test:chromium 
         
-      - name: Run browser unit tests 10
+      - name: Run chromium unit tests 10
         run:  NODE_ENV=production npm run test:chromium 
       
       - name: Run old unit tests
