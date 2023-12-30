@@ -288,4 +288,12 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
     if (blocked) this.blocked = true
     return blocked
   }
+
+  /**
+   * @param {number} code
+   */
+  closeHttp2Stream(code) {
+    this.stream.close(code)
+    this.stream.destroy()
+  }
 }
