@@ -140,6 +140,58 @@ export class Http2WebTransportBrowser {
                   tokens = tokens.slice(1)
                 }
                 error = tokens.join(':')
+              } else {
+                switch (code) {
+                  case 1001:
+                    error = 'Going Away'
+                    break
+                  case 1002:
+                    error = 'Protocol error'
+                    break
+                  case 1003:
+                    error = 'Unsupported data'
+                    break
+                  case 1004:
+                    error = 'Reserved'
+                    break
+                  case 1005:
+                    error = 'No Status Rcvd'
+                    break
+                  case 1006:
+                    error = 'Abnormal Closure'
+                    break
+                  case 1007:
+                    error = 'Invalid frame payload data'
+                    break
+                  case 1008:
+                    error = 'Policy Violation'
+                    break
+                  case 1009:
+                    error = 'Message Too Big'
+                    break
+                  case 1010:
+                    error = 'Mandatory Ext.'
+                    break
+                  case 1011:
+                    error = 'Internal error'
+                    break
+                  case 1012:
+                    error = 'Service Restart'
+                    break
+                  case 1013:
+                    error = 'Try Again Later'
+                    break
+                  case 1014:
+                    error = 'Bad Gateway'
+                    break
+                  case 1015:
+                    error = 'TLS handshake'
+                    break
+                  case 1000:
+                  default:
+                    error = ''
+                    break
+                }
               }
               nativesession.jsobj.onClose({
                 errorcode: code,
