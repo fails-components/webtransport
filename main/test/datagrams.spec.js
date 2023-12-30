@@ -17,6 +17,21 @@ describe('datagrams', function () {
   let forceReliable = false
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
 
+  const wtOptions = {
+    serverCertificateHashes: [
+      {
+        algorithm: 'sha-256',
+        value: readCertHash(process.env.CERT_HASH)
+      }
+    ],
+    // @ts-ignore
+    forceReliable
+  }
+
+  if (process.env.NO_CERT_HASHES === 'true')
+    // @ts-ignore
+    delete wtOptions.serverCertificateHashes
+
   // @ts-ignore
   afterEach(async () => {
     if (client != null) {
@@ -28,16 +43,7 @@ describe('datagrams', function () {
     // client context - connects to the server, sends some datagrams and reads the response
     client = new WebTransport(
       `${process.env.SERVER_URL}/datagrams_client_send`,
-      {
-        serverCertificateHashes: [
-          {
-            algorithm: 'sha-256',
-            value: readCertHash(process.env.CERT_HASH)
-          }
-        ],
-        // @ts-ignore
-        forceReliable
-      }
+      wtOptions
     )
     await client.ready
 
@@ -71,16 +77,7 @@ describe('datagrams', function () {
     // client context - pipes the server's datagrams back to them
     client = new WebTransport(
       `${process.env.SERVER_URL}/datagrams_server_send`,
-      {
-        serverCertificateHashes: [
-          {
-            algorithm: 'sha-256',
-            value: readCertHash(process.env.CERT_HASH)
-          }
-        ],
-        // @ts-ignore
-        forceReliable
-      }
+      wtOptions
     )
     await client.ready
 

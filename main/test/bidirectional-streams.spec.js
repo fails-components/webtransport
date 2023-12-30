@@ -18,12 +18,25 @@ import {
  * @template T
  * @typedef {import('../lib/types').Deferred<T>} Deferred<T>
  */
-
 describe('bidirectional streams', function () {
   let forceReliable = false
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
+
+  const wtOptions = {
+    serverCertificateHashes: [
+      {
+        algorithm: 'sha-256',
+        value: readCertHash(process.env.CERT_HASH)
+      }
+    ],
+    // @ts-ignore
+    forceReliable
+  }
+  if (process.env.NO_CERT_HASHES === 'true')
+    // @ts-ignore
+    delete wtOptions.serverCertificateHashes
 
   // @ts-ignore
   afterEach(async () => {
@@ -37,16 +50,7 @@ describe('bidirectional streams', function () {
     // client context - connects to the server, opens a bidi stream, sends some data and reads the response
     client = new WebTransport(
       `${process.env.SERVER_URL}/bidirectional_client_initiated_echo`,
-      {
-        serverCertificateHashes: [
-          {
-            algorithm: 'sha-256',
-            value: readCertHash(process.env.CERT_HASH)
-          }
-        ],
-        // @ts-ignore
-        forceReliable
-      }
+      wtOptions
     )
     await client.ready
 
@@ -64,16 +68,7 @@ describe('bidirectional streams', function () {
     // client context - connects to the server, opens a bidi stream, sends some data and reads the response
     client = new WebTransport(
       `${process.env.SERVER_URL}/bidirectional_client_initiated_echo`,
-      {
-        serverCertificateHashes: [
-          {
-            algorithm: 'sha-256',
-            value: readCertHash(process.env.CERT_HASH)
-          }
-        ],
-        // @ts-ignore
-        forceReliable
-      }
+      wtOptions
     )
     await client.ready
 
@@ -101,16 +96,7 @@ describe('bidirectional streams', function () {
     // client context - waits for the server to open a bidi stream then pipes it back to them
     client = new WebTransport(
       `${process.env.SERVER_URL}/bidirectional_server_initiated_echo`,
-      {
-        serverCertificateHashes: [
-          {
-            algorithm: 'sha-256',
-            value: readCertHash(process.env.CERT_HASH)
-          }
-        ],
-        // @ts-ignore
-        forceReliable
-      }
+      wtOptions
     )
     await client.ready
 

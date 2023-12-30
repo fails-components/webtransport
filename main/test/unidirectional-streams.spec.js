@@ -15,6 +15,20 @@ describe('unidirectional streams', function () {
   let forceReliable = false
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
 
+  const wtOptions = {
+    serverCertificateHashes: [
+      {
+        algorithm: 'sha-256',
+        value: readCertHash(process.env.CERT_HASH)
+      }
+    ],
+    // @ts-ignore
+    forceReliable
+  }
+  if (process.env.NO_CERT_HASHES === 'true')
+    // @ts-ignore
+    delete wtOptions.serverCertificateHashes
+
   // @ts-ignore
   afterEach(async () => {
     if (client != null) {
@@ -28,16 +42,7 @@ describe('unidirectional streams', function () {
     try {
       client = new WebTransport(
         `${process.env.SERVER_URL}/unidirectional_client_send`,
-        {
-          serverCertificateHashes: [
-            {
-              algorithm: 'sha-256',
-              value: readCertHash(process.env.CERT_HASH)
-            }
-          ],
-          // @ts-ignore
-          forceReliable
-        }
+        wtOptions
       )
       await client.ready
     } catch (error) {
@@ -62,16 +67,7 @@ describe('unidirectional streams', function () {
     // client context - waits for the server to open a bidi stream then pipes it back to them
     client = new WebTransport(
       `${process.env.SERVER_URL}/unidirectional_server_send`,
-      {
-        serverCertificateHashes: [
-          {
-            algorithm: 'sha-256',
-            value: readCertHash(process.env.CERT_HASH)
-          }
-        ],
-        // @ts-ignore
-        forceReliable
-      }
+      wtOptions
     )
     await client.ready
 
@@ -93,16 +89,7 @@ describe('unidirectional streams', function () {
     this.timeout(6000 + addpolyfill)
     client = new WebTransport(
       `${process.env.SERVER_URL}/unidirectional_server_delay_before_read`,
-      {
-        serverCertificateHashes: [
-          {
-            algorithm: 'sha-256',
-            value: readCertHash(process.env.CERT_HASH)
-          }
-        ],
-        // @ts-ignore
-        forceReliable
-      }
+      wtOptions
     )
     await client.ready
 

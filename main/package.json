@@ -21,9 +21,11 @@
     "test:chromium": "node test/index.js chromium http3",
     "test:chromium:http2:polyfill": "node test/index.js chromium http2 polyfill",
     "test:chromium:http2:ponyfill": "node test/index.js chromium http2 ponyfill",
+    "test:firefox": "node test/index.js firefox http3",
+    "test:firefox:http2:polyfill": "node test/index.js firefox http2 polyfill",
+    "test:firefox:http2:ponyfill": "node test/index.js firefox http2 ponyfill",
     "oldtest": "node old_test/test.js",
     "oldtesthttp2": "node old_test/test.js http2",
-    "types": "tsc",
     "lint": "eslint lib test old_test"
   },
   "repository": {
