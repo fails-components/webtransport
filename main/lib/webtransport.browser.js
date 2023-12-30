@@ -28,10 +28,16 @@ if (globalThis.WebTransport) {
   try {
     // @ts-ignore
     // eslint-disable-next-line no-undef
-    const transport = new WebTransport('https://example.org/test', {
+    const transport = new WebTransport('https://127.0.0.1:23333/test', {
       serverCertificateHashes: []
     })
-    transport.close()
+    transport.ready
+      .then(() => {
+        try {
+          transport.close()
+        } catch (error) {}
+      })
+      .catch(() => {})
   } catch (error) {
     // @ts-ignore
     if (error?.name === 'NotSupportedError') {
