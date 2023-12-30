@@ -113,7 +113,7 @@ const extractthirdparty = async () => {
     } catch (error) {
       console.log('rename tmp dir failed:', error)
       console.log('copy instead start... (can take a while)...')
-      await cp(path.join(copath, '/transports/http3-quiche/third_party'), destdir, {recursive: true})
+      await cp(path.join(copath, '/transports/http3-quiche/third_party'), destdir, { recursive: true })
       console.log('copy instead finished')
     }
   } catch (error) {
@@ -168,7 +168,7 @@ const prebuildInstall = async (args) => {
 const buildTypes = async () => {
   return new Promise((resolve, reject) => {
     const tsc = 'tsc'
-    const proc = spawn(tsc, {
+    const proc = spawn(tsc, ['--build'], {
       cwd: process.cwd(),
       stdio: [null, 'inherit', 'inherit'],
       shell: true
@@ -210,7 +210,7 @@ if (argv.length > 2) {
   if (platform === 'win32') platformargs.push('-t', 'ClangCL')
   const pbargs = []
   const pbargspre = []
-  if (platform === 'win32') pbargs.push('-t', 'ClangCL') 
+  if (platform === 'win32') pbargs.push('-t', 'ClangCL')
   if (env.BUILDARCH) {
     pbargspre.push('--arch', env.BUILDARCH)
     platformargs.push('--arch', env.BUILDARCH)
