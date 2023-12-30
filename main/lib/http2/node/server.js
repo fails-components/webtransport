@@ -193,6 +193,9 @@ export class Http2WebTransportServer {
     )
 
     this.serverInt.on('stream', (stream, header) => {
+      stream.on('error', () => {
+        // we ignore errors, here, another handler is installed later
+      })
       if (header[':method'] !== 'CONNECT') {
         // Only accept CONNECT requests
         stream.respond({
@@ -207,7 +210,7 @@ export class Http2WebTransportServer {
       let websocketProt
       if (
         header[':protocol'] === 'websocket' &&
-        header['Sec-WebSocket-Protocol']
+        header['sec-websocket-protocol']
       ) {
         websocketProt = this.checkProtocolHeader(header)
       }
@@ -225,7 +228,10 @@ export class Http2WebTransportServer {
         stream.close(constants.NGHTTP2_REFUSED_STREAM)
         return
       }
-      const path = header[':path']
+      let path = header[':path']
+      while (path.length > 1 && path[0] === '/' && path[1] === '/') {
+        path = path?.slice(1)
+      }
       if (this.paths[path]) {
         const retObj = {
           session: new Http2WebTransportSession({
@@ -279,7 +285,7 @@ export class Http2WebTransportServer {
           ':status': '200'
         }
         // @ts-ignore
-        if (websocketProt) resp['Sec-WebSocket-Protocol'] = websocketProt
+        if (websocketProt) resp['sec-websocket-protocol'] = websocketProt
         stream.respond(resp)
         this.jsobj.onHttpWTSessionVisitor(retObj)
       } else if (this.hasrequesthandler) {
@@ -292,7 +298,7 @@ export class Http2WebTransportServer {
           ':status': '200'
         }
         // @ts-ignore
-        if (websocketProt) resp['Sec-WebSocket-Protocol'] = websocketProt
+        if (websocketProt) resp['sec-websocket-protocol'] = websocketProt
         stream.respond(resp)
         this.jsobj.onSessionRequest(retObj)
       } else {
