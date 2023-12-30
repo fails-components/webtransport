@@ -15,7 +15,7 @@
   "types": "./dist/lib/index.d.ts",
   "scripts": {
     "start": "node test/echoserver.js",
-    "test": "npm run test:node && npm run test:node:http2 && npm run test:chromium && npm run test:chromium:http2:polyfill && npm run test:chromium:http2:ponyfill",
+    "test": "npm run test:node && npm run test:node:http2 && npm run test:chromium && npm run test:chromium:http2:polyfill && npm run test:chromium:http2:ponyfill && npm run test:firefox && npm run test:firefox:http2:polyfill && npm run test:firefox:http2:ponyfill",
     "test:node": "node test/index.js node http3",
     "test:node:http2": "node test/index.js node http2",
     "test:chromium": "node test/index.js chromium http3",
