@@ -81,6 +81,7 @@ function readQWord(bs) {
  * @param{number} length
  */
 function applyMask(ms, buffer, offset, length) {
+  // Note offset: includes the byteOffset into the buffer
   if (length > 24) {
     let run = 0
     // alignment preamble, inspired from ws bufferutil
@@ -102,11 +103,11 @@ function applyMask(ms, buffer, offset, length) {
     const data64 = new BigUint64Array(
       buffer.buffer,
       run + offset,
-      Math.floor((buffer.length - run - offset) / 8)
+      Math.floor((length - run) / 8)
     )
     const workmask64 = new BigUint64Array(workmask.buffer)
     let run64 = 0
-    while (run + 8 <= length) {
+    while (run + 8 < length) {
       data64[run64] ^= workmask64[0]
       run += 8
       run64++
@@ -740,7 +741,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
       applyMask(
         maskstate,
         bufferstate.buffer,
-        bufferstate.offset,
+        bufferstate.offset + bufferstate.buffer.byteOffset,
         endmask - beginmask
       )
       if (payload)
