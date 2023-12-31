@@ -6,7 +6,7 @@ import {
 /** @type {import('../../lib/dom').WebTransport} */
 // @ts-ignore
 // eslint-disable-next-line no-undef
-let webtransport = WebTransport
+let webtransport = globalThis.WebTransport
 if (process.env.USE_POLYFILL === 'true') {
   // @ts-ignore
   webtransport = WebTransportPolyfill
