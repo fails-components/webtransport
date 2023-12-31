@@ -70,7 +70,7 @@ async function runTests(certificate, serverAddress) {
     })
 
     await tests
-  } else if (env === 'chromium' || env === 'firefox') {
+  } else if (env === 'chromium' || env === 'firefox' || env === 'webkit') {
     command = 'playwright-test'
     const otheropts = []
     if (polyfill || ponyfill || env === 'firefox')

@@ -50,8 +50,14 @@ jobs:
       - name: Run firefox unit tests http2 polyfill
         run:  NODE_ENV=production npm run test:firefox:http2:polyfill 
 
-      - name: Run chromium unit tests http2 ponyfill
+      - name: Run firefox unit tests http2 ponyfill
         run:  NODE_ENV=production npm run test:firefox:http2:ponyfill 
+      
+      - name: Run webkit unit tests http2 polyfill
+        run:  NODE_ENV=production npm run test:webkit:http2:polyfill 
+
+      - name: Run webkit unit tests http2 ponyfill
+        run:  NODE_ENV=production npm run test:webkit:http2:ponyfill 
 
       - name: Run chromium unit tests http2 polyfill
         run:  NODE_ENV=production npm run test:chromium:http2:polyfill 
