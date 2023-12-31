@@ -30,7 +30,6 @@
     "test:webkit:http2:ponyfill": "npm run test:webkit:http2:ponyfill --workspace main",
     "oldtest": "npm run oldtest --workspace main",
     "oldtesthttp2": "npm run oldtesthttp2 --workspace main",
-    "types": "tsc --build",
     "lint": "npm run lint --workspaces",
     "prebuild": "npm run prebuild --workspace transports/http3-quiche",
     "build-debug": "npm run build-debug --workspace transports/http3-quiche",
