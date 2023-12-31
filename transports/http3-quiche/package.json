@@ -20,8 +20,7 @@
     "rebuild-debug": "node build.js rebuild-debug -D",
     "build-debug": "node build.js build-debug",
     "prebuild": "node build.js prebuild",
-    "lint": "eslint lib",
-    "prepublishOnly": "tsc"
+    "lint": "eslint lib"
   },
   "repository": {
     "type": "git",

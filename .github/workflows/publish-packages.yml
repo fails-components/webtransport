@@ -97,7 +97,7 @@ jobs:
        env:
          BUILDARCH: ${{ matrix.arch }}
          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-       run: npm run prebuild 
+       run: npm run prebuild
 
 # code is not ready... if anyone needs it, I am open for PR
 #  prebuild-cross:
@@ -201,7 +201,7 @@ jobs:
 
       - name: Build types
         if: needs.version-check.outputs.changed == 'true'
-        run: npm run types  
+        run: npm run types
 
       - run: npm publish --tag stable --workspace main --workspace transports/http3-quiche
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}

@@ -29,8 +29,7 @@
     "test:webkit:http2:ponyfill": "node test/index.js webkit http2 ponyfill",
     "oldtest": "node old_test/test.js",
     "oldtesthttp2": "node old_test/test.js http2",
-    "lint": "eslint lib test old_test",
-    "prepublishOnly": "tsc"
+    "lint": "eslint lib test old_test"
   },
   "repository": {
     "type": "git",
