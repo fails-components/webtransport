@@ -2,6 +2,7 @@ import { ReadableStream, WritableStream } from './webstreams.js'
 import { HttpWTStream } from './stream.js'
 import { WebTransportError } from './error.js'
 import { logger } from './utils.js'
+import { canByteStream } from './features.js'
 
 const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:httpwtsession(${pid})`)
@@ -113,19 +114,23 @@ export class HttpWTSession {
     this.writeDatagramRej = []
     /** @type {Array<Promise<void>>} */
     this.writeDatagramProm = []
-
+    const readableopts = {
+      start: (
+        /** @type {import("stream/web").ReadableByteStreamController} */ controller
+      ) => {
+        this.incomDatagramController = controller
+      },
+      type: 'bytes'
+    }
+    if (!canByteStream) {
+      // @ts-ignore
+      delete readableopts.type
+    }
     /** @type {WebTransportDatagramDuplexStream} */
     this.datagrams = {
       /** @type {ReadableStream<Uint8Array>} */
       // @ts-ignore
-      readable: new ReadableStream({
-        start: (
-          /** @type {import("stream/web").ReadableByteStreamController} */ controller
-        ) => {
-          this.incomDatagramController = controller
-        },
-        type: 'bytes'
-      }),
+      readable: new ReadableStream(readableopts),
       writable: new WritableStream({
         start: (controller) => {
           this.outgoDatagramController = controller
@@ -548,8 +553,9 @@ export class HttpWTSession {
       )
       destview.set(args.datagram)
       byob.respond(args.datagram.byteLength)
+    } else {
+      this.incomDatagramController.enqueue(new Uint8Array(args.datagram))
     }
-    this.incomDatagramController.enqueue(new Uint8Array(args.datagram))
   }
 
   /**

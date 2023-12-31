@@ -1,6 +1,7 @@
 import { ReadableStream, WritableStream } from './webstreams.js'
 import { logger } from './utils.js'
 import { WebTransportError } from './error.js'
+import { canByteStream } from './features.js'
 
 const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:http3wtstream(${pid})`)
@@ -60,48 +61,54 @@ export class HttpWTStream {
     this.pendingresRead = null
 
     if (this.bidirectional || this.incoming) {
+      const readableopts = {
+        start: (
+          /** @type {import("stream/web").ReadableByteStreamController} */ controller
+        ) => {
+          this.readableController = controller
+          this.objint.startReading()
+        },
+        pull: async (
+          /** @type {import("stream/web").ReadableByteStreamController} */ controller
+        ) => {
+          if (this.readableclosed) {
+            return Promise.resolve()
+          }
+
+          this.pendingoperationRead = new Promise((resolve, reject) => {
+            this.pendingresRead = resolve
+          })
+          this.objint.startReading()
+          await this.pendingoperationRead
+        },
+        cancel: (/** @type {{ code: number; }} */ reason) => {
+          /** @type {Promise<void>} */
+          const promise = new Promise((resolve, reject) => {
+            this.cancelres = resolve
+          })
+          let code = 0
+          if (reason && reason.code) {
+            if (reason.code < 0) code = 0
+            else if (reason.code > 255) code = 255
+            else code = reason.code
+          }
+          this.readableclosed = true
+          this.objint.stopSending(code)
+          return promise
+        },
+        type: 'bytes',
+        autoAllocateChunkSize: 4096 // lets take this as buffer size
+      }
+
+      if (!canByteStream) {
+        // @ts-ignore
+        delete readableopts.type
+      }
       /** @type {WebTransportReceiveStream} */
       // @ts-expect-error `getStats` property is missing from ReadableStream
       this.readable = new ReadableStream(
-        {
-          start: (
-            /** @type {import("stream/web").ReadableByteStreamController} */ controller
-          ) => {
-            this.readableController = controller
-            this.objint.startReading()
-          },
-          pull: async (
-            /** @type {import("stream/web").ReadableByteStreamController} */ controller
-          ) => {
-            if (this.readableclosed) {
-              return Promise.resolve()
-            }
-
-            this.pendingoperationRead = new Promise((resolve, reject) => {
-              this.pendingresRead = resolve
-            })
-            this.objint.startReading()
-            await this.pendingoperationRead
-          },
-          cancel: (/** @type {{ code: number; }} */ reason) => {
-            /** @type {Promise<void>} */
-            const promise = new Promise((resolve, reject) => {
-              this.cancelres = resolve
-            })
-            let code = 0
-            if (reason && reason.code) {
-              if (reason.code < 0) code = 0
-              else if (reason.code > 255) code = 255
-              else code = reason.code
-            }
-            this.readableclosed = true
-            this.objint.stopSending(code)
-            return promise
-          },
-          type: 'bytes',
-          autoAllocateChunkSize: 4096 // lets take this as buffer size
-        }
-        // TODO fix stretegy
+        // @ts-ignore
+        readableopts
       )
       this.readable.getStats = () => {
         return Promise.resolve({
