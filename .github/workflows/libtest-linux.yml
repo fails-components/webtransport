@@ -35,6 +35,9 @@ jobs:
       - name: Install dependencies
         run:  npm install --ignore-scripts
 
+      - name: Install playwright system dependencies
+        run: npx playwright install --with-deps
+
       - name: Build library
         run: npm run dobuild 
 
