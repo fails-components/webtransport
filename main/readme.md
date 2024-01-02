@@ -23,8 +23,6 @@ Note, that the client implementation only supports certificate checking via `cer
 It may be possible in the future to also support normal HTTP/3 with not so much effort, however, there is no intention from the author to implement this since it will not be needed by FAILS. However, PR requests are welcome and will be supported by advice from the author.
 The package for the HTTP/3 should be considered as a duct tape-style solution until a bulletproof native support of HTTP/3 and WebTransport is provided by node itself.
 
-If you need a ponyfill check out the sister package [https://github.com/fails-components/webtransport-ponyfill-websocket/](https://github.com/fails-components/webtransport-ponyfill-websocket/), which provides a mapping of the Webtransport interfaces to Websocket connections.
-
 ## Changes for Version 1.x.x
 
 The interface for version 1.x.x is not changed compared to 0.x.x.
@@ -43,6 +41,7 @@ For the client side pass the options `forceReliable`, `requireUnreliable` etc. t
 Together with an experimental http/2 implementation of WebTransport, the underlying http/2 capsule protocol had been mapped to the WebSocket protocol, so that the packages can also be used as a ponyfill/polyfill on the browser side.
 Please use `WebTransportPonyfill` for a WebSocket only or `WebTransportPolyfill` as a replacement for `WebTransport`, which automatically falls back to the browser's implementation, if the corresponding features are natively supported in the browser.
 
+The used WebSocket protocol is currently proprietary and described in detail [here](https://martenrichter.github.io/draft-ietf-webtransport-websocket/draft-richter-webtransport-websocket.html). 
 
 ## Installation and usage
 
