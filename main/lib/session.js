@@ -199,6 +199,9 @@ export class HttpWTSession {
       this.objint = object
       this.objint.jsobj = this
       this.reliable = !!reliable
+      if (this.objint.sendInitialParameters) {
+        this.objint.sendInitialParameters()
+      }
     }
   }
 

@@ -147,8 +147,7 @@ export class Http2WebTransportServer {
                       stream,
                       nativesession,
                       isclient: false,
-                      initialStreamSendWindowOffset:
-                        this.initialStreamFlowControlWindow,
+                      initialStreamSendWindowOffset: 0,
                       initialStreamReceiveWindowOffset:
                         this.initialStreamFlowControlWindow,
                       streamShouldAutoTuneReceiveWindow:
@@ -159,7 +158,7 @@ export class Http2WebTransportServer {
                     if (head.byteLength > 0) parse.parseData(head)
                     return parse
                   },
-                  sendWindowOffset: this.sessionFlowControlWindowSizeLimit,
+                  sendWindowOffset: 0,
                   receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
                   shouldAutoTuneReceiveWindow:
                     this.sessionShouldAutoTuneReceiveWindow,
@@ -246,7 +245,7 @@ export class Http2WebTransportServer {
                   nativesession,
                   isclient: false,
                   initialStreamSendWindowOffset:
-                    this.initialStreamFlowControlWindow,
+                    this.initialStreamFlowControlWindow, // TODO, once supported by node, use initial settings
                   initialStreamReceiveWindowOffset:
                     this.initialStreamFlowControlWindow,
                   streamShouldAutoTuneReceiveWindow:
@@ -259,8 +258,7 @@ export class Http2WebTransportServer {
                   stream,
                   nativesession,
                   isclient: false,
-                  initialStreamSendWindowOffset:
-                    this.initialStreamFlowControlWindow,
+                  initialStreamSendWindowOffset: 0,
                   initialStreamReceiveWindowOffset:
                     this.initialStreamFlowControlWindow,
                   streamShouldAutoTuneReceiveWindow:
@@ -270,7 +268,9 @@ export class Http2WebTransportServer {
                 }))
               }
             },
-            sendWindowOffset: this.sessionFlowControlWindowSizeLimit,
+            sendWindowOffset: !websocketProt
+              ? this.sessionFlowControlWindowSizeLimit
+              : 0, // TODO, once supported by node, use initial settings
             receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
             shouldAutoTuneReceiveWindow:
               this.sessionShouldAutoTuneReceiveWindow,
@@ -421,8 +421,7 @@ export class Http2WebTransportServer {
                     stream,
                     nativesession,
                     isclient: false,
-                    initialStreamSendWindowOffset:
-                      this.initialStreamFlowControlWindow,
+                    initialStreamSendWindowOffset: 0,
                     initialStreamReceiveWindowOffset:
                       this.initialStreamFlowControlWindow,
                     streamShouldAutoTuneReceiveWindow:
@@ -433,7 +432,7 @@ export class Http2WebTransportServer {
                   if (head && head.byteLength > 0) parse.parseData(head)
                   return parse
                 },
-                sendWindowOffset: this.sessionFlowControlWindowSizeLimit,
+                sendWindowOffset: 0,
                 receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
                 shouldAutoTuneReceiveWindow:
                   this.sessionShouldAutoTuneReceiveWindow,
@@ -462,7 +461,7 @@ export class Http2WebTransportServer {
                   nativesession,
                   isclient: false,
                   initialStreamSendWindowOffset:
-                    this.initialStreamFlowControlWindow,
+                    this.initialStreamFlowControlWindow, // TODO, once supported by node, use initial settings
                   initialStreamReceiveWindowOffset:
                     this.initialStreamFlowControlWindow,
                   streamShouldAutoTuneReceiveWindow:
@@ -475,8 +474,7 @@ export class Http2WebTransportServer {
                   stream,
                   nativesession,
                   isclient: false,
-                  initialStreamSendWindowOffset:
-                    this.initialStreamFlowControlWindow,
+                  initialStreamSendWindowOffset: 0,
                   initialStreamReceiveWindowOffset:
                     this.initialStreamFlowControlWindow,
                   streamShouldAutoTuneReceiveWindow:
@@ -486,7 +484,10 @@ export class Http2WebTransportServer {
                 }))
               }
             },
-            sendWindowOffset: this.sessionFlowControlWindowSizeLimit,
+            sendWindowOffset:
+              protocol !== 'websocket'
+                ? this.sessionFlowControlWindowSizeLimit
+                : 0, // TODO, once supported by node, use initial settings
             receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
             shouldAutoTuneReceiveWindow:
               this.sessionShouldAutoTuneReceiveWindow,
