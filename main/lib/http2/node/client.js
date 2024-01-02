@@ -216,7 +216,7 @@ export class Http2WebTransportClient {
             stream,
             nativesession,
             isclient: true,
-            initialStreamSendWindowOffset: this.initialStreamFlowControlWindow,
+            initialStreamSendWindowOffset: this.initialStreamFlowControlWindow, // TODO, once supported by node, use initial settings
             initialStreamReceiveWindowOffset:
               this.initialStreamFlowControlWindow,
             streamShouldAutoTuneReceiveWindow:

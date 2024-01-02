@@ -122,7 +122,7 @@ export class Http2WebTransportBrowser {
             ws: this.clientInt,
             nativesession,
             isclient: true,
-            initialStreamSendWindowOffset: this.initialStreamFlowControlWindow,
+            initialStreamSendWindowOffset: 0,
             initialStreamReceiveWindowOffset:
               this.initialStreamFlowControlWindow,
             streamShouldAutoTuneReceiveWindow:
@@ -200,7 +200,7 @@ export class Http2WebTransportBrowser {
             })
           return session
         },
-        sendWindowOffset: this.sessionFlowControlWindowSizeLimit,
+        sendWindowOffset: 0,
         receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
         shouldAutoTuneReceiveWindow: this.sessionShouldAutoTuneReceiveWindow,
         receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
