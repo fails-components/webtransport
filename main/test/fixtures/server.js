@@ -193,7 +193,35 @@ export async function createServer() {
               }
             }
           },
-
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/streamlimits_getunidis')
+            )) {
+              try {
+                await session.ready
+                const unidistreams = []
+                while (unidistreams.length < 99) {
+                  unidistreams.push(
+                    await getReaderValue(session.incomingUnidirectionalStreams)
+                  )
+                }
+                await getReaderValue(session.incomingBidirectionalStreams)
+                await getReaderValue(session.incomingBidirectionalStreams)
+                for (let i = 0; i < 51; i++) {
+                  unidistreams.shift()
+                }
+                while (unidistreams.length < 99) {
+                  unidistreams.push(
+                    await getReaderValue(session.incomingUnidirectionalStreams)
+                  )
+                }
+                await getReaderValue(session.incomingBidirectionalStreams)
+                await session.close()
+              } catch (error) {
+                // do not crash server, if a problem occurs...
+              }
+            }
+          },
           // cleanly close remote sessions
           async () => {
             for await (const session of getReaderStream(
