@@ -51,7 +51,7 @@ export async function createServer() {
   server.ready
     .then(async () => {
       // set up listeners for the different server paths used by the tests
-
+      console.log('server ready')
       await Promise.all(
         [
           // echo server, initiated by remote
@@ -159,6 +159,38 @@ export async function createServer() {
 
               await session.closed
               closed = true
+            }
+          },
+
+          // receive 100+ bidi streams
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/streamlimits_getbidis')
+            )) {
+              try {
+                await session.ready
+                const bidistreams = []
+                while (bidistreams.length < 99) {
+                  bidistreams.push(
+                    await getReaderValue(session.incomingBidirectionalStreams)
+                  )
+                }
+                await getReaderValue(session.incomingUnidirectionalStreams)
+                await getReaderValue(session.incomingUnidirectionalStreams)
+                for (let i = 0; i < 51; i++) {
+                  const curstream = bidistreams.shift()
+                  await curstream.writable.close()
+                }
+                while (bidistreams.length < 99) {
+                  bidistreams.push(
+                    await getReaderValue(session.incomingBidirectionalStreams)
+                  )
+                }
+                await getReaderValue(session.incomingUnidirectionalStreams)
+                await session.close()
+              } catch (error) {
+                // do not crash server, if a problem occurs...
+              }
             }
           },
 
