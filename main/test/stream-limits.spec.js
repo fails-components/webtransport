@@ -78,4 +78,36 @@ describe('streamlimits', function () {
     expect(result).to.have.property('closeCode', 0)
     expect(result).to.have.property('reason', '')
   })
+
+  it('should detect stream limit unidi outgoing', async () => {
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/streamlimits_getunidis`,
+      { ...wtOptions }
+    )
+    await client.ready
+    const unidistreams = []
+    let numunidi = 0
+    for (let i = 0; i < 150; i++) {
+      const curstream = client.createUnidirectionalStream()
+      unidistreams.push(curstream)
+      curstream
+        .then(() => {
+          numunidi++
+        })
+        .catch(() => {})
+    }
+    await client.createBidirectionalStream()
+    expect(numunidi).to.equal(100)
+    await client.createBidirectionalStream()
+    for (let i = 0; i < 51; i++) {
+      const curstream = await unidistreams.shift()
+      await curstream.close()
+    }
+    await client.createBidirectionalStream()
+    expect(numunidi).to.equal(150)
+
+    const result = await client.closed
+    expect(result).to.have.property('closeCode', 0)
+    expect(result).to.have.property('reason', '')
+  })
 })
