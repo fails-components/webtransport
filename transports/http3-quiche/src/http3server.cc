@@ -137,6 +137,19 @@ namespace quic
           sconfig.SetMaxBidirectionalStreamsToSend(maxconn);
           sconfig.SetMaxUnidirectionalStreamsToSend(maxconn);
         }
+        if (lobj.Has("initialBidirectionalStreams") && !(lobj).Get("initialBidirectionalStreams").IsEmpty())
+        {
+          Napi::Value initialBidirectionalStreamsValue = (lobj).Get("initialBidirectionalStreams");
+          int initialBidirectionalStreams = initialBidirectionalStreamsValue.As<Napi::Number>().Int32Value();
+          sconfig.SetMaxBidirectionalStreamsToSend(initialBidirectionalStreams);
+        }
+
+        if (lobj.Has("initialUnidirectionalStreams") && !(lobj).Get("initialUnidirectionalStreams").IsEmpty())
+        {
+          Napi::Value initialUnidirectionalStreamsValue = (lobj).Get("initialUnidirectionalStreams");
+          int initialUnidirectionalStreams = initialUnidirectionalStreamsValue.As<Napi::Number>().Int32Value();
+          sconfig.SetMaxUnidirectionalStreamsToSend(initialUnidirectionalStreams);
+        }
 
         if (lobj.Has("initialStreamFlowControlWindow") && !(lobj).Get("initialStreamFlowControlWindow").IsEmpty())
         {

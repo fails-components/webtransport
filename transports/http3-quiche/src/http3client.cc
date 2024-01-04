@@ -608,6 +608,7 @@ namespace quic
                             static_cast<WebTransportSession *>(wtsession));
                         getJS()->processNewClientSession(wtsessionobj);
                         auto visitor = std::make_unique<Http3WTSession::Visitor>(wtsessionobj);
+                        static_cast<Http3ClientSession *>(session_.get())->AddVisitor(id, visitor.get());
                         wtsession->SetVisitor(std::move(visitor));
                     }
                 }
@@ -1206,6 +1207,19 @@ namespace quic
                         Napi::Error::New(env, "serverCertificateHashes is not an array").ThrowAsJavaScriptException();
                         return;
                     }
+                }
+                if (lobj.Has("initialBidirectionalStreams") && !(lobj).Get("initialBidirectionalStreams").IsEmpty())
+                {
+                    Napi::Value initialBidirectionalStreamsValue = (lobj).Get("initialBidirectionalStreams");
+                    int initialBidirectionalStreams = initialBidirectionalStreamsValue.As<Napi::Number>().Int32Value();
+                    cconfig.SetMaxBidirectionalStreamsToSend(initialBidirectionalStreams);
+                }
+
+                if (lobj.Has("initialUnidirectionalStreams") && !(lobj).Get("initialUnidirectionalStreams").IsEmpty())
+                {
+                    Napi::Value initialUnidirectionalStreamsValue = (lobj).Get("initialUnidirectionalStreams");
+                    int initialUnidirectionalStreams = initialUnidirectionalStreamsValue.As<Napi::Number>().Int32Value();
+                    cconfig.SetMaxUnidirectionalStreamsToSend(initialUnidirectionalStreams);
                 }
                 if (lobj.Has("initialStreamFlowControlWindow") && !(lobj).Get("initialStreamFlowControlWindow").IsEmpty())
                 {
