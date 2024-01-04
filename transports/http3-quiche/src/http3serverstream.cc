@@ -210,7 +210,8 @@ namespace quic
         WriteHeaders(std::move(resp->response_headers), false, nullptr);
         if (resp->visitor != nullptr)
         {
-          web_transport()->SetVisitor(std::move(resp->visitor));
+          web_transport()->SetVisitor(std::move(resp->visitor));      
+          static_cast<Http3ServerSession *>(session())->AddVisitor(id(), resp->visitor.get());
         }
         web_transport()->HeadersReceived(request_headers_);
       }

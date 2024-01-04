@@ -120,4 +120,17 @@ namespace quic
     ActivateStream(absl::WrapUnique(stream));
     return stream;
   }
+
+  void Http3ServerSession::OnCanCreateNewOutgoingStream(bool unidirectional) {
+    if (SupportsWebTransport()) {
+      auto itty = svisitors_.begin();
+      for (auto itty = svisitors_.begin(); itty != svisitors_.end(); itty++) {
+        if (unidirectional) {
+          (*itty).second->OnCanCreateNewOutgoingUnidirectionalStream();
+        } else {
+          (*itty).second->OnCanCreateNewOutgoingBidirectionalStream();
+        }
+      }
+    }
+  }
 } // namespace quic

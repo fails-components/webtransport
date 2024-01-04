@@ -53,6 +53,11 @@ namespace quic
     // Override base class to detact client sending data on server push stream.
     void OnStreamFrame(const QuicStreamFrame &frame) override;
 
+   void OnCanCreateNewOutgoingStream(bool unidirectional) override;
+   void AddVisitor(const WebTransportSessionId id, webtransport::SessionVisitor *visitor) {
+      svisitors_.try_emplace(id, visitor);
+    }
+
   protected:
     // QuicSession methods:
     QuicSpdyStream *CreateIncomingStream(QuicStreamId id) override;
@@ -88,6 +93,7 @@ namespace quic
     }
 
     Http3ServerBackend *http3_server_backend_; // Not owned.
+    absl::flat_hash_map<QuicStreamId, webtransport::SessionVisitor *> svisitors_;
   };
 
 } // namespace quic

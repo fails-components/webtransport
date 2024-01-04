@@ -41,6 +41,11 @@ namespace quic
         const override;
     HttpDatagramSupport LocalHttpDatagramSupport() override;
 
+   void OnCanCreateNewOutgoingStream(bool unidirectional) override;
+   void AddVisitor(const WebTransportSessionId id, webtransport::SessionVisitor *visitor) {
+      svisitors_.try_emplace(id, visitor);
+    }
+
     void set_on_interim_headers(
         std::function<void(const spdy::Http2HeaderBlock &)> on_interim_headers)
     {
@@ -51,6 +56,7 @@ namespace quic
     std::function<void(const spdy::Http2HeaderBlock &)> on_interim_headers_;
     const bool drop_response_body_;
     const bool enable_web_transport_;
+    absl::flat_hash_map<QuicStreamId, webtransport::SessionVisitor *> svisitors_;
   };
 
 } // namespace quic
