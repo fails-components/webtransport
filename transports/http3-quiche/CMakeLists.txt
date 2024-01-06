@@ -800,13 +800,8 @@ third_party/quiche/quiche/spdy/core/spdy_frame_builder.h
 third_party/quiche/quiche/spdy/core/spdy_framer.cc
 third_party/quiche/quiche/spdy/core/spdy_framer.h
 third_party/quiche/quiche/spdy/core/spdy_headers_handler_interface.h
-third_party/quiche/quiche/spdy/core/spdy_intrusive_list.h
 third_party/quiche/quiche/spdy/core/spdy_no_op_visitor.cc
 third_party/quiche/quiche/spdy/core/spdy_no_op_visitor.h
-third_party/quiche/quiche/spdy/core/spdy_pinnable_buffer_piece.cc
-third_party/quiche/quiche/spdy/core/spdy_pinnable_buffer_piece.h
-third_party/quiche/quiche/spdy/core/spdy_prefixed_buffer_reader.cc
-third_party/quiche/quiche/spdy/core/spdy_prefixed_buffer_reader.h
 third_party/quiche/quiche/spdy/core/spdy_protocol.cc
 third_party/quiche/quiche/spdy/core/spdy_protocol.h
 third_party/quiche/quiche/spdy/core/zero_copy_output_buffer.h
