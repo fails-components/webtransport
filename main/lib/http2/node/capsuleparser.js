@@ -121,28 +121,41 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               case Http2CapsuleParser.WT_STOP_SENDING:
                 {
                   const streamid = readVarInt(bufferstate)
-                  const stream = this.wtstreams.get(streamid)
-                  const code = readVarInt(bufferstate)
-                  if (stream && typeof code !== 'undefined')
-                    stream.jsobj.onStreamRecvSignal({
-                      code,
-                      nettask:
+                  if (typeof streamid !== 'undefined') {
+                    const stream = this.wtstreams.get(streamid)
+                    const code = readVarInt(bufferstate)
+                    if (stream && typeof code !== 'undefined') {
+                      stream.onStreamSignal(
                         type === Http2CapsuleParser.WT_RESET_STREAM
                           ? 'resetStream'
                           : 'stopSending'
-                    })
+                      )
+                      stream.jsobj.onStreamRecvSignal({
+                        code: Number(code),
+                        nettask:
+                          type === Http2CapsuleParser.WT_RESET_STREAM
+                            ? 'resetStream'
+                            : 'stopSending'
+                      })
+                    }
+                  }
                 }
                 break
               case Http2CapsuleParser.WT_STREAM_WOFIN:
               case Http2CapsuleParser.WT_STREAM_WFIN:
-                streamid = Number(readVarInt(bufferstate))
+                streamid = readVarInt(bufferstate)
                 if (typeof streamid !== 'undefined') {
                   let object = this.wtstreams.get(streamid)
                   if (!object) {
                     object = this.newStream(streamid)
+                    if (!object) return // stream broken
                   }
                   // TODO submit data
                   if (offsetend - bufferstate.offset >= 0) {
+                    const fin =
+                      type === Http2CapsuleParser.WT_STREAM_WFIN &&
+                      bufferstate.size >= length + offsetbegin
+                    if (fin) object.onFin()
                     object.recvData({
                       data:
                         offsetend - bufferstate.offset > 0
@@ -153,9 +166,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                               offsetend - bufferstate.offset
                             )
                           : undefined,
-                      fin:
-                        type === Http2CapsuleParser.WT_STREAM_WFIN &&
-                        bufferstate.size >= length + offsetbegin
+                      fin
                     })
                   }
                 }
@@ -164,49 +175,41 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                 this.onMaxData(readVarInt(bufferstate))
                 break
               case Http2CapsuleParser.WT_MAX_STREAM_DATA:
-                this.onMaxStreamData(
-                  readVarInt(bufferstate),
-                  readVarInt(bufferstate)
-                )
+                {
+                  const streamid = readVarInt(bufferstate)
+                  const offset = readVarInt(bufferstate)
+                  if (
+                    typeof streamid !== 'undefined' &&
+                    typeof offset !== 'undefined'
+                  )
+                    this.onMaxStreamData(streamid, offset)
+                }
                 break
               case Http2CapsuleParser.WT_MAX_STREAMS_BIDI:
-                // this.recvSession({ maxstreams: readVarInt(bufferstate), type })
+                this.onMaxStreamBiDi(readVarInt(bufferstate))
                 break
               case Http2CapsuleParser.WT_MAX_STREAMS_UNIDI:
-                // this.recvSession({ maxstreams: readVarInt(bufferstate), type })
+                this.onMaxStreamUniDi(readVarInt(bufferstate))
                 break
               case Http2CapsuleParser.WT_DATA_BLOCKED:
                 this.onDataBlocked(readVarInt(bufferstate))
                 break
               case Http2CapsuleParser.WT_STREAM_DATA_BLOCKED:
-                this.onStreamDataBlocked(
-                  readVarInt(bufferstate),
-                  readVarInt(bufferstate)
-                )
+                {
+                  const streamid = readVarInt(bufferstate)
+                  const offset = readVarInt(bufferstate)
+                  if (
+                    typeof streamid !== 'undefined' &&
+                    typeof offset !== 'undefined'
+                  )
+                    this.onStreamDataBlocked(streamid, offset)
+                }
                 break
               case Http2CapsuleParser.WT_STREAMS_BLOCKED_UNIDI:
-                /* {
-                 const streamid = readVarInt(bufferstate)
-                  const object = this.wtstreams.get(streamid)
-                  if (object)
-                    this.recvStream({
-                      maxstreams: readVarInt(bufferstate),
-                      type,
-                      object
-                    })
-                } */
+                this.onStreamsBlockedUnidi(readVarInt(bufferstate))
                 break
               case Http2CapsuleParser.WT_STREAMS_BLOCKED_BIDI:
-                /* {
-                  const streamid = readVarInt(bufferstate)
-                  const object = this.wtstreams.get(streamid)
-                  if (object)
-                    this.recvStream({
-                      maxstreams: readVarInt(bufferstate),
-                      type,
-                      streamid
-                    })
-                } */
+                this.onStreamsBlockedBidi(readVarInt(bufferstate))
                 break
               case Http2CapsuleParser.DATAGRAM:
                 this.session.jsobj.onDatagramReceived({
@@ -241,17 +244,21 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
             if (this.rstreamid) {
               // TODO submitData
               const object = this.wtstreams.get(this.rstreamid)
+              const fin =
+                this.rtype === Http2CapsuleParser.WT_STREAM_WFIN &&
+                this.remainlength === clength
               // TODO submit data
-              object.recvData({
-                data: new Uint8Array(
-                  bufferstate.buffer.buffer,
-                  bufferstate.buffer.byteOffset + bufferstate.offset,
-                  clength
-                ),
-                fin:
-                  this.rtype === Http2CapsuleParser.WT_STREAM_WFIN &&
-                  this.remainlength === clength
-              })
+              if (object) {
+                if (fin) object.onFin()
+                object.recvData({
+                  data: new Uint8Array(
+                    bufferstate.buffer.buffer,
+                    bufferstate.buffer.byteOffset + bufferstate.offset,
+                    clength
+                  ),
+                  fin
+                })
+              }
             }
 
             this.remainlength = this.remainlength - clength

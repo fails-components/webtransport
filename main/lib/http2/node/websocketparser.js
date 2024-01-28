@@ -193,6 +193,9 @@ export class WebSocketParser extends ParserBaseHttp2 {
     this.saveddata = undefined
     /** @type {Number|undefined} */
     this.rtype = undefined
+
+    this.bidirectionalLimitsSet = false
+    this.unidirectionalLimitsSet = false
   }
 
   /**
@@ -500,22 +503,30 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 case ParserBase.WT_STOP_SENDING:
                   if (wbufferstate) {
                     const streamid = readVarInt(wbufferstate)
-                    const stream = this.wtstreams.get(streamid)
-                    const code = readVarInt(wbufferstate)
-                    if (stream && typeof code !== 'undefined')
-                      stream.jsobj.onStreamRecvSignal({
-                        code,
-                        nettask:
+                    if (typeof streamid !== 'undefined') {
+                      const stream = this.wtstreams.get(streamid)
+                      const code = readVarInt(wbufferstate)
+                      if (stream && typeof code !== 'undefined') {
+                        stream.onStreamSignal(
                           type === ParserBase.WT_RESET_STREAM
                             ? 'resetStream'
                             : 'stopSending'
-                      })
+                        )
+                        stream.jsobj.onStreamRecvSignal({
+                          code: Number(code),
+                          nettask:
+                            type === ParserBase.WT_RESET_STREAM
+                              ? 'resetStream'
+                              : 'stopSending'
+                        })
+                      }
+                    }
                   }
                   break
                 case ParserBase.WT_STREAM_WOFIN:
                 case ParserBase.WT_STREAM_WFIN:
                   if (!continuep) {
-                    streamid = Number(readVarInt(bufferstate))
+                    streamid = readVarInt(bufferstate)
                     this.cstreamid = streamid
                   } else {
                     streamid = this.cstreamid
@@ -524,9 +535,14 @@ export class WebSocketParser extends ParserBaseHttp2 {
                     let object = this.wtstreams.get(streamid)
                     if (!object) {
                       object = this.newStream(streamid)
+                      if (!object) return // stream broken
                     }
                     // TODO submit data
                     if (offsetend - bufferstate.offset >= 0) {
+                      const fin =
+                        type === ParserBase.WT_STREAM_WFIN &&
+                        bufferstate.size >= length + offsetbegin
+                      if (fin) object.onFin()
                       object.recvData({
                         data:
                           offsetend - bufferstate.offset > 0
@@ -537,9 +553,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
                                 offsetend - bufferstate.offset
                               )
                             : undefined,
-                        fin:
-                          type === ParserBase.WT_STREAM_WFIN &&
-                          bufferstate.size >= length + offsetbegin
+                        fin
                       })
                     }
                   }
@@ -548,49 +562,41 @@ export class WebSocketParser extends ParserBaseHttp2 {
                   this.onMaxData(readVarInt(bufferstate))
                   break
                 case ParserBase.WT_MAX_STREAM_DATA:
-                  this.onMaxStreamData(
-                    readVarInt(bufferstate),
-                    readVarInt(bufferstate)
-                  )
+                  {
+                    const streamid = readVarInt(bufferstate)
+                    const offset = readVarInt(bufferstate)
+                    if (
+                      typeof streamid !== 'undefined' &&
+                      typeof offset !== 'undefined'
+                    )
+                      this.onMaxStreamData(streamid, offset)
+                  }
                   break
                 case ParserBase.WT_MAX_STREAMS_BIDI:
-                  // this.recvSession({ maxstreams: readVarInt(bufferstate), type })
+                  this.onMaxStreamBiDi(readVarInt(bufferstate))
                   break
                 case ParserBase.WT_MAX_STREAMS_UNIDI:
-                  // this.recvSession({ maxstreams: readVarInt(bufferstate), type })
+                  this.onMaxStreamUniDi(readVarInt(bufferstate))
                   break
                 case ParserBase.WT_DATA_BLOCKED:
                   this.onDataBlocked(readVarInt(bufferstate))
                   break
                 case ParserBase.WT_STREAM_DATA_BLOCKED:
-                  this.onStreamDataBlocked(
-                    readVarInt(bufferstate),
-                    readVarInt(bufferstate)
-                  )
+                  {
+                    const streamid = readVarInt(bufferstate)
+                    const offset = readVarInt(bufferstate)
+                    if (
+                      typeof streamid !== 'undefined' &&
+                      typeof offset !== 'undefined'
+                    )
+                      this.onStreamDataBlocked(streamid, offset)
+                  }
                   break
                 case ParserBase.WT_STREAMS_BLOCKED_UNIDI:
-                  /* {
-                 const streamid = readVarInt(bufferstate)
-                  const object = this.wtstreams.get(streamid)
-                  if (object)
-                    this.recvStream({
-                      maxstreams: readVarInt(bufferstate),
-                      type,
-                      object
-                    })
-                } */
+                  this.onStreamsBlockedUnidi(readVarInt(bufferstate))
                   break
                 case ParserBase.WT_STREAMS_BLOCKED_BIDI:
-                  /* {
-                  const streamid = readVarInt(bufferstate)
-                  const object = this.wtstreams.get(streamid)
-                  if (object)
-                    this.recvStream({
-                      maxstreams: readVarInt(bufferstate),
-                      type,
-                      streamid
-                    })
-                } */
+                  this.onStreamsBlockedBidi(readVarInt(bufferstate))
                   break
                 case ParserBase.DATAGRAM:
                   if (wbufferstate) {
@@ -640,24 +646,28 @@ export class WebSocketParser extends ParserBaseHttp2 {
               // not in j mode
               // TODO submitData
               const object = this.wtstreams.get(this.rstreamid)
-              if (this.maskcontext)
-                applyMask(
-                  this.maskcontext,
-                  bufferstate.buffer,
-                  bufferstate.buffer.byteOffset + bufferstate.offset,
-                  clength
-                )
-              // TODO submit data
-              object.recvData({
-                data: new Uint8Array(
-                  bufferstate.buffer.buffer,
-                  bufferstate.buffer.byteOffset + bufferstate.offset,
-                  clength
-                ),
-                fin:
-                  this.rtype === ParserBase.WT_STREAM_WFIN &&
-                  this.remainlength === clength
-              })
+              const fin =
+                this.rtype === ParserBase.WT_STREAM_WFIN &&
+                this.remainlength === clength
+              if (object) {
+                if (fin) object.onFin()
+                if (this.maskcontext)
+                  applyMask(
+                    this.maskcontext,
+                    bufferstate.buffer,
+                    bufferstate.buffer.byteOffset + bufferstate.offset,
+                    clength
+                  )
+                // TODO submit data
+                object.recvData({
+                  data: new Uint8Array(
+                    bufferstate.buffer.buffer,
+                    bufferstate.buffer.byteOffset + bufferstate.offset,
+                    clength
+                  ),
+                  fin
+                })
+              }
             }
 
             this.remainlength = this.remainlength - clength

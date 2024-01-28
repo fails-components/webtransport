@@ -39,13 +39,18 @@ export async function createServer() {
   } else {
     server = new Http3Server({
       /*   port: 8080,
-    host: '0.0.0.0', */
+      host: '0.0.0.0', */
       port: 0,
       host: '127.0.0.1',
       secret: 'mysecret',
       cert: certificate.cert, // unclear if it is the correct format
       privKey: certificate.private
     })
+  }
+
+  let adjustlimit = 1
+  if (process.env.USE_HTTP2 === 'true') {
+    adjustlimit = 0
   }
 
   server.ready
@@ -162,26 +167,26 @@ export async function createServer() {
             }
           },
 
-          // receive 100+ bidi streams
+          // receive 100+ bidi streams and block
           async () => {
             for await (const session of getReaderStream(
-              server.sessionStream('/streamlimits_getbidis')
+              server.sessionStream('/streamlimits_getbidis_wua')
             )) {
               try {
                 await session.ready
                 const bidistreams = []
-                while (bidistreams.length < 99) {
+                while (bidistreams.length < 100 - adjustlimit) {
                   bidistreams.push(
                     await getReaderValue(session.incomingBidirectionalStreams)
                   )
                 }
                 await getReaderValue(session.incomingUnidirectionalStreams)
                 await getReaderValue(session.incomingUnidirectionalStreams)
-                for (let i = 0; i < 51; i++) {
-                  const curstream = bidistreams.shift()
-                  await curstream.writable.close()
+                for (let i = 0; i < 50 + adjustlimit; i++) {
+                  /* const curstream = */ bidistreams.shift()
+                  // await curstream.writable.close() // canceled by client
                 }
-                while (bidistreams.length < 99) {
+                while (bidistreams.length < 100 - adjustlimit) {
                   bidistreams.push(
                     await getReaderValue(session.incomingBidirectionalStreams)
                   )
@@ -193,6 +198,55 @@ export async function createServer() {
               }
             }
           },
+          // receive 100+ bidi streams and do not block
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/streamlimits_getbidis')
+            )) {
+              try {
+                await session.ready
+                const bidistreams = []
+                while (bidistreams.length < 150) {
+                  bidistreams.push(
+                    await getReaderValue(session.incomingBidirectionalStreams)
+                  )
+                }
+                await session.close()
+              } catch (error) {
+                // do not crash server, if a problem occurs...
+              }
+            }
+          },
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/streamlimits_getunidis_wua')
+            )) {
+              try {
+                await session.ready
+                const unidistreams = []
+                while (unidistreams.length < 100 - adjustlimit) {
+                  unidistreams.push(
+                    await getReaderValue(session.incomingUnidirectionalStreams)
+                  )
+                }
+                await getReaderValue(session.incomingBidirectionalStreams)
+                await getReaderValue(session.incomingBidirectionalStreams)
+                for (let i = 0; i < 50 + adjustlimit; i++) {
+                  unidistreams.shift()
+                }
+                while (unidistreams.length < 100 - adjustlimit) {
+                  unidistreams.push(
+                    await getReaderValue(session.incomingUnidirectionalStreams)
+                  )
+                }
+                await getReaderValue(session.incomingBidirectionalStreams)
+                await session.close()
+              } catch (error) {
+                // do not crash server, if a problem occurs...
+              }
+            }
+          },
+          // receive 100+ unidi streams and do not block
           async () => {
             for await (const session of getReaderStream(
               server.sessionStream('/streamlimits_getunidis')
@@ -200,22 +254,11 @@ export async function createServer() {
               try {
                 await session.ready
                 const unidistreams = []
-                while (unidistreams.length < 99) {
+                while (unidistreams.length < 150) {
                   unidistreams.push(
                     await getReaderValue(session.incomingUnidirectionalStreams)
                   )
                 }
-                await getReaderValue(session.incomingBidirectionalStreams)
-                await getReaderValue(session.incomingBidirectionalStreams)
-                for (let i = 0; i < 51; i++) {
-                  unidistreams.shift()
-                }
-                while (unidistreams.length < 99) {
-                  unidistreams.push(
-                    await getReaderValue(session.incomingUnidirectionalStreams)
-                  )
-                }
-                await getReaderValue(session.incomingBidirectionalStreams)
                 await session.close()
               } catch (error) {
                 // do not crash server, if a problem occurs...
@@ -341,8 +384,10 @@ if (process.send)
     address: `https://${address.host}:${address.port}`,
     certificate: certificate.fingerprint
   })
-else console.error('No IPC channel')
-/* console.log({
-  address: `https://${address.host}:${address.port}`,
-  certificate: certificate.fingerprint
-}) */
+else {
+  console.error('No IPC channel')
+  console.log({
+    address: `https://${address.host}:${address.port}`,
+    certificate: certificate.fingerprint
+  })
+}

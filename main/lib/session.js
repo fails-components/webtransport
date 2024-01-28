@@ -22,6 +22,7 @@ const log = logger(`webtransport:httpwtsession(${pid})`)
  * @typedef {import('./dom').WebTransportCloseInfo} WebTransportCloseInfo
  * @typedef {import('./dom').WebTransportBidirectionalStream} WebTransportBidirectionalStream
  * @typedef {import('./dom').WebTransportSendStream} WebTransportSendStream
+ * @typedef {import('./dom').WebTransportSendStreamOptions} WebTransportSendStreamOptions
  * @typedef {import('./dom').WebTransportReceiveStream} WebTransportReceiveStream
  * @typedef {import('./dom').WebTransportDatagramDuplexStream} WebTransportDatagramDuplexStream
  * @typedef {import('./dom').WebTransportReliabilityMode} WebTransportReliabilityMode
@@ -342,9 +343,10 @@ export class HttpWTSession {
   }
 
   /**
+   * @param {WebTransportSendStreamOptions} [opts]
    * @returns {Promise<WebTransportBidirectionalStream>}
    */
-  createBidirectionalStream() {
+  createBidirectionalStream(opts) {
     if (this.objint == null) {
       throw new Error('this.objint not set')
     }
@@ -353,14 +355,25 @@ export class HttpWTSession {
       this.resolveBiDi.push(resolve)
       this.rejectBiDi.push(reject)
     })
-    this.objint.orderBidiStream()
+    const notblocked = this.objint.orderBidiStream({
+      sendGroup: opts?.sendGroup || null, // maybe replace, when implemented
+      sendOrder: opts?.sendOrder || 0,
+      waitUntilAvailable: opts?.waitUntilAvailable || false
+    })
+    if (!notblocked) {
+      const rej = this.rejectBiDi.pop()
+      this.resolveBiDi.pop()
+      if (rej)
+        rej(new DOMException('No streams available', 'QuotaExceededError'))
+    }
     return prom
   }
 
   /**
-   *@returns {Promise<WebTransportSendStream>}
+   * @param {WebTransportSendStreamOptions} [opts]
+   * @returns {Promise<WebTransportSendStream>}
    */
-  createUnidirectionalStream() {
+  createUnidirectionalStream(opts) {
     if (this.objint == null) {
       throw new Error('this.objint not set')
     }
@@ -369,7 +382,17 @@ export class HttpWTSession {
       this.resolveUniDi.push(resolve)
       this.rejectUniDi.push(reject)
     })
-    this.objint.orderUnidiStream()
+    const notblocked = this.objint.orderUnidiStream({
+      sendGroup: opts?.sendGroup || null, // maybe replace, when implemented
+      sendOrder: opts?.sendOrder || 0,
+      waitUntilAvailable: opts?.waitUntilAvailable || false
+    })
+    if (!notblocked) {
+      const rej = this.rejectUniDi.pop()
+      this.resolveUniDi.pop()
+      if (rej)
+        rej(new DOMException('No streams available', 'QuotaExceededError'))
+    }
     return prom
   }
 

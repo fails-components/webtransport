@@ -1,9 +1,11 @@
 /**
  * @typedef {import('http2').Http2Stream} Http2Stream
+ * @typedef {import('../dom.js').WebTransportSendGroup} WebTransportSendGroup
  */
 import { ParserBase } from './parserbase.js'
 import { FlowController } from './flowcontroller.js'
 import { logger } from '../utils.js'
+import { StreamIdManager } from './streamidmanager.js'
 
 const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:http2webtransportsession(${pid})`)
@@ -20,7 +22,11 @@ export class Http2WebTransportSession {
    * sendWindowOffset: Number,
    * receiveWindowOffset: Number,
    * shouldAutoTuneReceiveWindow: boolean
-   * receiveWindowSizeLimit: Number}} args
+   * receiveWindowSizeLimit: Number,
+   * initialBidirectionalSendStreams: Number,
+   * initialBidirectionalReceiveStreams: Number,
+   * initialUnidirectionalSendStreams: Number,
+   * initialUnidirectionalReceiveStreams: Number}} args
    * */
   constructor({
     stream,
@@ -30,7 +36,11 @@ export class Http2WebTransportSession {
     sendWindowOffset,
     receiveWindowOffset,
     shouldAutoTuneReceiveWindow,
-    receiveWindowSizeLimit
+    receiveWindowSizeLimit,
+    initialBidirectionalSendStreams,
+    initialBidirectionalReceiveStreams,
+    initialUnidirectionalSendStreams,
+    initialUnidirectionalReceiveStreams
   }) {
     // @ts-ignore
     this.jsobj = undefined // the creator will set this
@@ -40,8 +50,6 @@ export class Http2WebTransportSession {
       this.ws = ws
     } else throw new Error('Neither stream or websocket supplied')
     this.capsParser = createParser(this)
-    this.unidiId = 0
-    this.bidiId = 0
     this.isclient = isclient
     this.flowController = new FlowController({
       tocontrol: this,
@@ -50,6 +58,22 @@ export class Http2WebTransportSession {
       shouldAutoTuneReceiveWindow,
       receiveWindowSizeLimit
     })
+    this.streamIdMngrUni = new StreamIdManager({
+      delegate: this,
+      unidirectional: true,
+      isclient,
+      maxAllowedIncomingStreams: initialUnidirectionalReceiveStreams,
+      maxAllowedOutgoingStreams: initialUnidirectionalSendStreams
+    })
+    this.streamIdMngrBi = new StreamIdManager({
+      delegate: this,
+      unidirectional: false,
+      isclient,
+      maxAllowedIncomingStreams: initialBidirectionalReceiveStreams,
+      maxAllowedOutgoingStreams: initialBidirectionalSendStreams
+    })
+    this.orderUniStreams = 0
+    this.orderBiStreams = 0
     if (stream) {
       if (isclient) {
         stream.on('response', (headers) => {
@@ -75,16 +99,8 @@ export class Http2WebTransportSession {
 
   sendInitialParameters() {
     this.flowController.sendWindowUpdate()
-    this.capsParser.writeCapsule({
-      type: ParserBase.WT_MAX_STREAMS_BIDI,
-      headerVints: [0xffffff],
-      payload: undefined
-    })
-    this.capsParser.writeCapsule({
-      type: ParserBase.WT_MAX_STREAMS_UNIDI,
-      headerVints: [0xffffff],
-      payload: undefined
-    })
+    this.streamIdMngrBi.sendMaxStreamsFrameInitial()
+    this.streamIdMngrUni.sendMaxStreamsFrameInitial()
   }
 
   /**
@@ -101,28 +117,66 @@ export class Http2WebTransportSession {
     })
   }
 
-  orderUnidiStream() {
-    let streamid = 0x2 | (this.unidiId << 2)
-    if (this.isclient) streamid = streamid | 0x1
-    this.capsParser.writeCapsule({
-      type: ParserBase.WT_STREAM_WOFIN,
-      headerVints: [streamid],
-      payload: undefined
-    })
-    this.capsParser.newStream(streamid)
-    this.unidiId++
+  trySendingUnidirectionalStreams() {
+    while (
+      this.orderUniStreams > 0 &&
+      this.streamIdMngrUni.canOpenNextOutgoingStream()
+    ) {
+      const streamid = this.streamIdMngrUni.getNextOutgoingStreamId()
+      this.capsParser.writeCapsule({
+        type: ParserBase.WT_STREAM_WOFIN,
+        headerVints: [streamid],
+        payload: undefined
+      })
+      this.capsParser.newStream(streamid)
+      this.orderUniStreams--
+    }
   }
 
-  orderBidiStream() {
-    let streamid = 0x0 | (this.bidiId << 2)
-    if (this.isclient) streamid = streamid | 0x1
-    this.capsParser.writeCapsule({
-      type: ParserBase.WT_STREAM_WOFIN,
-      headerVints: [streamid],
-      payload: undefined
-    })
-    this.capsParser.newStream(streamid)
-    this.bidiId++
+  /**
+   * @param {{sendGroup:  WebTransportSendGroup|null, sendOrder: number, waitUntilAvailable: boolean}} opts
+   */
+  orderUnidiStream({ sendGroup, sendOrder, waitUntilAvailable }) {
+    const canopen = this.streamIdMngrUni.canOpenNextOutgoingStream()
+    const maxset = this.streamIdMngrUni.isMaxStreamSet() // we block if the maxsetting did not arrive
+
+    if (canopen || waitUntilAvailable || !maxset) {
+      this.orderUniStreams++
+      this.trySendingUnidirectionalStreams()
+      return true
+    }
+    return false
+  }
+
+  trySendingBidirectionalStreams() {
+    while (
+      this.orderBiStreams > 0 &&
+      this.streamIdMngrBi.canOpenNextOutgoingStream()
+    ) {
+      const streamid = this.streamIdMngrBi.getNextOutgoingStreamId()
+      this.capsParser.writeCapsule({
+        type: ParserBase.WT_STREAM_WOFIN,
+        headerVints: [streamid],
+        payload: undefined
+      })
+      this.capsParser.newStream(streamid)
+      this.orderBiStreams--
+    }
+  }
+
+  /**
+   * @param {{sendGroup:  WebTransportSendGroup|null, sendOrder: number, waitUntilAvailable: boolean}} opts
+   */
+  orderBidiStream({ sendGroup, sendOrder, waitUntilAvailable }) {
+    const canopen = this.streamIdMngrBi.canOpenNextOutgoingStream()
+    const maxset = this.streamIdMngrBi.isMaxStreamSet() // we block if the maxsetting did not arrive
+
+    if (canopen || waitUntilAvailable || !maxset) {
+      this.orderBiStreams++
+      this.trySendingBidirectionalStreams()
+      return true
+    }
+    return false
   }
 
   orderSessionStats() {
@@ -217,5 +271,26 @@ export class Http2WebTransportSession {
       // @ts-ignore
       return navigator?.connection?.rtt || 26
     }
+  }
+
+  /**
+   * @returns {boolean}
+   */
+  canSendMaxStreams() {
+    return true
+  }
+
+  /**
+   * @param {bigint} maxStreams
+   * @param {boolean} unidirectional
+   */
+  sendMaxStreams(maxStreams, unidirectional) {
+    this.capsParser.writeCapsule({
+      type: unidirectional
+        ? ParserBase.WT_MAX_STREAMS_UNIDI
+        : ParserBase.WT_MAX_STREAMS_BIDI,
+      headerVints: [maxStreams],
+      payload: undefined
+    })
   }
 }

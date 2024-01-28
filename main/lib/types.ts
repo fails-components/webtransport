@@ -1,7 +1,8 @@
 import type {
   WebTransportSession,
   WebTransportHash,
-  WebTransportOptions
+  WebTransportOptions,
+  WebTransportSendGroup
 } from './dom'
 import type { IncomingHttpHeaders, Http2Stream } from 'http2'
 import { ParserBase } from './http2/parserbase'
@@ -15,8 +16,8 @@ export interface NativeHttpWTSession {
   jsobj: WebTransportSessionEventHandler
   sendInitialParameters?: () => void
   writeDatagram: (chunk: Uint8Array) => void
-  orderUnidiStream: () => void
-  orderBidiStream: () => void
+  orderUnidiStream: (opts:{sendGroup:  WebTransportSendGroup|null, sendOrder: number, waitUntilAvailable: boolean}) => boolean
+  orderBidiStream: (opts:{sendGroup:  WebTransportSendGroup|null, sendOrder: number, waitUntilAvailable: boolean})  => boolean
   orderSessionStats: () => void
   orderDatagramStats: () => void
   notifySessionDraining: () => void
@@ -47,12 +48,18 @@ export interface NativeServerOptions {
   certhttp2?: string // if http2 has a different cert
   privKey: string
   privKeyhttp2?: string // if http2 has a different cert
+  initialBidirectionalSendStreams?: number
+  initialBidirectionalReceiveStreams?: number
+  initialUnidirectionalSendStreams?: number
+  initialUnidirectionalReceiveStreams?: number
   initialStreamFlowControlWindow?: number
   streamShouldAutoTuneReceiveWindow?: boolean
   streamFlowControlWindowSizeLimit?: number
   initialSessionFlowControlWindow?: number
   sessionShouldAutoTuneReceiveWindow?: boolean
   sessionFlowControlWindowSizeLimit?: number
+  initialBidirectionalStreams?: number
+  initialUnidirectionalStreams?: number
 }
 
 export interface NativeClientOptions {
@@ -62,6 +69,10 @@ export interface NativeClientOptions {
   localPort: number
   allowPooling: boolean
   forceIpv6: boolean
+  initialBidirectionalSendStreams?: number
+  initialBidirectionalReceiveStreams?: number
+  initialUnidirectionalSendStreams?: number
+  initialUnidirectionalReceiveStreams?: number
   initialStreamFlowControlWindow?: number
   streamShouldAutoTuneReceiveWindow?: boolean
   streamFlowControlWindowSizeLimit?: number
@@ -76,6 +87,11 @@ export interface FlowControlable {
   connected: () => boolean
   closeConnection: (arg: { code: number; reason: string }) => void
   smoothedRtt: () => number
+}
+
+export interface StreamIdClient {
+  canSendMaxStreams: () => boolean
+  sendMaxStreams: (maxStreams: bigint, unidirectional: boolean) => void
 }
 
 export interface ReadBuffer {
@@ -330,6 +346,6 @@ export interface ParserWebsocketInit extends ParserInit {
 }
 
 export interface ReadDataInt {
-  data: Uint8Array
+  data: Uint8Array|undefined
   fin: boolean
 }

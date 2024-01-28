@@ -428,7 +428,6 @@ export async function generateWebTransportCertificate(attrs, options) {
     cert.signature = await cert.signature
 
     const pemcert = pki.certificateToPem(cert)
-    console.log('pemcer', pemcert)
     const x509cert = new X509Certificate(pemcert)
 
     const certhash = Buffer.from(
@@ -448,8 +447,6 @@ export async function generateWebTransportCertificate(attrs, options) {
       hash: certhash,
       fingerprint: x509cert.fingerprint256
     }
-    console.log('pem', pem)
-    console.log('pid', process.pid)
 
     return pem
   } catch (error) {
