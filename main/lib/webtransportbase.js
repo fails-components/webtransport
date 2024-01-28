@@ -4,6 +4,8 @@
  * @typedef {import('./dom.js').WebTransportCloseInfo} WebTransportCloseInfo
  * @typedef {import('./dom.js').WebTransportBidirectionalStream} WebTransportBidirectionalStream
  * @typedef {import('./dom.js').WebTransportReceiveStream} WebTransportReceiveStream
+ * @typedef {import('./dom.js').WebTransportSendStream} WebTransportSendStream
+ * @typedef {import('./dom.js').WebTransportSendStreamOptions} WebTransportSendStreamOptions
  * @typedef {import('./session.js').HttpWTSession} HttpWTSession
  * @typedef { import('./session.js').HttpClient} HttpClient
  */
@@ -119,7 +121,11 @@ export class WebTransportBase {
     return session.close(closeinfo)
   }
 
-  createBidirectionalStream() {
+  /**
+   * @param {WebTransportSendStreamOptions} [opts]
+   * @returns {Promise<WebTransportBidirectionalStream>}
+   */
+  createBidirectionalStream(opts) {
     const session = this.sessionint
 
     if (!session) {
@@ -127,10 +133,14 @@ export class WebTransportBase {
       throw new Error('Http3WTSession was undefined')
     }
 
-    return session.createBidirectionalStream()
+    return session.createBidirectionalStream(opts)
   }
 
-  createUnidirectionalStream() {
+  /**
+   * @param {WebTransportSendStreamOptions} [opts]
+   * @returns {Promise<WebTransportSendStream>}
+   */
+  createUnidirectionalStream(opts) {
     const session = this.sessionint
 
     if (!session) {
@@ -138,6 +148,6 @@ export class WebTransportBase {
       throw new Error('Http3WTSession was undefined')
     }
 
-    return session.createUnidirectionalStream()
+    return session.createUnidirectionalStream(opts)
   }
 }

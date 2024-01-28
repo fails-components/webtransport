@@ -28,6 +28,10 @@ export class Http2WebTransportServer {
     this.initialSessionFlowControlWindow =
       args?.initialSessionFlowControlWindow || 16 * 1024 // 16 KB
 
+    this.initialBidirectionalStreams = args?.initialBidirectionalStreams || 100
+    this.initialUnidirectionalStreams =
+      args?.initialUnidirectionalStreams || 100
+
     this.streamShouldAutoTuneReceiveWindow =
       args.streamShouldAutoTuneReceiveWindow || false
     this.streamFlowControlWindowSizeLimit =
@@ -45,6 +49,8 @@ export class Http2WebTransportServer {
     // @ts-ignore
     this.jsobj = undefined // the transport will set this
 
+    this.canHandleSettings = false // TODO replace with version check, or other check once my patch lands in node
+
     // @ts-ignore
     this.serverInt = createSecureServer({
       key,
@@ -57,8 +63,8 @@ export class Http2WebTransportServer {
           0x2b61: this.initialSessionFlowControlWindow, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_DATA
           0x2b62: this.initialStreamFlowControlWindow, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAM_DATA_UNI
           0x2b63: this.initialStreamFlowControlWindow, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAM_DATA_BIDI
-          0x2b64: 0xffffff, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAMS_UNI
-          0x2b65: 0xffffff // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAMS_BIDI
+          0x2b64: this.initialUnidirectionalStreams, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAMS_UNI
+          0x2b65: this.initialBidirectionalStreams // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAMS_BIDI
         }
       }
     })
@@ -158,6 +164,12 @@ export class Http2WebTransportServer {
                     if (head.byteLength > 0) parse.parseData(head)
                     return parse
                   },
+                  initialBidirectionalSendStreams: 0,
+                  initialBidirectionalReceiveStreams:
+                    this.initialBidirectionalStreams,
+                  initialUnidirectionalSendStreams: 0,
+                  initialUnidirectionalReceiveStreams:
+                    this.initialUnidirectionalStreams,
                   sendWindowOffset: 0,
                   receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
                   shouldAutoTuneReceiveWindow:
@@ -268,6 +280,16 @@ export class Http2WebTransportServer {
                 }))
               }
             },
+            initialBidirectionalSendStreams: websocketProt // TODO, once supported by node, use initial settings
+              ? 0
+              : this.initialBidirectionalStreams,
+            initialBidirectionalReceiveStreams:
+              this.initialBidirectionalStreams,
+            initialUnidirectionalSendStreams: websocketProt
+              ? 0
+              : this.initialUnidirectionalStreams, // TODO, once supported by node, use initial settings
+            initialUnidirectionalReceiveStreams:
+              this.initialUnidirectionalStreams,
             sendWindowOffset: !websocketProt
               ? this.sessionFlowControlWindowSizeLimit
               : 0, // TODO, once supported by node, use initial settings
@@ -432,6 +454,12 @@ export class Http2WebTransportServer {
                   if (head && head.byteLength > 0) parse.parseData(head)
                   return parse
                 },
+                initialBidirectionalSendStreams: 0,
+                initialBidirectionalReceiveStreams:
+                  this.initialBidirectionalStreams,
+                initialUnidirectionalSendStreams: 0,
+                initialUnidirectionalReceiveStreams:
+                  this.initialUnidirectionalStreams,
                 sendWindowOffset: 0,
                 receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
                 shouldAutoTuneReceiveWindow:
@@ -484,6 +512,14 @@ export class Http2WebTransportServer {
                 }))
               }
             },
+            initialBidirectionalSendStreams:
+              protocol !== 'websocket' ? this.initialBidirectionalStreams : 0, // TODO, once supported by node, use initial settings
+            initialBidirectionalReceiveStreams:
+              this.initialBidirectionalStreams,
+            initialUnidirectionalSendStreams:
+              protocol !== 'websocket' ? this.initialUnidirectionalStreams : 0, // TODO, once supported by node, use initial settings
+            initialUnidirectionalReceiveStreams:
+              this.initialUnidirectionalStreams,
             sendWindowOffset:
               protocol !== 'websocket'
                 ? this.sessionFlowControlWindowSizeLimit

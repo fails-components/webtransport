@@ -1,4 +1,8 @@
 import { Http2WebTransportStream } from './stream.js'
+import { logger } from '../utils.js'
+
+const pid = typeof process !== 'undefined' ? process.pid : 0
+const log = logger(`webtransport:parserbase(${pid})`)
 
 /**
  * @param{Number|bigint} int
@@ -49,6 +53,7 @@ export class ParserBase {
     this.streamShouldAutoTuneReceiveWindow = streamShouldAutoTuneReceiveWindow
     this.streamReceiveWindowSizeLimit = streamReceiveWindowSizeLimit
 
+    /** @type {Map<bigint,Http2WebTransportStream>} */
     this.wtstreams = new Map()
   }
 
@@ -74,22 +79,44 @@ export class ParserBase {
   sendClose({ code, reason }) {}
 
   /**
-   * @param {Number} streamid
+   * @param {bigint} streamid
    */
   newStream(streamid) {
+    const incoming = this.isclient ? !(streamid & 0x1n) : !!(streamid & 0x1n)
+    const streamIdManager =
+      streamid & 0x2n
+        ? this.session.streamIdMngrUni
+        : this.session.streamIdMngrBi
+
+    if (incoming) {
+      // only check incoming streams
+      const res = streamIdManager.maybeIncreaseLargestPeerStreamId(streamid)
+      if (res.error) {
+        // ok someone overstayed its welcome
+        this.session.closeConnection({
+          code: 20, // QUIC_STREAM_STREAM_CREATION_ERROR , // probably the right one...
+          reason: res.error
+        })
+
+        return undefined
+      }
+    }
     const stream = new Http2WebTransportStream({
       streamid,
+      unidirectional: !!(streamid & 0x2n),
+      incoming,
       capsuleParser: this,
       sendWindowOffset: this.initialStreamSendWindowOffset,
       receiveWindowOffset: this.initialStreamReceiveWindowOffset,
       shouldAutoTuneReceiveWindow: this.streamShouldAutoTuneReceiveWindow,
       receiveWindowSizeLimit: this.streamReceiveWindowSizeLimit,
-      sessionFlowController: this.session.flowController
+      sessionFlowController: this.session.flowController,
+      streamIdManager
     })
     this.wtstreams.set(streamid, stream)
     this.session.jsobj.onStream({
-      bidirectional: !(streamid & 0x2),
-      incoming: this.isclient ? !(streamid & 0x1) : !!(streamid & 0x1),
+      bidirectional: !(streamid & 0x2n),
+      incoming,
       stream
     })
     return stream
@@ -110,11 +137,11 @@ export class ParserBase {
   }
 
   /**
-   * @param {bigint|undefined} streamid
-   * @param {bigint|undefined} offset
+   * @param {bigint} streamid
+   * @param {bigint} offset
    */
   onMaxStreamData(streamid, offset) {
-    const object = this.wtstreams.get(Number(streamid))
+    const object = this.wtstreams.get(streamid)
     if (object && offset) {
       if (object.flowController.updateSendWindowOffset(offset))
         object.drainWrites()
@@ -122,19 +149,67 @@ export class ParserBase {
   }
 
   /**
-   * @param {bigint|undefined} val
+   * @param {bigint|undefined} maxOpenStreams
    */
-  onDataBlocked(val) {
-    this.session.flowController.reportBlocked(val)
+  onMaxStreamUniDi(maxOpenStreams) {
+    if (typeof maxOpenStreams === 'undefined') return
+    this.session.streamIdMngrUni.maybeAllowNewOutgoingStreams(maxOpenStreams)
+    this.session.trySendingUnidirectionalStreams()
   }
 
   /**
-   * @param {bigint|undefined} streamid
-   * @param {bigint|undefined} offset
+   * @param {bigint|undefined} maxOpenStreams
+   */
+  onMaxStreamBiDi(maxOpenStreams) {
+    if (typeof maxOpenStreams === 'undefined') return
+    this.session.streamIdMngrBi.maybeAllowNewOutgoingStreams(maxOpenStreams)
+    this.session.trySendingBidirectionalStreams()
+  }
+
+  /**
+   * @param {bigint|undefined} val
+   */
+  onDataBlocked(val) {
+    log('Session received blocked frame ' + val)
+    // this.session.flowController.reportBlocked(val)
+  }
+
+  /**
+   * @param {bigint} streamid
+   * @param {bigint} offset
    */
   onStreamDataBlocked(streamid, offset) {
-    const object = this.wtstreams.get(Number(streamid))
-    if (object && offset) object.flowController.reportBlocked(offset)
+    log('Stream ' + streamid + ' received blocked frame ' + offset)
+    // const object = this.wtstreams.get(streamid)
+    // if (object && offset) object.flowController.reportBlocked(offset)
+  }
+
+  /**
+   * @param {bigint|undefined} maxstreams
+   */
+  onStreamsBlockedBidi(maxstreams) {
+    if (typeof maxstreams === 'undefined') return
+    const ret = this.session.streamIdMngrBi.onStreamsBlockedFrame(maxstreams)
+    if (ret.error) {
+      this.session.closeConnection({
+        code: 105, // QUIC_STREAMS_BLOCKED_DATA , // probably the right one...
+        reason: ret.error
+      })
+    }
+  }
+
+  /**
+   * @param {bigint|undefined} maxstreams
+   */
+  onStreamsBlockedUnidi(maxstreams) {
+    if (typeof maxstreams === 'undefined') return
+    const ret = this.session.streamIdMngrUni.onStreamsBlockedFrame(maxstreams)
+    if (ret.error) {
+      this.session.closeConnection({
+        code: 105, // QUIC_STREAMS_BLOCKED_DATA , // probably the right one...
+        reason: ret.error
+      })
+    }
   }
 
   /**

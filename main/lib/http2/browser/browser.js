@@ -17,6 +17,11 @@ export class Http2WebTransportBrowser {
     this.initialSessionFlowControlWindow =
       args?.initialSessionFlowControlWindow || 16 * 1024 // 16 KB
 
+    this.initialBidirectionalStreams =
+      args?.initialBidirectionalSendStreams || 100
+    this.initialUnidirectionalStreams =
+      args?.initialUnidirectionalSendStreams || 100
+
     this.streamShouldAutoTuneReceiveWindow =
       args.streamShouldAutoTuneReceiveWindow || false
     this.streamFlowControlWindowSizeLimit =
@@ -203,7 +208,11 @@ export class Http2WebTransportBrowser {
         sendWindowOffset: 0,
         receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
         shouldAutoTuneReceiveWindow: this.sessionShouldAutoTuneReceiveWindow,
-        receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
+        receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit,
+        initialBidirectionalSendStreams: this.initialBidirectionalStreams, // TODO, once supported by node, use initial settings
+        initialBidirectionalReceiveStreams: this.initialBidirectionalStreams,
+        initialUnidirectionalSendStreams: this.initialUnidirectionalStreams, // TODO, once supported by node, use initial settings
+        initialUnidirectionalReceiveStreams: this.initialUnidirectionalStreams
       }),
       reliable: true
     }

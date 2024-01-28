@@ -12,7 +12,8 @@ const log = logger(`webtransport:http2webtransportstream(${pid})`)
  * @typedef {import('../types').StreamWriteEvent} StreamWriteEvent
  * @typedef {import('../types').StreamNetworkFinishEvent} StreamNetworkFinishEvent
  *
- *  @typedef {import('../types').ReadDataInt} ReadDataInt
+ * @typedef {import('../types').ReadDataInt} ReadDataInt
+ * @typedef {import('./streamidmanager.js').StreamIdManager} StreamIdManager
  */
 
 let processnextTick = (/** @type {{ (): void;  }} */ func) =>
@@ -22,21 +23,28 @@ if (typeof process !== 'undefined') processnextTick = process.nextTick
 
 export class Http2WebTransportStream {
   /**
-   * @param {{streamid: Number, capsuleParser: ParserBase
+   * @param {{streamid: bigint,
+   * unidirectional: boolean,
+   * incoming: boolean,
+   * capsuleParser: ParserBase
    * sendWindowOffset: Number,
    * receiveWindowOffset: Number,
    * shouldAutoTuneReceiveWindow: boolean
    * receiveWindowSizeLimit: Number,
-   * sessionFlowController: FlowController}} args
+   * sessionFlowController: FlowController,
+   * streamIdManager: StreamIdManager}} args
    * */
   constructor({
     streamid,
+    unidirectional,
+    incoming,
     capsuleParser,
     sendWindowOffset,
     receiveWindowOffset,
     shouldAutoTuneReceiveWindow,
     receiveWindowSizeLimit,
-    sessionFlowController
+    sessionFlowController,
+    streamIdManager
   }) {
     /** @type {import('../stream').HttpWTStream} */
     // @ts-ignore
@@ -58,11 +66,22 @@ export class Http2WebTransportStream {
       sessionFlowController
     })
     this.sessionFlowController = sessionFlowController
+    this.streamIdManager = streamIdManager
 
     this.final = false
     this.stopReading_ = true
     this.drainReads_ = true
     this.recvBytes = 0
+
+    this.outgoingClosed_ = false
+    this.incomingClosed_ = false
+    if (unidirectional) {
+      if (incoming) {
+        this.outgoingClosed_ = true
+      } else {
+        this.incomingClosed_ = true
+      }
+    }
   }
 
   sendInitialParameters() {
@@ -71,12 +90,12 @@ export class Http2WebTransportStream {
 
   /**
    * @param {Object} obj
-   * @param {Uint8Array} obj.data
+   * @param {Uint8Array|undefined} obj.data
    * @param {Boolean} obj.fin
    */
   recvData({ data, fin }) {
     this.incomdata.push({ data, fin })
-    if (data?.byteLength > 0) {
+    if (data && data?.byteLength > 0) {
       const checkstream = this.flowController.updateHighestReceivedOffset(
         data?.byteLength
       )
@@ -115,13 +134,13 @@ export class Http2WebTransportStream {
     ) {
       if (!buffer) {
         const bytes = this.incomdata.reduce(
-          (prevVal, val) => prevVal + val.data?.byteLength,
+          (prevVal, val) => prevVal + ((val && val.data?.byteLength) || 0),
           0
         )
         if (bytes > 0) {
           buffer = this.jsobj.getReadBuffer({
             byteSize: this.incomdata.reduce(
-              (prevVal, val) => prevVal + val.data?.byteLength,
+              (prevVal, val) => prevVal + ((val && val.data?.byteLength) || 0),
               0
             )
           })
@@ -195,9 +214,39 @@ export class Http2WebTransportStream {
   }
 
   /**
+   * @param {'resetStream'|'stopSending'} type
+   */
+  onStreamSignal(type) {
+    switch (type) {
+      case 'resetStream':
+        this.closeIncoming()
+        break
+      case 'stopSending':
+        this.closeOutgoing()
+        break
+    }
+  }
+
+  closeIncoming() {
+    this.incomingClosed_ = true
+    if (this.outgoingClosed_) this.onClose()
+  }
+
+  closeOutgoing() {
+    this.outgoingClosed_ = true
+    if (this.incomingClosed_) this.onClose()
+  }
+
+  onClose() {
+    // ok, inform our session id manager
+    this.streamIdManager.onStreamClosed(this.streamid)
+  }
+
+  /**
    * @param {Number} code
    */
   stopSending(code) {
+    this.closeIncoming()
     this.capsuleParser.writeCapsule({
       type: ParserBase.WT_STOP_SENDING,
       headerVints: [this.streamid, code],
@@ -210,10 +259,15 @@ export class Http2WebTransportStream {
     )
   }
 
+  onFin() {
+    this.closeIncoming()
+  }
+
   /**
    * @param {Number} code
    */
   resetStream(code) {
+    this.closeOutgoing()
     this.capsuleParser.writeCapsule({
       type: ParserBase.WT_RESET_STREAM,
       headerVints: [this.streamid, code],
@@ -238,8 +292,8 @@ export class Http2WebTransportStream {
     while (
       this.outgochunks.length > 0 &&
       (!this.capsuleParser.blocked || this.final) &&
-      this.flowController.sendWindowSize() > 0 &&
-      this.sessionFlowController.sendWindowSize() > 0
+      this.flowController.sendWindowSize() > 0n &&
+      this.sessionFlowController.sendWindowSize() > 0n
     ) {
       const cur = this.outgochunks.shift()
       if (cur) {
@@ -308,6 +362,7 @@ export class Http2WebTransportStream {
    * @param {bigint} windowOffset
    */
   sendWindowUpdate(windowOffset) {
+    log('sendwindow offset stream:', windowOffset)
     this.capsuleParser.writeCapsule({
       type: ParserBase.WT_MAX_STREAM_DATA,
       headerVints: [this.streamid, windowOffset],

@@ -10,6 +10,8 @@ const log = logger(`webtransport:browser()`)
  * @typedef {import('./dom').WebTransport} WebTransport
  * @typedef {import('./dom').WebTransportCloseInfo} WebTransportCloseInfo
  * @typedef {import('./dom').WebTransportBidirectionalStream} WebTransportBidirectionalStream
+ * @typedef {import('./dom').WebTransportSendStream} WebTransportSendStream
+ * @typedef {import('./dom').WebTransportSendStreamOptions} WebTransportSendStreamOptions
  * @typedef {import('./dom').WebTransportReceiveStream} WebTransportReceiveStream
  * @typedef {import('./error').WebTransportError} WebTransportError
  */
@@ -307,13 +309,21 @@ export class WebTransportPolyfill {
     this.curtransport.close(closeinfo)
   }
 
-  async createBidirectionalStream() {
+  /**
+   * @param {WebTransportSendStreamOptions} [opts]
+   * @returns {Promise<WebTransportBidirectionalStream>}
+   */
+  async createBidirectionalStream(opts) {
     await this.ready
-    return await this.curtransport.createBidirectionalStream()
+    return await this.curtransport.createBidirectionalStream(opts)
   }
 
-  async createUnidirectionalStream() {
+  /**
+   * @param {WebTransportSendStreamOptions} [opts]
+   * @returns {Promise<WebTransportSendStream>}
+   */
+  async createUnidirectionalStream(opts) {
     await this.ready
-    return await this.curtransport.createUnidirectionalStream()
+    return await this.curtransport.createUnidirectionalStream(opts)
   }
 }

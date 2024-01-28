@@ -88,6 +88,16 @@ export interface WebTransportOptions {
   congestionControl?: WebTransportCongestionControl
 }
 
+export interface WebTransportSendGroup {
+   getStats: () =>  Promise<WebTransportSendStreamStats>
+}
+
+export interface WebTransportSendStreamOptions {
+  sendGroup:  WebTransportSendGroup|null
+  sendOrder?: number
+  waitUntilAvailable?: boolean
+}
+
 export interface WebTransportSession {
   getStats: () => Promise<WebTransportStats>
   readonly ready: Promise<void>
@@ -98,11 +108,11 @@ export interface WebTransportSession {
   close: (closeInfo?: WebTransportCloseInfo) => void
   readonly datagrams: WebTransportDatagramDuplexStream
 
-  createBidirectionalStream: () => Promise<WebTransportBidirectionalStream>
+  createBidirectionalStream: (opts?: WebTransportSendStreamOptions) => Promise<WebTransportBidirectionalStream>
   /* a ReadableStream of WebTransportBidirectionalStream objects */
   readonly incomingBidirectionalStreams: ReadableStream<WebTransportBidirectionalStream>
 
-  createUnidirectionalStream: () => Promise<WebTransportSendStream>
+  createUnidirectionalStream: (opts?: WebTransportSendStreamOptions) => Promise<WebTransportSendStream>
   /* a ReadableStream of WebTransportReceiveStream objects */
   readonly incomingUnidirectionalStreams: ReadableStream<WebTransportReceiveStream>
 }

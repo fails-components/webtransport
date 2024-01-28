@@ -23,6 +23,11 @@ export class Http2WebTransportClient {
     this.initialSessionFlowControlWindow =
       args?.initialSessionFlowControlWindow || 16 * 1024 // 16 KB
 
+    this.initialBidirectionalStreams =
+      args?.initialBidirectionalSendStreams || 100
+    this.initialUnidirectionalStreams =
+      args?.initialUnidirectionalSendStreams || 100
+
     this.streamShouldAutoTuneReceiveWindow =
       args.streamShouldAutoTuneReceiveWindow || false
     this.streamFlowControlWindowSizeLimit =
@@ -84,8 +89,8 @@ export class Http2WebTransportClient {
           0x2b61: this.initialSessionFlowControlWindow, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_DATA
           0x2b62: this.initialStreamFlowControlWindow, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAM_DATA_UNI
           0x2b63: this.initialStreamFlowControlWindow, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAM_DATA_BIDI
-          0x2b64: 0xffffff, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAMS_UNI
-          0x2b65: 0xffffff // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAMS_BIDI
+          0x2b64: this.initialUnidirectionalStreams, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAMS_UNI
+          0x2b65: this.initialBidirectionalStreams // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAMS_BIDI
         }
       },
       localPort: this.localPort,
@@ -223,6 +228,10 @@ export class Http2WebTransportClient {
               this.streamShouldAutoTuneReceiveWindow,
             streamReceiveWindowSizeLimit: this.streamFlowControlWindowSizeLimit
           }),
+        initialBidirectionalSendStreams: this.initialBidirectionalStreams, // TODO, once supported by node, use initial settings
+        initialBidirectionalReceiveStreams: this.initialBidirectionalStreams,
+        initialUnidirectionalSendStreams: this.initialUnidirectionalStreams, // TODO, once supported by node, use initial settings
+        initialUnidirectionalReceiveStreams: this.initialUnidirectionalStreams,
         sendWindowOffset: this.sessionFlowControlWindowSizeLimit,
         receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
         shouldAutoTuneReceiveWindow: this.sessionShouldAutoTuneReceiveWindow,

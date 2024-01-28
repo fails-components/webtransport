@@ -273,7 +273,7 @@ export class FlowController {
 
   maybeSendBlocked() {
     if (
-      this.sendWindowSize() !== 0 ||
+      this.sendWindowSize() !== 0n ||
       this.lastBlockedSendWindowOffset >= this.sendWindowOffset
     ) {
       return
@@ -342,7 +342,7 @@ export class FlowController {
 
   sendWindowSize() {
     if (this.bytesSent > this.sendWindowOffset) {
-      return 0
+      return 0n
     }
     return this.sendWindowOffset - this.bytesSent
   }

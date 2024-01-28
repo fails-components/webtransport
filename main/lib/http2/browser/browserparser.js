@@ -116,37 +116,48 @@ export class BrowserParser extends ParserBase {
       case ParserBase.WT_STOP_SENDING:
         {
           const streamid = readVarInt(bufferstate)
-          const stream = this.wtstreams.get(streamid)
-          const code = readVarInt(bufferstate)
-          if (stream && typeof code !== 'undefined')
-            stream.jsobj.onStreamRecvSignal({
-              code,
-              nettask:
+          if (typeof streamid !== 'undefined') {
+            const stream = this.wtstreams.get(streamid)
+            const code = readVarInt(bufferstate)
+            if (stream && typeof code !== 'undefined') {
+              stream.onStreamSignal(
                 type === ParserBase.WT_RESET_STREAM
                   ? 'resetStream'
                   : 'stopSending'
-            })
+              )
+              stream.jsobj.onStreamRecvSignal({
+                code: Number(code),
+                nettask:
+                  type === ParserBase.WT_RESET_STREAM
+                    ? 'resetStream'
+                    : 'stopSending'
+              })
+            }
+          }
         }
         break
       case ParserBase.WT_STREAM_WOFIN:
       case ParserBase.WT_STREAM_WFIN:
         {
-          const streamid = Number(readVarInt(bufferstate))
+          const streamid = readVarInt(bufferstate)
 
           if (typeof streamid !== 'undefined') {
             let object = this.wtstreams.get(streamid)
             if (!object) {
               object = this.newStream(streamid)
+              if (!object) return // stream broken
             }
             // TODO submit data
             if (offsetend - bufferstate.offset >= 0) {
+              const fin = type === ParserBase.WT_STREAM_WFIN
+              if (fin) object.onFin()
               object.recvData({
                 data: new Uint8Array(
                   bufferstate.buffer.buffer,
                   bufferstate.buffer.byteOffset + bufferstate.offset,
                   offsetend - bufferstate.offset
                 ),
-                fin: type === ParserBase.WT_STREAM_WFIN
+                fin
               })
             }
           }
@@ -156,46 +167,35 @@ export class BrowserParser extends ParserBase {
         this.onMaxData(readVarInt(bufferstate))
         break
       case ParserBase.WT_MAX_STREAM_DATA:
-        this.onMaxStreamData(readVarInt(bufferstate), readVarInt(bufferstate))
+        {
+          const streamid = readVarInt(bufferstate)
+          const offset = readVarInt(bufferstate)
+          if (typeof streamid !== 'undefined' && typeof offset !== 'undefined')
+            this.onMaxStreamData(streamid, offset)
+        }
         break
       case ParserBase.WT_MAX_STREAMS_BIDI:
-        // this.recvSession({ maxstreams: readVarInt(bufferstate), type })
+        this.onMaxStreamBiDi(readVarInt(bufferstate))
         break
       case ParserBase.WT_MAX_STREAMS_UNIDI:
-        // this.recvSession({ maxstreams: readVarInt(bufferstate), type })
+        this.onMaxStreamUniDi(readVarInt(bufferstate))
         break
       case ParserBase.WT_DATA_BLOCKED:
         this.onDataBlocked(readVarInt(bufferstate))
         break
       case ParserBase.WT_STREAM_DATA_BLOCKED:
-        this.onStreamDataBlocked(
-          readVarInt(bufferstate),
-          readVarInt(bufferstate)
-        )
+        {
+          const streamid = readVarInt(bufferstate)
+          const offset = readVarInt(bufferstate)
+          if (typeof streamid !== 'undefined' && typeof offset !== 'undefined')
+            this.onStreamDataBlocked(streamid, offset)
+        }
         break
       case ParserBase.WT_STREAMS_BLOCKED_UNIDI:
-        /* {
-                 const streamid = readVarInt(bufferstate)
-                  const object = this.wtstreams.get(streamid)
-                  if (object)
-                    this.recvStream({
-                      maxstreams: readVarInt(bufferstate),
-                      type,
-                      object
-                    })
-                } */
+        this.onStreamsBlockedUnidi(readVarInt(bufferstate))
         break
       case ParserBase.WT_STREAMS_BLOCKED_BIDI:
-        /* {
-                  const streamid = readVarInt(bufferstate)
-                  const object = this.wtstreams.get(streamid)
-                  if (object)
-                    this.recvStream({
-                      maxstreams: readVarInt(bufferstate),
-                      type,
-                      streamid
-                    })
-                } */
+        this.onStreamsBlockedBidi(readVarInt(bufferstate))
         break
       case ParserBase.DATAGRAM:
         this.session.jsobj.onDatagramReceived({

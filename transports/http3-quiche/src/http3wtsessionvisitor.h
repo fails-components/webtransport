@@ -82,17 +82,29 @@ namespace quic
             Http3WTSession *session_;
         };
 
-        void
-        tryOpenBidiStream()
+        bool
+        tryOpenBidiStream(bool waitUntilAvailable)
         {
-            ordBidiStreams++;
-            TrySendingBidirectionalStreams();
+            if (session_->CanOpenNextOutgoingBidirectionalStream() 
+                || waitUntilAvailable) {
+                ordBidiStreams++;
+                TrySendingBidirectionalStreams();
+                return true;
+            } else {
+                return false;
+            }
         }
 
-        void tryOpenUnidiStream()
+        bool tryOpenUnidiStream(bool waitUntilAvailable)
         {
-            ordUnidiStreams++;
-            TrySendingUnidirectionalStreams();
+            if (session_->CanOpenNextOutgoingUnidirectionalStream() 
+                || waitUntilAvailable) {
+                ordUnidiStreams++;
+                TrySendingUnidirectionalStreams();
+                return true;
+            } else {
+                return false;
+            }
         }
 
         void TrySendingBidirectionalStreams();
@@ -152,14 +164,54 @@ namespace quic
             return wtsession_.get();
         }
 
-        void orderBidiStream(const Napi::CallbackInfo &info)
+        Napi::Value orderBidiStream(const Napi::CallbackInfo &info)
         {
-            wtsession_->tryOpenBidiStream();
+            bool waitUntilAvailable = false;
+            if (!info[0].IsUndefined())
+            {
+                Napi::Object lobj = info[0].ToObject();
+                if (!lobj.IsEmpty())
+                {
+                    if (lobj.Has("waitUntilAvailable") && !(lobj).Get("waitUntilAvailable").IsEmpty())
+                    {
+                        Napi::Value waitUntilAvailableValue = (lobj).Get("waitUntilAvailable");
+                        waitUntilAvailable = waitUntilAvailableValue.As<Napi::Boolean>().Value();
+                    }
+                }
+            }
+            if (wtsession_->tryOpenBidiStream(waitUntilAvailable))
+            {
+                return Napi::Value::From(Env(), true);
+            }
+            else
+            {
+                return Napi::Value::From(Env(), false);
+            }
         }
 
-        void orderUnidiStream(const Napi::CallbackInfo &info)
+        Napi::Value orderUnidiStream(const Napi::CallbackInfo &info)
         {
-            wtsession_->tryOpenUnidiStream();
+            bool waitUntilAvailable = false;
+            if (!info[0].IsUndefined())
+            {
+                Napi::Object lobj = info[0].ToObject();
+                if (!lobj.IsEmpty())
+                {
+                    if (lobj.Has("waitUntilAvailable") && !(lobj).Get("waitUntilAvailable").IsEmpty())
+                    {
+                        Napi::Value waitUntilAvailableValue = (lobj).Get("waitUntilAvailable");
+                        waitUntilAvailable = waitUntilAvailableValue.As<Napi::Boolean>().Value();
+                    }
+                }
+            }
+            if (wtsession_->tryOpenUnidiStream(waitUntilAvailable))
+            {
+                return Napi::Value::From(Env(), true);
+            }
+            else
+            {
+                return Napi::Value::From(Env(), false);
+            }
         }
 
         void writeDatagram(const Napi::CallbackInfo &info)
