@@ -687,7 +687,6 @@ third_party/quiche/quiche/quic/core/quic_packets.cc
 third_party/quiche/quiche/quic/core/quic_packets.h
 third_party/quiche/quiche/quic/core/quic_path_validator.cc
 third_party/quiche/quiche/quic/core/quic_path_validator.h
-third_party/quiche/quiche/quic/core/quic_protocol_flags_list.h
 third_party/quiche/quiche/quic/core/quic_received_packet_manager.cc
 third_party/quiche/quiche/quic/core/quic_received_packet_manager.h
 third_party/quiche/quiche/quic/core/quic_sent_packet_manager.cc
