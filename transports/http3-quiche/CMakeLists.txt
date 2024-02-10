@@ -489,6 +489,8 @@ third_party/quiche/quiche/quic/core/frames/quic_path_response_frame.cc
 third_party/quiche/quiche/quic/core/frames/quic_path_response_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_ping_frame.cc
 third_party/quiche/quiche/quic/core/frames/quic_ping_frame.h
+third_party/quiche/quiche/quic/core/frames/quic_reset_stream_at_frame.cc
+third_party/quiche/quiche/quic/core/frames/quic_reset_stream_at_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_retire_connection_id_frame.cc
 third_party/quiche/quiche/quic/core/frames/quic_retire_connection_id_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_rst_stream_frame.cc
