@@ -23,6 +23,7 @@
  * @typedef {import('./types').HttpServerInit} HttpServerInit
  */
 
+// also edit index.types.js
 export {
   WebTransportPonyfill,
   WebTransportPolyfill

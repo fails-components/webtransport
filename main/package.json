@@ -12,7 +12,7 @@
     "node": ">=16.5"
   },
   "type": "module",
-  "types": "./dist/lib/index.d.ts",
+  "types": "./dist/lib/index.types.d.ts",
   "scripts": {
     "start": "node test/echoserver.js",
     "test": "npm run test:node && npm run test:node:http2 && npm run test:chromium && npm run test:chromium:http2:polyfill && npm run test:chromium:http2:ponyfill && npm run test:firefox:http2:polyfill && npm run test:firefox:http2:ponyfill && npm run test:webkit:http2:polyfill && npm run test:webkit:http2:ponyfill",

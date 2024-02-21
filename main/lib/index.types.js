@@ -23,6 +23,11 @@
  * @typedef {import('./types').HttpServerInit} HttpServerInit
  */
 
-// also edit index.types.js
+// both imports from the browser side and for nodes to generate a joint type file
 export { HttpServer, Http3Server, Http2Server } from './server.js'
 export { WebTransport } from './webtransport.node.js'
+
+export {
+  WebTransportPonyfill,
+  WebTransportPolyfill
+} from './webtransport.browser.js'
