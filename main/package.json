@@ -43,7 +43,7 @@
   "bugs": {
     "url": "https://github.com/fails-components/webtransport/issues"
   },
-  "homepage": "https://github.com/fails-components/webtransport/main/#readme",
+  "homepage": "https://github.com/fails-components/webtransport/tree/master/main#readme",
   "dependencies": {
     "@types/debug": "^4.1.7",
     "bindings": "^1.5.0",
