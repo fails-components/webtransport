@@ -83,34 +83,46 @@ namespace quic
     void Http3WTStream::doCanRead()
     {
         // if (pause_reading_) return ; // back pressure folks!
+        WebTransportStream::PeekResult pr;
+        pr = stream_->PeekNextReadableRegion();
+
+        if (pr.fin_next && pr.peeked_data.size() == 0) {
+            bool fin = stream_->SkipBytes(0);
+            if (fin) {
+                getJS()->signalFinOnly();
+                return;
+            }
+        }
 
         if (pause_reading_ && !drain_reads_)
         {
             can_read_pending_ = true;
             return; // back pressure folks!
         }
-        size_t readable = stream_->ReadableBytes();
         bool read = false;
-        while (readable > 0)
+        while (!pr.peeked_data.empty())
         {
             Http3WTStreamJS::StreamReadBuffer rbuf(js_);
-            rbuf.getBuffer(readable);
+            rbuf.getBuffer(stream_->ReadableBytes());
 
             size_t remainSize = rbuf.bufferSize();
             uint32_t writepos = 0;
 
-            while (readable > 0 && remainSize > 0) {
-                size_t len = remainSize;
-                WebTransportStream::ReadResult result =
-                    stream_->Read(absl::Span<char>(((char *)rbuf.bufferData()) + writepos, len));
+            while (!pr.peeked_data.empty() && remainSize > 0) {
+                size_t len = std::min(remainSize, pr.peeked_data.size());
+                if (len > 0) memcpy(((char *)rbuf.bufferData()) + writepos,pr.peeked_data.data(), len);
+                bool fin = stream_->SkipBytes(len);
                 QUIC_DVLOG(1) << "Attempted reading on WebTransport stream "
-                              << ", bytes read: " << result.bytes_read;
-                writepos += result.bytes_read;
-                remainSize -= result.bytes_read;
-                readable = stream_->ReadableBytes();
-                if (result.fin) rbuf.setFin();
+                              << ", bytes read: " << len;       
+                writepos += len;
+                remainSize -= len;
+                pr =  stream_->PeekNextReadableRegion();
+                if (fin) {
+                    rbuf.setFin();
+                    break;
+                }
             }
-            rbuf.commitBuffer(writepos, readable == 0);
+            rbuf.commitBuffer(writepos, pr.has_data());
         }
     }
 
@@ -142,8 +154,10 @@ namespace quic
         if (send_fin_)
         {
             bool success = stream_->SendFin();
-            if (success)
+            if (success) {
                 fin_was_sent_ = true;
+                getJS()->processStreamNetworkFinish(NetworkTask::streamFinal);
+            }
         }
     }
 
@@ -164,6 +178,17 @@ namespace quic
             getJS()->processStreamNetworkFinish(NetworkTask::resetStream);
         }
     }
+
+    
+    void  Http3WTStreamJS::signalFinOnly() {
+        Napi::HandleScope scope(Env());
+        Napi::Object retObj = Napi::Object::New(Env());
+        Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
+        retObj.Set("fin", true);
+        Napi::Value bufferVal = objVal.Get("commitReadBuffer").As<Napi::Function>().Call(objVal, {retObj});
+    }
+
+    
 
     void Http3WTStreamJS::processStreamNetworkFinish(NetworkTask task)
     {
