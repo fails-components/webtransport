@@ -116,4 +116,23 @@ describe('bidirectional streams', function () {
     expect(result).to.have.property('reason', '')
     expect(result).to.have.property('closeCode', 0)
   })
+
+  it('receives data from server and checks receiving stream fin', async () => {
+    // client context - waits for the server to open a bidi stream then pipes it back to them
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/bidirectional_server_fin_send`,
+      wtOptions
+    )
+    await client.ready
+
+    const bidiStream = await getReaderValue(client.incomingBidirectionalStreams)
+    const reader = bidiStream.readable.getReader()
+
+    while (true) {
+      const res = await reader.read()
+      if (res.done) {
+        break
+      }
+    }
+  })
 })
