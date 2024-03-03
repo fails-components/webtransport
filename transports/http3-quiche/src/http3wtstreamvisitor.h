@@ -317,6 +317,7 @@ namespace quic
         void processStreamWrite(Napi::ObjectReference *bufferhandle, bool success);
         void processStreamNetworkFinish(NetworkTask task);
         void processStreamRecvSignal(WebTransportStreamError error_code, NetworkTask task);
+        void signalFinOnly();
     };
 }
 
