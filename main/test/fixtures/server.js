@@ -110,6 +110,30 @@ export async function createServer() {
             }
           },
 
+          // echo server, initiated by local
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/bidirectional_server_fin_send')
+            )) {
+              try {
+                // adapted from issue of achingbrain
+                const stream = await session.createBidirectionalStream()
+
+                const writer = stream.writable.getWriter()
+
+                await writer.ready
+
+                writer.write(Uint8Array.from([0, 1, 2, 3])).catch((err) => {
+                  console.info('error writing to stream', err)
+                })
+
+                await writer.close()
+              } catch {
+                // in some tests the client closes the stream
+              }
+            }
+          },
+
           // echo datagrams, initiated by remote
           async () => {
             for await (const session of getReaderStream(
