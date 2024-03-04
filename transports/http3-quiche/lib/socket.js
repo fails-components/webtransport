@@ -85,6 +85,10 @@ export class Http3WebTransportSocket {
   }
 
   doProcessBufferedChlos() {
+    if (this.closed) {
+      return
+    }
+
     this.cobj.processBufferedChlos()
     this.chlosSched = false
   }
@@ -110,6 +114,10 @@ export class Http3WebTransportSocket {
   }
 
   packetSendCB() {
+    if (this.closed) {
+      return
+    }
+
     // @ts-ignore
     if (this.socketInt.getSendQueueCount() === 0 && this.blocked) {
       this.cobj.onCanWrite()
