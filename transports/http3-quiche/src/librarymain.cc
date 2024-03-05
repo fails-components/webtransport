@@ -38,7 +38,7 @@ namespace quic
       }
 
       quiche_cmd_line.push_back(std::string("-v"));
-      if (lobj.Has("quicheLogVerbose") && lobj.Get("quicheLogVerbose").IsFunction())
+      if (lobj.Has("quicheLogVerbose") && lobj.Get("quicheLogVerbose").IsNumber())
       {
         Napi::Value verboseValue = (lobj).Get("quicheLogVerbose");
         quiche_cmd_line.push_back(verboseValue.ToString().Utf8Value());
