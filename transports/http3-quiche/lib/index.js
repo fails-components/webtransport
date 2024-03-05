@@ -30,7 +30,7 @@ export const quicheInit = wtrouter.quicheInit
 let quicheInited = false
 
 /**
- * @param {{quicheLogVerbose?: Number, path?: string}} [args]
+ * @param {{quicheLogVerbose?: 1 | 2 | 3, path?: string}} [args]
  */
 export const checkQuicheInit = function (args) {
   if (!quicheInited) {

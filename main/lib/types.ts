@@ -269,7 +269,7 @@ export interface WebTransportSessionImpl extends WebTransportSession {
 export interface HttpWebTransportInit extends WebTransportOptions {
   host: string
   port: string | number
-  quicheLogVerbose?: number
+  quicheLogVerbose?: 1 | 2 | 3
   forceIpv6?: boolean
   localPort?: number
 }
