@@ -110,8 +110,12 @@ export class Http3WebTransportSocket {
   }
 
   packetSendCB() {
-    // @ts-ignore
-    if (this.socketInt.getSendQueueCount() === 0 && this.blocked) {
+    if (
+      !this.closed &&
+      // @ts-ignore
+      this.socketInt.getSendQueueCount() === 0 &&
+      this.blocked
+    ) {
       this.cobj.onCanWrite()
     }
   }
