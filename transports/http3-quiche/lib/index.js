@@ -5,6 +5,10 @@ import * as url from 'url'
 import { arch, platform } from 'node:process'
 import { logger } from './utils.js'
 
+/**
+ * @typedef {import('./types.js').QUICHE_LOG} QUICHE_LOG
+ */
+
 const log = logger(`webtransport:native(${process?.pid})`)
 
 const binplatform = platform + '_' + arch
@@ -30,7 +34,7 @@ export const quicheInit = wtrouter.quicheInit
 let quicheInited = false
 
 /**
- * @param {{quicheLogVerbose?: 1 | 2 | 3, path?: string}} [args]
+ * @param {{quicheLogVerbose?: QUICHE_LOG, path?: string}} [args]
  */
 export const checkQuicheInit = function (args) {
   if (!quicheInited) {
