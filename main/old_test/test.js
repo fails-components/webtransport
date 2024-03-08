@@ -20,6 +20,13 @@ if (process.argv.some((el) => el === 'http2')) {
 }
 
 async function run() {
+  if (
+    process.env.USE_HTTP2 !== 'true' &&
+    process.env.USE_PONYFILL !== 'true' &&
+    process.env.USE_POLYFILL !== 'true'
+  ) {
+    await quicheLoaded
+  }
   console.log('try connecting to server that does not exist')
   const badClient = new WebTransport('https://127.0.0.1:49823/echo', {
     serverCertificateHashes: [
@@ -89,14 +96,6 @@ async function run() {
   console.log('now startup client')
 
   const url = 'https://127.0.0.1:8080/echo'
-
-  if (
-    process.env.USE_HTTP2 !== 'true' &&
-    process.env.USE_PONYFILL !== 'true' &&
-    process.env.USE_POLYFILL !== 'true'
-  ) {
-    await quicheLoaded
-  }
 
   /** @type {import('../lib/dom').WebTransport | null} */
   let client = new WebTransport(url, {
