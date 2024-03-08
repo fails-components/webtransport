@@ -5,7 +5,12 @@
 // this file runs various tests
 
 import { generateWebTransportCertificate } from '../test/fixtures/certificate.js'
-import { Http3Server, Http2Server, WebTransport } from '../lib/index.node.js'
+import {
+  Http3Server,
+  Http2Server,
+  WebTransport,
+  quicheLoaded
+} from '../lib/index.node.js'
 import { echoTestsConnection, runEchoServer } from './testsuite.js'
 
 let http2 = false
@@ -84,6 +89,14 @@ async function run() {
   console.log('now startup client')
 
   const url = 'https://127.0.0.1:8080/echo'
+
+  if (
+    process.env.USE_HTTP2 !== 'true' &&
+    process.env.USE_PONYFILL !== 'true' &&
+    process.env.USE_POLYFILL !== 'true'
+  ) {
+    await quicheLoaded
+  }
 
   /** @type {import('../lib/dom').WebTransport | null} */
   let client = new WebTransport(url, {
