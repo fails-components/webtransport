@@ -8,6 +8,7 @@ import { writeStream } from './fixtures/write-stream.js'
 import { readCertHash } from './fixtures/read-cert-hash.js'
 import * as ui8 from 'uint8arrays'
 import { KNOWN_BYTES, KNOWN_BYTES_LENGTH } from './fixtures/known-bytes.js'
+import { quicheLoaded } from './fixtures/quiche.js'
 
 describe('unidirectional streams', function () {
   /** @type {import('../lib/dom').WebTransport | undefined} */
@@ -28,6 +29,17 @@ describe('unidirectional streams', function () {
   if (process.env.NO_CERT_HASHES === 'true')
     // @ts-ignore
     delete wtOptions.serverCertificateHashes
+
+  // @ts-ignore
+  beforeEach(async () => {
+    if (
+      process.env.USE_HTTP2 !== 'true' &&
+      process.env.USE_PONYFILL !== 'true' &&
+      process.env.USE_POLYFILL !== 'true'
+    ) {
+      await quicheLoaded
+    }
+  })
 
   // @ts-ignore
   afterEach(async () => {

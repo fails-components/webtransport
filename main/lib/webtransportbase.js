@@ -68,7 +68,7 @@ export class WebTransportBase {
    * @abstract
    */
   startUpConnection({ client, sessionint, ourl }) {
-    throw new Error('Implement createClient')
+    throw new Error('Implement startUpConnection')
   }
 
   get reliability() {
