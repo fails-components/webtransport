@@ -569,11 +569,6 @@ namespace quic
                 recheck = true;
         }
 
-        if (checkSession())
-        {
-            recheck = true;
-        }
-
         return recheck;
     }
 
@@ -828,6 +823,7 @@ namespace quic
         {
             client_->connectionrecheck_ = client_->handleConnecting();
         }
+        if (client_->needsToCheckForSession()) client_->checkSession();
     }
 
     void Http3ClientJS::onCanWrite(const Napi::CallbackInfo &info)
@@ -836,6 +832,7 @@ namespace quic
         {
             client_->connectionrecheck_ = client_->handleConnecting();
         }
+        if (client_->needsToCheckForSession()) client_->checkSession();
         client_->OnCanWrite();
     }
 

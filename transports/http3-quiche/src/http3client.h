@@ -349,6 +349,10 @@ namespace quic
 
         bool checkSession();
 
+        bool needsToCheckForSession() {
+            return finish_stream_open_.size() > 0 && session_->CanOpenNextOutgoingBidirectionalStream();
+        }
+
         // Read oldest received response and remove it from closed_stream_states_.
         // void ReadNextResponse();
 
