@@ -25,4 +25,4 @@
 
 // also edit index.types.js
 export { HttpServer, Http3Server, Http2Server } from './server.js'
-export { WebTransport } from './webtransport.node.js'
+export { WebTransport, quicheLoaded } from './webtransport.node.js'

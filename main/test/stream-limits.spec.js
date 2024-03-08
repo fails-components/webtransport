@@ -3,6 +3,7 @@
 import { readCertHash } from './fixtures/read-cert-hash.js'
 import WebTransport from './fixtures/webtransport.js'
 import { expect } from './fixtures/chai.js'
+import { quicheLoaded } from './fixtures/quiche.js'
 
 /**
  * @template T
@@ -43,6 +44,17 @@ describe('streamlimits', function () {
   if (process.env.NO_CERT_HASHES === 'true')
     // @ts-ignore
     delete wtOptions.serverCertificateHashes
+
+  // @ts-ignore
+  beforeEach(async () => {
+    if (
+      process.env.USE_HTTP2 !== 'true' &&
+      process.env.USE_PONYFILL !== 'true' &&
+      process.env.USE_POLYFILL !== 'true'
+    ) {
+      await quicheLoaded
+    }
+  })
 
   // @ts-ignore
   afterEach(async () => {

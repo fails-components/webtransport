@@ -83,6 +83,7 @@
   },
   "browser": {
     "./test/fixtures/webtransport.js": "./test/fixtures/webtransport.browser.js",
+    "./test/fixtures/quiche.js": "./test/fixtures/quiche.browser.js",
     "./lib/webstreams.js": "./lib/webstreams.browser.js"
   }
 }

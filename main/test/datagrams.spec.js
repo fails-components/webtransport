@@ -5,6 +5,7 @@ import { expect } from './fixtures/chai.js'
 import { readStream } from './fixtures/read-stream.js'
 import { readCertHash } from './fixtures/read-cert-hash.js'
 import { pTimeout } from './fixtures/p-timeout.js'
+import { quicheLoaded } from './fixtures/quiche.js'
 
 /**
  * @template T
@@ -31,6 +32,17 @@ describe('datagrams', function () {
   if (process.env.NO_CERT_HASHES === 'true')
     // @ts-ignore
     delete wtOptions.serverCertificateHashes
+
+  // @ts-ignore
+  beforeEach(async () => {
+    if (
+      process.env.USE_HTTP2 !== 'true' &&
+      process.env.USE_PONYFILL !== 'true' &&
+      process.env.USE_POLYFILL !== 'true'
+    ) {
+      await quicheLoaded
+    }
+  })
 
   // @ts-ignore
   afterEach(async () => {

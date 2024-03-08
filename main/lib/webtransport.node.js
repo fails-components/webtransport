@@ -18,9 +18,13 @@ let Http3WebTransportClientSocket
  * @type {new (arg0: import("./types").HttpWebTransportInit) => any}
  */
 let Http3WebTransportClient
+/**
+ * @type {boolean}
+ */
+let quicheLoadedReady
 // @ts-ignore
 // eslint-disable-next-line no-unused-vars
-const quicheLoaded = new Promise((resolve, reject) => {
+export const quicheLoaded = new Promise((resolve, reject) => {
   // @ts-ignore
   import('@fails-components/webtransport-transport-http3-quiche')
     .then(
@@ -39,6 +43,9 @@ const quicheLoaded = new Promise((resolve, reject) => {
         resolve(undefined)
       }
     )
+    .finally(() => {
+      quicheLoadedReady = true
+    })
     .catch((error) => {
       log('Problem loading http3-quiche transport', error)
       reject(error)
@@ -102,6 +109,8 @@ export class WebTransport extends WebTransportBase {
    */
   createClient(args) {
     let createUnreliableClient
+    if (!quicheLoadedReady)
+      throw new Error('Lib quiche loading attempt did not end')
     if (checkQuicheInit) {
       createUnreliableClient = function (/** @type {any} */ _client) {
         if (
