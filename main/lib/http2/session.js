@@ -209,10 +209,7 @@ export class Http2WebTransportSession {
    */
   close({ code, reason }) {
     this.capsParser.sendClose({ code, reason }) // this includes for ws closing the session!
-    // what to do with the reason
-    if (this.stream) {
-      this.capsParser.closeHttp2Stream(code)
-    }
+    // should also close the stream
   }
 
   /**
@@ -252,7 +249,6 @@ export class Http2WebTransportSession {
    * @param {{ code: number, reason: string }} arg
    */
   closeConnection({ code, reason }) {
-    console.trace()
     // called in case of failure in parsing or flowcontrol
     this.jsobj.onClose({
       errorcode: code,

@@ -25,6 +25,22 @@ function readVarInt(bs) {
 
 /**
  * @param{{offset: Number, buffer: Uint8Array, size: Number}} bs
+ */
+function readUint32(bs) {
+  if (bs.offset + 4 > bs.size) return undefined
+  let val = bs.buffer[bs.offset]
+  bs.offset++
+  val = (val << 8) | bs.buffer[bs.offset]
+  bs.offset++
+  val = (val << 8) | bs.buffer[bs.offset]
+  bs.offset++
+  val = (val << 8) | bs.buffer[bs.offset]
+  bs.offset++
+  return val
+}
+
+/**
+ * @param{{offset: Number, buffer: Uint8Array, size: Number}} bs
  * @param{Number|bigint} int
  */
 export function writeVarInt(bs, int) {
@@ -197,6 +213,23 @@ export class BrowserParser extends ParserBase {
       case ParserBase.WT_STREAMS_BLOCKED_BIDI:
         this.onStreamsBlockedBidi(readVarInt(bufferstate))
         break
+      case ParserBase.CLOSE_WEBTRANSPORT_SESSION:
+        {
+          const code = readUint32(bufferstate) || 0
+          const decoder = new TextDecoder()
+          const reason = decoder.decode(
+            new Uint8Array(
+              bufferstate.buffer.buffer,
+              bufferstate.buffer.byteOffset + bufferstate.offset,
+              offsetend - bufferstate.offset
+            )
+          )
+          this.onCloseWebTransportSession({ code, reason })
+        }
+        break
+      case ParserBase.DRAIN_WEBTRANSPORT_SESSION:
+        this.onDrain()
+        break
       case ParserBase.DATAGRAM:
         this.session.jsobj.onDatagramReceived({
           datagram: new Uint8Array(
@@ -215,9 +248,9 @@ export class BrowserParser extends ParserBase {
   }
 
   /**
-   * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array|undefined}} bs
+   * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array|undefined, end?: () => void}} bs
    */
-  writeCapsule({ type, headerVints, payload }) {
+  writeCapsule({ type, headerVints, payload, end }) {
     let plength = 0
     for (const ind in headerVints) plength += lengthVarInt(headerVints[ind])
     plength += lengthVarInt(type)
@@ -231,6 +264,7 @@ export class BrowserParser extends ParserBase {
     const dest = new Uint8Array(cdata.buffer, cdata.byteOffset + hlength)
     if (payload) dest.set(payload)
     this.ws.send(cdata)
+    if (end) end()
 
     /* const blocked = this.ws.bufferedAmount > 1024 * 256
     // do something if blocked
@@ -240,9 +274,9 @@ export class BrowserParser extends ParserBase {
   }
 
   /**
-   * @param{{code: Number, reason: string}}arg
+   * @param {number} code
    */
-  sendClose({ code, reason }) {
-    this.ws.close(1000, code.toString() + ':' + reason)
+  closeHttp2Stream(code) {
+    this.ws.close(1000)
   }
 }

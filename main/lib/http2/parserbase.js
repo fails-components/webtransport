@@ -30,6 +30,8 @@ export class ParserBase {
   static WT_STREAM_DATA_BLOCKED = 0x190b4d42
   static WT_STREAMS_BLOCKED_UNIDI = 0x190b4d43
   static WT_STREAMS_BLOCKED_BIDI = 0x190b4d44
+  static CLOSE_WEBTRANSPORT_SESSION = 0x2843
+  static DRAIN_WEBTRANSPORT_SESSION = 0x78ae
   static DATAGRAM = 0x00
 
   /**
@@ -67,16 +69,31 @@ export class ParserBase {
 
   /**
    * @abstract
-   * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array|undefined}} bs
+   * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array|undefined, end?: () => void}} bs
    */
-  writeCapsule({ type, headerVints, payload }) {
+  writeCapsule({ type, headerVints, payload, end }) {
     throw new Error('Implement writeCapsule in derived Class')
   }
 
   /**
    * @param{{code: Number, reason: string}}arg
    */
-  sendClose({ code, reason }) {}
+  sendClose({ code, reason }) {
+    const encoder = new TextEncoder()
+    const payload = encoder.encode('AAAA' + reason)
+    payload[0] = (code >> 24) & 0xff
+    payload[1] = (code >> 16) & 0xff
+    payload[2] = (code >> 8) & 0xff
+    payload[3] = code & 0xff
+    this.writeCapsule({
+      type: ParserBase.CLOSE_WEBTRANSPORT_SESSION,
+      headerVints: [],
+      payload,
+      end: () => {
+        this.closeHttp2Stream(code)
+      }
+    })
+  }
 
   /**
    * @param {bigint} streamid
@@ -210,6 +227,21 @@ export class ParserBase {
         reason: ret.error
       })
     }
+  }
+
+  /**
+   * @param {{code:  number, reason: string}} opts
+   */
+  onCloseWebTransportSession({ code, reason }) {
+    this.session.jsobj.onClose({
+      errorcode: code,
+      error: reason
+    })
+    this.closeHttp2Stream(code) // is this necessary
+  }
+
+  onDrain() {
+    this.session.jsobj.onGoAwayReceived()
   }
 
   /**

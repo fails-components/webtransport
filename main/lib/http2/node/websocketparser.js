@@ -1,6 +1,11 @@
 import { randomBytes } from 'node:crypto'
 import { ParserBase, lengthVarInt } from '../parserbase.js'
-import { ParserBaseHttp2, readVarInt, writeVarInt } from '../parserbasehttp2.js'
+import {
+  ParserBaseHttp2,
+  readVarInt,
+  writeVarInt,
+  readUint32
+} from '../parserbasehttp2.js'
 import { logger } from '../../utils.js'
 
 const log = logger(`webtransport:http2:node:websocketparser(${process?.pid})`)
@@ -598,6 +603,23 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 case ParserBase.WT_STREAMS_BLOCKED_BIDI:
                   this.onStreamsBlockedBidi(readVarInt(bufferstate))
                   break
+                case ParserBase.CLOSE_WEBTRANSPORT_SESSION:
+                  {
+                    const code = readUint32(bufferstate) || 0
+                    const decoder = new TextDecoder()
+                    const reason = decoder.decode(
+                      new Uint8Array(
+                        bufferstate.buffer.buffer,
+                        bufferstate.buffer.byteOffset + bufferstate.offset,
+                        offsetend - bufferstate.offset
+                      )
+                    )
+                    this.onCloseWebTransportSession({ code, reason })
+                  }
+                  break
+                case ParserBase.DRAIN_WEBTRANSPORT_SESSION:
+                  this.onDrain()
+                  break
                 case ParserBase.DATAGRAM:
                   if (wbufferstate) {
                     this.session.jsobj.onDatagramReceived({
@@ -688,19 +710,12 @@ export class WebSocketParser extends ParserBaseHttp2 {
    * @param{{code: Number, reason: string}}arg
    */
   sendClose({ code, reason }) {
-    const reasBuf = Buffer.from(
-      (code || 0).toString() + ':' + (reason || ''),
-      'utf8'
-    )
-    const wbuf = Buffer.allocUnsafe(2 + reasBuf.byteLength)
-    const errorcode = code === 0 ? 1000 : 1003
-    wbuf.writeUint16BE(errorcode, 0)
-    reasBuf.copy(wbuf, 2)
-    this.sendCloseInt(wbuf)
+    super.sendClose({ code, reason })
+    this.sendCloseInt()
   }
 
   /**
-   * @param {Uint8Array} payload
+   * @param {Uint8Array} [payload]
    */
   sendCloseInt(payload) {
     this.writeWSFrame({ opcode: WebSocketParser.WS_CLOSE, payload })
@@ -715,9 +730,9 @@ export class WebSocketParser extends ParserBaseHttp2 {
   }
 
   /**
-   * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array|undefined}} bs
+   * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array|undefined, end?: () => void}} bs
    */
-  writeCapsule({ type, headerVints, payload }) {
+  writeCapsule({ type, headerVints, payload, end }) {
     let plength = 0
     for (const ind in headerVints) plength += lengthVarInt(headerVints[ind])
     plength += lengthVarInt(type)
@@ -762,8 +777,13 @@ export class WebSocketParser extends ParserBaseHttp2 {
           payload.byteLength
         )
     }
-    let blocked = !this.stream.write(cdata)
-    if (payload) blocked = !this.stream.write(payload) || blocked
+    let blocked = false
+    if (payload) {
+      blocked = !this.stream.write(cdata)
+      blocked = !this.stream.write(payload, end) || blocked
+    } else {
+      blocked = !this.stream.write(cdata, end)
+    }
     // do something if blocked
     if (blocked) this.blocked = true
     return blocked
@@ -802,10 +822,10 @@ export class WebSocketParser extends ParserBaseHttp2 {
   }
 
   /**
-   * @param {{ opcode: number; payload: Uint8Array; }} args
+   * @param {{ opcode: number; payload: Uint8Array|undefined; }} args
    */
   writeWSFrame({ opcode, payload }) {
-    const plength = payload.byteLength
+    const plength = payload?.byteLength || 0
     let headlength = 2
     let mask = 0
     if (this.isclient) {
@@ -825,7 +845,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
       throw new Error('Headlength does not match pos')
 
     let blocked = !this.stream.write(cdata)
-    if (maskstate)
+    if (maskstate && payload)
       applyMask(
         maskstate,
         Buffer.from(payload.buffer, payload.byteOffset, payload.byteLength),

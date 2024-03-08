@@ -7,6 +7,17 @@ import { ParserBase } from './parserbase.js'
 /**
  * @param{{offset: Number, buffer: Buffer, size: Number}} bs
  */
+
+export function readUint32(bs) {
+  if (bs.offset + 4 > bs.size) return undefined
+  const toret = bs.buffer.readUInt32BE(bs.offset)
+  bs.offset += 4
+  return toret
+}
+
+/**
+ * @param{{offset: Number, buffer: Buffer, size: Number}} bs
+ */
 export function readVarInt(bs) {
   if (bs.offset + 1 > bs.size) return undefined
   let val = BigInt(bs.buffer.readUInt8(bs.offset))
