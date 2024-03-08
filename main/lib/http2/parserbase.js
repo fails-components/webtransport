@@ -40,7 +40,8 @@ export class ParserBase {
   constructor({
     nativesession,
     isclient,
-    initialStreamSendWindowOffset,
+    initialStreamSendWindowOffsetBidi,
+    initialStreamSendWindowOffsetUnidi,
     initialStreamReceiveWindowOffset,
     streamShouldAutoTuneReceiveWindow,
     streamReceiveWindowSizeLimit
@@ -50,7 +51,8 @@ export class ParserBase {
     /** @type {boolean} */
     this.blocked = false
 
-    this.initialStreamSendWindowOffset = initialStreamSendWindowOffset
+    this.initialStreamSendWindowOffsetUnidi = initialStreamSendWindowOffsetUnidi
+    this.initialStreamSendWindowOffsetBidi = initialStreamSendWindowOffsetBidi
     this.initialStreamReceiveWindowOffset = initialStreamReceiveWindowOffset
     this.streamShouldAutoTuneReceiveWindow = streamShouldAutoTuneReceiveWindow
     this.streamReceiveWindowSizeLimit = streamReceiveWindowSizeLimit
@@ -118,12 +120,15 @@ export class ParserBase {
         return undefined
       }
     }
+    const unidirectional = !!(streamid & 0x2n)
     const stream = new Http2WebTransportStream({
       streamid,
-      unidirectional: !!(streamid & 0x2n),
+      unidirectional,
       incoming,
       capsuleParser: this,
-      sendWindowOffset: this.initialStreamSendWindowOffset,
+      sendWindowOffset: unidirectional
+        ? this.initialStreamSendWindowOffsetUnidi
+        : this.initialStreamSendWindowOffsetBidi,
       receiveWindowOffset: this.initialStreamReceiveWindowOffset,
       shouldAutoTuneReceiveWindow: this.streamShouldAutoTuneReceiveWindow,
       receiveWindowSizeLimit: this.streamReceiveWindowSizeLimit,

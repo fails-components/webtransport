@@ -65,7 +65,8 @@ export class Http2WebTransportServer {
           0x2b63: this.initialStreamFlowControlWindow, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAM_DATA_BIDI
           0x2b64: this.initialUnidirectionalStreams, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAMS_UNI
           0x2b65: this.initialBidirectionalStreams // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAMS_BIDI
-        }
+        },
+        remoteCustomSettings: [0x2b60, 0x2b61, 0x2b62, 0x2b63, 0x2b64, 0x2b65]
       }
     })
 
@@ -153,7 +154,8 @@ export class Http2WebTransportServer {
                       stream,
                       nativesession,
                       isclient: false,
-                      initialStreamSendWindowOffset: 0,
+                      initialStreamSendWindowOffsetBidi: 0,
+                      initialStreamSendWindowOffsetUnidi: 0,
                       initialStreamReceiveWindowOffset:
                         this.initialStreamFlowControlWindow,
                       streamShouldAutoTuneReceiveWindow:
@@ -244,6 +246,14 @@ export class Http2WebTransportServer {
         path = path?.slice(1)
       }
       if (this.paths[path]) {
+        const {
+          0x2b65: remoteBidirectionalStreams = undefined,
+          0x2b64: remoteUnidirectionalStreams = undefined,
+          0x2b63: remoteBidirectionalStreamFlowControlWindow = undefined,
+          0x2b62: remoteUnidirectionalStreamFlowControlWindow = undefined,
+          0x2b61: remoteSessionFlowControlWindow = undefined
+          // @ts-ignore
+        } = stream?.session?.remoteSettings?.customSettings || {}
         const retObj = {
           session: new Http2WebTransportSession({
             stream,
@@ -256,8 +266,12 @@ export class Http2WebTransportServer {
                   stream,
                   nativesession,
                   isclient: false,
-                  initialStreamSendWindowOffset:
-                    this.initialStreamFlowControlWindow, // TODO, once supported by node, use initial settings
+                  initialStreamSendWindowOffsetBidi:
+                    remoteBidirectionalStreamFlowControlWindow ||
+                    this.initialStreamFlowControlWindow,
+                  initialStreamSendWindowOffsetUnidi:
+                    remoteUnidirectionalStreamFlowControlWindow ||
+                    this.initialStreamFlowControlWindow,
                   initialStreamReceiveWindowOffset:
                     this.initialStreamFlowControlWindow,
                   streamShouldAutoTuneReceiveWindow:
@@ -270,7 +284,8 @@ export class Http2WebTransportServer {
                   stream,
                   nativesession,
                   isclient: false,
-                  initialStreamSendWindowOffset: 0,
+                  initialStreamSendWindowOffsetBidi: 0,
+                  initialStreamSendWindowOffsetUnidi: 0,
                   initialStreamReceiveWindowOffset:
                     this.initialStreamFlowControlWindow,
                   streamShouldAutoTuneReceiveWindow:
@@ -280,18 +295,20 @@ export class Http2WebTransportServer {
                 }))
               }
             },
-            initialBidirectionalSendStreams: websocketProt // TODO, once supported by node, use initial settings
+            initialBidirectionalSendStreams: websocketProt
               ? 0
-              : this.initialBidirectionalStreams,
+              : remoteBidirectionalStreams || this.initialBidirectionalStreams,
             initialBidirectionalReceiveStreams:
               this.initialBidirectionalStreams,
             initialUnidirectionalSendStreams: websocketProt
               ? 0
-              : this.initialUnidirectionalStreams, // TODO, once supported by node, use initial settings
+              : remoteUnidirectionalStreams ||
+                this.initialUnidirectionalStreams,
             initialUnidirectionalReceiveStreams:
               this.initialUnidirectionalStreams,
             sendWindowOffset: !websocketProt
-              ? this.sessionFlowControlWindowSizeLimit
+              ? remoteSessionFlowControlWindow ||
+                this.sessionFlowControlWindowSizeLimit
               : 0, // TODO, once supported by node, use initial settings
             receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
             shouldAutoTuneReceiveWindow:
@@ -443,7 +460,8 @@ export class Http2WebTransportServer {
                     stream,
                     nativesession,
                     isclient: false,
-                    initialStreamSendWindowOffset: 0,
+                    initialStreamSendWindowOffsetBidi: 0,
+                    initialStreamSendWindowOffsetUnidi: 0,
                     initialStreamReceiveWindowOffset:
                       this.initialStreamFlowControlWindow,
                     streamShouldAutoTuneReceiveWindow:
@@ -476,6 +494,14 @@ export class Http2WebTransportServer {
             log('sendHttp1Headers error', error)
           })
       } else {
+        const {
+          0x2b65: remoteBidirectionalStreams = undefined,
+          0x2b64: remoteUnidirectionalStreams = undefined,
+          0x2b63: remoteBidirectionalStreamFlowControlWindow = undefined,
+          0x2b62: remoteUnidirectionalStreamFlowControlWindow = undefined,
+          0x2b61: remoteSessionFlowControlWindow = undefined
+          // @ts-ignore
+        } = stream?.session?.remoteSettings?.customSettings || {}
         const retObj = {
           session: new Http2WebTransportSession({
             stream,
@@ -488,8 +514,12 @@ export class Http2WebTransportServer {
                   stream,
                   nativesession,
                   isclient: false,
-                  initialStreamSendWindowOffset:
-                    this.initialStreamFlowControlWindow, // TODO, once supported by node, use initial settings
+                  initialStreamSendWindowOffsetBidi:
+                    remoteBidirectionalStreamFlowControlWindow ||
+                    this.initialStreamFlowControlWindow,
+                  initialStreamSendWindowOffsetUnidi:
+                    remoteUnidirectionalStreamFlowControlWindow ||
+                    this.initialStreamFlowControlWindow,
                   initialStreamReceiveWindowOffset:
                     this.initialStreamFlowControlWindow,
                   streamShouldAutoTuneReceiveWindow:
@@ -502,7 +532,8 @@ export class Http2WebTransportServer {
                   stream,
                   nativesession,
                   isclient: false,
-                  initialStreamSendWindowOffset: 0,
+                  initialStreamSendWindowOffsetBidi: 0,
+                  initialStreamSendWindowOffsetUnidi: 0,
                   initialStreamReceiveWindowOffset:
                     this.initialStreamFlowControlWindow,
                   streamShouldAutoTuneReceiveWindow:
@@ -513,16 +544,22 @@ export class Http2WebTransportServer {
               }
             },
             initialBidirectionalSendStreams:
-              protocol !== 'websocket' ? this.initialBidirectionalStreams : 0, // TODO, once supported by node, use initial settings
+              protocol !== 'websocket'
+                ? remoteBidirectionalStreams || this.initialBidirectionalStreams
+                : 0, // TODO, once supported by node, use initial settings
             initialBidirectionalReceiveStreams:
               this.initialBidirectionalStreams,
             initialUnidirectionalSendStreams:
-              protocol !== 'websocket' ? this.initialUnidirectionalStreams : 0, // TODO, once supported by node, use initial settings
+              protocol !== 'websocket'
+                ? remoteUnidirectionalStreams ||
+                  this.initialUnidirectionalStreams
+                : 0, // TODO, once supported by node, use initial settings
             initialUnidirectionalReceiveStreams:
               this.initialUnidirectionalStreams,
             sendWindowOffset:
               protocol !== 'websocket'
-                ? this.sessionFlowControlWindowSizeLimit
+                ? remoteSessionFlowControlWindow ||
+                  this.sessionFlowControlWindowSizeLimit
                 : 0, // TODO, once supported by node, use initial settings
             receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
             shouldAutoTuneReceiveWindow:

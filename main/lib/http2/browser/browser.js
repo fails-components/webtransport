@@ -127,7 +127,8 @@ export class Http2WebTransportBrowser {
             ws: this.clientInt,
             nativesession,
             isclient: true,
-            initialStreamSendWindowOffset: 0,
+            initialStreamSendWindowOffsetBidi: 0,
+            initialStreamSendWindowOffsetUnidi: 0,
             initialStreamReceiveWindowOffset:
               this.initialStreamFlowControlWindow,
             streamShouldAutoTuneReceiveWindow:
