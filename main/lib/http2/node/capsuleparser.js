@@ -14,7 +14,8 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
     stream,
     nativesession,
     isclient,
-    initialStreamSendWindowOffset,
+    initialStreamSendWindowOffsetBidi,
+    initialStreamSendWindowOffsetUnidi,
     initialStreamReceiveWindowOffset,
     streamShouldAutoTuneReceiveWindow,
     streamReceiveWindowSizeLimit
@@ -23,7 +24,8 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
       stream,
       nativesession,
       isclient,
-      initialStreamSendWindowOffset,
+      initialStreamSendWindowOffsetBidi,
+      initialStreamSendWindowOffsetUnidi,
       initialStreamReceiveWindowOffset,
       streamShouldAutoTuneReceiveWindow,
       streamReceiveWindowSizeLimit

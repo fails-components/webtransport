@@ -74,7 +74,8 @@ export class ParserBaseHttp2 extends ParserBase {
     stream,
     nativesession,
     isclient,
-    initialStreamSendWindowOffset,
+    initialStreamSendWindowOffsetBidi,
+    initialStreamSendWindowOffsetUnidi,
     initialStreamReceiveWindowOffset,
     streamShouldAutoTuneReceiveWindow,
     streamReceiveWindowSizeLimit
@@ -82,7 +83,8 @@ export class ParserBaseHttp2 extends ParserBase {
     super({
       nativesession,
       isclient,
-      initialStreamSendWindowOffset,
+      initialStreamSendWindowOffsetBidi,
+      initialStreamSendWindowOffsetUnidi,
       initialStreamReceiveWindowOffset,
       streamShouldAutoTuneReceiveWindow,
       streamReceiveWindowSizeLimit

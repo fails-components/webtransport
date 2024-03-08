@@ -179,7 +179,8 @@ export class WebSocketParser extends ParserBaseHttp2 {
     stream,
     nativesession,
     isclient,
-    initialStreamSendWindowOffset,
+    initialStreamSendWindowOffsetUnidi,
+    initialStreamSendWindowOffsetBidi,
     initialStreamReceiveWindowOffset,
     streamShouldAutoTuneReceiveWindow,
     streamReceiveWindowSizeLimit
@@ -188,7 +189,8 @@ export class WebSocketParser extends ParserBaseHttp2 {
       stream,
       nativesession,
       isclient,
-      initialStreamSendWindowOffset,
+      initialStreamSendWindowOffsetUnidi,
+      initialStreamSendWindowOffsetBidi,
       initialStreamReceiveWindowOffset,
       streamShouldAutoTuneReceiveWindow,
       streamReceiveWindowSizeLimit

@@ -82,7 +82,8 @@ export class BrowserParser extends ParserBase {
     ws,
     nativesession,
     isclient,
-    initialStreamSendWindowOffset,
+    initialStreamSendWindowOffsetUnidi,
+    initialStreamSendWindowOffsetBidi,
     initialStreamReceiveWindowOffset,
     streamShouldAutoTuneReceiveWindow,
     streamReceiveWindowSizeLimit
@@ -90,7 +91,8 @@ export class BrowserParser extends ParserBase {
     super({
       nativesession,
       isclient,
-      initialStreamSendWindowOffset,
+      initialStreamSendWindowOffsetUnidi,
+      initialStreamSendWindowOffsetBidi,
       initialStreamReceiveWindowOffset,
       streamShouldAutoTuneReceiveWindow,
       streamReceiveWindowSizeLimit

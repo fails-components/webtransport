@@ -35,7 +35,7 @@ Note, that it is only partially implemented and also some http2 features require
 Use for the server side either `HttpServer` for http/2 and http/3 support (including WebTransport over WebSocket), Http3Server for http/3 only and Http2Server for http/2 only.
 For the client side pass the options `forceReliable`, `requireUnreliable` etc. to force/select a type of transport.
 
- **Note, that the http/2 webtransport protocol (not supported by any browser yet), is implemented without the support of receiving initial settings, which can cause a problem with the initial flow control of the WebTransport streams. This is a current limitation in node.js, but a patch to add support will soon be part of new node versions. Note, that for sending the required initial setting you need a very recent version (>=21.6.1) of node.js.** This limitation does not apply to the polyfill/ponyfill and the webtransport over websocket protocol.
+ **Note, that the http/2 webtransport protocol (not supported by any browser yet), requires support for sending and receiving initial a node version with support for receiving customSettings. Versions without support can cause a problem with the initial flow control of the WebTransport streams.  Note, that for sending and receiving the required initial setting you need a very recent version (>=21.6.1 sending >= 21.7.0 receiving) of node.js.** This limitation does not apply to the polyfill/ponyfill and the webtransport over websocket protocol.
 
  The current proposal for the WebTransport over WebSocket protocol can be found [here] (https://datatracker.ietf.org/doc/draft-richter-webtransport-websocket/).
 

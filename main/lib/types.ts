@@ -331,7 +331,8 @@ export type CreateParserFunction = (
 export interface ParserInit {
   isclient: boolean
   nativesession: any
-  initialStreamSendWindowOffset: number
+  initialStreamSendWindowOffsetBidi: number
+  initialStreamSendWindowOffsetUnidi: number
   initialStreamReceiveWindowOffset: number
   streamShouldAutoTuneReceiveWindow: boolean
   streamReceiveWindowSizeLimit: number
