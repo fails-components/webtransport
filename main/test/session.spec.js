@@ -68,9 +68,7 @@ describe('session', function () {
 
     const result = await client.closed
     expect(result).to.have.property('closeCode', 7)
-    if (process.env.USE_HTTP2 !== 'true')
-      // unsupported for http2
-      expect(result).to.have.property('reason', 'this is the reason')
+    expect(result).to.have.property('reason', 'this is the reason')
   })
   if (browser === 'firefox') this.timeout(31000) // really firefox?
   it('should error when connecting to a server that does not exist', async () => {

@@ -1,4 +1,9 @@
-import { ParserBaseHttp2, readVarInt, writeVarInt } from '../parserbasehttp2.js'
+import {
+  ParserBaseHttp2,
+  readVarInt,
+  readUint32,
+  writeVarInt
+} from '../parserbasehttp2.js'
 import { lengthVarInt } from '../parserbase.js'
 
 export class Http2CapsuleParser extends ParserBaseHttp2 {
@@ -211,6 +216,23 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               case Http2CapsuleParser.WT_STREAMS_BLOCKED_BIDI:
                 this.onStreamsBlockedBidi(readVarInt(bufferstate))
                 break
+              case Http2CapsuleParser.CLOSE_WEBTRANSPORT_SESSION:
+                {
+                  const code = readUint32(bufferstate) || 0
+                  const decoder = new TextDecoder()
+                  const reason = decoder.decode(
+                    new Uint8Array(
+                      bufferstate.buffer.buffer,
+                      bufferstate.buffer.byteOffset + bufferstate.offset,
+                      offsetend - bufferstate.offset
+                    )
+                  )
+                  this.onCloseWebTransportSession({ code, reason })
+                }
+                break
+              case Http2CapsuleParser.DRAIN_WEBTRANSPORT_SESSION:
+                this.onDrain()
+                break
               case Http2CapsuleParser.DATAGRAM:
                 this.session.jsobj.onDatagramReceived({
                   datagram: new Uint8Array(
@@ -275,9 +297,9 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
   }
 
   /**
-   * @param{{type: Number, headerVints: Array<Number>, payload: Uint8Array|undefined}} bs
+   * @param{{type: Number, headerVints: Array<Number>, payload: Uint8Array|undefined, end?: () => void}} bs
    */
-  writeCapsule({ type, headerVints, payload }) {
+  writeCapsule({ type, headerVints, payload, end }) {
     let length = 0
     for (const ind in headerVints) length += lengthVarInt(headerVints[ind])
     let headlength = length
@@ -289,11 +311,18 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
     writeVarInt(bufferstate, length)
     for (const ind in headerVints) writeVarInt(bufferstate, headerVints[ind])
     if (!this.stream) return
-    let blocked = !this.stream.write(cdata)
-    if (payload) blocked = !this.stream.write(payload) || blocked
-    // do something if blocked
-    if (blocked) this.blocked = true
-    return blocked
+    // note it might be illegal to split the write
+    if (!end) {
+      let blocked = !this.stream.write(cdata)
+      if (payload) blocked = !this.stream.write(payload) || blocked
+      // do something if blocked
+      if (blocked) this.blocked = true
+      return blocked
+    } else {
+      if (!payload) this.stream.end(cdata, end)
+      else this.stream.write(cdata)
+      if (payload) this.stream.end(payload, end)
+    }
   }
 
   /**
@@ -301,6 +330,6 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
    */
   closeHttp2Stream(code) {
     this.stream.close(code)
-    this.stream.destroy()
+    // this.stream.destroy()
   }
 }
