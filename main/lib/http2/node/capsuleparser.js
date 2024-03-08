@@ -330,6 +330,6 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
    */
   closeHttp2Stream(code) {
     this.stream.close(code)
-    // this.stream.destroy()
+    this.stream.destroy()
   }
 }
