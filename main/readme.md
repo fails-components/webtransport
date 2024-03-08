@@ -126,6 +126,9 @@ The `WebTransportSession` should behave most like a WebTransport object on the b
 ### Using a client
 The `WebTransport` object for node or the `WebTransportPonyfill`,  `WebTransportPolyfill` objects for the browser, behave like the `WebTransport` client object for the browser with few additions and some missing features.
 
+As the http/3 package is loaded dynamically and the WebTransport object is created synchronously, you may want to make sure, that the modules are already loaded. You can do so, by waiting for the promise `quicheLoaded` exported by the package.
+
+
 ## Specification divergence
 
 This module implements parts of the [WebTransport spec](https://datatracker.ietf.org/doc/html/draft-vvv-webtransport-quic-00) but not all of it.
