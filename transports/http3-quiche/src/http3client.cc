@@ -532,7 +532,7 @@ namespace quic
             if (wait_for_encryption_)
             {
                 if (EncryptionBeingEstablished())
-                    return false;
+                    return true;
                 wait_for_encryption_ = false;
                 ParsedQuicVersion version = UnsupportedQuicVersion();
                 if (session_ != nullptr && !CanReconnectWithDifferentVersion(&version) && !session_->connection()->connected())
@@ -826,7 +826,7 @@ namespace quic
 
         if (client_->connectionrecheck_)
         {
-            client_->connectionrecheck_ = !client_->handleConnecting();
+            client_->connectionrecheck_ = client_->handleConnecting();
         }
     }
 
@@ -834,7 +834,7 @@ namespace quic
     {
         if (client_->connectionrecheck_)
         {
-            client_->connectionrecheck_ = !client_->handleConnecting();
+            client_->connectionrecheck_ = client_->handleConnecting();
         }
         client_->OnCanWrite();
     }
