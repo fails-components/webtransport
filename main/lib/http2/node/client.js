@@ -44,9 +44,10 @@ export class Http2WebTransportClient {
 
   createTransport() {
     /**
+     * @param {string} hostname
      * @param {import('node:tls').PeerCertificate} cert
      * */
-    const webTransportVerifier = (cert) => {
+    const webTransportVerifier = (hostname, cert) => {
       if (
         this.serverCertificateHashes &&
         this.serverCertificateHashes.some((el) => {
@@ -142,7 +143,9 @@ export class Http2WebTransportClient {
       if (!oursocket.authorized) {
         // ok last hope we have hashes
         if (this.serverCertificateHashes) {
-          if (!webTransportVerifier(oursocket.getPeerCertificate())) {
+          if (
+            !webTransportVerifier(this.hostname, oursocket.getPeerCertificate())
+          ) {
             this.clientInt?.destroy(
               undefined,
               http2constants.NGHTTP2_REFUSED_STREAM
