@@ -1,9 +1,9 @@
 # syntax = docker/dockerfile:1.2
-FROM node:18-bullseye
+FROM node:18-bookworm
 
 ARG ENV
 
-RUN apt-get update -y && apt-get upgrade -y && apt-get install -y clang-9 cmake build-essential perl6 golang  ninja-build && npm_config_yes=true npx playwright install-deps
+RUN apt-get update -y && apt-get upgrade -y && apt-get install -y clang cmake build-essential perl6 golang  ninja-build && npm_config_yes=true npx playwright install-deps
 
 
 #WORKDIR /usr/src/webtransport
