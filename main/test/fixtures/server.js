@@ -310,6 +310,18 @@ export async function createServer() {
             }
           },
 
+          // support query strings
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/session_with_query')
+            )) {
+              await session.close({
+                closeCode: 0,
+                reason: `session.url=${session.url}`
+              })
+            }
+          },
+
           // send data over unidirectional stream, initiated by remote
           async () => {
             for await (const session of getReaderStream(

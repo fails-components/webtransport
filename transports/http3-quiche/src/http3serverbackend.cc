@@ -43,6 +43,19 @@ namespace quic
   }
   */
 
+  std::string Http3ServerBackend::removeQuery(std::string const& s)
+   {
+    std::string::size_type pos = s.find('?');
+    if (pos != std::string::npos)
+    {
+        return s.substr(0, pos);
+    }
+    else
+    {
+        return s;
+    }
+  }
+
   Http3ServerBackend::WebTransportRespPromisePtr
   Http3ServerBackend::ProcessWebTransportRequest(
       const spdy::Http2HeaderBlock &request_headers,
@@ -66,8 +79,9 @@ namespace quic
       return promise;
     }
     std::string path(path_it->second);
+    std::string pathWithoutQuery = removeQuery(path);
 
-    if (paths_.find(path) != paths_.end())
+    if (paths_.find(pathWithoutQuery) != paths_.end())
     { // to do handle our web transport paths
       std::unique_ptr<WebTransportResponse> response = std::make_unique<WebTransportResponse>();
       Http3WTSession *wtsession = new Http3WTSession();

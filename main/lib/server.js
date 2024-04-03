@@ -1,5 +1,5 @@
 import { ReadableStream } from 'node:stream/web'
-import { HttpWTSession } from './session.js'
+import { HttpWTServerSession } from './session.js'
 import { WebTransportError } from './error.js'
 import { Http2WebTransportServer } from './http2/node/index.js'
 import { isIPv4 } from 'net'
@@ -51,7 +51,7 @@ const quicheLoaded = new Promise((resolve, reject) => {
 })
 
 /**
- * @typedef {import('./types').WebTransportSessionImpl} WebTransportSession
+ * @typedef {import('./types').WebTransportServerSessionImpl} WebTransportSession
  * @typedef {import('./types').NativeHttpWTSession} NativeHttpWTSession
  * @typedef {import('./types').HttpServerEventHandler} HttpServerEventHandler
  * @typedef {import('./types').HttpWTServerSessionVisitorEvent} HttpWTServerSessionVisitorEvent
@@ -130,7 +130,7 @@ export class HttpServer {
     /** @type {Record<string, ReadableStream>} */
     this.sessionStreams = {}
 
-    /** @type {Record<string, ReadableStreamDefaultController<HttpWTSession>>} */
+    /** @type {Record<string, ReadableStreamDefaultController<HttpWTServerSession>>} */
     this.sessionController = {}
 
     this.port = null
@@ -268,15 +268,19 @@ export class HttpServer {
    * @param {HttpWTServerSessionVisitorEvent} args
    */
   onHttpWTSessionVisitor(args) {
+    // match session streams on path without query string
+    const path = args.path.split('?')[0]
+
     // create Http3 Visitor
-    const sesobj = new HttpWTSession({
+    const sesobj = new HttpWTServerSession({
       object: args.session,
       header: args.header,
-      parentobj: this
+      parentobj: this,
+      url: args.path
     })
     args.session.jsobj = sesobj
-    if (this.sessionController[args.path])
-      this.sessionController[args.path].enqueue(sesobj)
+    if (this.sessionController[path])
+      this.sessionController[path].enqueue(sesobj)
   }
 
   /**

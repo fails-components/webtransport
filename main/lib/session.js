@@ -606,3 +606,18 @@ export class HttpWTSession {
     this.state = 'draining'
   }
 }
+
+export class HttpWTServerSession extends HttpWTSession {
+  /**
+   * @param {object} args
+   * @param {import('./types').NativeHttpWTSession} [args.object]
+   * @param {HttpServer | HttpClient} args.parentobj
+   * @param {any | undefined} [args.header= undefined]
+   * @param {string} args.url
+   */
+  constructor(args) {
+    super(args)
+
+    this.url = args.url
+  }
+}

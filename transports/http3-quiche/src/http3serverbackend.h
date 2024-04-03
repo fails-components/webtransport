@@ -89,6 +89,7 @@ namespace quic
     Http3Server *server_; // unowned
     bool jshandlerequesthandler_;
     std::set<std::string> paths_;
+    std::string removeQuery(std::string const& s);
   };
 
 } // namespace quic

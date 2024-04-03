@@ -61,9 +61,11 @@ export class WebTransportPonyfill extends WebTransportBase {
    * @param{{client: HttpClient, sessionint: HttpWTSession, ourl: URL}} args
    */
   startUpConnection({ client, sessionint, ourl }) {
+    const path = `${ourl.pathname}${ourl.search ?? ''}`
+
     client
-      .handleConnection({ createTransport: true, path: ourl.pathname })
-      .then(() => client.createWTSession(sessionint, ourl.pathname))
+      .handleConnection({ createTransport: true, path })
+      .then(() => client.createWTSession(sessionint, path))
       .catch((error) => {
         client.closeHookSession()
         sessionint.readyReject(error)

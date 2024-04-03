@@ -82,6 +82,22 @@ describe('session', function () {
     expect(result).to.have.property('closeCode', 7)
     expect(result).to.have.property('reason', 'this is the reason')
   })
+
+  it('should connect to a path with a query in the URL', async () => {
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/session_with_query?foo=bar`,
+      wtOptions
+    )
+    await client.ready
+
+    const result = await client.closed
+    expect(result).to.have.property('closeCode', 0)
+    expect(result).to.have.property(
+      'reason',
+      'session.url=/session_with_query?foo=bar'
+    )
+  })
+
   if (browser === 'firefox') this.timeout(31000) // really firefox?
   it('should error when connecting to a server that does not exist', async () => {
     client = new WebTransport(`https://127.0.0.1:39821`, {

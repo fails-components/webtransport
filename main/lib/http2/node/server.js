@@ -140,7 +140,8 @@ export class Http2WebTransportServer {
         while (path.length > 1 && path[0] === '/' && path[1] === '/') {
           path = path?.slice(1)
         }
-        if (this.paths[path]) {
+        const pathWithoutQuery = path.split('?')[0]
+        if (this.paths[pathWithoutQuery]) {
           this.sendHttp1Headers({ stream, header, protocol: websocketProt })
             .then(() => {
               const retObj = {
@@ -245,7 +246,8 @@ export class Http2WebTransportServer {
       while (path.length > 1 && path[0] === '/' && path[1] === '/') {
         path = path?.slice(1)
       }
-      if (this.paths[path]) {
+      const pathWithoutQuery = path.split('?')[0]
+      if (this.paths[pathWithoutQuery]) {
         const {
           0x2b65: remoteBidirectionalStreams = undefined,
           0x2b64: remoteUnidirectionalStreams = undefined,

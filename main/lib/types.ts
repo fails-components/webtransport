@@ -266,6 +266,10 @@ export interface WebTransportSessionImpl extends WebTransportSession {
   state: WebTransportSessionState
 }
 
+export interface WebTransportServerSessionImpl extends WebTransportSessionImpl {
+  url: string
+}
+
 export type QUICHE_LOG_OFF = -1
 export type QUICHE_LOG_INFO = 0
 export type QUICHE_LOG_WARNING = 1
