@@ -250,7 +250,7 @@ export class HttpServer {
       this.requestHandler({ header: args.header })
         .then((/** @type {any} */ result) => {
           log('oSR', result)
-          args.object.finishSessionRequest({
+          this.transportInt.finishSessionRequest({
             promise: args.promise,
             header: args.header,
             session: args.session,

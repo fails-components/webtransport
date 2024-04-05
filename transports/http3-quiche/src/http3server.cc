@@ -207,7 +207,7 @@ namespace quic
   }
 
   Http3ServerJS::~Http3ServerJS()
-  {  
+  {
   }
 
   void Http3ServerJS::destroy(const Napi::CallbackInfo &info)
@@ -470,7 +470,7 @@ namespace quic
           path = pathValue.ToString().Utf8Value();
         }
         else
-          return Napi::Error::New(Env(), "No status code passed for finishSessionRequest").ThrowAsJavaScriptException();
+          return Napi::Error::New(Env(), "No path passed for finishSessionRequest").ThrowAsJavaScriptException();
         WebTransportSession *session = nullptr;
         if (lobj.Has("session") && !(lobj).Get("session").IsEmpty())
         {

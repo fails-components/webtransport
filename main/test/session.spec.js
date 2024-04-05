@@ -4,6 +4,8 @@ import { readCertHash } from './fixtures/read-cert-hash.js'
 import WebTransport from './fixtures/webtransport.js'
 import { expect } from './fixtures/chai.js'
 import { quicheLoaded } from './fixtures/quiche.js'
+import { getReaderValue } from './fixtures/reader-value.js'
+import { readStream } from './fixtures/read-stream.js'
 
 /**
  * @template T
@@ -82,6 +84,21 @@ describe('session', function () {
     expect(result).to.have.property('closeCode', 7)
     expect(result).to.have.property('reason', 'this is the reason')
   })
+
+  it('should parse user data', async () => {
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/session_with_userdata?foo=bar`,
+      wtOptions
+    )
+    await client.ready
+
+    const stream = await getReaderValue(client.incomingUnidirectionalStreams)
+    const received = await readStream(stream)
+
+    const userData = JSON.parse(new TextDecoder().decode(received))
+    expect(userData).to.have.property('search', '?foo=bar')
+  })
+
   if (browser === 'firefox') this.timeout(31000) // really firefox?
   it('should error when connecting to a server that does not exist', async () => {
     client = new WebTransport(`https://127.0.0.1:39821`, {
