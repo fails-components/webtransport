@@ -55,6 +55,32 @@ export async function createServer() {
 
   server.ready
     .then(async () => {
+      server.setRequestCallback(async (args) => {
+        const url = args.header[':path']
+        const [path] = url.split('?')
+
+        if (server.sessionController[path] == null) {
+          return {
+            ...args,
+            path,
+            status: 404
+          }
+        }
+
+        return {
+          ...args,
+          path,
+          userData: {
+            search: url.substring(path.length)
+          },
+          header: {
+            ...args.header,
+            ':path': path
+          },
+          status: 200
+        }
+      })
+
       // set up listeners for the different server paths used by the tests
       console.log('server ready')
       await Promise.all(
@@ -307,6 +333,20 @@ export async function createServer() {
                 closeCode: 7,
                 reason: 'this is the reason'
               })
+            }
+          },
+
+          // support user data
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/session_with_userdata')
+            )) {
+              const stream = await session.createUnidirectionalStream()
+              await writeStream(
+                stream,
+                new TextEncoder().encode(JSON.stringify(session.userData))
+              )
+              await session.close()
             }
           },
 
