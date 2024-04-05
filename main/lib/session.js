@@ -50,7 +50,8 @@ export class HttpWTSession {
    * @param {object} args
    * @param {import('./types').NativeHttpWTSession} [args.object]
    * @param {HttpServer | HttpClient} args.parentobj
-   * @param {any | undefined} [args.header= undefined]
+   * @param {Object | undefined} [args.header= undefined]
+   * @param {Object | undefined} [args.userData= undefined]
    */
   constructor(args) {
     if (args.object) {
@@ -68,8 +69,10 @@ export class HttpWTSession {
     this.readyResolve = null
     /** @type {(() => void) | null | undefined} */
     this.closeHook = null
-    /** @type {(any | null | undefined)} */
+    /** @type {(Object | null | undefined)} */
     this.header = args.header
+    /** @type {(Object | null | undefined)} */
+    this.userData = args.userData
 
     /** @type {Promise<void>} */
     this.ready = new Promise((resolve, reject) => {

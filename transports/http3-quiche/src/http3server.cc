@@ -357,7 +357,7 @@ namespace quic
     }
   }*/
 
-  void Http3ServerJS::processNewSession(Http3WTSession *session, const std::string &path, Napi::Reference<Napi::Value> *header)
+  void Http3ServerJS::processNewSession(Http3WTSession *session, const std::string &path, Napi::Reference<Napi::Value> *header, Napi::Reference<Napi::Value> *userData)
   {
     Napi::HandleScope scope(Env());
 
@@ -377,6 +377,11 @@ namespace quic
     {
       retObj.Set("header", header->Value());
       header->Unref();
+    }
+    if (userData)
+    {
+      retObj.Set("userData", userData->Value());
+      userData->Unref();
     }
     objVal.Get("onHttpWTSessionVisitor")
         .As<Napi::Function>()
@@ -487,6 +492,7 @@ namespace quic
 
           Http3ServerBackend::WebTransportRespPromisePtr *prom = promise.Data();
           Napi::Reference<Napi::Value> *headerValue = nullptr;
+          Napi::Reference<Napi::Value> *userDataValue = nullptr;
           if (status == 200)
           {
 
@@ -498,7 +504,14 @@ namespace quic
               headerValue = new Napi::Reference<Napi::Value>(Env(), ref);
             }
             else
-              return Napi::Error::New(Env(), "No status code passed for finishSessionRequest").ThrowAsJavaScriptException();
+              return Napi::Error::New(Env(), "No header passed for finishSessionRequest").ThrowAsJavaScriptException();
+            if (lobj.Has("userData") && !(lobj).Get("userData").IsEmpty())
+            {
+              napi_ref ref;
+              napi_status status = napi_create_reference(Env(), lobj.Get("userData"), 1, &ref);
+              NAPI_THROW_IF_FAILED(Env(), status, Reference<Napi::Value>());
+              userDataValue = new Napi::Reference<Napi::Value>(Env(), ref);
+            }
           }
           if (status != 200)
           {
@@ -514,7 +527,7 @@ namespace quic
             wtsession->init(session);
             response->visitor =
                 std::make_unique<Http3WTSession::Visitor>(wtsession);
-            processNewSession(static_cast<Http3WTSession *>(wtsession), path, headerValue);
+            processNewSession(static_cast<Http3WTSession *>(wtsession), path, headerValue, userDataValue);
             (*prom)->resolve(std::move(response));
           }
         }

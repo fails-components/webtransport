@@ -272,6 +272,7 @@ export class HttpServer {
     const sesobj = new HttpWTSession({
       object: args.session,
       header: args.header,
+      userData: args.userData ?? {},
       parentobj: this
     })
     args.session.jsobj = sesobj
