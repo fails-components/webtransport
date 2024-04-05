@@ -1,10 +1,5 @@
 /**
  * @template T
- * @typedef {import('../../lib/webstreams').ReadableStream<T>} ReadableStream<T>
- */
-
-/**
- * @template T
  * @param {ReadableStream<T>} readableStream
  * @returns {Promise<T>}
  */

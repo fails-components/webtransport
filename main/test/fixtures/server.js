@@ -342,10 +342,9 @@ export async function createServer() {
               server.sessionStream('/session_with_userdata')
             )) {
               const stream = await session.createUnidirectionalStream()
-              await writeStream(
-                stream,
+              await writeStream(stream, [
                 new TextEncoder().encode(JSON.stringify(session.userData))
-              )
+              ])
               await session.close()
             }
           },
