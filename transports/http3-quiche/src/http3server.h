@@ -84,7 +84,7 @@ namespace quic
             exports.Set("Http3WebTransportServer", tplsrv);
         }
 
-        void processNewSession(Http3WTSession *session, const std::string &path, Napi::Reference<Napi::Value> *header);
+        void processNewSession(Http3WTSession *session, const std::string &path, Napi::Reference<Napi::Value> *header, Napi::Reference<Napi::Value> *userData);
         void processNewSessionRequest(WebTransportSession *session, const spdy::Http2HeaderBlock &reqheadcopy, WebTransportRespPromisePtr *promise);
 
     protected:

@@ -219,6 +219,7 @@ export interface HttpWTServerSessionVisitorEvent
   extends HttpWTSessionVisitorEvent {
   path: string
   header: Object
+  userData?: Object | undefined
 }
 
 export interface ServerSessionRequestEvent {
