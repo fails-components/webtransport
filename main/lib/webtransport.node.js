@@ -75,17 +75,18 @@ export class WebTransport extends WebTransportBase {
    * @param{{client: HttpClient, sessionint: HttpWTSession, ourl: URL}} args
    */
   startUpConnection({ client, sessionint, ourl }) {
+    const path = ourl.pathname + (ourl.search ?? '')
     client
-      .handleConnection({ createTransport: true, path: ourl.pathname })
-      .then(() => client.createWTSession(sessionint, ourl.pathname))
+      .handleConnection({ createTransport: true, path })
+      .then(() => client.createWTSession(sessionint, path))
       .catch((error) => {
         if (client.transportIntSwitchToReliable) {
           log('Connecting to unreliable failed:', error)
           log('Now switching to reliable')
           client.transportIntSwitchToReliable()
           client
-            .handleConnection({ createTransport: false, path: ourl.pathname })
-            .then(() => client.createWTSession(sessionint, ourl.pathname))
+            .handleConnection({ createTransport: false, path })
+            .then(() => client.createWTSession(sessionint, path))
             .catch((error) => {
               client.closeHookSession()
               sessionint.readyReject(error)
