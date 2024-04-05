@@ -5,7 +5,7 @@ import WebTransport from './fixtures/webtransport.js'
 import { expect } from './fixtures/chai.js'
 import { quicheLoaded } from './fixtures/quiche.js'
 import { getReaderValue } from './fixtures/reader-value.js'
-import { readStream } from './fixtures/read-stream.js'
+import { readStringFromStream } from './fixtures/read-stream.js'
 
 /**
  * @template T
@@ -93,9 +93,8 @@ describe('session', function () {
     await client.ready
 
     const stream = await getReaderValue(client.incomingUnidirectionalStreams)
-    const received = await readStream(stream)
-
-    const userData = JSON.parse(new TextDecoder().decode(received))
+    const string = await readStringFromStream(stream)
+    const userData = JSON.parse(string)
     expect(userData).to.have.property('search', '?foo=bar')
   })
 
