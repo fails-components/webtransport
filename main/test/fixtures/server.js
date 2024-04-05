@@ -341,11 +341,18 @@ export async function createServer() {
             for await (const session of getReaderStream(
               server.sessionStream('/session_with_userdata')
             )) {
-              const stream = await session.createUnidirectionalStream()
-              await writeStream(stream, [
-                new TextEncoder().encode(JSON.stringify(session.userData))
-              ])
-              await session.close()
+              try {
+                const stream = await session.createUnidirectionalStream()
+                await writeStream(stream, [
+                  new TextEncoder().encode(JSON.stringify(session.userData))
+                ])
+                session.close()
+              } catch (err) {
+                session.close({
+                  closeCode: 1,
+                  reason: err.stack
+                })
+              }
             }
           },
 
