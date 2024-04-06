@@ -85,7 +85,7 @@ namespace quic
       // not necessary anymore
 
       // second step inform the js side
-      server_->getJS()->processNewSessionRequest(session, request_headers, &promise);
+      server_->getJS()->processNewSessionRequest(session, request_headers, promise);
       return promise;
     }
 

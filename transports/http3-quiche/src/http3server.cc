@@ -388,7 +388,7 @@ namespace quic
         .Call(objVal, {retObj});
   }
 
-  void Http3ServerJS::processNewSessionRequest(WebTransportSession *session, const spdy::Http2HeaderBlock &reqhead, WebTransportRespPromisePtr *promise)
+  void Http3ServerJS::processNewSessionRequest(WebTransportSession *session, const spdy::Http2HeaderBlock &reqhead, WebTransportRespPromisePtr promise)
   {
     Napi::HandleScope scope(Env());
 
@@ -406,10 +406,11 @@ namespace quic
     }
     retObj.Set("header", headObj);
     // delete reqheadcopy; // we own it and must free it!
-
+    
+    WebTransportRespPromisePtr *prompointer = new WebTransportRespPromisePtr(promise);
     // promise
     Napi::External<WebTransportRespPromisePtr> promObj =
-        Napi::External<WebTransportRespPromisePtr>::New(Env(), promise,
+        Napi::External<WebTransportRespPromisePtr>::New(Env(), prompointer,
                                                         [](Napi::Env /*env*/, WebTransportRespPromisePtr *ref)
                                                         {
                                                           delete ref; // we own it and must delete it
