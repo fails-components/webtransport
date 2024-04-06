@@ -296,8 +296,8 @@ export interface HttpServerInit extends HttpWebTransportInit {
   port: string | number
   host: string
   secret: string
-  cert: string
-  privKey: string
+  cert: string | string[]
+  privKey: string | string[]
   maxConnections?: number
   initialStreamFlowControlWindow?: number
   streamShouldAutoTuneReceiveWindow?: boolean

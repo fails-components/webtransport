@@ -91,8 +91,8 @@ namespace quic
   Http3ServerJS::Http3ServerJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Http3ServerJS>(info)
   {
     std::string secret;
-    std::string cert;
-    std::string privkey;
+    std::vector<std::string> cert;
+    std::vector<std::string> privkey;
 
     QuicConfig sconfig;
     if (!info[0].IsUndefined())
@@ -113,7 +113,16 @@ namespace quic
         if (lobj.Has("cert") && !(lobj).Get("cert").IsEmpty())
         {
           Napi::Value certValue = (lobj).Get("cert");
-          cert = certValue.ToString().Utf8Value();
+          if (!certValue.IsArray()) {
+            cert.push_back(certValue.ToString().Utf8Value());
+          } else {
+            Napi::Array  certArray = certValue.As<Napi::Array>();
+            if (certArray.Length() < 1) Napi::Error::New(Env(), "No cert in array for Http3Server").ThrowAsJavaScriptException();
+            for (uint32_t i = 0; i < certArray.Length(); i++) {
+              Napi::Value curval = certArray.Get(i);
+              cert.push_back(curval.ToString().Utf8Value()); 
+            }
+          }
         }
         else
         {
@@ -123,13 +132,23 @@ namespace quic
         if (lobj.Has("privKey") && !(lobj).Get("privKey").IsEmpty())
         {
           Napi::Value keyValue = (lobj).Get("privKey");
-          privkey = keyValue.ToString().Utf8Value();
+          if (!keyValue.IsArray()) {
+            privkey.push_back(keyValue.ToString().Utf8Value());
+          } else {
+            Napi::Array  keyArray = keyValue.As<Napi::Array>();
+            if (keyArray.Length() < 1) Napi::Error::New(Env(), "No key in array for Http3Server").ThrowAsJavaScriptException();
+            for (uint32_t i = 0; i < keyArray.Length(); i++) {
+              Napi::Value curval = keyArray.Get(i);
+              privkey.push_back(curval.ToString().Utf8Value()); 
+            }
+          }
         }
         else
         {
           Napi::Error::New(Env(), "No privKey set for Http3Server").ThrowAsJavaScriptException();
           return;
         }
+        if (privkey.size() != cert.size()) Napi::Error::New(Env(), "Key and cert array length for Http3Server do not match").ThrowAsJavaScriptException();
         if (lobj.Has("maxConnections") && !(lobj).Get("maxConnections").IsEmpty())
         {
           Napi::Value maxconnValue = (lobj).Get("maxConnections");
@@ -176,10 +195,10 @@ namespace quic
       }
       // Callback *callback, int port, std::unique_ptr<ProofSource> proof_source,  const char *secret
 
-      std::stringstream certstream(cert, std::ios_base::in);
+      std::stringstream certstream(cert[0], std::ios_base::in);
       quiche::QuicheReferenceCountedPointer<ProofSource::Chain> chain(new ProofSource::Chain(CertificateView::LoadPemFromStream(&certstream)));
 
-      std::stringstream privkeystream(privkey, std::ios_base::in);
+      std::stringstream privkeystream(privkey[0], std::ios_base::in);
 
       auto certprivkey = CertificatePrivateKey::LoadPemFromStream(&privkeystream);
       if (certprivkey == nullptr)
@@ -193,6 +212,25 @@ namespace quic
       {
         Napi::Error::New(Env(), "LoadPemFromStream cert failed for Http3Server").ThrowAsJavaScriptException();
         return;
+      }
+      // add additional certs to proof source
+      for (size_t i = 1; i < cert.size(); i++)
+      {
+        std::stringstream addcertstream(cert[0], std::ios_base::in);
+        quiche::QuicheReferenceCountedPointer<ProofSource::Chain> addchain(new ProofSource::Chain(CertificateView::LoadPemFromStream(&addcertstream)));
+        std::stringstream addprivkeystream(privkey[0], std::ios_base::in);
+        auto addcertprivkey = CertificatePrivateKey::LoadPemFromStream(&privkeystream);
+        if (addcertprivkey == nullptr)
+        {
+          Napi::Error::New(Env(), "LoadPemFromStream addprivKey  failed for Http3Server").ThrowAsJavaScriptException();
+          return;
+        }
+
+        if (!proofsource->AddCertificateChain(addchain, std::move(*addcertprivkey)))
+        {
+          Napi::Error::New(Env(), "AddCertificateChain failed for Http3Server").ThrowAsJavaScriptException();
+          return;
+        }
       }
 
       server_ = std::make_unique<Http3Server>(this, std::move(proofsource), secret.c_str(), sconfig);
