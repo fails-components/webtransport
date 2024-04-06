@@ -140,7 +140,18 @@ export class Http2WebTransportServer {
           stream.destroy()
           return
         }
-        if (this.paths[path]) {
+        if (this.hasrequesthandler) {
+          stream.head = head
+
+          const retObj = {
+            header,
+            session: stream,
+            protocol: 'websocketoverhttp1',
+            head,
+            transportPrivate: { websocketProt }
+          }
+          this.jsobj.onSessionRequest(retObj)
+        } else if (this.paths[path]) {
           this.sendHttp1Headers({ stream, header, protocol: websocketProt })
             .then(() => {
               const retObj = {
@@ -189,18 +200,7 @@ export class Http2WebTransportServer {
               log('Problem sendHttp1Header', error)
               stream.destroy()
             })
-        } else if (this.hasrequesthandler) {
-          stream.head = head
-
-          const retObj = {
-            header,
-            session: stream,
-            protocol: 'websocketoverhttp1',
-            head,
-            transportPrivate: { websocketProt }
-          }
-          this.jsobj.onSessionRequest(retObj)
-        } else {
+        } else  {
           stream.destroy()
         }
       }
@@ -247,7 +247,15 @@ export class Http2WebTransportServer {
         path = path?.slice(1)
       }
       header[':path'] = path // also adapt it for the middleware
-      if (this.paths[path]) {
+      if (this.hasrequesthandler) {
+        const retObj = {
+          header,
+          session: stream,
+          protocol: websocketProt ? 'websocket' : 'capsule',
+          transportPrivate: { websocketProt }
+        }
+        this.jsobj.onSessionRequest(retObj)
+      } else if (this.paths[path]) {
         const {
           0x2b65: remoteBidirectionalStreams = undefined,
           0x2b64: remoteUnidirectionalStreams = undefined,
@@ -329,14 +337,6 @@ export class Http2WebTransportServer {
         if (websocketProt) resp['sec-websocket-protocol'] = websocketProt
         stream.respond(resp)
         this.jsobj.onHttpWTSessionVisitor(retObj)
-      } else if (this.hasrequesthandler) {
-        const retObj = {
-          header,
-          session: stream,
-          protocol: websocketProt ? 'websocket' : 'capsule',
-          transportPrivate: { websocketProt }
-        }
-        this.jsobj.onSessionRequest(retObj)
       } else {
         stream.respond({
           ':status': '404'
