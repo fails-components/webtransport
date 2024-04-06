@@ -331,14 +331,9 @@ export class Http2WebTransportServer {
         const retObj = {
           header,
           session: stream,
-          protocol: websocketProt ? 'websocket' : 'capsule'
+          protocol: websocketProt ? 'websocket' : 'capsule',
+          transportPrivate: { websocketProt }
         }
-        const resp = {
-          ':status': '200'
-        }
-        // @ts-ignore
-        if (websocketProt) resp['sec-websocket-protocol'] = websocketProt
-        stream.respond(resp)
         this.jsobj.onSessionRequest(retObj)
       } else {
         stream.respond({
@@ -437,12 +432,25 @@ export class Http2WebTransportServer {
   /**
    * @param {import('../../types.js').NativeFinishSessionRequest} args
    */
-  finishSessionRequest({ header, session: stream, status, protocol, head }) {
+  finishSessionRequest({
+    header,
+    userData,
+    session: stream,
+    status,
+    protocol,
+    head,
+    path,
+    transportPrivate
+  }) {
     if (status !== 200) {
       if (protocol === 'websocketoverhttp1') {
         stream.destroy()
       } else {
-        stream.close(constants.HTTP_STATUS_NOT_FOUND)
+        stream.respond({
+          ':status': status.toString()
+        })
+        stream.end()
+        stream.close()
       }
     } else {
       if (protocol === 'websocketoverhttp1') {
@@ -484,8 +492,9 @@ export class Http2WebTransportServer {
                   this.sessionShouldAutoTuneReceiveWindow,
                 receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
               }),
-              path: header[':path'],
-              header
+              path,
+              header,
+              userData
             }
             // @ts-ignore
             this.jsobj.onHttpWTSessionVisitor(retObj)
@@ -494,6 +503,14 @@ export class Http2WebTransportServer {
             log('sendHttp1Headers error', error)
           })
       } else {
+        const resp = {
+          ':status': '200'
+        }
+        // @ts-ignore
+        if (transportPrivate?.websocketProt)
+          // @ts-ignore
+          resp['sec-websocket-protocol'] = transportPrivate.websocketProt
+        stream.respond(resp)
         const {
           0x2b65: remoteBidirectionalStreams = undefined,
           0x2b64: remoteUnidirectionalStreams = undefined,
@@ -566,8 +583,9 @@ export class Http2WebTransportServer {
               this.sessionShouldAutoTuneReceiveWindow,
             receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
           }),
-          path: header[':path'],
-          header
+          path,
+          header,
+          userData
         }
         // @ts-ignore
         this.jsobj.onHttpWTSessionVisitor(retObj)

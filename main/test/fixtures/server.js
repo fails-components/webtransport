@@ -346,7 +346,7 @@ export async function createServer() {
                 await writeStream(stream, [
                   new TextEncoder().encode(JSON.stringify(session.userData))
                 ])
-                session.close()
+                // session.close() // do not close it here, the stream is closed before a reader is attached on client side
               } catch (err) {
                 session.close({
                   closeCode: 1,
