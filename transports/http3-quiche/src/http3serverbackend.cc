@@ -67,8 +67,18 @@ namespace quic
     }
     std::string path(path_it->second);
 
+    if (jshandlerequesthandler_)
+    {
+      // first step pass header block along, due to thread safety, we need to copy
+      // not necessary anymore
+
+      // second step inform the js side
+      server_->getJS()->processNewSessionRequest(session, request_headers, promise);
+      return promise;
+    } 
+    
     if (paths_.find(path) != paths_.end())
-    { // to do handle our web transport paths
+    { // to do handle our web transport paths, if no handler is present
       std::unique_ptr<WebTransportResponse> response = std::make_unique<WebTransportResponse>();
       Http3WTSession *wtsession = new Http3WTSession();
       wtsession->init(session);
@@ -77,15 +87,6 @@ namespace quic
           std::make_unique<Http3WTSession::Visitor>(wtsession);
       server_->getJS()->processNewSession(static_cast<Http3WTSession *>(wtsession), path, nullptr, nullptr);
       promise->resolve(std::move(response));
-      return promise;
-    }
-    else if (jshandlerequesthandler_)
-    {
-      // first step pass header block along, due to thread safety, we need to copy
-      // not necessary anymore
-
-      // second step inform the js side
-      server_->getJS()->processNewSessionRequest(session, request_headers, promise);
       return promise;
     }
 
