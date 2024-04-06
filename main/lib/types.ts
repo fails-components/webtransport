@@ -4,7 +4,7 @@ import type {
   WebTransportOptions,
   WebTransportSendGroup
 } from './dom'
-import type { IncomingHttpHeaders, Http2Stream } from 'http2'
+import type { IncomingHttpHeaders, Http2Stream, ServerHttp2Stream } from 'http2'
 import { ParserBase } from './http2/parserbase'
 import { Http2WebTransportSession } from './http2/session'
 import { HttpClient } from './client'
@@ -103,11 +103,14 @@ export interface ReadBuffer {
 }
 
 export interface NativeFinishSessionRequest {
+  path: string
   header: IncomingHttpHeaders
-  session: Http2Stream
+  session: ServerHttp2Stream
   status: number
   protocol: 'capsule' | 'websocket' | 'websocketoverhttp1' | 'http3'
   head?: Buffer
+  userData?: object
+  transportPrivate?: object
 }
 
 export type Purpose =
@@ -229,6 +232,7 @@ export interface ServerSessionRequestEvent {
   session: any
   object?: any // the actual transport object itself, actually present on all messages, but required here
   protocol: string //'capsule' | 'websocket' | 'http3'
+  transportPrivate?: Object //private information from the transport object
 }
 
 /**

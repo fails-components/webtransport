@@ -245,7 +245,7 @@ export class HttpServer {
    * @param {ServerSessionRequestEvent} args
    */
   onSessionRequest(args) {
-    if (args.promise && args.header) {
+    if ((args.promise || args.protocol !== 'http3:libquiche') && args.header) {
       if (!this.requestHandler) throw new Error('Request handler not set')
       this.requestHandler({ header: args.header })
         .then((/** @type {any} */ result) => {
@@ -255,6 +255,7 @@ export class HttpServer {
             header: args.header,
             session: args.session,
             head: args.head,
+            transportPrivate: args.transportPrivate,
             ...result
           })
         })

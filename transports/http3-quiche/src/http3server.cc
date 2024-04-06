@@ -424,6 +424,7 @@ namespace quic
                                                    // does it outlife everything?
                                                  });
     retObj.Set("session", wtsObj);
+    retObj.Set("protocol", "http3:libquiche");
 
     objVal.Get("onSessionRequest")
         .As<Napi::Function>()
