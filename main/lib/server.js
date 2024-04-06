@@ -256,6 +256,7 @@ export class HttpServer {
             session: args.session,
             head: args.head,
             transportPrivate: args.transportPrivate,
+            protocol: args.protocol,
             ...result
           })
         })
