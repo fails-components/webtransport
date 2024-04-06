@@ -200,7 +200,7 @@ export class Http2WebTransportServer {
               log('Problem sendHttp1Header', error)
               stream.destroy()
             })
-        } else  {
+        } else {
           stream.destroy()
         }
       }
