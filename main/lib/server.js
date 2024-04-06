@@ -82,8 +82,8 @@ class TransportIntServerProxy {
   }
 
   /**
-   * @param {string} cert
-   * @param {string} privKey
+   * @param {string|string[]} cert
+   * @param {string|string[]} privKey
    * @param {boolean} http2only
    * */
   updateCert(cert, privKey, http2only) {
