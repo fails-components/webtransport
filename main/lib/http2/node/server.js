@@ -127,18 +127,18 @@ export class Http2WebTransportServer {
       'upgrade',
       (request, stream /* actually a socket */, head) => {
         let path = request.url
-        const header = request.headers
         if (!path) {
-          stream.destroy()
-          return
-        }
-        const websocketProt = this.checkProtocolHeader(header)
-        if (!websocketProt) {
           stream.destroy()
           return
         }
         while (path.length > 1 && path[0] === '/' && path[1] === '/') {
           path = path?.slice(1)
+        }
+        const header = { ...request.headers, ':path': path }
+        const websocketProt = this.checkProtocolHeader(header)
+        if (!websocketProt) {
+          stream.destroy()
+          return
         }
         if (this.paths[path]) {
           this.sendHttp1Headers({ stream, header, protocol: websocketProt })
@@ -196,7 +196,8 @@ export class Http2WebTransportServer {
             header,
             session: stream,
             protocol: 'websocketoverhttp1',
-            head
+            head,
+            transportPrivate: { websocketProt }
           }
           this.jsobj.onSessionRequest(retObj)
         } else {
@@ -245,6 +246,7 @@ export class Http2WebTransportServer {
       while (path.length > 1 && path[0] === '/' && path[1] === '/') {
         path = path?.slice(1)
       }
+      header[':path'] = path // also adapt it for the middleware
       if (this.paths[path]) {
         const {
           0x2b65: remoteBidirectionalStreams = undefined,
@@ -454,8 +456,13 @@ export class Http2WebTransportServer {
       }
     } else {
       if (protocol === 'websocketoverhttp1') {
-        // @ts-ignore
-        this.sendHttp1Headers({ stream, header })
+        this.sendHttp1Headers({
+          // @ts-ignore
+          stream,
+          header,
+          // @ts-ignore
+          protocol: transportPrivate.websocketProt
+        })
           .then(() => {
             const retObj = {
               session: new Http2WebTransportSession({
