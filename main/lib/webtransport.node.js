@@ -110,7 +110,8 @@ export class WebTransport extends WebTransportBase {
    */
   createClient(args) {
     let createUnreliableClient
-    if (!quicheLoadedReady)
+    // @ts-ignore
+    if (!quicheLoadedReady && !args?.forceReliable)
       throw new Error('Lib quiche loading attempt did not end')
     if (checkQuicheInit) {
       createUnreliableClient = function (/** @type {any} */ _client) {
