@@ -135,12 +135,6 @@ namespace quic
         timerset_ = false;
       }
       auto val =  Napi::Value::From(alarmjs_->Env(), timedelay);
-      // Workaround for problem on windows plattform
-      if (val.ToNumber().DoubleValue() != timedelay) { 
-        // printf("val %lg %lg\n", val.ToNumber().DoubleValue(), timedelay);
-        val =  Napi::Value::From(alarmjs_->Env(), timedelay);
-        // printf("val2 %lg %lg\n", val.ToNumber().DoubleValue(), timedelay);
-      }
 
       Napi::Value timeoutobj = NapiAlarmJS::FAILSsetTimeoutAlarm_.Call({
           alarmjs_->Value().As<Napi::Object>(),
