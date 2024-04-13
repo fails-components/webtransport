@@ -67,6 +67,11 @@ namespace quic
 
   Napi::Object Init(Napi::Env env, Napi::Object exports)
   {
+    #ifdef _MSC_VER
+    // work around clangcl bug
+    uint32_t dummy;
+    napi_get_version(env,&dummy);
+    #endif
     Http3Constructors *constr = new Http3Constructors();
 
     Http3ServerJS::InitExports(env, exports);
