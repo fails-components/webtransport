@@ -69,8 +69,8 @@ namespace quic
   {
     #ifdef _MSC_VER
     // work around clangcl bug
-    uint32_t dummy;
-    napi_get_version(env,&dummy);
+    napi_value dummy;
+    napi_create_double(env,2.0, &dummy);
     #endif
     Http3Constructors *constr = new Http3Constructors();
 
