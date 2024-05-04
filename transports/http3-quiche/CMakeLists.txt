@@ -611,6 +611,8 @@ third_party/quiche/quiche/quic/core/quic_alarm_factory.h
 third_party/quiche/quiche/quic/core/quic_arena_scoped_ptr.h
 third_party/quiche/quiche/quic/core/quic_bandwidth.cc
 third_party/quiche/quiche/quic/core/quic_bandwidth.h
+third_party/quiche/quiche/quic/core/quic_blocked_writer_list.cc
+third_party/quiche/quiche/quic/core/quic_blocked_writer_list.h
 third_party/quiche/quiche/quic/core/quic_blocked_writer_interface.h
 third_party/quiche/quiche/quic/core/quic_buffered_packet_store.cc
 third_party/quiche/quiche/quic/core/quic_buffered_packet_store.h
@@ -623,6 +625,8 @@ third_party/quiche/quiche/quic/core/quic_config.cc
 third_party/quiche/quiche/quic/core/quic_config.h
 third_party/quiche/quiche/quic/core/quic_connection.cc
 third_party/quiche/quiche/quic/core/quic_connection.h
+third_party/quiche/quiche/quic/core/quic_connection_alarms.cc
+third_party/quiche/quiche/quic/core/quic_connection_alarms.h
 third_party/quiche/quiche/quic/core/quic_connection_context.cc
 third_party/quiche/quiche/quic/core/quic_connection_context.h
 third_party/quiche/quiche/quic/core/quic_connection_id.cc
