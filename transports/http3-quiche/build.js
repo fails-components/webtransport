@@ -1,9 +1,9 @@
 import { arch, argv, env, platform } from 'node:process'
 import { spawn } from 'node:child_process'
-import { cp, rename, mkdtemp, rm, access, readdir } from 'node:fs/promises'
+import { cp, rename, mkdtemp, rm, access } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import path from 'node:path'
-import pkg from './package.json' assert { type: 'json' }
+import pkg from './package.json' with { type: 'json' }
 import { tmpdir } from 'node:os'
 
 const binplatform = platform + '_' + arch
@@ -87,7 +87,7 @@ const extractthirdparty = async () => {
       'transports/http3-quiche/third_party/googleurl',
       'transports/http3-quiche/third_party/protobuf'
     ]
-    for (let mod in submodules) {
+    for (const mod in submodules) {
       const sub = submodules[mod]
       await callGit(
         [
@@ -141,8 +141,8 @@ const prebuild = (args) => {
 
     proc.on('close', (code) => {
       console.log(`child process exited with code ${code}`)
-      if (code == 0) resolve()
-      else reject()
+      if (code === 0) resolve()
+      else reject(new Error(`child process exited with code ${code}`))
     })
   })
 }
@@ -237,7 +237,7 @@ if (argv.length > 2) {
         process.exit(1)
       }
       break
-    case 'install': {
+    case 'install': 
       try {
         const pbres = await prebuildInstall([
           '-r',
@@ -261,7 +261,7 @@ if (argv.length > 2) {
         console.error('Building binary failed: ', error)
         process.exit(1)
       }
-    } break
+     break
     case 'build':
       try {
         await execbuild(['build', ...platformargs])
