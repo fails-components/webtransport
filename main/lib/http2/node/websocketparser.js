@@ -863,6 +863,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
   /**
    * @param {number} code
    */
+  // eslint-disable-next-line no-unused-vars
   closeHttp2Stream(code) {
     const stream = this.stream
     if (stream.close) {

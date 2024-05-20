@@ -37,6 +37,7 @@ if (globalThis.WebTransport) {
       .then(() => {
         try {
           transport.close()
+          // eslint-disable-next-line no-empty, no-unused-vars
         } catch (error) {}
       })
       .catch(() => {})
@@ -83,6 +84,7 @@ export class WebTransportPonyfill extends WebTransportBase {
   createClient(args) {
     this.curtype = 'websocket'
     const client = new HttpClient({
+      // eslint-disable-next-line no-unused-vars
       createReliableClient: (client) => {
         // @ts-ignore
         return new Http2WebTransportBrowser({ ...args })
@@ -215,8 +217,8 @@ export class WebTransportPolyfill {
     // @ts-ignore
     this.datagrams = {}
     // @ts-ignore
-    // eslint-disable-next-line no-undef
     this.datagrams.readable = new ReadableStream({
+      // eslint-disable-next-line no-unused-vars
       start: async (controller) => {
         await this.ready
         this.datagramsReader = this.curtransport.datagrams.readable.getReader()
@@ -231,12 +233,13 @@ export class WebTransportPolyfill {
       }
     })
     // @ts-ignore
-    // eslint-disable-next-line no-undef
     this.datagrams.writable = new WritableStream({
+      // eslint-disable-next-line no-unused-vars
       start: async (controller) => {
         await this.ready
         this.datagramsWriter = this.curtransport.datagrams.writable.getWriter()
       },
+      // eslint-disable-next-line no-unused-vars
       write: async (chunk, controller) => {
         await this.datagramsWriter.write(chunk)
       },
@@ -247,8 +250,8 @@ export class WebTransportPolyfill {
         await this.datagramsWriter.close()
       }
     })
-    // eslint-disable-next-line no-undef
     this.incomingBidirectionalStreams = new ReadableStream({
+      // eslint-disable-next-line no-unused-vars
       start: async (controller) => {
         await this.ready
         this.incomingBidirectionalStreamsReader =
@@ -264,8 +267,8 @@ export class WebTransportPolyfill {
         await this.incomingBidirectionalStreamsReader.cancel(reason)
       }
     })
-    // eslint-disable-next-line no-undef
     this.incomingUnidirectionalStreams = new ReadableStream({
+      // eslint-disable-next-line no-unused-vars
       start: async (controller) => {
         await this.ready
         this.incomingUnidirectionalStreamsReader =

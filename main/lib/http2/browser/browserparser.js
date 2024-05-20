@@ -278,6 +278,7 @@ export class BrowserParser extends ParserBase {
   /**
    * @param {number} code
    */
+  // eslint-disable-next-line no-unused-vars
   closeHttp2Stream(code) {
     this.ws.close(1000)
   }

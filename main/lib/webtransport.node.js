@@ -23,7 +23,6 @@ let Http3WebTransportClient
  */
 let quicheLoadedReady
 // @ts-ignore
-// eslint-disable-next-line no-unused-vars
 export const quicheLoaded = new Promise((resolve, reject) => {
   // @ts-ignore
   import('@fails-components/webtransport-transport-http3-quiche')
@@ -114,6 +113,7 @@ export class WebTransport extends WebTransportBase {
     if (!quicheLoadedReady && !args?.forceReliable)
       throw new Error('Lib quiche loading attempt did not end')
     if (checkQuicheInit) {
+      // eslint-disable-next-line no-unused-vars
       createUnreliableClient = function (/** @type {any} */ _client) {
         if (
           // @ts-ignore
@@ -132,6 +132,7 @@ export class WebTransport extends WebTransportBase {
       }
     }
     const client = new HttpClient({
+      // eslint-disable-next-line no-unused-vars
       createReliableClient: function (client) {
         // @ts-ignore
         return new Http2WebTransportClient({ ...args })

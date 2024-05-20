@@ -147,7 +147,7 @@ export async function echoTestsConnection(transport) {
   const resultArray1 = new Uint8Array(i)
   console.log('TEST 1: start')
 
-  while (true && i > 0) {
+  while (i > 0) {
     const { done, value } = await reader.read()
     if (done) {
       break
@@ -199,7 +199,7 @@ export async function echoTestsConnection(transport) {
     refArray2.set(data4, data3.length)
 
     const resultArray2 = new Uint8Array(i)
-    while (true && i > 0) {
+    while (i > 0) {
       const { done, value } = await readbd.read()
       if (done) {
         break
@@ -255,7 +255,7 @@ export async function echoTestsConnection(transport) {
 
     const resultArray3 = new Uint8Array(i)
 
-    while (true && i > 0) {
+    while (i > 0) {
       const { done, value } = await readud.read()
       if (done) {
         break
@@ -302,7 +302,7 @@ export async function echoTestsConnection(transport) {
   pos = 0
   const resultArray4 = new Uint8Array(i)
 
-  while (true && i > 0) {
+  while (i > 0) {
     const { done, value } = await readdg.read()
     if (done) {
       break

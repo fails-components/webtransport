@@ -1,6 +1,6 @@
 .env
 files
-/node_modules
+**/node_modules
 build_*
 build
 !/transports/http3-quiche/third_party/googleurl/build

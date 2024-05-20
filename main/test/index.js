@@ -7,6 +7,7 @@ import { execa } from 'execa'
 async function startServer() {
   let http2 = false
   if (process.argv[3] === 'http2') http2 = true
+  // eslint-disable-next-line no-unused-vars
   return new Promise((resolve, reject) => {
     let foundAddress = false
 

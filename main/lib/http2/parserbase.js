@@ -65,6 +65,7 @@ export class ParserBase {
    * @abstract
    * @param {Buffer|Uint8Array} data
    */
+  // eslint-disable-next-line no-unused-vars
   parseData(data) {
     throw new Error('Implement parseData in derived Class')
   }
@@ -73,6 +74,7 @@ export class ParserBase {
    * @abstract
    * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array|undefined, end?: () => void}} bs
    */
+  // eslint-disable-next-line no-unused-vars
   writeCapsule({ type, headerVints, payload, end }) {
     throw new Error('Implement writeCapsule in derived Class')
   }
@@ -252,6 +254,7 @@ export class ParserBase {
   /**
    * @param {number} code
    */
+  // eslint-disable-next-line no-unused-vars
   closeHttp2Stream(code) {
     throw new Error('Implement closeHttp2Stream in derived Class')
   }

@@ -144,6 +144,7 @@ export class HttpClient {
   /**
    * @param {ClientWebtransportSupportEvent} args
    */
+  // eslint-disable-next-line no-unused-vars
   onClientWebTransportSupport(args) {
     if (this.webtransportProm) {
       this.webtransportProm.resolve()

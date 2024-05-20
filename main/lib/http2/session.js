@@ -136,6 +136,7 @@ export class Http2WebTransportSession {
   /**
    * @param {{sendGroup:  WebTransportSendGroup|null, sendOrder: number, waitUntilAvailable: boolean}} opts
    */
+  // eslint-disable-next-line no-unused-vars
   orderUnidiStream({ sendGroup, sendOrder, waitUntilAvailable }) {
     const canopen = this.streamIdMngrUni.canOpenNextOutgoingStream()
     const maxset = this.streamIdMngrUni.isMaxStreamSet() // we block if the maxsetting did not arrive
@@ -167,6 +168,7 @@ export class Http2WebTransportSession {
   /**
    * @param {{sendGroup:  WebTransportSendGroup|null, sendOrder: number, waitUntilAvailable: boolean}} opts
    */
+  // eslint-disable-next-line no-unused-vars
   orderBidiStream({ sendGroup, sendOrder, waitUntilAvailable }) {
     const canopen = this.streamIdMngrBi.canOpenNextOutgoingStream()
     const maxset = this.streamIdMngrBi.isMaxStreamSet() // we block if the maxsetting did not arrive
@@ -265,6 +267,7 @@ export class Http2WebTransportSession {
     } else if (this.ws) {
       // we are at the Browser, so we use the connection rtt?
       // @ts-ignore
+      // eslint-disable-next-line no-undef
       return navigator?.connection?.rtt || 26
     }
   }

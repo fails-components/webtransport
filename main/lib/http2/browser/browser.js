@@ -62,7 +62,7 @@ export class Http2WebTransportBrowser {
       return
     }
     this.clientInt.binaryType = 'arraybuffer'
-
+    // eslint-disable-next-line no-unused-vars
     this.clientInt.addEventListener('open', (event) => {
       const protocol = this.clientInt?.protocol
       if (!protocol) {
@@ -111,6 +111,7 @@ export class Http2WebTransportBrowser {
   /**
    * @param {string} path
    */
+  // eslint-disable-next-line no-unused-vars
   openWTSession(path) {
     if (!this.clientInt) throw new Error('clientInt not present')
     let sessobj
