@@ -139,6 +139,7 @@ export class HttpWTSession {
         start: (controller) => {
           this.outgoDatagramController = controller
         },
+        // eslint-disable-next-line no-unused-vars
         write: (chunk, controller) => {
           if (this.state === 'closed') throw new Error('Session is closed')
           if (chunk instanceof Uint8Array) {
@@ -590,6 +591,7 @@ export class HttpWTSession {
   /**
    * @param {DatagramSendEvent} args
    */
+  // eslint-disable-next-line no-unused-vars
   onDatagramSend(args) {
     if (this.state === 'closed') return
     this.writeDatagramRej.shift()
@@ -604,6 +606,7 @@ export class HttpWTSession {
   /**
    * @param {GoawayReceivedEvent} args
    */
+  // eslint-disable-next-line no-unused-vars
   onGoAwayReceived(args) {
     if (this.drainingResolve) this.drainingResolve(undefined)
     this.state = 'draining'

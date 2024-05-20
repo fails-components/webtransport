@@ -52,9 +52,9 @@ export class HttpWTStream {
     this.pendingres = null
 
     /** @type {WebTransportReceiveStream} */
-    this.readable // eslint-disable-line no-unused-expressions
+    this.readable
     /** @type {WebTransportSendStream} */
-    this.writable // eslint-disable-line no-unused-expressions
+    this.writable
 
     /** @type {Promise<void> | null} */
     this.pendingoperationRead = null
@@ -69,12 +69,13 @@ export class HttpWTStream {
           this.objint.startReading()
         },
         pull: async (
+          // eslint-disable-next-line no-unused-vars
           /** @type {import("stream/web").ReadableByteStreamController} */ controller
         ) => {
           if (this.readableclosed) {
             return Promise.resolve()
           }
-
+          // eslint-disable-next-line no-unused-vars
           this.pendingoperationRead = new Promise((resolve, reject) => {
             this.pendingresRead = resolve
           })
@@ -83,6 +84,7 @@ export class HttpWTStream {
         },
         cancel: (/** @type {{ code: number; }} */ reason) => {
           /** @type {Promise<void>} */
+          // eslint-disable-next-line no-unused-vars
           const promise = new Promise((resolve, reject) => {
             this.cancelres = resolve
           })
@@ -128,6 +130,7 @@ export class HttpWTStream {
           start: (controller) => {
             this.writableController = controller
           },
+          // eslint-disable-next-line no-unused-vars
           write: (chunk, controller) => {
             if (this.writableclosed) {
               return Promise.resolve()
@@ -137,6 +140,7 @@ export class HttpWTStream {
               wchunk = new Uint8Array(wchunk)
             }
             if (wchunk instanceof Uint8Array) {
+              // eslint-disable-next-line no-unused-vars
               this.pendingoperation = new Promise((resolve, reject) => {
                 this.pendingres = resolve
               })
@@ -161,6 +165,7 @@ export class HttpWTStream {
               return Promise.resolve()
             }
             this.objint.streamFinal()
+            // eslint-disable-next-line no-unused-vars
             this.pendingoperation = new Promise((resolve, reject) => {
               this.pendingres = resolve
             })
@@ -168,6 +173,7 @@ export class HttpWTStream {
           },
           abort: (reason) => {
             if (this.writableclosed) {
+              // eslint-disable-next-line no-unused-vars
               return new Promise((resolve, reject) => {
                 resolve()
               })
@@ -179,6 +185,7 @@ export class HttpWTStream {
               else code = reason.code
             }
             /** @type {Promise<void>} */
+            // eslint-disable-next-line no-unused-vars
             const promise = new Promise((resolve, reject) => {
               this.abortres = resolve
             })
@@ -349,6 +356,7 @@ export class HttpWTStream {
   /**
    * @param {StreamWriteEvent} args
    */
+  // eslint-disable-next-line no-unused-vars
   onStreamWrite(args) {
     // we ignore success
     if (this.pendingoperation) {

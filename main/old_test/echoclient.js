@@ -19,7 +19,6 @@ async function startClientTests(args, hashes) {
       value: Buffer.from(el.value.split(':').map((el) => parseInt(el, 16)))
     }))
   }
-  // eslint-disable-next-line no-undef
   console.log('hashagrs', hashargs)
   const transport = new WebTransport(url, hashargs)
   transport.closed

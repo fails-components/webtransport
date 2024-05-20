@@ -200,7 +200,6 @@ export async function createServer() {
               // write datagrams until the client receives one and closes the connection
               // eslint-disable-next-line promise/catch-or-return
               Promise.resolve().then(async () => {
-                // eslint-disable-next-line no-unmodified-loop-condition
                 while (!closed) {
                   try {
                     await writer.ready
@@ -243,6 +242,7 @@ export async function createServer() {
                 }
                 await getReaderValue(session.incomingUnidirectionalStreams)
                 await session.close()
+                // eslint-disable-next-line no-unused-vars
               } catch (error) {
                 // do not crash server, if a problem occurs...
               }
@@ -262,6 +262,7 @@ export async function createServer() {
                   )
                 }
                 await session.close()
+                // eslint-disable-next-line no-unused-vars
               } catch (error) {
                 // do not crash server, if a problem occurs...
               }
@@ -291,6 +292,7 @@ export async function createServer() {
                 }
                 await getReaderValue(session.incomingBidirectionalStreams)
                 await session.close()
+                // eslint-disable-next-line no-unused-vars
               } catch (error) {
                 // do not crash server, if a problem occurs...
               }
@@ -310,6 +312,7 @@ export async function createServer() {
                   )
                 }
                 await session.close()
+                // eslint-disable-next-line no-unused-vars
               } catch (error) {
                 // do not crash server, if a problem occurs...
               }
@@ -378,6 +381,7 @@ export async function createServer() {
                 } else {
                   session.close()
                 }
+                // eslint-disable-next-line no-unused-vars
               } catch (error) {
                 // in some tests the client closes the stream
               }

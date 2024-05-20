@@ -5,10 +5,12 @@ try {
   const teststream = new ReadableStream({
     // @ts-ignore
     start: (
+      // eslint-disable-next-line no-unused-vars
       /** @type {import("stream/web").ReadableByteStreamController} */ controller
     ) => {},
     type: 'bytes'
   })
+  // eslint-disable-next-line no-unused-vars
 } catch (error) {
   canByteStream_ = false
 }

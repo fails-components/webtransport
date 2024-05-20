@@ -114,6 +114,7 @@ export class Http2WebTransportClient {
     // ok we got a session and want to measure RTT
     let pingsender = setInterval(() => {
       if (this.clientInt && !this.clientInt.closed) {
+        // eslint-disable-next-line no-unused-vars
         this.clientInt.ping((err, duration, payload) => {
           if (!err) {
             rtt = adjust * duration + (1 - adjust) * rtt
@@ -172,6 +173,7 @@ export class Http2WebTransportClient {
       }
     })
     let connected = false
+    // eslint-disable-next-line no-unused-vars
     this.clientInt.on('connect', (session, socket) => {
       if (!authfail) {
         connected = true
@@ -191,7 +193,6 @@ export class Http2WebTransportClient {
     this.clientInt.on('remoteSettings', (settings) => {
       if (settings.enableConnectProtocol && this.clientInt) {
         // if (settings.webtansportmaxsessions)
-        // eslint-disable-next-line no-lone-blocks
         {
           const retObj = {}
           this.jsobj.onClientWebTransportSupport(retObj)

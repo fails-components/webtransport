@@ -59,6 +59,7 @@ export class WebTransportBase {
    * @return {{sessionint: HttpWTSession, client: HttpClient}}
    * @abstract
    */
+  // eslint-disable-next-line no-unused-vars
   createClient(args) {
     throw new Error('Implement createClient')
   }
@@ -67,6 +68,7 @@ export class WebTransportBase {
    * @param{{client: HttpClient, sessionint: HttpWTSession, ourl: URL}} args
    * @abstract
    */
+  // eslint-disable-next-line no-unused-vars
   startUpConnection({ client, sessionint, ourl }) {
     throw new Error('Implement startUpConnection')
   }

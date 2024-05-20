@@ -97,6 +97,7 @@ export class Http2WebTransportServer {
       // ok we got a session and want to measure RTT
       let pingsender = setInterval(() => {
         if (!session.closed)
+          // eslint-disable-next-line no-unused-vars
           session.ping((err, duration, payload) => {
             if (!err) {
               rtt = adjust * duration + (1 - adjust) * rtt
@@ -382,6 +383,7 @@ export class Http2WebTransportServer {
    * @param {string|string[]} privKey
    * @param {boolean} http2only
    * */
+  // eslint-disable-next-line no-unused-vars
   updateCert(cert, privKey, http2only) {
     this.serverInt.setSecureContext({ key: privKey, cert })
   }

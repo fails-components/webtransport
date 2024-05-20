@@ -173,7 +173,7 @@ export class Http2WebTransportStream {
               cur.data.byteOffset + len,
               cur.data.byteLength - len
             ),
-            fin: false || cur.fin
+            fin: cur.fin
           })
           buffer.fin = false // next round
         } else {

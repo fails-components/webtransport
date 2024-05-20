@@ -71,6 +71,7 @@ export class Http3WebTransportSocket {
   /**
    * @param {import('../../../main/lib/types.js').HttpWebTransportInit|undefined} args
    */
+  // eslint-disable-next-line no-unused-vars
   constructor(args) {
     /** @type {import('node:dgram').Socket} */
     // @ts-ignore
