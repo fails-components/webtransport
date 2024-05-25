@@ -762,6 +762,8 @@ third_party/quiche/quiche/quic/core/uber_received_packet_manager.cc
 third_party/quiche/quiche/quic/core/uber_received_packet_manager.h
 third_party/quiche/quiche/quic/core/web_transport_stats.h
 third_party/quiche/quiche/quic/core/web_transport_stats.cc
+third_party/quiche/quiche/quic/core/web_transport_write_blocked_list.h
+third_party/quiche/quiche/quic/core/web_transport_write_blocked_list.cc
 third_party/quiche/quiche/quic/platform/api/quic_bug_tracker.h
 third_party/quiche/quiche/quic/platform/api/quic_client_stats.h
 third_party/quiche/quiche/quic/platform/api/quic_export.h
