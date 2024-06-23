@@ -4,8 +4,14 @@
   "description": "A component to add webtransport support (server and client) to node.js using libquiche",
   "exports": {
     ".": {
-      "node": "./lib/index.node.js",
-      "browser": "./lib/index.browser.js"
+      "node": {
+        "import": "./lib/index.node.js",
+        "types": "./dist/lib/index.node.d.ts"
+      },
+      "browser": {
+        "import": "./lib/index.browser.js",
+        "types": "./dist/lib/index.browser.d.ts"
+      }
     }
   },
   "engines": {
