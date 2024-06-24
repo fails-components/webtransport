@@ -5,12 +5,12 @@
   "exports": {
     ".": {
       "node": {
-        "import": "./lib/index.node.js",
-        "types": "./dist/lib/index.node.d.ts"
+        "types": "./dist/lib/index.node.d.ts",
+        "import": "./lib/index.node.js"
       },
       "browser": {
-        "import": "./lib/index.browser.js",
-        "types": "./dist/lib/index.browser.d.ts"
+        "types": "./dist/lib/index.browser.d.ts",
+        "import": "./lib/index.browser.js"
       }
     }
   },
