@@ -668,7 +668,6 @@ third_party/quiche/quiche/quic/core/quic_dispatcher.cc
 third_party/quiche/quiche/quic/core/quic_dispatcher.h
 third_party/quiche/quiche/quic/core/quic_error_codes.cc
 third_party/quiche/quiche/quic/core/quic_error_codes.h
-third_party/quiche/quiche/quic/core/quic_flags_list.h
 third_party/quiche/quiche/quic/core/quic_flow_controller.cc
 third_party/quiche/quiche/quic/core/quic_flow_controller.h
 third_party/quiche/quiche/quic/core/quic_framer.cc
