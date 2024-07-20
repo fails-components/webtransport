@@ -43,7 +43,7 @@ jobs:
           git submodule update --remote transports/http3-quiche/third_party/googleurl
           
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v4
+        uses: peter-evans/create-pull-request@v6
         with:
           branch: thirdpartylibtracker
           delete-branch: true
