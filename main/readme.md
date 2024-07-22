@@ -72,8 +72,8 @@ The package `webtransport-transport-http3-quiche` provides prebuild binaries for
 Other platforms may be possible via cross-compiling in the GitHub actions, if someone needs this, PRs are welcome.
 
 Of course, you can also build the binary on your system.
-If you are running the compiling install as root, you need to use `--`unsafe-perm` as a flag.
-Installing the package without prebuild requires a full building environment including clang-9, perl6, python, golang,  `ninja-build, `and `icu``.` See the `Dockerfile` or `Dockerfile.development` for required Debian packages.
+If you are running the compiling install as root, you need to use `--unsafe-perm` as a flag.
+Installing the package without prebuild requires a full building environment including `clang-9`, `perl6`, `python`, `golang`,  `ninja-build`, and `icu`. See the `Dockerfile` or `Dockerfile.development` for required Debian packages.
 This should work for Windows, Linux and Mac OS X.
 (You may want to check out the building dependencies (especially for Windows) for BoringSSl, zlib, abseil on their respective websites).
 
