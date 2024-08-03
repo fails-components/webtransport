@@ -91,15 +91,17 @@ async function runTests(certificate, serverAddress) {
         USE_HTTP2: http2 ? 'true' : 'false',
         USE_POLYFILL: polyfill ? 'true' : 'false',
         USE_PONYFILL: ponyfill ? 'true' : 'false',
-//        NO_CERT_HASHES:
-//          env === 'firefox' && !ponyfill && !polyfill ? 'true' : 'false',
-// keep for future browsers without serverCertificateHashes
+        //        NO_CERT_HASHES:
+        //          env === 'firefox' && !ponyfill && !polyfill ? 'true' : 'false',
+        // keep for future browsers without serverCertificateHashes
         BROWSER: env
       },
       stdio: ['inherit', 'inherit', 'inherit']
     })
 
     await tests
+  } else if (env === 'localserver') {
+    
   }
 }
 
