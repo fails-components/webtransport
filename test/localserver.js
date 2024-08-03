@@ -14,7 +14,10 @@ let specFiles
 
 readdir(__dirname)
   .then(async (files) => {
-    const scriptfiles = files.filter((file) => file.endsWith('.spec.js'))
+    const scriptfiles = files.filter(
+      (file) => file.endsWith('.spec.js') /* &&
+        (file.startsWith('ses') || file.startsWith('uni')) */
+    )
     let processScript =
       'var process ={}; process.env = {' +
       Object.entries(process.env)
@@ -56,11 +59,14 @@ app.get('/:filename', (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mocha Tests</title>
+    <title>@fails-components Webtransport Tests</title>
     <link rel="stylesheet" href="mocha/mocha.css">
 </head>
 <body>
     <div id="mocha"></div>
+
+    Please note, that tests may influence each other! (If it causes a crash at client or server side).
+    So if a test fails, you may want to edit localserver.js and the *.spec.js files and exclude some of the tests or change their ordering!
 
     <script src="mocha/mocha.js"></script>
     <script>
