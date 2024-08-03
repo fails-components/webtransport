@@ -1,7 +1,7 @@
 import {
   WebTransportPolyfill,
   WebTransportPonyfill
-} from '../../lib/webtransport.browser'
+} from '@fails-components/webtransport'
 
 /** @type {import('../../lib/dom').WebTransport} */
 // @ts-ignore

@@ -21,21 +21,9 @@
   "types": "./dist/lib/index.types.d.ts",
   "scripts": {
     "start": "node test/echoserver.js",
-    "test": "npm run test:node && npm run test:node:http2 && npm run test:chromium && npm run test:chromium:http2:polyfill && npm run test:chromium:http2:ponyfill && npm run test:firefox:http2:polyfill && npm run test:firefox:http2:ponyfill && npm run test:webkit:http2:polyfill && npm run test:webkit:http2:ponyfill",
-    "test:node": "node test/index.js node http3",
-    "test:node:http2": "node test/index.js node http2",
-    "test:chromium": "node test/index.js chromium http3",
-    "test:chromium:http2:polyfill": "node test/index.js chromium http2 polyfill",
-    "test:chromium:http2:ponyfill": "node test/index.js chromium http2 ponyfill",
-    "test:firefox": "node test/index.js firefox http3",
-    "test:firefox:http2:polyfill": "node test/index.js firefox http2 polyfill",
-    "test:firefox:http2:ponyfill": "node test/index.js firefox http2 ponyfill",
-    "test:webkit": "node test/index.js webkit http3",
-    "test:webkit:http2:polyfill": "node test/index.js webkit http2 polyfill",
-    "test:webkit:http2:ponyfill": "node test/index.js webkit http2 ponyfill",
     "oldtest": "node old_test/test.js",
     "oldtesthttp2": "node old_test/test.js http2",
-    "lint": "eslint lib test old_test"
+    "lint": "eslint lib old_test"
   },
   "repository": {
     "type": "git",
@@ -63,9 +51,6 @@
     "@types/dirty-chai": "^2.0.2",
     "@types/mocha": "^10.0.0",
     "@types/node": "^18.15.3",
-    "chai": "^4.3.6",
-    "chai-as-promised": "^7.1.1",
-    "dirty-chai": "^2.0.1",
     "eslint": "^9.3.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-config-standard": "^16.0.2",
@@ -74,19 +59,9 @@
     "eslint-plugin-prettier": "^5.1.3",
     "eslint-plugin-promise": "^4.3.1",
     "eslint-plugin-standard": "^4.1.0",
-    "execa": "^6.1.0",
-    "mocha": "^10.1.0",
-    "node-forge": "^1.3.1",
-    "playwright-test": "^14.1.4",
-    "playwright-core": "1.47.0-alpha-2024-08-03",
     "prettier": "^3.2.5",
     "typescript": "^4.8.4",
     "uint8arrays": "^4.0.2"
-  },
-  "overrides": {
-    "playwright-test": {
-      "playwright-core": "1.47.0-alpha-2024-08-03"
-    }
   },
   "binary": {
     "napi_versions": [
@@ -94,8 +69,6 @@
     ]
   },
   "browser": {
-    "./test/fixtures/webtransport.js": "./test/fixtures/webtransport.browser.js",
-    "./test/fixtures/quiche.js": "./test/fixtures/quiche.browser.js",
     "./lib/webstreams.js": "./lib/webstreams.browser.js"
   }
 }

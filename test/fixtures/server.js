@@ -1,5 +1,5 @@
 import { generateWebTransportCertificate } from './certificate.js'
-import { Http2Server, Http3Server } from '../../lib/index.node.js'
+import { Http2Server, Http3Server } from '@fails-components/webtransport'
 import { pTimeout } from './p-timeout.js'
 import { getReaderStream, getReaderValue } from './reader-value.js'
 import { writeStream } from './write-stream.js'
