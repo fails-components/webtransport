@@ -17,17 +17,17 @@
   "scripts": {
     "version": "npm version $npm_package_version --workspaces && git add **/package.json && git add transports/**/package.json",
     "test": "npm run test:node && npm run test:node:http2 && npm run test:chromium && npm run test:chromium:http2:polyfill && npm run test:chromium:http2:ponyfill && npm run test:firefox:http2:polyfill && npm run test:firefox:http2:ponyfill && npm run test:webkit:http2:polyfill && npm run test:webkit:http2:ponyfill",
-    "test:node": "npm run test:node --workspace main",
-    "test:node:http2": "npm run test:node:http2 --workspace main",
-    "test:chromium": "npm run test:chromium --workspace main",
-    "test:chromium:http2:polyfill": "npm run test:chromium:http2:polyfill --workspace main",
-    "test:chromium:http2:ponyfill": "npm run test:chromium:http2:ponyfill --workspace main",
-    "test:firefox": "npm run test:firefox --workspace main",
-    "test:firefox:http2:polyfill": "npm run test:firefox:http2:polyfill --workspace main",
-    "test:firefox:http2:ponyfill": "npm run test:firefox:http2:ponyfill --workspace main",
-    "test:webkit": "npm run test:webkit --workspace main",
-    "test:webkit:http2:polyfill": "npm run test:webkit:http2:polyfill --workspace main",
-    "test:webkit:http2:ponyfill": "npm run test:webkit:http2:ponyfill --workspace main",
+    "test:node": "npm run test:node --workspace test",
+    "test:node:http2": "npm run test:node:http2 --workspace test",
+    "test:chromium": "npm run test:chromium --workspace test",
+    "test:chromium:http2:polyfill": "npm run test:chromium:http2:polyfill --workspace test",
+    "test:chromium:http2:ponyfill": "npm run test:chromium:http2:ponyfill --workspace test",
+    "test:firefox": "npm run test:firefox --workspace test",
+    "test:firefox:http2:polyfill": "npm run test:firefox:http2:polyfill --workspace test",
+    "test:firefox:http2:ponyfill": "npm run test:firefox:http2:ponyfill --workspace test",
+    "test:webkit": "npm run test:webkit --workspace test",
+    "test:webkit:http2:polyfill": "npm run test:webkit:http2:polyfill --workspace test",
+    "test:webkit:http2:ponyfill": "npm run test:webkit:http2:ponyfill --workspace test",
     "oldtest": "npm run oldtest --workspace main",
     "oldtesthttp2": "npm run oldtesthttp2 --workspace main",
     "types": "tsc --build",
@@ -42,6 +42,7 @@
   "homepage": "https://github.com/fails-components/webtransport/main/#readme",
   "workspaces": [
     "transports/*",
-    "main"
+    "main",
+    "test"
   ]
 }

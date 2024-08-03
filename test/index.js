@@ -11,7 +11,7 @@ async function startServer() {
   return new Promise((resolve, reject) => {
     let foundAddress = false
 
-    const server = execa('node', ['./test/fixtures/server.js'], {
+    const server = execa('node', ['./fixtures/server.js'], {
       stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
       env: {
         USE_HTTP2: http2 ? 'true' : 'false'
@@ -57,7 +57,7 @@ async function runTests(certificate, serverAddress) {
     command = 'mocha'
     args = [
       process.env.CI ? '--no-colors' : '--colors',
-      './test/*.spec.js',
+      './*.spec.js',
       ...process.argv.slice(4)
     ]
     const tests = execa(command, args, {
@@ -74,10 +74,10 @@ async function runTests(certificate, serverAddress) {
   } else if (env === 'chromium' || env === 'firefox' || env === 'webkit') {
     command = 'playwright-test'
     const otheropts = []
-    if (polyfill || ponyfill || env === 'firefox')
-      otheropts.push('--config', './test/pw-no-https-errors.json')
+    if (polyfill || ponyfill)
+      otheropts.push('--config', './pw-no-https-errors.json')
     args = [
-      './test/*.spec.js',
+      './*.spec.js',
       '-b',
       env /* the browser */,
       ...otheropts,
@@ -91,8 +91,9 @@ async function runTests(certificate, serverAddress) {
         USE_HTTP2: http2 ? 'true' : 'false',
         USE_POLYFILL: polyfill ? 'true' : 'false',
         USE_PONYFILL: ponyfill ? 'true' : 'false',
-        NO_CERT_HASHES:
-          env === 'firefox' && !ponyfill && !polyfill ? 'true' : 'false',
+//        NO_CERT_HASHES:
+//          env === 'firefox' && !ponyfill && !polyfill ? 'true' : 'false',
+// keep for future browsers without serverCertificateHashes
         BROWSER: env
       },
       stdio: ['inherit', 'inherit', 'inherit']
