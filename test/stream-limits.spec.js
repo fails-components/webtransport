@@ -169,7 +169,7 @@ describe('streamlimits', function () {
     })
   }
 
-  if (dowaitUntilAvailable) {
+  if (dowaitUntilAvailable && !skipall) {
     it('should detect stream limit unidi outgoing with waitUntilAvailable = true', async () => {
       client = new WebTransport(
         `${process.env.SERVER_URL}/streamlimits_getunidis_wua`,

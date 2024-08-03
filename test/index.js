@@ -7,6 +7,8 @@ import { execa } from 'execa'
 async function startServer() {
   let http2 = false
   if (process.argv[3] === 'http2') http2 = true
+  let localserver = false
+  if (process.argv[2] === 'localserver') localserver = true
   // eslint-disable-next-line no-unused-vars
   return new Promise((resolve, reject) => {
     let foundAddress = false
@@ -14,7 +16,8 @@ async function startServer() {
     const server = execa('node', ['./fixtures/server.js'], {
       stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
       env: {
-        USE_HTTP2: http2 ? 'true' : 'false'
+        USE_HTTP2: http2 ? 'true' : 'false',
+        LOCAL_SERVER: localserver ? 'true' : 'false'
       }
     })
     server.on('message', (data) => {
@@ -101,7 +104,18 @@ async function runTests(certificate, serverAddress) {
 
     await tests
   } else if (env === 'localserver') {
-    
+    const testserver = execa('node', ['localserver.js'], {
+      env: {
+        CERT_HASH: certificate,
+        SERVER_URL: serverAddress,
+        USE_HTTP2: http2 ? 'true' : 'false',
+        USE_POLYFILL: polyfill ? 'true' : 'false',
+        USE_PONYFILL: ponyfill ? 'true' : 'false',
+        BROWSER: env
+      },
+      stdio: ['inherit', 'inherit', 'inherit']
+    })
+    await testserver
   }
 }
 
