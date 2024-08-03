@@ -77,10 +77,16 @@
     "execa": "^6.1.0",
     "mocha": "^10.1.0",
     "node-forge": "^1.3.1",
-    "playwright-test": "^12.3.4",
+    "playwright-test": "^14.1.4",
+    "playwright-core": "1.47.0-alpha-2024-08-03",
     "prettier": "^3.2.5",
     "typescript": "^4.8.4",
     "uint8arrays": "^4.0.2"
+  },
+  "overrides": {
+    "playwright-test": {
+      "playwright-core": "1.47.0-alpha-2024-08-03"
+    }
   },
   "binary": {
     "napi_versions": [
