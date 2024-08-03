@@ -25,10 +25,12 @@ describe('streamlimits', function () {
       ? 'Opening handshake failed.'
       : 'WebTransport connection rejected' */
 
-  const dowaitUntilAvailable = (browser !== 'chromium' && browser !== 'firefox') || process.env.USE_POLYFILL === 'true' ||
+  const dowaitUntilAvailable =
+    (browser !== 'chromium' && browser !== 'firefox') ||
+    process.env.USE_POLYFILL === 'true' ||
     process.env.USE_PONYFILL === 'true' // remove after implementation
 
-  const skipall = (browser === 'firefox')
+  const skipall = browser === 'firefox'
 
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
@@ -85,7 +87,7 @@ describe('streamlimits', function () {
           .then(() => {
             numbidi++
           })
-          .catch(() => { })
+          .catch(() => {})
       }
       await client.createUnidirectionalStream({
         waitUntilAvailable: true
@@ -112,7 +114,6 @@ describe('streamlimits', function () {
   }
 
   if (!skipall) {
-
     it('should detect stream limit bidi outgoing', async () => {
       client = new WebTransport(
         `${process.env.SERVER_URL}/streamlimits_getbidis`,
@@ -186,7 +187,7 @@ describe('streamlimits', function () {
           .then(() => {
             numunidi++
           })
-          .catch(() => { })
+          .catch(() => {})
       }
       await client.createBidirectionalStream({
         waitUntilAvailable: true
