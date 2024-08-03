@@ -4,7 +4,7 @@
 
 // this file runs various tests
 
-import { generateWebTransportCertificate } from '../test/fixtures/certificate.js'
+import { generateWebTransportCertificate } from '../../test/fixtures/certificate.js'
 import {
   Http3Server,
   Http2Server,
