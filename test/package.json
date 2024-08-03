@@ -33,7 +33,7 @@
     "test:webkit": "node index.js webkit http3",
     "test:webkit:http2:polyfill": "node index.js webkit http2 polyfill",
     "test:webkit:http2:ponyfill": "node index.js webkit http2 ponyfill",
-    "lint": "eslint ."
+    "lint": "eslint *.spec.js fixtures"
   },
   "repository": {
     "type": "git",
