@@ -32,11 +32,11 @@ jobs:
       packages: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: 18
           registry-url: https://npm.pkg.github.com/
@@ -81,10 +81,10 @@ jobs:
           echo ${{matrix.arch == 'x64'}}
           echo ${{ matrix.arch == 'x64' && matrix.os == 'macos-latest' }}
      - name: Checkout code
-       uses: actions/checkout@v3
+       uses: actions/checkout@v4
        with:
         submodules: recursive
-     - uses: actions/setup-node@v3
+     - uses: actions/setup-node@v4
        with:
          node-version: 18
          registry-url: https://npm.pkg.github.com/
@@ -140,11 +140,11 @@ jobs:
       packages: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: 18
           registry-url: https://npm.pkg.github.com/
@@ -186,11 +186,11 @@ jobs:
       packages: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: 18
           registry-url: https://registry.npmjs.org/
