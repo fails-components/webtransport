@@ -16,3 +16,4 @@ certificatecache.json
 archives
 prebuilds
 dist
+**/localserver

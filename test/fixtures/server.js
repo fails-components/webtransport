@@ -26,22 +26,23 @@ export async function createServer() {
 
   /** @type {Http2Server|Http3Server} */
   let server
+  let hostandport = {
+    port: 0,
+    host: '127.0.0.1'
+  }
+  if (process.env.LOCAL_SERVER === 'true') {
+    hostandport = { port: 8080, host: '0.0.0.0' }
+  }
   if (process.env.USE_HTTP2 === 'true') {
     server = new Http2Server({
-      /*   port: 8080,
-      host: '0.0.0.0', */
-      port: 0,
-      host: '127.0.0.1',
+      ...hostandport,
       secret: 'mysecret',
       cert: certificate.cert, // unclear if it is the correct format
       privKey: certificate.private
     })
   } else {
     server = new Http3Server({
-      /*   port: 8080,
-      host: '0.0.0.0', */
-      port: 0,
-      host: '127.0.0.1',
+      ...hostandport,
       secret: 'mysecret',
       cert: certificate.cert, // unclear if it is the correct format
       privKey: certificate.private
@@ -452,16 +453,21 @@ if (address == null) {
   throw new Error('Could not determine server address')
 }
 
+let host = address.host
+if (process.env.LOCAL_SERVER === 'true') {
+  host = host.replace('0.0.0.0', '127.0.0.1')
+}
+
 // tell the calling process how to contact us
 if (process.send)
   process.send({
-    address: `https://${address.host}:${address.port}`,
+    address: `https://${host}:${address.port}`,
     certificate: certificate.fingerprint
   })
 else {
   console.error('No IPC channel')
   console.log({
-    address: `https://${address.host}:${address.port}`,
+    address: `https://${host}:${address.port}`,
     certificate: certificate.fingerprint
   })
 }
