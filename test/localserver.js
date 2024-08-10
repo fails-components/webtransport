@@ -70,7 +70,7 @@ app.get('/:filename', (req, res) => {
 
     <script src="mocha/mocha.js"></script>
     <script>
-        mocha.setup('bdd'); // Use BDD testing style
+        mocha.setup({ui: 'bdd', timeout: 10000 /* increased timeout to mitigated throttling*/}); // Use BDD testing style
     </script>
 
     ` +
