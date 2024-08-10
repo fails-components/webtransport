@@ -160,6 +160,7 @@ describe('streamlimits', function () {
           })
       }
       await Promise.allSettled(bidistreams)
+      await client.createUnidirectionalStream()
       expect(numbidi).to.equal(150)
       expect(numfailed).to.equal(0)
 
@@ -257,6 +258,7 @@ describe('streamlimits', function () {
           })
       }
       await Promise.allSettled(unidistreams)
+      await client.createBidirectionalStream()
       expect(numunidi).to.equal(150)
       expect(numfailed).to.equal(0)
 
