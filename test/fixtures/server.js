@@ -262,6 +262,7 @@ export async function createServer() {
                     await getReaderValue(session.incomingBidirectionalStreams)
                   )
                 }
+                await getReaderValue(session.incomingUnidirectionalStreams)
                 await session.close()
                 // eslint-disable-next-line no-unused-vars
               } catch (error) {
@@ -312,6 +313,7 @@ export async function createServer() {
                     await getReaderValue(session.incomingUnidirectionalStreams)
                   )
                 }
+                await getReaderValue(session.incomingBidirectionalStreams)
                 await session.close()
                 // eslint-disable-next-line no-unused-vars
               } catch (error) {
