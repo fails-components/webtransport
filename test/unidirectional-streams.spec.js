@@ -98,7 +98,7 @@ describe('unidirectional streams', function () {
       process.env.USE_PONYFILL === 'true'
     )
       addpolyfill = 4000
-    this.timeout(6000 + addpolyfill)
+    this.timeout(this.timeout() + 4000 + addpolyfill)
     client = new WebTransport(
       `${process.env.SERVER_URL}/unidirectional_server_delay_before_read`,
       wtOptions
