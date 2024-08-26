@@ -104,6 +104,58 @@ describe('bidirectional streams', function () {
     )
   })
 
+  it('sends and receives concurrently data over an outgoing bidirectional stream with big buffers', async () => {
+    const CHUNKS = 1024
+    const CHUNK_LENGTH = 1024
+    // client context - connects to the server, opens a bidi stream, sends some data and reads the response
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/bidirectional_client_initiated_echo`,
+      wtOptions
+    )
+    await client.ready
+
+    const stream = await client.createBidirectionalStream()
+    // count how many bytes have been received
+    let received = 0
+
+    // test taken from https://github.com/achingbrain/webtransport-echo-server
+    // by achingbrain
+    // write and read data simultaneously
+    await Promise.all([
+      // write data
+      (async function writeData() {
+        const writer = await stream.writable.getWriter()
+        for (let i = 0; i < CHUNKS; i++) {
+          await writer.ready
+
+          const buf = Uint8Array.from(new Array(CHUNK_LENGTH).fill(0))
+          writer.write(buf).catch((error) => {
+            console.log('error from writing', error)
+          })
+        }
+
+        await writer.close()
+      })(),
+
+      // read data
+      (async function readData() {
+        const reader = await stream.readable.getReader()
+        while (true) {
+          const result = await reader.read()
+
+          if (result.done) {
+            return
+          }
+
+          received += result.value.byteLength
+          if (received === 1024 * 1024) break
+        }
+      })()
+    ])
+
+    expect(received).to.equal(CHUNKS * CHUNK_LENGTH)
+  })
+
   it('sends and receives data over an incoming bidirectional stream', async () => {
     // client context - waits for the server to open a bidi stream then pipes it back to them
     client = new WebTransport(
