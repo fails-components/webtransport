@@ -25,11 +25,6 @@ describe('streamlimits', function () {
       ? 'Opening handshake failed.'
       : 'WebTransport connection rejected' */
 
-  const dowaitUntilAvailable =
-    (browser !== 'chromium' && browser !== 'firefox') ||
-    process.env.USE_POLYFILL === 'true' ||
-    process.env.USE_PONYFILL === 'true' // remove after implementation
-
   const skipall = browser === 'firefox'
 
   /** @type {import('../lib/dom').WebTransport | undefined} */
@@ -49,6 +44,31 @@ describe('streamlimits', function () {
   if (process.env.NO_CERT_HASHES === 'true')
     // @ts-ignore
     delete wtOptions.serverCertificateHashes
+
+  let dowaitUntilAvailable =
+    process.env.USE_POLYFILL === 'true' || process.env.USE_PONYFILL === 'true' // remove after implementation
+
+  before(async () => {
+    // detect support for waituntilavailable
+    let supported = false
+    try {
+      const wt = new WebTransport(
+        `${process.env.SERVER_URL}/streamlimits_getunidis_wua`,
+        { ...wtOptions }
+      )
+      await wt.ready
+      await wt.createUnidirectionalStream({
+        get waitUntilAvailable() {
+          supported = true
+          return true
+        }
+      })
+      await wt.close()
+    } catch (error) {
+      console.log('Problem in waitUntilAvailable detection', error)
+    }
+    dowaitUntilAvailable ||= supported
+  })
 
   // @ts-ignore
   beforeEach(async () => {
