@@ -377,6 +377,8 @@ third_party/quiche/quiche/quic/core/congestion_control/hybrid_slow_start.h
 third_party/quiche/quiche/quic/core/congestion_control/loss_detection_interface.h
 third_party/quiche/quiche/quic/core/congestion_control/pacing_sender.cc
 third_party/quiche/quiche/quic/core/congestion_control/pacing_sender.h
+third_party/quiche/quiche/quic/core/congestion_control/prague_sender.cc
+third_party/quiche/quiche/quic/core/congestion_control/prague_sender.h
 third_party/quiche/quiche/quic/core/congestion_control/prr_sender.cc
 third_party/quiche/quiche/quic/core/congestion_control/prr_sender.h
 third_party/quiche/quiche/quic/core/congestion_control/rtt_stats.cc
