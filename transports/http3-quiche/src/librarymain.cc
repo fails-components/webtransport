@@ -14,6 +14,7 @@
 #include "src/http3wtsessionvisitor.h"
 #include "src/napialarmfactory.h"
 #include "quiche/common/platform/api/quiche_command_line_flags.h"
+#include "quiche/common/platform/api/quiche_flags.h"
 
 #include "absl/log/initialize.h"
 #include "absl/strings/string_view.h"
@@ -58,6 +59,7 @@ namespace quic
     {
       quiche_cmd_line_char.push_back((*cur).c_str());
     }
+    SetQuicheReloadableFlag(quic_deliver_stop_sending_to_zombie_streams, true); // enable patch
     if (!hasSetLogging)
     {
       quiche::QuicheParseCommandLineFlags("No use instruction.", quiche_cmd_line.size(), &(*quiche_cmd_line_char.begin()));
