@@ -157,12 +157,12 @@ namespace quic
 
         // Sends a request containing |headers| and |body| and returns the number of
         // bytes sent (the size of the serialized request headers and body).
-        void SendMessageAsync(const spdy::Http2HeaderBlock &headers,
+        void SendMessageAsync(const quiche::HttpHeaderBlock &headers,
                               absl::string_view body);
         // Sends a request containing |headers| and |body| with the fin bit set to
         // |fin| and returns the number of bytes sent (the size of the serialized
         // request headers and body).
-        void SendMessageAsync(const spdy::Http2HeaderBlock &headers,
+        void SendMessageAsync(const quiche::HttpHeaderBlock &headers,
                               absl::string_view body, bool fin);
 
         void SendConnectivityProbing();
@@ -193,13 +193,13 @@ namespace quic
         // is received. 2) returns state of the oldest active stream which have
         // received partial response (if any).
         // Group 1.
-        const spdy::Http2HeaderBlock &response_trailers() const;
+        const quiche::HttpHeaderBlock &response_trailers() const;
         bool response_complete() const;
         int64_t response_body_size() const;
         const std::string &response_body() const;
         // Group 2.
         bool response_headers_complete() const;
-        const spdy::Http2HeaderBlock *response_headers() const;
+        const quiche::HttpHeaderBlock *response_headers() const;
         int64_t response_size() const;
         size_t bytes_read() const;
         size_t bytes_written() const;
@@ -214,7 +214,7 @@ namespace quic
 
         // QuicSpdyClientBase::Reponselistener
         void OnCompleteResponse(
-            QuicStreamId id, const spdy::Http2HeaderBlock &response_headers,
+            QuicStreamId id, const quiche::HttpHeaderBlock &response_headers,
             const absl::string_view &response_body);
 
         // Returns nullptr if the maximum number of streams have already been created.
@@ -226,7 +226,7 @@ namespace quic
         // stores the request in case it needs to be resent.  If |headers| is
         // null, only the body will be sent on the stream.
         void GetOrCreateStreamAndSendRequest(
-            const spdy::Http2HeaderBlock *headers, absl::string_view body, bool fin);
+            const quiche::HttpHeaderBlock *headers, absl::string_view body, bool fin);
 
         QuicRstStreamErrorCode stream_error() { return stream_error_; }
         QuicErrorCode connection_error() const;
@@ -263,7 +263,7 @@ namespace quic
         // request. If |uri| is a relative URL, the QuicServerId will be
         // use to specify the authority.
         bool PopulateHeaderBlockFromUrl(const std::string &uri,
-                                        spdy::Http2HeaderBlock *headers);
+                                        quiche::HttpHeaderBlock *headers);
 
         QuicSpdyClientStream *latest_created_stream()
         {
@@ -291,7 +291,7 @@ namespace quic
         {
         public:
             Http3ClientDataToResend(
-                std::unique_ptr<spdy::Http2HeaderBlock> headers, absl::string_view body,
+                std::unique_ptr<quiche::HttpHeaderBlock> headers, absl::string_view body,
                 bool fin, Http3Client *client);
 
             ~Http3ClientDataToResend();
@@ -299,7 +299,7 @@ namespace quic
             void Resend();
 
         protected:
-            std::unique_ptr<spdy::Http2HeaderBlock> headers_;
+            std::unique_ptr<quiche::HttpHeaderBlock> headers_;
             absl::string_view body_;
             bool fin_;
             Http3Client *client_;
@@ -311,9 +311,9 @@ namespace quic
             PerStreamState(const PerStreamState &other);
             PerStreamState(QuicRstStreamErrorCode stream_error, bool response_complete,
                            bool response_headers_complete,
-                           const spdy::Http2HeaderBlock &response_headers,
+                           const quiche::HttpHeaderBlock &response_headers,
                            const absl::string_view response,
-                           const spdy::Http2HeaderBlock &response_trailers,
+                           const quiche::HttpHeaderBlock &response_trailers,
                            uint64_t bytes_read, uint64_t bytes_written,
                            int64_t response_body_size);
             ~PerStreamState();
@@ -321,9 +321,9 @@ namespace quic
             QuicRstStreamErrorCode stream_error;
             bool response_complete;
             bool response_headers_complete;
-            spdy::Http2HeaderBlock response_headers;
+            quiche::HttpHeaderBlock response_headers;
             std::string response;
-            spdy::Http2HeaderBlock response_trailers;
+            quiche::HttpHeaderBlock response_trailers;
             uint64_t bytes_read;
             uint64_t bytes_written;
             int64_t response_body_size;
@@ -381,10 +381,10 @@ namespace quic
 
         bool response_complete_;
         bool response_headers_complete_;
-        mutable spdy::Http2HeaderBlock response_headers_;
+        mutable quiche::HttpHeaderBlock response_headers_;
 
         // Parsed response trailers (if present), copied from the stream in OnClose.
-        spdy::Http2HeaderBlock response_trailers_;
+        quiche::HttpHeaderBlock response_trailers_;
 
         QuicStreamPriority priority_;
         std::string response_;
@@ -504,7 +504,7 @@ namespace quic
         // preliminary 100 Continue HTTP/2 headers from most recent response, if any.
         std::string preliminary_response_headers_;
         // HTTP/2 headers from most recent response.
-        spdy::Http2HeaderBlock latest_response_header_block_;
+        quiche::HttpHeaderBlock latest_response_header_block_;
         // Body of most recent response.
         std::string latest_response_body_;
         // HTTP/2 trailers from most recent response.

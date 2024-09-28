@@ -15,7 +15,7 @@
 
 #include "quiche/quic/core/quic_types.h"
 #include "quiche/quic/core/web_transport_interface.h"
-#include "quiche/spdy/core/http2_header_block.h"
+#include "quiche/common/http/http_header_block.h"
 
 namespace quic
 {
@@ -62,7 +62,7 @@ namespace quic
   public:
     struct WebTransportResponse
     {
-      spdy::Http2HeaderBlock response_headers;
+      quiche::HttpHeaderBlock response_headers;
       std::unique_ptr<WebTransportVisitor> visitor;
     };
 
@@ -77,7 +77,7 @@ namespace quic
     void setJSHandler(bool on) { jshandlerequesthandler_ = on; }
 
     WebTransportRespPromisePtr ProcessWebTransportRequest(
-        const spdy::Http2HeaderBlock & /*request_headers*/,
+        const quiche::HttpHeaderBlock & /*request_headers*/,
         WebTransportSession * /*session*/);
     bool SupportsWebTransport() { return true; }
     bool UsesDatagramContexts() { return true; }

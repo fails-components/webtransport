@@ -30,13 +30,13 @@ namespace quic
     struct ServerPushInfo
     {
       ServerPushInfo(std::string request_url,
-                     spdy::Http2HeaderBlock headers,
+                     quiche::HttpHeaderBlock headers,
                      spdy::SpdyPriority priority,
                      std::string body);
       ServerPushInfo(const ServerPushInfo &other);
 
       std::string request_url;
-      spdy::Http2HeaderBlock headers;
+      quiche::HttpHeaderBlock headers;
       spdy::SpdyPriority priority;
       std::string body;
     };
@@ -62,18 +62,18 @@ namespace quic
 
     ~Http3BackendResponse();
 
-    const std::vector<spdy::Http2HeaderBlock> &early_hints() const
+    const std::vector<quiche::HttpHeaderBlock> &early_hints() const
     {
       return early_hints_;
     }
     SpecialResponseType response_type() const { return response_type_; }
-    const spdy::Http2HeaderBlock &headers() const { return headers_; }
-    const spdy::Http2HeaderBlock &trailers() const { return trailers_; }
+    const quiche::HttpHeaderBlock &headers() const { return headers_; }
+    const quiche::HttpHeaderBlock &trailers() const { return trailers_; }
     const absl::string_view body() const { return absl::string_view(body_); }
 
-    void AddEarlyHints(const spdy::Http2HeaderBlock &headers)
+    void AddEarlyHints(const quiche::HttpHeaderBlock &headers)
     {
-      spdy::Http2HeaderBlock hints = headers.Clone();
+      quiche::HttpHeaderBlock hints = headers.Clone();
       hints[":status"] = "103";
       early_hints_.push_back(std::move(hints));
     }
@@ -83,11 +83,11 @@ namespace quic
       response_type_ = response_type;
     }
 
-    void set_headers(spdy::Http2HeaderBlock headers)
+    void set_headers(quiche::HttpHeaderBlock headers)
     {
       headers_ = std::move(headers);
     }
-    void set_trailers(spdy::Http2HeaderBlock trailers)
+    void set_trailers(quiche::HttpHeaderBlock trailers)
     {
       trailers_ = std::move(trailers);
     }
@@ -97,10 +97,10 @@ namespace quic
     }
 
   private:
-    std::vector<spdy::Http2HeaderBlock> early_hints_;
+    std::vector<quiche::HttpHeaderBlock> early_hints_;
     SpecialResponseType response_type_;
-    spdy::Http2HeaderBlock headers_;
-    spdy::Http2HeaderBlock trailers_;
+    quiche::HttpHeaderBlock headers_;
+    quiche::HttpHeaderBlock trailers_;
     std::string body_;
   };
 

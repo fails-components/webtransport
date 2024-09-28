@@ -25,7 +25,7 @@
 #include "quiche/common/platform/api/quiche_file_utils.h"
 #include "quiche/common/quiche_text_utils.h"
 
-using spdy::Http2HeaderBlock;
+using quiche::HttpHeaderBlock;
 
 namespace quic
 {
@@ -34,7 +34,7 @@ namespace quic
   void QuicMemoryCacheBackend::GenerateDynamicResponses() {
     QuicWriterMutexLock lock(&response_mutex_);
     // Add a generate bytes response.
-    spdy::Http2HeaderBlock response_headers;
+    quiche::HttpHeaderBlock response_headers;
     response_headers[":status"] = "200";
     generate_bytes_response_ = std::make_unique<QuicBackendResponse>();
     generate_bytes_response_->set_headers(std::move(response_headers));
@@ -45,7 +45,7 @@ namespace quic
 
   Http3ServerBackend::WebTransportRespPromisePtr
   Http3ServerBackend::ProcessWebTransportRequest(
-      const spdy::Http2HeaderBlock &request_headers,
+      const quiche::HttpHeaderBlock &request_headers,
       WebTransportSession *session)
   {
     WebTransportRespPromisePtr promise = std::make_shared<WebTransportRespPromise>();

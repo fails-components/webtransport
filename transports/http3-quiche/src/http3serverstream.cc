@@ -27,7 +27,7 @@
 #include "src/http3serversession.h"
 #include "quiche/spdy/core/spdy_protocol.h"
 
-using spdy::Http2HeaderBlock;
+using quiche::HttpHeaderBlock;
 
 namespace quic
 {
@@ -279,7 +279,7 @@ namespace quic
     std::string request_url = request_headers_[":authority"].as_string() +
                               request_headers_[":path"].as_string();
     int response_code;
-    const Http2HeaderBlock &response_headers = response->headers();
+    const HttpHeaderBlock &response_headers = response->headers();
     if (!ParseHeaderStatusCode(response_headers, &response_code))
     {
       auto status = response_headers.find(":status");
@@ -317,7 +317,7 @@ namespace quic
         SendNotFoundResponse();
         return;
       }
-      Http2HeaderBlock headers = response->headers().Clone();
+      HttpHeaderBlock headers = response->headers().Clone();
       headers["content-length"] = absl::StrCat(generate_bytes_length_);
 
       WriteHeaders(std::move(headers), false, nullptr);
@@ -356,7 +356,7 @@ namespace quic
   void Http3ServerStream::SendNotFoundResponse()
   {
     QUIC_DVLOG(1) << "Stream " << id() << " sending not found response.";
-    Http2HeaderBlock headers;
+    HttpHeaderBlock headers;
     headers[":status"] = "404";
     headers["content-length"] = absl::StrCat(strlen(kNotFoundResponseBody));
     SendHeadersAndBody(std::move(headers), kNotFoundResponseBody);
@@ -374,7 +374,7 @@ namespace quic
     {
       StopReading();
     }
-    Http2HeaderBlock headers;
+    HttpHeaderBlock headers;
     if (resp_code <= 0)
     {
       headers[":status"] = "500";
@@ -388,7 +388,7 @@ namespace quic
   }
 
   void Http3ServerStream::SendIncompleteResponse(
-      Http2HeaderBlock response_headers,
+      HttpHeaderBlock response_headers,
       absl::string_view body)
   {
     QUIC_DLOG(INFO) << "Stream " << id() << " writing headers (fin = false) : "
@@ -406,17 +406,17 @@ namespace quic
   }
 
   void Http3ServerStream::SendHeadersAndBody(
-      Http2HeaderBlock response_headers,
+      HttpHeaderBlock response_headers,
       absl::string_view body)
   {
     SendHeadersAndBodyAndTrailers(std::move(response_headers), body,
-                                  Http2HeaderBlock());
+                                  HttpHeaderBlock());
   }
 
   void Http3ServerStream::SendHeadersAndBodyAndTrailers(
-      Http2HeaderBlock response_headers,
+      HttpHeaderBlock response_headers,
       absl::string_view body,
-      Http2HeaderBlock response_trailers)
+      HttpHeaderBlock response_trailers)
   {
     // Send the headers, with a FIN if there's nothing else to send.
     bool send_fin = (body.empty() && response_trailers.empty());

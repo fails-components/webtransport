@@ -16,7 +16,7 @@
 #include "quiche/quic/core/quic_packets.h"
 #include "src/http3serverbackend.h"
 #include "src/http3backendresponse.h"
-#include "quiche/spdy/core/spdy_framer.h"
+#include "quiche/http2/core/spdy_framer.h"
 
 namespace quic
 {
@@ -78,16 +78,16 @@ namespace quic
     void SendNotFoundResponse();
 
     // Sends the response header and body, but not the fin.
-    void SendIncompleteResponse(spdy::Http2HeaderBlock response_headers,
+    void SendIncompleteResponse(quiche::HttpHeaderBlock response_headers,
                                 absl::string_view body);
 
-    void SendHeadersAndBody(spdy::Http2HeaderBlock response_headers,
+    void SendHeadersAndBody(quiche::HttpHeaderBlock response_headers,
                             absl::string_view body);
-    void SendHeadersAndBodyAndTrailers(spdy::Http2HeaderBlock response_headers,
+    void SendHeadersAndBodyAndTrailers(quiche::HttpHeaderBlock response_headers,
                                        absl::string_view body,
-                                       spdy::Http2HeaderBlock response_trailers);
+                                       quiche::HttpHeaderBlock response_trailers);
 
-    spdy::Http2HeaderBlock *request_headers() { return &request_headers_; }
+    quiche::HttpHeaderBlock *request_headers() { return &request_headers_; }
 
     const std::string &body() { return body_; }
 
@@ -95,7 +95,7 @@ namespace quic
     void WriteGeneratedBytes();
 
     // The parsed headers received from the client.
-    spdy::Http2HeaderBlock request_headers_;
+    quiche::HttpHeaderBlock request_headers_;
     int64_t content_length_;
     std::string body_;
     // promises not fullfilled from js side or c++ side
