@@ -15,7 +15,7 @@ namespace quic
 
   Http3BackendResponse::ServerPushInfo::ServerPushInfo(
       std::string request_url,
-      spdy::Http2HeaderBlock headers,
+      quiche::HttpHeaderBlock headers,
       spdy::SpdyPriority priority,
       std::string body)
       : request_url(request_url),

@@ -47,13 +47,13 @@ namespace quic
     }
 
     void set_on_interim_headers(
-        std::function<void(const spdy::Http2HeaderBlock &)> on_interim_headers)
+        std::function<void(const quiche::HttpHeaderBlock &)> on_interim_headers)
     {
       on_interim_headers_ = std::move(on_interim_headers);
     }
 
   private:
-    std::function<void(const spdy::Http2HeaderBlock &)> on_interim_headers_;
+    std::function<void(const quiche::HttpHeaderBlock &)> on_interim_headers_;
     const bool drop_response_body_;
     const bool enable_web_transport_;
     absl::flat_hash_map<QuicStreamId, webtransport::SessionVisitor *> svisitors_;

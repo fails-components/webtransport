@@ -85,7 +85,7 @@ namespace quic
         }
 
         void processNewSession(Http3WTSession *session, const std::string &path, Napi::Reference<Napi::Value> *header, Napi::Reference<Napi::Value> *userData);
-        void processNewSessionRequest(WebTransportSession *session, const spdy::Http2HeaderBlock &reqheadcopy, WebTransportRespPromisePtr promise);
+        void processNewSessionRequest(WebTransportSession *session, const quiche::HttpHeaderBlock &reqheadcopy, WebTransportRespPromisePtr promise);
 
     protected:
         std::unique_ptr<Http3Server> server_;

@@ -24,7 +24,7 @@ class Http3ClientStream : public QuicSpdyClientStream {
   void OnBodyAvailable() override;
 
   void set_on_interim_headers(
-      std::function<void(const spdy::Http2HeaderBlock&)> on_interim_headers) {
+      std::function<void(const quiche::HttpHeaderBlock&)> on_interim_headers) {
     on_interim_headers_ = std::move(on_interim_headers);
   }
 
@@ -33,7 +33,7 @@ class Http3ClientStream : public QuicSpdyClientStream {
 
 
  private:
-  std::function<void(const spdy::Http2HeaderBlock&)> on_interim_headers_;
+  std::function<void(const quiche::HttpHeaderBlock&)> on_interim_headers_;
   const bool drop_response_body_;
 };
 

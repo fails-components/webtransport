@@ -318,6 +318,8 @@ third_party/quiche/quiche/http2/hpack/decoder/hpack_whole_entry_listener.cc
 third_party/quiche/quiche/http2/hpack/decoder/hpack_whole_entry_listener.h
 third_party/quiche/quiche/http2/hpack/hpack_constants.cc
 third_party/quiche/quiche/http2/hpack/hpack_constants.h
+third_party/quiche/quiche/http2/hpack/hpack_decoder_adapter.cc
+third_party/quiche/quiche/http2/hpack/hpack_decoder_adapter.h
 third_party/quiche/quiche/http2/hpack/hpack_encoder.cc
 third_party/quiche/quiche/http2/hpack/hpack_encoder.h
 third_party/quiche/quiche/http2/hpack/hpack_entry.cc
@@ -811,8 +813,6 @@ third_party/quiche/quiche/quic/platform/api/quic_stack_trace.h
 third_party/quiche/quiche/quic/platform/api/quic_thread.h
 third_party/quiche/quiche/quic/tools/quic_simple_crypto_server_stream_helper.cc
 third_party/quiche/quiche/quic/tools/quic_simple_crypto_server_stream_helper.h
-third_party/quiche/quiche/spdy/core/hpack/hpack_decoder_adapter.cc
-third_party/quiche/quiche/spdy/core/hpack/hpack_decoder_adapter.h
 )
 
 IF(APPLE OR WIN32)

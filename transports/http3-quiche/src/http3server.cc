@@ -426,7 +426,7 @@ namespace quic
         .Call(objVal, {retObj});
   }
 
-  void Http3ServerJS::processNewSessionRequest(WebTransportSession *session, const spdy::Http2HeaderBlock &reqhead, WebTransportRespPromisePtr promise)
+  void Http3ServerJS::processNewSessionRequest(WebTransportSession *session, const quiche::HttpHeaderBlock &reqhead, WebTransportRespPromisePtr promise)
   {
     Napi::HandleScope scope(Env());
 
