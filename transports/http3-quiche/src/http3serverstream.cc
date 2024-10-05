@@ -25,7 +25,7 @@
 #include "quiche/quic/platform/api/quic_flags.h"
 #include "quiche/quic/platform/api/quic_logging.h"
 #include "src/http3serversession.h"
-#include "quiche/spdy/core/spdy_protocol.h"
+#include "quiche/http2/core/spdy_protocol.h"
 
 using quiche::HttpHeaderBlock;
 
