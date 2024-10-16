@@ -17,7 +17,8 @@ describe('session', function () {
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
   const browser = process.env.BROWSER
   const handshakemess =
-    browser !== 'firefox' ||
+    (browser !== 'firefox' &&
+      (browser !== 'localserver' || !navigator.userAgent.includes('Gecko/'))) ||
     process.env.USE_POLYFILL === 'true' ||
     process.env.USE_PONYFILL === 'true'
       ? 'Opening handshake failed.'
