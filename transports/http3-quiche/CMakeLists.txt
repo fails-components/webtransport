@@ -86,7 +86,6 @@ platform/quiche_platform_impl/quiche_stack_trace_impl.h
 platform/quiche_platform_impl/quiche_stream_buffer_allocator_impl.h
 platform/quiche_platform_impl/quiche_time_utils_impl.h
 platform/quiche_platform_impl/quiche_udp_socket_platform_impl.h
-platform/quiche_platform_impl/quiche_prefetch_impl.h
 platform/quiche_platform_impl/quiche_server_stats_impl.h
 platform/quiche_platform_impl/quiche_mem_slice_impl.h
 platform/quiche_platform_impl/quiche_flag_utils_impl.h
@@ -158,7 +157,6 @@ third_party/quiche/quiche/common/platform/api/quiche_hostname_utils.h
 third_party/quiche/quiche/common/platform/api/quiche_iovec.h
 third_party/quiche/quiche/common/platform/api/quiche_logging.h
 third_party/quiche/quiche/common/platform/api/quiche_mem_slice.h
-third_party/quiche/quiche/common/platform/api/quiche_prefetch.h
 third_party/quiche/quiche/common/platform/api/quiche_reference_counted.h
 third_party/quiche/quiche/common/platform/api/quiche_time_utils.h
 third_party/quiche/quiche/common/platform/api/quiche_url_utils.h
@@ -167,7 +165,6 @@ third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_co
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flag_utils_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.cc
-third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_prefetch_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_logging_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_logging_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.cc
