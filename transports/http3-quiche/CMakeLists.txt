@@ -222,8 +222,12 @@ third_party/quiche/quiche/http2/adapter/oghttp2_util.cc
 third_party/quiche/quiche/http2/adapter/oghttp2_util.h
 third_party/quiche/quiche/http2/adapter/window_manager.cc
 third_party/quiche/quiche/http2/adapter/window_manager.h
+third_party/quiche/quiche/http2/core/http2_constants.cc
+third_party/quiche/quiche/http2/core/http2_constants.h
 third_party/quiche/quiche/http2/core/http2_frame_decoder_adapter.cc
 third_party/quiche/quiche/http2/core/http2_frame_decoder_adapter.h
+third_party/quiche/quiche/http2/core/http2_structures.cc
+third_party/quiche/quiche/http2/core/http2_structures.h
 third_party/quiche/quiche/http2/core/http2_trace_logging.cc
 third_party/quiche/quiche/http2/core/http2_trace_logging.h
 third_party/quiche/quiche/http2/core/priority_write_scheduler.h
@@ -337,10 +341,6 @@ third_party/quiche/quiche/http2/hpack/varint/hpack_varint_decoder.cc
 third_party/quiche/quiche/http2/hpack/varint/hpack_varint_decoder.h
 third_party/quiche/quiche/http2/hpack/varint/hpack_varint_encoder.cc
 third_party/quiche/quiche/http2/hpack/varint/hpack_varint_encoder.h
-third_party/quiche/quiche/http2/http2_constants.cc
-third_party/quiche/quiche/http2/http2_constants.h
-third_party/quiche/quiche/http2/http2_structures.cc
-third_party/quiche/quiche/http2/http2_structures.h
 #third_party/quiche/quiche/http2/platform/api/http2_macros.h
 #third_party/quiche/quiche/quic/bindings/quic_libevent.h
 #third_party/quiche/quiche/quic/bindings/quic_libevent.cc
