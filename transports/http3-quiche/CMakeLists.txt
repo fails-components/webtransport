@@ -498,6 +498,8 @@ third_party/quiche/quiche/quic/core/frames/quic_goaway_frame.cc
 third_party/quiche/quiche/quic/core/frames/quic_goaway_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_handshake_done_frame.cc
 third_party/quiche/quiche/quic/core/frames/quic_handshake_done_frame.h
+third_party/quiche/quiche/quic/core/frames/quic_immediate_ack_frame.cc
+third_party/quiche/quiche/quic/core/frames/quic_immediate_ack_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_inlined_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_max_streams_frame.cc
 third_party/quiche/quiche/quic/core/frames/quic_max_streams_frame.h
