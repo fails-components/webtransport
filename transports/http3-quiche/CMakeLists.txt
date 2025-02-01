@@ -592,8 +592,6 @@ third_party/quiche/quiche/quic/core/packet_number_indexed_queue.h
 third_party/quiche/quiche/quic/core/proto/cached_network_parameters_proto.h
 third_party/quiche/quiche/quic/core/proto/crypto_server_config_proto.h
 third_party/quiche/quiche/quic/core/proto/source_address_token_proto.h
-third_party/quiche/quiche/quic/core/qpack/qpack_blocking_manager.cc
-third_party/quiche/quiche/quic/core/qpack/qpack_blocking_manager.h
 third_party/quiche/quiche/quic/core/qpack/qpack_decoded_headers_accumulator.cc
 third_party/quiche/quiche/quic/core/qpack/qpack_decoded_headers_accumulator.h
 third_party/quiche/quiche/quic/core/qpack/qpack_decoder.cc
