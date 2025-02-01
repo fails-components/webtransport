@@ -630,7 +630,6 @@ third_party/quiche/quiche/quic/core/qpack/qpack_stream_receiver.h
 third_party/quiche/quiche/quic/core/qpack/qpack_stream_sender_delegate.h
 third_party/quiche/quiche/quic/core/qpack/new_qpack_blocking_manager.h
 third_party/quiche/quiche/quic/core/qpack/new_qpack_blocking_manager.cc
-third_party/quiche/quiche/quic/core/qpack/qpack_blocking_manager_shim.h
 third_party/quiche/quiche/quic/core/qpack/value_splitting_header_list.cc
 third_party/quiche/quiche/quic/core/qpack/value_splitting_header_list.h
 third_party/quiche/quiche/quic/core/quic_ack_listener_interface.cc
