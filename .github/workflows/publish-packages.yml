@@ -62,7 +62,7 @@ jobs:
           - arch: ia32
             os: windows-2019
           - arch: arm64
-            os: macos-latest
+            os: [macos-latest, ubuntu-22.04-arm]
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -86,7 +86,7 @@ jobs:
         submodules: recursive
      - uses: actions/setup-node@v4
        with:
-         node-version: 18
+         node-version: 20
          registry-url: https://npm.pkg.github.com/
      - name: Install
        if: needs.version-check.outputs.changed == 'true'
@@ -146,7 +146,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           registry-url: https://npm.pkg.github.com/
 
       - name: Install
@@ -192,7 +192,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           registry-url: https://registry.npmjs.org/
 
       - name: Install
