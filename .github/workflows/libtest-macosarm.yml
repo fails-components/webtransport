@@ -42,7 +42,7 @@ jobs:
         run: BUILDARCH="arm64" npm run dobuild
         
       - name: Test architecture
-        run: lipo -info transports/http3-quiche/build_darwin_x64/Release/webtransport.node
+        run: lipo -info transports/http3-quiche/build_darwin_arm64/Release/webtransport.node
 
       - name: Run node unit tests
         run: NODE_ENV=production npm run test:node  
