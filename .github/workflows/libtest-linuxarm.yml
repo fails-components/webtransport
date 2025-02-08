@@ -1,0 +1,111 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Linux Automated build and client/server unit tests
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build-linux:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-24.04-arm
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run:  npm install --ignore-scripts
+
+      - name: Install playwright system dependencies
+        run: npx playwright install --with-deps
+
+      - name: Lint files
+        run: npm run lint
+
+      - name: Build types
+        run: npm run types
+
+      - name: Build library
+        run: npm run dobuild 
+
+      - name: Run node unit tests http2
+        run:  NODE_ENV=production npm run test:node:http2 
+
+      - name: Run firefox unit tests http2 polyfill
+        run:  NODE_ENV=production npm run test:firefox:http2:polyfill 
+
+      - name: Run firefox unit tests http2 ponyfill
+        run:  NODE_ENV=production npm run test:firefox:http2:ponyfill 
+      
+      - name: Run webkit unit tests http2 polyfill
+        run:  NODE_ENV=production npm run test:webkit:http2:polyfill 
+
+      - name: Run webkit unit tests http2 ponyfill
+        run:  NODE_ENV=production npm run test:webkit:http2:ponyfill 
+
+      - name: Run chromium unit tests http2 polyfill
+        run:  NODE_ENV=production npm run test:chromium:http2:polyfill 
+
+      - name: Run chromium unit tests http2 ponyfill
+        run:  NODE_ENV=production npm run test:chromium:http2:ponyfill 
+
+      - name: Run node unit tests
+        run:  NODE_ENV=production npm run test:node 
+
+      - name: Run chromium unit tests
+        run:  NODE_ENV=production npm run test:chromium 
+      
+      - name: Run chromium unit tests 1
+        run:  NODE_ENV=production npm run test:chromium 
+      
+      - name: Run chromium unit tests 2
+        run:  NODE_ENV=production npm run test:chromium 
+      
+      - name: Run chromium unit tests 3
+        run:  NODE_ENV=production npm run test:chromium 
+      
+      - name: Run chromium unit tests 4
+        run:  NODE_ENV=production npm run test:chromium 
+      
+      - name: Run chromium unit tests 5
+        run:  NODE_ENV=production npm run test:chromium 
+      
+      - name: Run chromium unit tests 6
+        run:  NODE_ENV=production npm run test:chromium 
+      
+      - name: Run chromium unit tests 7
+        run:  NODE_ENV=production npm run test:chromium 
+        
+      - name: Run chromium unit tests 8
+        run:  NODE_ENV=production npm run test:chromium 
+      
+      - name: Run chromium unit tests 9
+        run:  NODE_ENV=production npm run test:chromium 
+        
+      - name: Run chromium unit tests 10
+        run:  NODE_ENV=production npm run test:chromium 
+      
+      - name: Run old unit tests
+        run: NODE_ENV=production npm run oldtest 
+
+      - name: Run old unit tests http2
+        run: NODE_ENV=production npm run oldtesthttp2 
