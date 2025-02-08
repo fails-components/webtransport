@@ -193,6 +193,8 @@ third_party/quiche/quiche/common/quiche_random.cc
 third_party/quiche/quiche/common/quiche_random.h
 third_party/quiche/quiche/common/quiche_simple_arena.cc
 third_party/quiche/quiche/common/quiche_simple_arena.h
+third_party/quiche/quiche/common/quiche_socket_address.cc
+third_party/quiche/quiche/common/quiche_socket_address.h
 third_party/quiche/quiche/common/quiche_text_utils.cc
 third_party/quiche/quiche/common/quiche_text_utils.h
 third_party/quiche/quiche/common/simple_buffer_allocator.cc
@@ -803,8 +805,6 @@ third_party/quiche/quiche/quic/platform/api/quic_logging.h
 #third_party/quiche/quiche/quic/platform/api/quic_mem_slice_storage.cc
 #third_party/quiche/quiche/quic/platform/api/quic_mem_slice_storage.h
 third_party/quiche/quiche/quic/platform/api/quic_server_stats.h
-third_party/quiche/quiche/quic/platform/api/quic_socket_address.cc
-third_party/quiche/quiche/quic/platform/api/quic_socket_address.h
 third_party/quiche/quiche/quic/platform/api/quic_stack_trace.h
 third_party/quiche/quiche/quic/platform/api/quic_thread.h
 third_party/quiche/quiche/quic/tools/quic_simple_crypto_server_stream_helper.cc
