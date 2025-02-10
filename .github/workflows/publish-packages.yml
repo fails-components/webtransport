@@ -38,7 +38,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           registry-url: https://npm.pkg.github.com/
       - name: Check if version has been updated
         id: check
@@ -56,7 +56,7 @@ jobs:
     needs: version-check
     strategy:
       matrix:
-        os: [ubuntu-20.04, windows-2022, macos-latest ]
+        os: [ubuntu-20.04, windows-2022, macos-13 ]
         arch: [x64]
         include:
           - arch: ia32
@@ -79,7 +79,7 @@ jobs:
           echo ${{matrix.os == 'macos-latest'}}
           echo ${{ matrix.arch == 'arm64' && matrix.os == 'macos-latest' }}
           echo ${{matrix.arch == 'x64'}}
-          echo ${{ matrix.arch == 'x64' && matrix.os == 'macos-latest' }}
+          echo ${{ matrix.arch == 'x64' && matrix.os == 'macos-13' }}
      - name: Checkout code
        uses: actions/checkout@v4
        with:
