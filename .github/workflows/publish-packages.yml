@@ -62,7 +62,9 @@ jobs:
           - arch: ia32
             os: windows-2019
           - arch: arm64
-            os: [macos-latest, ubuntu-22.04-arm]
+            os: macos-latest
+          - arch: arm64
+            os: ubuntu-22.04-arm
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
