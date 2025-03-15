@@ -24,6 +24,16 @@ export interface WebTransportStats {
   datagrams: WebTransportDatagramStats
 }
 
+export interface  WebTransportSendStreamStats {
+  bytesWritten: bigint
+  bytesSent: bigint
+  bytesAcknowledged: bigint
+}
+
+export interface WebTransportSendGroup {
+  getStats: () =>  Promise<WebTransportSendStreamStats>
+}
+
 export interface WebTransportCloseInfo {
   closeCode: number
   reason: string
@@ -37,14 +47,6 @@ export interface WebTransportDatagramDuplexStream {
   // outgoingMaxAge?: number
   // incomingHighWaterMark: number
   // outgoingHighWaterMark: number
-}
-
-
-export interface  WebTransportSendStreamStats {
-  timestamp: number
-  bytesWritten: bigint
-  bytesSent: bigint
-  bytesAcknowledged: bigint
 }
 
 export interface WebTransportSendStream extends WritableStream<Uint8Array> {
@@ -88,13 +90,15 @@ export interface WebTransportOptions {
   congestionControl?: WebTransportCongestionControl
 }
 
-export interface WebTransportSendGroup {
-   getStats: () =>  Promise<WebTransportSendStreamStats>
+export interface WebTransportSendStreamStats {
+  bytesWritten: bigint;
+  bytesSent: bigint;
+  bytesAcknowledged: bigint;
 }
 
 export interface WebTransportSendStreamOptions {
   sendGroup:  WebTransportSendGroup|null
-  sendOrder?: number
+  sendOrder?: bigint
   waitUntilAvailable?: boolean
 }
 

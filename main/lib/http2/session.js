@@ -1,6 +1,7 @@
 /**
  * @typedef {import('http2').Http2Stream} Http2Stream
  * @typedef {import('../dom.js').WebTransportSendGroup} WebTransportSendGroup
+ * @typedef {import('../dom.js').WebTransportSendStreamOptions} WebTransportSendStreamOptions
  */
 import { ParserBase } from './parserbase.js'
 import { FlowController } from './flowcontroller.js'
@@ -134,7 +135,7 @@ export class Http2WebTransportSession {
   }
 
   /**
-   * @param {{sendGroup:  WebTransportSendGroup|null, sendOrder: number, waitUntilAvailable: boolean}} opts
+   * @param {WebTransportSendStreamOptions} opts
    */
   // eslint-disable-next-line no-unused-vars
   orderUnidiStream({ sendGroup, sendOrder, waitUntilAvailable }) {
@@ -166,7 +167,7 @@ export class Http2WebTransportSession {
   }
 
   /**
-   * @param {{sendGroup:  WebTransportSendGroup|null, sendOrder: number, waitUntilAvailable: boolean}} opts
+   * @param {WebTransportSendStreamOptions} opts
    */
   // eslint-disable-next-line no-unused-vars
   orderBidiStream({ sendGroup, sendOrder, waitUntilAvailable }) {

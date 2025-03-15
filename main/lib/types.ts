@@ -2,7 +2,7 @@ import type {
   WebTransportSession,
   WebTransportHash,
   WebTransportOptions,
-  WebTransportSendGroup
+  WebTransportSendStreamOptions
 } from './dom'
 import type { IncomingHttpHeaders, Http2Stream, ServerHttp2Stream } from 'http2'
 import { ParserBase } from './http2/parserbase'
@@ -16,8 +16,8 @@ export interface NativeHttpWTSession {
   jsobj: WebTransportSessionEventHandler
   sendInitialParameters?: () => void
   writeDatagram: (chunk: Uint8Array) => void
-  orderUnidiStream: (opts:{sendGroup:  WebTransportSendGroup|null, sendOrder: number, waitUntilAvailable: boolean}) => boolean
-  orderBidiStream: (opts:{sendGroup:  WebTransportSendGroup|null, sendOrder: number, waitUntilAvailable: boolean})  => boolean
+  orderUnidiStream: (opts: WebTransportSendStreamOptions) => boolean
+  orderBidiStream: (opts: WebTransportSendStreamOptions)  => boolean
   orderSessionStats: () => void
   orderDatagramStats: () => void
   notifySessionDraining: () => void
