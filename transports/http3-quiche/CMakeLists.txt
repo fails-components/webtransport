@@ -167,6 +167,7 @@ third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_fl
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_logging_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_logging_impl.h
+third_party/quiche/quiche/common/platform/api/quiche_mem_slice.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_iovec_impl.h
