@@ -16,6 +16,7 @@
 #include <atomic>
 
 #include <string>
+#include <queue>
 
 #include "src/librarymain.h"
 #include "src/http3wtstreamvisitor.h"
@@ -37,7 +38,7 @@ namespace quic
 
     public:
         Http3WTSession()
-            : ordBidiStreams(0), ordUnidiStreams(0), session_(nullptr), js_(nullptr)
+            : session_(nullptr), js_(nullptr)
         {
         }
 
@@ -83,11 +84,14 @@ namespace quic
         };
 
         bool
-        tryOpenBidiStream(bool waitUntilAvailable)
+        tryOpenBidiStream(bool waitUntilAvailable, uint64_t sendGroupId, uint64_t sendOrder)
         {
             if (session_->CanOpenNextOutgoingBidirectionalStream() 
                 || waitUntilAvailable) {
-                ordBidiStreams++;
+                webtransport::StreamPriority priority;
+                priority.send_group_id = sendGroupId;
+                priority.send_order = sendOrder;
+                ordBidiStreams.push(priority);
                 TrySendingBidirectionalStreams();
                 return true;
             } else {
@@ -95,11 +99,14 @@ namespace quic
             }
         }
 
-        bool tryOpenUnidiStream(bool waitUntilAvailable)
+        bool tryOpenUnidiStream(bool waitUntilAvailable, uint64_t sendGroupId, uint64_t sendOrder)
         {
             if (session_->CanOpenNextOutgoingUnidirectionalStream() 
                 || waitUntilAvailable) {
-                ordUnidiStreams++;
+                webtransport::StreamPriority priority;
+                priority.send_group_id = sendGroupId;
+                priority.send_order = sendOrder;
+                ordUnidiStreams.push(priority);
                 TrySendingUnidirectionalStreams();
                 return true;
             } else {
@@ -140,8 +147,9 @@ namespace quic
 
         WebTransportSession *session_;
         bool echo_stream_opened_ = false;
-        uint32_t ordBidiStreams;
-        uint32_t ordUnidiStreams;
+
+        std::queue<webtransport::StreamPriority> ordBidiStreams;
+        std::queue<webtransport::StreamPriority> ordUnidiStreams;
     };
 
     class Http3WTSessionJS : public Napi::ObjectWrap<Http3WTSessionJS>
@@ -167,6 +175,8 @@ namespace quic
         Napi::Value orderBidiStream(const Napi::CallbackInfo &info)
         {
             bool waitUntilAvailable = false;
+            uint64_t sendGroupId = 0;
+            uint64_t sendOrder = 0;
             if (!info[0].IsUndefined())
             {
                 Napi::Object lobj = info[0].ToObject();
@@ -177,9 +187,20 @@ namespace quic
                         Napi::Value waitUntilAvailableValue = (lobj).Get("waitUntilAvailable");
                         waitUntilAvailable = waitUntilAvailableValue.As<Napi::Boolean>().Value();
                     }
+                    if (lobj.Has("sendGroup") && !(lobj).Get("sendGroup").IsEmpty()
+                        && !(lobj).Get("sendGroup").IsNull()) {
+                        Napi::Value  sendGroupIdValue = (lobj).Get("sendGroup").ToObject().Get("_sendGroupId");
+                        bool lossless;
+                        sendGroupId = sendGroupIdValue.As<Napi::BigInt>().Uint64Value(&lossless);
+                    }
+                    if (lobj.Has("sendOrder") && !(lobj).Get("sendOrder").IsEmpty()) {
+                        Napi::Value sendOrderValue = (lobj).Get("sendOrder");
+                        bool lossless;
+                        sendOrder = sendOrderValue.As<Napi::BigInt>().Uint64Value(&lossless);
+                    }
                 }
             }
-            if (wtsession_->tryOpenBidiStream(waitUntilAvailable))
+            if (wtsession_->tryOpenBidiStream(waitUntilAvailable, sendGroupId, sendOrder))
             {
                 return Napi::Value::From(Env(), true);
             }
@@ -192,6 +213,8 @@ namespace quic
         Napi::Value orderUnidiStream(const Napi::CallbackInfo &info)
         {
             bool waitUntilAvailable = false;
+            uint64_t sendGroupId = 0;
+            uint64_t sendOrder = 0;
             if (!info[0].IsUndefined())
             {
                 Napi::Object lobj = info[0].ToObject();
@@ -202,9 +225,20 @@ namespace quic
                         Napi::Value waitUntilAvailableValue = (lobj).Get("waitUntilAvailable");
                         waitUntilAvailable = waitUntilAvailableValue.As<Napi::Boolean>().Value();
                     }
+                    if (lobj.Has("sendGroup") && !(lobj).Get("sendGroup").IsEmpty() 
+                        && !(lobj).Get("sendGroup").IsNull()) {
+                        Napi::Value  sendGroupIdValue = (lobj).Get("sendGroup").ToObject().Get("_sendGroupId");
+                        bool lossless;
+                        sendGroupId = sendGroupIdValue.As<Napi::BigInt>().Uint64Value(&lossless);
+                    }
+                    if (lobj.Has("sendOrder") && !(lobj).Get("sendOrder").IsEmpty()) {
+                        Napi::Value sendOrderValue = (lobj).Get("sendOrder");
+                        bool lossless;
+                        sendOrder = sendOrderValue.As<Napi::BigInt>().Uint64Value(&lossless);
+                    }
                 }
             }
-            if (wtsession_->tryOpenUnidiStream(waitUntilAvailable))
+            if (wtsession_->tryOpenUnidiStream(waitUntilAvailable, sendGroupId, sendOrder))
             {
                 return Napi::Value::From(Env(), true);
             }

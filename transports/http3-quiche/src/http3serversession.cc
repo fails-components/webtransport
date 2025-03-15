@@ -33,7 +33,10 @@ namespace quic
       QuicCompressedCertsCache *compressed_certs_cache,
       Http3ServerBackend *http3_server_backend)
       : QuicServerSessionBase(config, supported_versions, connection, visitor,
-                              helper, crypto_config, compressed_certs_cache),
+                              helper, crypto_config, compressed_certs_cache,
+                              http3_server_backend->SupportsWebTransport()
+                                 ? QuicPriorityType::kWebTransport
+                                 : QuicPriorityType::kHttp),
         http3_server_backend_(http3_server_backend)
   {
     QUICHE_DCHECK(http3_server_backend_);

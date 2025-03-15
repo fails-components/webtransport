@@ -27,6 +27,7 @@ const log = logger(`webtransport:httpwtsession(${pid})`)
  * @typedef {import('./dom').WebTransportDatagramDuplexStream} WebTransportDatagramDuplexStream
  * @typedef {import('./dom').WebTransportReliabilityMode} WebTransportReliabilityMode
  * @typedef {import('./dom').WebTransportCongestionControl} WebTransportCongestionControl
+ * @typedef {import('./dom').WebTransportSendGroup} WebTransportSendGroup
  * @typedef {import('./dom').WebTransportStats} WebTransportStats
  * @typedef {import('./dom').WebTransportDatagramStats} WebTransportDatagramStats
  *
@@ -149,7 +150,6 @@ export class HttpWTSession {
               this.writeDatagramRej.push(reject)
             })
             this.writeDatagramProm.push(ret)
-            log.trace('b4 datagram write', chunk)
             if (this.objint == null) {
               throw new Error('this.objint is not set')
             }
@@ -193,6 +193,8 @@ export class HttpWTSession {
     this.sendStreamsController = new Set()
     /** @type {Set<ReadableStreamDefaultController>} */
     this.receiveStreamsController = new Set()
+
+    this._sendGroupNum = 0n
   }
 
   /**
@@ -361,7 +363,7 @@ export class HttpWTSession {
     })
     const notblocked = this.objint.orderBidiStream({
       sendGroup: opts?.sendGroup || null, // maybe replace, when implemented
-      sendOrder: opts?.sendOrder || 0,
+      sendOrder: opts?.sendOrder || 0n,
       waitUntilAvailable: opts?.waitUntilAvailable || false
     })
     if (!notblocked) {
@@ -388,7 +390,7 @@ export class HttpWTSession {
     })
     const notblocked = this.objint.orderUnidiStream({
       sendGroup: opts?.sendGroup || null, // maybe replace, when implemented
-      sendOrder: opts?.sendOrder || 0,
+      sendOrder: opts?.sendOrder || 0n,
       waitUntilAvailable: opts?.waitUntilAvailable || false
     })
     if (!notblocked) {
@@ -414,6 +416,26 @@ export class HttpWTSession {
         code: closeInfo?.closeCode ?? 0,
         reason: closeInfo?.reason.substring(0, 1023) ?? ''
       })
+    }
+  }
+
+  /**
+   * @returns {WebTransportSendGroup}
+   */
+  createSendGroup() {
+    if (this.state === 'closed' || this.state === 'failed')
+      throw new Error('InvalidState')
+    return {
+      // @ts-ignore
+      _sendGroupId: this._sendGroupNum++,
+      getStats: async () => {
+        // TODO implement
+        return {
+          bytesWritten: 0n,
+          bytesSent: 0n,
+          bytesAcknowledged: 0n
+        }
+      }
     }
   }
 

@@ -108,18 +108,19 @@ namespace quic
     {
         if (!session_)
             return;
-        while (ordBidiStreams > 0 &&
+        while (!ordBidiStreams.empty() &&
                session_->CanOpenNextOutgoingBidirectionalStream())
         {
             QUIC_DVLOG(1)
                 << "Http3WTSessionVisitor opens a bidirectional stream";
             WebTransportStream *stream = session_->OpenOutgoingBidirectionalStream();
+            stream->SetPriority(ordBidiStreams.front());
             Http3WTStream *wtstream = new Http3WTStream(stream);
             stream->SetVisitor(
                 std::make_unique<Http3WTStream::Visitor>(wtstream));
             getJS()->processStream(false, true, static_cast<Http3WTStream *>(wtstream));
             stream->visitor()->OnCanWrite();
-            ordBidiStreams--;
+            ordBidiStreams.pop();
         }
     }
 
@@ -144,19 +145,20 @@ namespace quic
         if (!session_)
             return;
         // move to some where else?
-        while (ordUnidiStreams > 0 &&
+        while (!ordUnidiStreams.empty() &&
                session_->CanOpenNextOutgoingUnidirectionalStream())
         {
             QUIC_DVLOG(1)
                 << "Http3WTSessionVisitor opened a unidirectional stream";
             WebTransportStream *stream = session_->OpenOutgoingUnidirectionalStream();
+            stream->SetPriority(ordUnidiStreams.front());
             Http3WTStream *wtstream = new Http3WTStream(stream);
             stream->SetVisitor(
                 std::make_unique<Http3WTStream::Visitor>(wtstream));
 
             getJS()->processStream(false, false, static_cast<Http3WTStream *>(wtstream));
             stream->visitor()->OnCanWrite();
-            ordUnidiStreams--;
+            ordUnidiStreams.pop();
         }
     }
 

@@ -34,7 +34,7 @@ namespace quic
       bool drop_response_body,
       bool enable_web_transport)
       : QuicSpdyClientSession(config, supported_versions, connection, server_id,
-                              crypto_config),
+                              crypto_config, QuicPriorityType::kWebTransport),
         drop_response_body_(drop_response_body),
         enable_web_transport_(enable_web_transport) {}
 
