@@ -73,8 +73,10 @@ export class Http2WebTransportSession {
       maxAllowedIncomingStreams: initialBidirectionalReceiveStreams,
       maxAllowedOutgoingStreams: initialBidirectionalSendStreams
     })
-    this.orderUniStreams = 0
-    this.orderBiStreams = 0
+    /** @type {Array<{sendOrder: bigint, sendGroupId: bigint}>} */
+    this.orderUniStreams = []
+    /** @type {Array<{sendOrder: bigint, sendGroupId: bigint}>} */
+    this.orderBiStreams = []
     if (stream) {
       if (isclient) {
         stream.on('response', (headers) => {
@@ -120,30 +122,36 @@ export class Http2WebTransportSession {
 
   trySendingUnidirectionalStreams() {
     while (
-      this.orderUniStreams > 0 &&
+      this.orderUniStreams.length > 0 &&
       this.streamIdMngrUni.canOpenNextOutgoingStream()
     ) {
       const streamid = this.streamIdMngrUni.getNextOutgoingStreamId()
+      const priority = this.orderUniStreams.pop()
       this.capsParser.writeCapsule({
         type: ParserBase.WT_STREAM_WOFIN,
         headerVints: [streamid],
         payload: undefined
       })
-      this.capsParser.newStream(streamid)
-      this.orderUniStreams--
+      this.capsParser.newStream(
+        streamid,
+        priority || { sendGroupId: 0n, sendOrder: 0n }
+      )
     }
   }
 
   /**
    * @param {WebTransportSendStreamOptions} opts
    */
-  // eslint-disable-next-line no-unused-vars
   orderUnidiStream({ sendGroup, sendOrder, waitUntilAvailable }) {
     const canopen = this.streamIdMngrUni.canOpenNextOutgoingStream()
     const maxset = this.streamIdMngrUni.isMaxStreamSet() // we block if the maxsetting did not arrive
 
     if (canopen || waitUntilAvailable || !maxset) {
-      this.orderUniStreams++
+      this.orderUniStreams.push({
+        // @ts-ignore
+        sendGroupId: sendGroup?._sendGroupId || 0n,
+        sendOrder: sendOrder ?? 0n
+      })
       this.trySendingUnidirectionalStreams()
       return true
     }
@@ -152,30 +160,36 @@ export class Http2WebTransportSession {
 
   trySendingBidirectionalStreams() {
     while (
-      this.orderBiStreams > 0 &&
+      this.orderBiStreams.length > 0 &&
       this.streamIdMngrBi.canOpenNextOutgoingStream()
     ) {
       const streamid = this.streamIdMngrBi.getNextOutgoingStreamId()
+      const priority = this.orderBiStreams.pop()
       this.capsParser.writeCapsule({
         type: ParserBase.WT_STREAM_WOFIN,
         headerVints: [streamid],
         payload: undefined
       })
-      this.capsParser.newStream(streamid)
-      this.orderBiStreams--
+      this.capsParser.newStream(
+        streamid,
+        priority || { sendGroupId: 0n, sendOrder: 0n }
+      )
     }
   }
 
   /**
    * @param {WebTransportSendStreamOptions} opts
    */
-  // eslint-disable-next-line no-unused-vars
   orderBidiStream({ sendGroup, sendOrder, waitUntilAvailable }) {
     const canopen = this.streamIdMngrBi.canOpenNextOutgoingStream()
     const maxset = this.streamIdMngrBi.isMaxStreamSet() // we block if the maxsetting did not arrive
 
     if (canopen || waitUntilAvailable || !maxset) {
-      this.orderBiStreams++
+      this.orderBiStreams.push({
+        // @ts-ignore
+        sendGroupId: sendGroup?._sendGroupId || 0n,
+        sendOrder: sendOrder ?? 0n
+      })
       this.trySendingBidirectionalStreams()
       return true
     }
