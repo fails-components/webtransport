@@ -329,7 +329,7 @@ namespace quic
 
         static void freeData(Napi::Env env, void *data, std::string *hint);
 
-        void processStream(bool incom, bool bidi, Http3WTStream *stream);
+        void processStream(bool incom, bool bidi, uint64_t sendOrder, uint64_t sendGroupId, Http3WTStream *stream);
         void processSessionStats(webtransport::SessionStats sessstats);
         void processDatagramStats(webtransport::DatagramStats datastats);
         void processGoawayReceived();

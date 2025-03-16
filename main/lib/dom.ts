@@ -50,6 +50,8 @@ export interface WebTransportDatagramDuplexStream {
 }
 
 export interface WebTransportSendStream extends WritableStream<Uint8Array> {
+  sendGroup?: WebTransportSendGroup;
+  sendOrder: bigint;
   getStats: () => Promise<WebTransportSendStreamStats>
 }
 

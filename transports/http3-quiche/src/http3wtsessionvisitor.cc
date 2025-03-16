@@ -45,7 +45,7 @@ namespace quic
                 << stream->GetStreamId();
             stream->SetVisitor(
                 std::make_unique<Http3WTStream::Visitor>(wtstream));
-            session_->getJS()->processStream(true, true, static_cast<Http3WTStream *>(wtstream));
+            session_->getJS()->processStream(true, true, 0/*sendOrder*/, 0 /*sendGroup*/, static_cast<Http3WTStream *>(wtstream));
             stream->visitor()->OnCanRead();
         }
     }
@@ -67,7 +67,7 @@ namespace quic
                 << "Http3WTSession received a unidirectional stream";
             stream->SetVisitor(
                 std::make_unique<Http3WTStream::Visitor>(wtstream));
-            session_->getJS()->processStream(true, false, static_cast<Http3WTStream *>(wtstream));
+            session_->getJS()->processStream(true, false, 0/*sendOrder*/, 0 /*sendGroup*/, static_cast<Http3WTStream *>(wtstream));
             stream->visitor()->OnCanRead();
         }
     }
@@ -114,11 +114,12 @@ namespace quic
             QUIC_DVLOG(1)
                 << "Http3WTSessionVisitor opens a bidirectional stream";
             WebTransportStream *stream = session_->OpenOutgoingBidirectionalStream();
-            stream->SetPriority(ordBidiStreams.front());
+            webtransport::StreamPriority prio = ordBidiStreams.front();
+            stream->SetPriority(prio);
             Http3WTStream *wtstream = new Http3WTStream(stream);
             stream->SetVisitor(
                 std::make_unique<Http3WTStream::Visitor>(wtstream));
-            getJS()->processStream(false, true, static_cast<Http3WTStream *>(wtstream));
+            getJS()->processStream(false, true, prio.send_order, prio.send_group_id, static_cast<Http3WTStream *>(wtstream));
             stream->visitor()->OnCanWrite();
             ordBidiStreams.pop();
         }
@@ -151,12 +152,13 @@ namespace quic
             QUIC_DVLOG(1)
                 << "Http3WTSessionVisitor opened a unidirectional stream";
             WebTransportStream *stream = session_->OpenOutgoingUnidirectionalStream();
-            stream->SetPriority(ordUnidiStreams.front());
+            webtransport::StreamPriority prio = ordUnidiStreams.front();
+            stream->SetPriority(prio);
             Http3WTStream *wtstream = new Http3WTStream(stream);
             stream->SetVisitor(
                 std::make_unique<Http3WTStream::Visitor>(wtstream));
 
-            getJS()->processStream(false, false, static_cast<Http3WTStream *>(wtstream));
+            getJS()->processStream(false, false, prio.send_order, prio.send_group_id, static_cast<Http3WTStream *>(wtstream));
             stream->visitor()->OnCanWrite();
             ordUnidiStreams.pop();
         }
@@ -176,7 +178,7 @@ namespace quic
         getJS()->processDatagramSend(bufferhandle);
     }
 
-    void Http3WTSessionJS::processStream(bool incom, bool bidi, Http3WTStream *stream)
+    void Http3WTSessionJS::processStream(bool incom, bool bidi, uint64_t sendOrder, uint64_t sendGroupId, Http3WTStream *stream)
     {
         Napi::HandleScope scope(Env());
         Http3Constructors *constr = Env().GetInstanceData<Http3Constructors>();
@@ -194,6 +196,8 @@ namespace quic
         retObj.Set("stream", strobj);
         retObj.Set("incoming", incom);
         retObj.Set("bidirectional", bidi);
+        retObj.Set("sendOrder", sendOrder);
+        retObj.Set("sendGroupId", sendGroupId);
 
         objVal.Get("onStream").As<Napi::Function>().Call(objVal, {retObj});
     }
