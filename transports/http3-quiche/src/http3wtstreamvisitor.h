@@ -127,6 +127,8 @@ namespace quic
         void stopSendingInt(unsigned int reason);
         void resetStreamInt(unsigned int reason);
 
+        void updateSendOrderAndGroupInt(uint64_t sendOrder, uint64_t sendGroupId);
+
         WebTransportStream *stream() { return stream_; }
 
         struct WChunks
@@ -281,6 +283,30 @@ namespace quic
             wtstream_->resetStreamInt(reason);
         }
 
+        void updateSendOrderAndGroup(const Napi::CallbackInfo &info)
+        {
+            if (!info[0].IsUndefined())
+            {
+                Napi::Object obj = info[0].ToObject();
+                uint64_t sendOrder = 0;
+                uint64_t sendGroupId = 0;
+
+                if (obj.Has("sendOrder") && !(obj).Get("sendOrder").IsEmpty())
+                {
+                    Napi::Value sendOrderValue = (obj).Get("sendOrder");
+                    bool approx;
+                    sendOrder = sendOrderValue.As<Napi::BigInt>().Uint64Value(&approx);
+                }
+                if (obj.Has("sendGroupId") && !(obj).Get("sendGroupId").IsEmpty())
+                {
+                    Napi::Value sendGroupIdValue = (obj).Get("sendGroupId");
+                    bool approx;
+                    sendGroupId = sendGroupIdValue.As<Napi::BigInt>().Uint64Value(&approx);
+                }
+                wtstream_->updateSendOrderAndGroupInt(sendOrder, sendGroupId);
+            }
+        }
+
         static void InitExports(Napi::Env env, Napi::Object exports, Http3Constructors *constr)
         {
             Napi::Function tplwtsv =
@@ -296,7 +322,10 @@ namespace quic
                              InstanceMethod<&Http3WTStreamJS::startReading>("drainReads",
                                                                             static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                              InstanceMethod<&Http3WTStreamJS::stopReading>("stopReading",
-                                                                           static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
+                                                                           static_cast<napi_property_attributes>(napi_writable | napi_configurable)),                                            
+                            InstanceMethod<&Http3WTStreamJS::updateSendOrderAndGroup>("updateSendOrderAndGroup",
+                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)), 
+                                                                        });
             constr->stream = Napi::Persistent(tplwtsv);
             exports.Set("Http3WTStreamVisitor", tplwtsv);
         }

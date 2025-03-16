@@ -286,6 +286,16 @@ export class ParserBase {
   }
 
   /**
+   *
+   * @param {bigint} streamid
+   * @param {{sendOrder: bigint, sendGroupId: bigint}} arg2
+   */
+  streamUpdateSendOrderAndGroup(streamid, { sendOrder, sendGroupId }) {
+    this.scheduler.UpdateSendGroup(streamid, sendGroupId)
+    this.scheduler.UpdateSendOrder(streamid, sendOrder)
+  }
+
+  /**
    * @param {number} code
    */
   // eslint-disable-next-line no-unused-vars

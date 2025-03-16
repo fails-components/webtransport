@@ -195,6 +195,8 @@ export class HttpWTSession {
     this.receiveStreamsController = new Set()
 
     this._sendGroupNum = 1n // 0n is reserved for no sendgroup
+    /** @type {Map<bigint,WebTransportSendGroup>} */
+    this._sendGroupIndex = new Map()
   }
 
   /**
@@ -425,9 +427,10 @@ export class HttpWTSession {
   createSendGroup() {
     if (this.state === 'closed' || this.state === 'failed')
       throw new Error('InvalidState')
-    return {
+    const _sendGroupId = this._sendGroupNum++
+    const sendGroup = {
       // @ts-ignore
-      _sendGroupId: this._sendGroupNum++,
+      _sendGroupId,
       getStats: async () => {
         // TODO implement
         return {
@@ -437,6 +440,8 @@ export class HttpWTSession {
         }
       }
     }
+    this._sendGroupIndex.set(_sendGroupId, sendGroup)
+    return sendGroup
   }
 
   onReady(/* error */) {
@@ -541,7 +546,9 @@ export class HttpWTSession {
       parentobj: this,
       transport: this.parentobj,
       bidirectional: args.bidirectional,
-      incoming: args.incoming
+      incoming: args.incoming,
+      sendGroup: this._sendGroupIndex.get(args.sendGroupId || 0n),
+      sendOrder: args.sendOrder
     })
     this.addStreamObj(strobj)
     if (args.incoming) {

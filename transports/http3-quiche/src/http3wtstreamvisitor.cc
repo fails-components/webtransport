@@ -179,6 +179,16 @@ namespace quic
         }
     }
 
+    void Http3WTStream::updateSendOrderAndGroupInt(uint64_t sendOrder, uint64_t sendGroupId) {
+        if (stream_)
+        {
+            webtransport::StreamPriority prio;
+            prio.send_group_id = sendGroupId;
+            prio.send_order = sendOrder;
+            stream_->SetPriority(prio);
+        }
+    }
+
     
     void  Http3WTStreamJS::signalFinOnly() {
         Napi::HandleScope scope(Env());

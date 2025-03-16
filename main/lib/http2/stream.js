@@ -379,6 +379,17 @@ export class Http2WebTransportStream {
   }
 
   /**
+   *
+   * @param {{sendOrder: bigint, sendGroupId: bigint}} args
+   */
+  updateSendOrderAndGroup({ sendOrder, sendGroupId }) {
+    this.capsuleParser.streamUpdateSendOrderAndGroup(this.streamid, {
+      sendOrder,
+      sendGroupId
+    })
+  }
+
+  /**
    * @param {bigint} windowOffset
    */
   sendWindowUpdate(windowOffset) {

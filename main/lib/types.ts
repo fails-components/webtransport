@@ -38,6 +38,10 @@ export interface NativeHttpWTStream {
   resetStream: (code: number) => void
   writeChunk: (buf: Uint8Array) => void
   streamFinal: () => void
+  updateSendOrderAndGroup: (args :{
+    sendOrder: bigint,
+    sendGroupId: bigint
+  }) => void
 }
 
 export interface NativeServerOptions {
@@ -187,6 +191,8 @@ export interface NewStreamEvent {
   stream: NativeHttpWTStream
   bidirectional: boolean
   incoming: boolean
+  sendGroupId?: bigint;
+  sendOrder: bigint;
 }
 
 export interface WebTransportSessionEventHandler {

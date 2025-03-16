@@ -20,6 +20,8 @@ const log = logger(`webtransport:http3wtstream(${pid})`)
  * @typedef {import('./dom').WebTransportReceiveStream} WebTransportReceiveStream
  * @typedef {import('./dom').WebTransportSendStream} WebTransportSendStream
  *
+ * @typedef {import('./dom').WebTransportSendGroup} WebTransportSendGroup
+ *
  * @typedef {import('./session').HttpWTSession} HttpWTSession
  *
  * @typedef {import('stream/web').WritableStreamDefaultController} WritableStreamDefaultController
@@ -33,6 +35,8 @@ export class HttpWTStream {
    * @param {object} args.transport
    * @param {boolean} args.bidirectional
    * @param {boolean} args.incoming
+   * @param {WebTransportSendGroup|undefined} args.sendGroup
+   * @param {bigint} args.sendOrder
    */
   constructor(args) {
     this.objint = args.object
@@ -42,6 +46,9 @@ export class HttpWTStream {
     this.bidirectional = args.bidirectional
     this.incoming = args.incoming
     this.closed = false
+
+    this._sendGroup = args.sendGroup
+    this._sendOrder = args.sendOrder
 
     if (this.objint.sendInitialParameters) {
       this.objint.sendInitialParameters()
@@ -203,6 +210,36 @@ export class HttpWTStream {
           bytesAcknowledged: 0n
         })
       }
+      Object.defineProperties(this.writable, {
+        sendOrder: {
+          get: () => {
+            return this._sendOrder
+          },
+          /**
+           * @param {bigint} value
+           */
+          set: (value) => {
+            if (value !== this._sendOrder) {
+              this._sendOrder = args.sendOrder
+              this.updateSendOrderAndGroup()
+            }
+          }
+        },
+        sendGroup: {
+          get: () => {
+            return this._sendGroup
+          },
+          /**
+           * @param {WebTransportSendGroup} value
+           */
+          set: (value) => {
+            if (value !== this._sendGroup) {
+              this._sendGroup = args.sendGroup
+              this.updateSendOrderAndGroup()
+            }
+          }
+        }
+      })
       // @ts-ignore
       this.parentobj.addSendStream(this.writable, this.writableController)
     }
@@ -276,6 +313,14 @@ export class HttpWTStream {
       }
     }
     return retObj
+  }
+
+  updateSendOrderAndGroup() {
+    this.objint.updateSendOrderAndGroup({
+      sendOrder: this._sendOrder,
+      // @ts-ignore
+      sendGroupId: this._sendGroup._sendGroupId
+    })
   }
 
   /**
