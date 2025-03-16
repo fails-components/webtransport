@@ -289,9 +289,12 @@ export class Http2WebTransportStream {
   }
 
   drainWrites() {
+    let finsend = false
     while (
       this.outgochunks.length > 0 &&
-      (!this.capsuleParser.blocked || this.final) &&
+      (!this.capsuleParser.blocked ||
+        this.final ||
+        !this.capsuleParser.shouldYieldStream(this.streamid)) &&
       this.flowController.sendWindowSize() > 0n &&
       this.sessionFlowController.sendWindowSize() > 0n
     ) {
@@ -335,6 +338,7 @@ export class Http2WebTransportStream {
           headerVints: [this.streamid],
           payload
         })
+        finsend ||= !!cur?.fin
 
         if (payload) {
           this.flowController.addBytesSent(payload?.byteLength)
@@ -345,11 +349,27 @@ export class Http2WebTransportStream {
         success: true
       })
     }
+    if (finsend) {
+      this.capsuleParser.removeStream(this.streamid)
+      return
+    }
+
+    if (
+      !(
+        !this.capsuleParser.blocked ||
+        this.final ||
+        !this.capsuleParser.shouldYieldStream(this.streamid)
+      ) &&
+      this.outgochunks.length > 0
+    ) {
+      this.capsuleParser.scheduleDrainWriteStream(this.streamid)
+    }
   }
 
   streamFinal() {
     this.final = true
     this.outgochunks.push({ fin: true })
+    this.capsuleParser.scheduleDrainWriteStream(this.streamid)
     this.drainWrites()
     processnextTick(() =>
       this.jsobj.onStreamNetworkFinish({

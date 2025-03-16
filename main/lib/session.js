@@ -194,7 +194,7 @@ export class HttpWTSession {
     /** @type {Set<ReadableStreamDefaultController>} */
     this.receiveStreamsController = new Set()
 
-    this._sendGroupNum = 0n
+    this._sendGroupNum = 1n // 0n is reserved for no sendgroup
   }
 
   /**

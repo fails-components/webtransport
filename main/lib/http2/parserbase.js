@@ -1,5 +1,6 @@
 import { Http2WebTransportStream } from './stream.js'
 import { logger } from '../utils.js'
+import { PriorityScheduler } from './priorityscheduler.js'
 
 const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:parserbase(${pid})`)
@@ -59,6 +60,8 @@ export class ParserBase {
 
     /** @type {Map<bigint,Http2WebTransportStream>} */
     this.wtstreams = new Map()
+
+    this.scheduler = new PriorityScheduler()
   }
 
   /**
@@ -101,8 +104,9 @@ export class ParserBase {
 
   /**
    * @param {bigint} streamid
+   * @param {{sendOrder: bigint,sendGroupId: bigint}} priority
    */
-  newStream(streamid) {
+  newStream(streamid, priority) {
     const incoming = this.isclient ? !(streamid & 0x1n) : !!(streamid & 0x1n)
     const streamIdManager =
       streamid & 0x2n
@@ -138,6 +142,7 @@ export class ParserBase {
       streamIdManager
     })
     this.wtstreams.set(streamid, stream)
+    this.scheduler.Register(streamid, priority)
     this.session.jsobj.onStream({
       bidirectional: !(streamid & 0x2n),
       incoming,
@@ -147,7 +152,11 @@ export class ParserBase {
   }
 
   drainWrites() {
-    for (const stream of this.wtstreams.values()) {
+    while (!this.blocked) {
+      const frontId = this.scheduler.PopFront()
+      if (typeof frontId === 'undefined') break
+      const stream = this.wtstreams.get(frontId)
+      if (!stream) break
       stream.drainWrites()
     }
   }
@@ -249,6 +258,31 @@ export class ParserBase {
 
   onDrain() {
     this.session.jsobj.onGoAwayReceived()
+  }
+
+  /**
+   *
+   * @param {bigint} streamid
+   */
+  shouldYieldStream(streamid) {
+    return this.scheduler.ShouldYield(streamid)
+  }
+
+  /**
+   *
+   * @param {bigint} streamid
+   */
+  scheduleDrainWriteStream(streamid) {
+    this.scheduler.Schedule(streamid)
+  }
+
+  /**
+   *
+   * @param {bigint} streamid
+   */
+  removeStream(streamid) {
+    this.scheduler.Unregister(streamid)
+    //this.wtstreams.delete(streamid) // why does this create troubles
   }
 
   /**
