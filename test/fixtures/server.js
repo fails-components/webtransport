@@ -5,7 +5,11 @@ import { getReaderStream, getReaderValue } from './reader-value.js'
 import { writeStream } from './write-stream.js'
 import { readStream } from './read-stream.js'
 import * as ui8 from 'uint8arrays'
-import { KNOWN_BYTES, KNOWN_BYTES_LENGTH } from './known-bytes.js'
+import {
+  KNOWN_BYTES,
+  KNOWN_BYTES_LENGTH,
+  KNOWN_BYTES_LONG_LENGTH
+} from './known-bytes.js'
 
 export async function createServer() {
   const attrs = [
@@ -384,6 +388,40 @@ export async function createServer() {
                 } else {
                   session.close()
                 }
+                // eslint-disable-next-line no-unused-vars
+              } catch (error) {
+                // in some tests the client closes the stream
+              }
+            }
+          },
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/send_order_bidi_two')
+            )) {
+              try {
+                const streamA = await getReaderValue(
+                  session.incomingBidirectionalStreams
+                )
+                const streamB = await getReaderValue(
+                  session.incomingBidirectionalStreams
+                )
+                const confirmStream = (stream) => {
+                  return async () => {
+                    const streamTime = performance.now()
+                    const writer = stream.writable.getWriter()
+                    const floats = new Float64Array(1)
+                    floats[0] = streamTime
+                    await writer.write(floats.buffer)
+                  }
+                }
+                await Promise.all([
+                  readStream(streamA.readable, KNOWN_BYTES_LONG_LENGTH).then(
+                    confirmStream(streamA)
+                  ),
+                  readStream(streamB.readable, KNOWN_BYTES_LONG_LENGTH).then(
+                    confirmStream(streamB)
+                  )
+                ])
                 // eslint-disable-next-line no-unused-vars
               } catch (error) {
                 // in some tests the client closes the stream
