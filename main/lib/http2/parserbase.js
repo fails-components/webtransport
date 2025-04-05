@@ -146,9 +146,19 @@ export class ParserBase {
     this.session.jsobj.onStream({
       bidirectional: !(streamid & 0x2n),
       incoming,
-      stream
+      stream,
+      sendGroupId: priority.sendGroupId,
+      sendOrder: priority.sendOrder
     })
     return stream
+  }
+
+  scheduleDrainWrites() {
+    if (this._scheduledDrainWriteCall) return
+    this._scheduledDrainWriteCall = setTimeout(() => {
+      delete this._scheduledDrainWriteCall
+      this.drainWrites()
+    })
   }
 
   drainWrites() {

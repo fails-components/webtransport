@@ -134,17 +134,17 @@ class StreamEntry {
 function compareStreamEntries(a, b) {
   // for sort
   if (a.priority > b.priority) {
-    return 1
+    return -1
   } else if (a.priority === b.priority) {
     if (a.sequenceNumber > b.sequenceNumber) {
-      return 1
+      return -1
     } else if (a.sequenceNumber === b.sequenceNumber) {
       return 0
     } else {
-      return -1
+      return 1
     }
   } else {
-    return -1
+    return 1
   }
 }
 /**

@@ -285,7 +285,8 @@ export class Http2WebTransportStream {
    */
   writeChunk(buf) {
     this.outgochunks.push({ buf, fin: false })
-    this.drainWrites()
+    this.capsuleParser.scheduler.Schedule(this.streamid)
+    this.capsuleParser.scheduleDrainWrites()
   }
 
   drainWrites() {
