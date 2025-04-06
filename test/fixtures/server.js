@@ -402,24 +402,26 @@ export async function createServer() {
                 const streamA = await getReaderValue(
                   session.incomingBidirectionalStreams
                 )
+                const streamAstart = performance.now()
                 const streamB = await getReaderValue(
                   session.incomingBidirectionalStreams
                 )
-                const confirmStream = (stream) => {
+                const streamBstart = performance.now()
+                const confirmStream = (stream, startStart) => {
                   return async () => {
                     const streamTime = performance.now()
                     const writer = stream.writable.getWriter()
                     const floats = new Float64Array(1)
-                    floats[0] = streamTime
+                    floats[0] = streamTime - startStart
                     await writer.write(floats.buffer)
                   }
                 }
                 await Promise.all([
                   readStream(streamA.readable, KNOWN_BYTES_LONG_LENGTH).then(
-                    confirmStream(streamA)
+                    confirmStream(streamA, streamAstart)
                   ),
                   readStream(streamB.readable, KNOWN_BYTES_LONG_LENGTH).then(
-                    confirmStream(streamB)
+                    confirmStream(streamB, streamBstart)
                   )
                 ])
                 // eslint-disable-next-line no-unused-vars
