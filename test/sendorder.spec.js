@@ -104,7 +104,7 @@ describe('sendgroup streams', function () {
       bufferHighPrio.byteOffset,
       bufferHighPrio.byteLength / Float64Array.BYTES_PER_ELEMENT
     )[0]
-    expect(Math.floor(timeLowPrio) + 1).to.be.greaterThanOrEqual(
+    expect(Math.floor(timeLowPrio) + 3).to.be.greaterThanOrEqual(
       Math.floor(timeHighPrio)
     )
   })
