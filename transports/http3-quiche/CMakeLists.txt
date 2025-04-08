@@ -27,6 +27,7 @@ ENDIF(WIN32)
 
 set(ABSL_PROPAGATE_CXX_STD ON)
 # include abseil
+set(ABSL_MSVC_STATIC_RUNTIME ON)
 add_subdirectory(third_party/abseil-cpp EXCLUDE_FROM_ALL)
 
 
