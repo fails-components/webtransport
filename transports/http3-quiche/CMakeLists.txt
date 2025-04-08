@@ -28,6 +28,12 @@ ENDIF(WIN32)
 set(ABSL_PROPAGATE_CXX_STD ON)
 # include abseil
 add_subdirectory(third_party/abseil-cpp EXCLUDE_FROM_ALL)
+if (MSVC)
+  get_property(abseil_targets DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/third_party/abseil-cpp PROPERTY BUILT_TARGETS)
+  foreach(target_name ${abseil_targets})
+    set_property(TARGET "${target_name}" PROPERTY CMAKE_MSVC_RUNTIME_LIBRARY ""MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  endforeach()
+endif()
 
 
 # include protobuf
