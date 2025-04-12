@@ -138,7 +138,6 @@ describe('session', function () {
       .with.property('message', handshakemess)
   })
 
-  /*
   it('should select the last protocol while connecting', async () => {
     client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
       protocols: ['protA', 'protB', 'prot_C'],
@@ -154,7 +153,6 @@ describe('session', function () {
 
     expect(client.protocol).to.equal('prot_C')
   })
-    */
 
   if (
     process.env.USE_POLYFILL !== 'true' &&
