@@ -139,14 +139,12 @@ describe('session', function () {
   })
 
   it('should select the last protocol while connecting', async () => {
-    console.log('protocol mark1')
     client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
       protocols: ['protA', 'protB', 'prot_C'],
       ...wtOptions
     })
 
     await client.ready
-    console.log('protocol mark2')
 
     if (!('protocol' in client)) {
       console.log('Application protocol is not implemented skipping')
@@ -164,7 +162,6 @@ describe('session', function () {
   ) {
     // deactivated in polyfill case, no test necessary
     it('should error when connecting with a bad certificate', async () => {
-      console.log('bad cert mark1')
       client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
         serverCertificateHashes: [
           {
@@ -180,16 +177,13 @@ describe('session', function () {
         client.closed.catch((err) => err),
         client.ready.catch((err) => err)
       ])
-      console.log('bad cert mark2')
 
       expect(closedResult)
         .to.be.a('WebTransportError')
         .with.property('message', handshakemess)
-      console.log('bad cert mark3')
       expect(readyResult)
         .to.be.a('WebTransportError')
         .with.property('message', handshakemess)
-      console.log('bad cert mark4')
     })
 
     it('should error when connecting with the wrong certificate', async () => {
