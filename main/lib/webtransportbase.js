@@ -152,4 +152,11 @@ export class WebTransportBase {
 
     return session.createUnidirectionalStream(opts)
   }
+
+  get protocol() {
+    const session = this.sessionint
+    if (!session) return undefined
+
+    return session.protocol
+  }
 }

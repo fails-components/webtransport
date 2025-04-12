@@ -83,6 +83,7 @@ export interface NativeClientOptions {
   initialSessionFlowControlWindow?: number
   sessionShouldAutoTuneReceiveWindow?: boolean
   sessionFlowControlWindowSizeLimit?: number
+  protocols?: string[]
 }
 
 export interface FlowControlable {
@@ -114,7 +115,8 @@ export interface NativeFinishSessionRequest {
   protocol: 'capsule' | 'websocket' | 'websocketoverhttp1' | 'http3'
   head?: Buffer
   userData?: object
-  transportPrivate?: object
+  transportPrivate?: object,
+  selectedProtocol?: string
 }
 
 export type Purpose =
@@ -154,6 +156,7 @@ export interface WebTransportStreamEventHandler {
 
 export interface SessionReadyEvent {
   object: NativeHttpWTSession
+  protocol?: string
 }
 
 export interface SessionCloseEvent {

@@ -138,6 +138,23 @@ describe('session', function () {
       .with.property('message', handshakemess)
   })
 
+  it('should select the last protocol while connecting', async () => {
+    client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
+      protocols: ['protA', 'protB', 'prot_C'],
+      ...wtOptions
+    })
+
+    await client.ready
+
+    if (!('protocol' in client)) {
+      console.log('Application protocol is not implemented skipping')
+      return // not implemented is also fine
+    }
+
+    expect(client.protocol).to.equal('prot_C')
+    await client.closed
+  })
+
   if (
     process.env.USE_POLYFILL !== 'true' &&
     process.env.USE_PONYFILL !== 'true' &&

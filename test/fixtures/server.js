@@ -71,6 +71,13 @@ export async function createServer() {
             status: 404
           }
         }
+        const protocols = args.header['wt-available-protocols']
+          ? args.header['wt-available-protocols']
+              .split(',')
+              .map((el) => el.trim())
+          : undefined
+        // we chose for testing always the last one
+        const selectedProtocol = protocols && protocols[protocols.length - 1]
 
         return {
           ...args,
@@ -82,7 +89,8 @@ export async function createServer() {
             ...args.header,
             ':path': path
           },
-          status: 200
+          status: 200,
+          selectedProtocol
         }
       })
 
@@ -416,11 +424,12 @@ export async function createServer() {
                     await writer.write(floats.buffer)
                   }
                 }
+                const finalLength = 100 * KNOWN_BYTES_LONG_LENGTH
                 await Promise.all([
-                  readStream(streamA.readable, KNOWN_BYTES_LONG_LENGTH).then(
+                  readStream(streamA.readable, finalLength).then(
                     confirmStream(streamA, streamAstart)
                   ),
-                  readStream(streamB.readable, KNOWN_BYTES_LONG_LENGTH).then(
+                  readStream(streamB.readable, finalLength).then(
                     confirmStream(streamB, streamBstart)
                   )
                 ])

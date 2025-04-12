@@ -162,7 +162,8 @@ namespace quic
                              std::unique_ptr<ProofVerifier> proof_verifier,
                              std::unique_ptr<SessionCache> session_cache,
                              std::unique_ptr<QuicConnectionHelperInterface> helper,
-                             QuicConfig config) :
+                             QuicConfig config,
+                             const std::vector<std::string>& protocols) :
           initialized_(false),
           store_response_(false),
           latest_response_code_(-1),
@@ -188,7 +189,8 @@ namespace quic
           num_attempts_connect_(0),
           webtransport_server_support_inform_(false),
           connection_debug_visitor_(nullptr),
-          priority_(HttpStreamPriority())
+          priority_(HttpStreamPriority()),
+          protocols_(protocols)
     {
        
     }
@@ -622,7 +624,16 @@ namespace quic
         headers[":path"] = path;
         headers[":method"] = "CONNECT";
         headers[":protocol"] = "webtransport";
-
+        if (protocols_.size() > 0) { // not very efficient
+            std::string protocols = "";
+            for (size_t i=0; i < protocols_.size(); i++) {
+                protocols += protocols_[i];
+                if (i!= protocols_.size()-1) {
+                    protocols += ',';
+                }
+            }
+            headers["wt-available-protocols"] = protocols;
+        }
         SendMessageAsync(headers, "", /*fin=*/false);
     }
 
@@ -1141,6 +1152,7 @@ namespace quic
     {
         bool allowPooling = false;
         std::vector<WebTransportHash> serverCertificateHashes;
+        std::vector<std::string> protocols;
         std::string privkey;
         QuicConfig cconfig;
         auto env = info.Env();
@@ -1240,6 +1252,26 @@ namespace quic
                     cconfig.SetInitialMaxStreamDataBytesIncomingBidirectionalToSend(streamFlowControlWindowSizeLimitWindow);
                     cconfig.SetInitialMaxStreamDataBytesUnidirectionalToSend(streamFlowControlWindowSizeLimitWindow);
                 }
+                if (lobj.Has("protocols") && !(lobj).Get("protocols").IsEmpty()) {
+                    Napi::Value protocolValue = (lobj).Get("protocols");
+                    if (protocolValue.IsArray())
+                    {
+                        Napi::Array protocolArray = protocolValue.As<Napi::Array>();
+                        unsigned int length = protocolArray.Length();
+
+                        for (unsigned int i = 0; i < length; i++)
+                        {
+                            Napi::Value protocolValue = protocolArray.Get(i);
+                            Napi::String protocolString = protocolValue.ToString();
+                            protocols.push_back(protocolString.Utf8Value());
+                        }
+                    }
+                    else
+                    {
+                        Napi::Error::New(env, "protocols is not an array").ThrowAsJavaScriptException();
+                        return;
+                    }
+                }
             }
         }
 
@@ -1271,7 +1303,7 @@ namespace quic
 
         std::unique_ptr<Http3SessionCache> cache;
 
-        client_ = std::make_unique<Http3Client>(this, std::move(verifier), std::move(cache), std::move(helper), cconfig);
+        client_ = std::make_unique<Http3Client>(this, std::move(verifier), std::move(cache), std::move(helper), cconfig, protocols);
         client_->SetUserAgentID("fails-components/webtransport");
 
         Ref(); // do not garbage collect
@@ -1380,10 +1412,10 @@ namespace quic
 
     void Http3ClientJS::processClientWebtransportSupport()
     {
+        Http3Client *obj = getObj();
         Napi::HandleScope scope(Env());
         Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
         Napi::Object retObj = Napi::Object::New(Env());
-
         objVal.Get("onClientWebTransportSupport")
             .As<Napi::Function>()
             .Call(objVal, {retObj});

@@ -121,7 +121,8 @@ namespace quic
             std::unique_ptr<ProofVerifier> proof_verifier,
             std::unique_ptr<SessionCache> session_cache,
             std::unique_ptr<QuicConnectionHelperInterface> helper,
-            QuicConfig config);
+            QuicConfig config,
+            const std::vector<std::string>& protocols);
 
         ~Http3Client() override;
 
@@ -528,6 +529,7 @@ namespace quic
         bool connectionrecheck_;
 
         std::queue<std::function<void(QuicSpdyClientStream *)>> finish_stream_open_;
+        std::vector<std::string> protocols_;
     };
 
 } // namespace quic

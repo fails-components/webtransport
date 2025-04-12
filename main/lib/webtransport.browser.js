@@ -300,6 +300,10 @@ export class WebTransportPolyfill {
     return true
   }
 
+  get protocol() {
+    return this.curtransport?.protocol || undefined
+  }
+
   getStats() {
     // @ts-ignore
     return this.curtransport.getStats()

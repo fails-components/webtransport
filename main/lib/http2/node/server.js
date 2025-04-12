@@ -136,7 +136,11 @@ export class Http2WebTransportServer {
           path = path?.slice(1)
         }
         const header = { ...request.headers, ':path': path }
-        const websocketProt = this.checkProtocolHeader(header)
+        const { websocketProt, webtransportProt } =
+          this.checkProtocolHeader(header)
+        if (webtransportProt) {
+          header['wt-available-protocols'] = webtransportProt
+        }
         if (!websocketProt) {
           stream.destroy()
           return
@@ -227,7 +231,11 @@ export class Http2WebTransportServer {
         header[':protocol'] === 'websocket' &&
         header['sec-websocket-protocol']
       ) {
-        websocketProt = this.checkProtocolHeader(header)
+        let obj = this.checkProtocolHeader(header)
+        websocketProt = obj.websocketProt
+        if (obj.webtransportProt) {
+          header['wt-available-protocols'] = obj.webtransportProt
+        }
       }
       if (header[':protocol'] !== 'webtransport' && !websocketProt) {
         stream.respond({
@@ -334,8 +342,11 @@ export class Http2WebTransportServer {
         const resp = {
           ':status': '200'
         }
-        // @ts-ignore
-        if (websocketProt) resp['sec-websocket-protocol'] = websocketProt
+
+        if (websocketProt) {
+          // @ts-ignore
+          resp['sec-websocket-protocol'] = websocketProt
+        }
         stream.respond(resp)
         this.jsobj.onHttpWTSessionVisitor(retObj)
       } else {
@@ -352,9 +363,12 @@ export class Http2WebTransportServer {
 
   /**
    * @param {import("http2").IncomingHttpHeaders} header
+   * @return {{websocketProt: string|undefined, webtransportProt?: string}}
    */
   checkProtocolHeader(header) {
     const sechead = header['sec-websocket-protocol']
+      ?.split?.(',')
+      ?.map?.((el) => el.trim())
     let prots
     if (!Array.isArray(sechead)) {
       prots = [sechead]
@@ -365,8 +379,19 @@ export class Http2WebTransportServer {
       .map((el) => (el ? el.split('_') : [undefined, undefined]))
       .filter((el) => el[0] === 'webtransport')
       .filter((el) => (el[1] ? supportedVersions.includes(el[1]) : false))
-    if (prots.length > 0) return prots[0].join('_')
-    else return undefined
+    if (prots.length > 0) {
+      const selWtVersion = prots[0][1]
+      prots = prots.filter((el) => el[1] === selWtVersion)
+      /** @type {{websocketProt: string|undefined, webtransportProt?: string}} */
+      const retObj = { websocketProt: prots[0].slice(0, 2).join('_') }
+      if (prots[0][2]) {
+        // @ts-ignore
+        retObj.webtransportProt = [
+          ...new Set(prots.map((el) => el.slice(2).join('_')))
+        ].join(',')
+      }
+      return retObj
+    } else return { websocketProt: undefined }
   }
 
   startServer() {
@@ -444,7 +469,8 @@ export class Http2WebTransportServer {
     protocol,
     head,
     path,
-    transportPrivate
+    transportPrivate,
+    selectedProtocol
   }) {
     if (status !== 200) {
       if (protocol === 'websocketoverhttp1') {
@@ -462,8 +488,11 @@ export class Http2WebTransportServer {
           // @ts-ignore
           stream,
           header,
-          // @ts-ignore
-          protocol: transportPrivate.websocketProt
+          protocol: selectedProtocol
+            ? // @ts-ignore
+              transportPrivate.websocketProt + '_' + selectedProtocol
+            : // @ts-ignore
+              transportPrivate.websocketProt
         })
           .then(() => {
             const retObj = {
@@ -518,7 +547,13 @@ export class Http2WebTransportServer {
         // @ts-ignore
         if (transportPrivate?.websocketProt)
           // @ts-ignore
-          resp['sec-websocket-protocol'] = transportPrivate.websocketProt
+          resp['sec-websocket-protocol'] = selectedProtocol
+            ? // @ts-ignore
+              transportPrivate.websocketProt + '_' + selectedProtocol
+            : // @ts-ignore
+              transportPrivate.websocketProt
+        // @ts-ignore
+        else if (selectedProtocol) resp['wt-protocol'] = selectedProtocol
         stream.respond(resp)
         const {
           0x2b65: remoteBidirectionalStreams = undefined,

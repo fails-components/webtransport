@@ -335,7 +335,7 @@ namespace quic
         void processGoawayReceived();
         void processDatagramSend(Napi::ObjectReference *bufferhandle);
         void processDatagramReceived(std::string *datagram);
-        void processSessionReady();
+        void processSessionReady(std::optional<std::string> protocol);
         void processSessionClose(uint32_t errorcode, const std::string &error);
     };
 

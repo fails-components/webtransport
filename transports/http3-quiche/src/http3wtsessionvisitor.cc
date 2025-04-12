@@ -129,7 +129,7 @@ namespace quic
     {
         if (!session_->session_) return;
 
-        session_->getJS()->processSessionReady();
+        session_->getJS()->processSessionReady(session_->session_->GetNegotiatedSubprotocol());
 
         if (session_->session_->CanOpenNextOutgoingBidirectionalStream())
         {
@@ -269,13 +269,16 @@ namespace quic
         objVal.Get("onDatagramSend").As<Napi::Function>().Call(objVal, {retObj});
     }
 
-    void Http3WTSessionJS::processSessionReady()
+    void Http3WTSessionJS::processSessionReady(std::optional<std::string> protocol)
     {
         Napi::HandleScope scope(Env());
         Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
 
         Napi::Object retObj = Napi::Object::New(Env());
 
+        if (protocol.has_value()) {
+            retObj.Set("protocol", protocol.value());
+        }
         objVal.Get("onReady").As<Napi::Function>().Call(objVal, {retObj});
     }
 
