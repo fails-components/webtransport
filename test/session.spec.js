@@ -154,7 +154,7 @@ describe('session', function () {
     }
 
     expect(client.protocol).to.equal('prot_C')
-    console.log('protocol mark3')
+    await client.closed
   })
 
   if (
