@@ -109,7 +109,9 @@ Other but more expert options include:
 * `certhttp2` and `privKeyhttp2`: For providing a different certificate for the http/2 as the  http/2 implementation does not support certificate matching by fingerprints.
 * `initialStreamFlowControlWindow`, `initialSessionFlowControlWindow`, `streamShouldAutoTuneReceiveWindow`, `sessionShouldAutoTuneReceiveWindow`, `streamFlowControlWindowSizeLimit`, `sessionFlowControlWindowSizeLimit`: As expert's option for tweaking the internal flow control.
 
-The method `setRequestCallback(callback)` sets a callback, that inspects incoming headers and allows to change the incoming path header and also to throw an error if the session should not be opened. This method is considered to be experimental.
+The method `setRequestCallback(callback)` sets a callback, that inspects incoming headers and allows to change the incoming path header and also to throw an error if the session should not be opened. 
+It is also required for selecting the application level protocol.
+In order to see how it is used, look into `test/fixtures/server.js` for a working example.
 In general, the HTTP header is attached as the `header` property to the WebTransport Session object.
 
 The method `updateCert(cert, privKey, http2only)` allows to change the certificate, while the server is running (not supported by all transports).

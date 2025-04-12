@@ -197,6 +197,9 @@ export class HttpWTSession {
     this._sendGroupNum = 1n // 0n is reserved for no sendgroup
     /** @type {Map<bigint,WebTransportSendGroup>} */
     this._sendGroupIndex = new Map()
+
+    /** @type {undefined|string} */
+    this._selectedProtocol = undefined
   }
 
   /**
@@ -212,6 +215,10 @@ export class HttpWTSession {
         this.objint.sendInitialParameters()
       }
     }
+  }
+
+  get protocol() {
+    return this._selectedProtocol
   }
 
   getStats() {
@@ -443,8 +450,11 @@ export class HttpWTSession {
     this._sendGroupIndex.set(_sendGroupId, sendGroup)
     return sendGroup
   }
-
-  onReady(/* error */) {
+  /**
+   * @param {{protocol?: string}} arg
+   **/
+  onReady({ protocol }) {
+    if (protocol) this._selectedProtocol = protocol
     this.state = 'connected'
     if (!this.reliable) this.reliability = 'supports-unreliable'
     else this.reliability = 'reliable-only'

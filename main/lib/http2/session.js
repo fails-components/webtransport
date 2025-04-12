@@ -82,8 +82,14 @@ export class Http2WebTransportSession {
         stream.on('response', (headers) => {
           processnextTick(() => {
             if (headers[':status'] === 200) {
+              const beReady = {}
+              if (stream && headers['wt-protocol']) {
+                // http/2 case
+                // @ts-ignore
+                beReady.protocol = headers['wt-protocol']
+              }
               // on ready
-              this.jsobj.onReady({})
+              this.jsobj.onReady(beReady)
             } else {
               this.jsobj.onClose({
                 errorcode: headers[':status'],

@@ -12,6 +12,7 @@ export class Http2WebTransportBrowser {
   constructor(args) {
     this.port = args?.port || 443
     this.hostname = args?.host || 'localhost'
+    this.protocols = args?.protocols || []
     this.initialStreamFlowControlWindow =
       args?.initialStreamFlowControlWindow || 16 * 1024 // 16 KB
     this.initialSessionFlowControlWindow =
@@ -37,6 +38,8 @@ export class Http2WebTransportBrowser {
     /** @type {WebSocket} */
     // @ts-ignore
     this.clientInt = undefined
+    /** @type {undefined|string} */
+    this._webtransportProtocol = undefined
   }
 
   /**
@@ -46,13 +49,18 @@ export class Http2WebTransportBrowser {
     try {
       let url = 'wss://' + this.hostname + ':' + this.port
       if (path) url = url + '/' + path
-      // eslint-disable-next-line no-undef
-      this.clientInt = new WebSocket(
-        url,
-        supportedVersions.map(
-          (/** @type {string} */ el) => 'webtransport_' + el
-        )
+
+      let protocols = supportedVersions.map(
+        (/** @type {string} */ el) => 'webtransport_' + el
       )
+      if (this.protocols.length > 0) {
+        protocols = protocols
+          .filter((el) => el !== 'kDraft1')
+          .map((el) => this.protocols.map((el2) => el + '_' + el2))
+          .flat(1)
+      }
+      // eslint-disable-next-line no-undef
+      this.clientInt = new WebSocket(url, protocols)
     } catch (error) {
       log('Failed on WebTransport/Websocket:', error)
       this.jsobj.onClientConnected({
@@ -73,7 +81,7 @@ export class Http2WebTransportBrowser {
       }
       const aprotocol = protocol.split('_')
       if (
-        aprotocol.length !== 2 ||
+        !(aprotocol.length === 2 || aprotocol.length >= 3) ||
         aprotocol[0] !== 'webtransport' ||
         !supportedVersions.includes(aprotocol[1])
       ) {
@@ -82,7 +90,13 @@ export class Http2WebTransportBrowser {
           success: false
         })
       } else {
-        this.jsobj.onClientWebTransportSupport({})
+        this._webtransportProtocol =
+          aprotocol.length >= 3 ? aprotocol.slice(2).join('_') : undefined
+        this.jsobj.onClientWebTransportSupport(
+          aprotocol.length >= 3
+            ? { selectedProtocol: aprotocol.slice(2).join('_') }
+            : {}
+        )
         this.jsobj.onClientConnected({
           success: true
         })
@@ -219,9 +233,10 @@ export class Http2WebTransportBrowser {
       reliable: true
     }
     this.jsobj.onHttpWTSessionVisitor(retObj)
-
     // @ts-ignore
-    sessobj.jsobj.onReady({})
+    sessobj.jsobj.onReady(
+      this._webtransportProtocol ? { protocol: this._webtransportProtocol } : {}
+    )
   }
 
   closeClient() {

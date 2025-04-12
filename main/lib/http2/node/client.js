@@ -15,6 +15,7 @@ export class Http2WebTransportClient {
     this.port = Number(port)
     this.hostname = args?.host || 'localhost'
     this.serverCertificateHashes = args?.serverCertificateHashes || undefined
+    this.protocols = args?.protocols || []
     this.localPort = Number(args?.localPort) || undefined
     this.allowPooling = args?.allowPooling || false
     this.forceIpv6 = args?.forceIpv6 || false
@@ -207,14 +208,20 @@ export class Http2WebTransportClient {
   openWTSession(path) {
     if (!this.clientInt) throw new Error('clientInt not present')
 
-    const stream = this.clientInt.request({
+    const requestOpts = {
       ':method': 'CONNECT',
       ':protocol': 'webtransport',
       ':scheme': 'https',
       ':path': path,
       authority: this.hostname,
       origin: this.hostname
-    })
+    }
+    if (this.protocols.length > 0) {
+      // @ts-ignore
+      requestOpts['wt-available-protocols'] = this.protocols.join(',')
+    }
+
+    const stream = this.clientInt.request(requestOpts)
     const {
       0x2b65: remoteBidirectionalStreams = undefined,
       0x2b64: remoteUnidirectionalStreams = undefined,

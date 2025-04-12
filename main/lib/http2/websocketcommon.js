@@ -1,1 +1,1 @@
-export const supportedVersions = ['kDraft1']
+export const supportedVersions = ['kDraft1', 'kDraft2']

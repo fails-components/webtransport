@@ -214,7 +214,6 @@ export class HttpServer {
   setRequestCallback(callback) {
     this.requestHandler = callback
 
-    this.transportInt.setJSRequestHandler(!!callback)
     if (this.transportInt) this.transportInt.setJSRequestHandler(!!callback)
     else this._pendingRequestCallback = !!callback
   }

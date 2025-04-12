@@ -90,6 +90,7 @@ export interface WebTransportOptions {
     */
   webTransportConnectTimeout?: number
   congestionControl?: WebTransportCongestionControl
+  protocols?: string[] 
 }
 
 export interface WebTransportSendStreamStats {
@@ -125,6 +126,7 @@ export interface WebTransportSession {
 
 export interface WebTransport extends WebTransportSession {
   readonly supportsReliableOnly: boolean
+  readonly protocol: string | undefined
 }
 
 export type WebTransportReliabilityMode = 'pending' | 'reliable-only' | 'supports-unreliable'

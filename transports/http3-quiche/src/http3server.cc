@@ -494,6 +494,7 @@ namespace quic
       int status = -1;
       std::string path = "";
       Napi::Object lobj = info[0].ToObject();
+      std::string selectedProtocol = "";
       if (!lobj.IsEmpty())
       {
         if (lobj.Has("status") && !(lobj).Get("status").IsEmpty())
@@ -552,6 +553,11 @@ namespace quic
               NAPI_THROW_IF_FAILED(Env(), status, Reference<Napi::Value>());
               userDataValue = new Napi::Reference<Napi::Value>(Env(), ref);
             }
+            if (lobj.Has("selectedProtocol") && !(lobj).Get("selectedProtocol").IsUndefined())
+            {
+              Napi::Value selectedProtocolValue = (lobj).Get("selectedProtocol");
+              selectedProtocol = selectedProtocolValue.ToString().Utf8Value();
+            }
           }
           if (status != 200)
           {
@@ -563,6 +569,9 @@ namespace quic
           {
             std::unique_ptr<Http3ServerBackend::WebTransportResponse> response = std::make_unique<Http3ServerBackend::WebTransportResponse>();
             response->response_headers[":status"] = std::to_string(status);
+            if (selectedProtocol != "") {
+              response->response_headers["wt-protocol"] = selectedProtocol;
+            }
             Http3WTSession *wtsession = new Http3WTSession();
             wtsession->init(session);
             response->visitor =

@@ -71,6 +71,13 @@ export async function createServer() {
             status: 404
           }
         }
+        const protocols = args.header['wt-available-protocols']
+          ? args.header['wt-available-protocols']
+              .split(',')
+              .map((el) => el.trim())
+          : undefined
+        // we chose for testing always the last one
+        const selectedProtocol = protocols && protocols[protocols.length - 1]
 
         return {
           ...args,
@@ -82,7 +89,8 @@ export async function createServer() {
             ...args.header,
             ':path': path
           },
-          status: 200
+          status: 200,
+          selectedProtocol
         }
       })
 
