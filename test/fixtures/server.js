@@ -420,25 +420,18 @@ export async function createServer() {
                     const streamTime = performance.now()
                     const writer = stream.writable.getWriter()
                     const floats = new Float64Array(1)
-                    console.log(
-                      'debug stream time',
-                      streamTime,
-                      startStart,
-                      streamTime - startStart
-                    )
                     floats[0] = streamTime - startStart
                     await writer.write(floats.buffer)
                   }
                 }
+                const finalLength = 100 * KNOWN_BYTES_LONG_LENGTH
                 await Promise.all([
-                  readStream(
-                    streamA.readable,
-                    10 * KNOWN_BYTES_LONG_LENGTH
-                  ).then(confirmStream(streamA, streamAstart)),
-                  readStream(
-                    streamB.readable,
-                    100 * KNOWN_BYTES_LONG_LENGTH
-                  ).then(confirmStream(streamB, streamBstart))
+                  readStream(streamA.readable, finalLength).then(
+                    confirmStream(streamA, streamAstart)
+                  ),
+                  readStream(streamB.readable, finalLength).then(
+                    confirmStream(streamB, streamBstart)
+                  )
                 ])
                 // eslint-disable-next-line no-unused-vars
               } catch (error) {
