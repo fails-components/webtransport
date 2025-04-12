@@ -431,7 +431,7 @@ export async function createServer() {
                   ).then(confirmStream(streamA, streamAstart)),
                   readStream(
                     streamB.readable,
-                    10 * KNOWN_BYTES_LONG_LENGTH
+                    100 * KNOWN_BYTES_LONG_LENGTH
                   ).then(confirmStream(streamB, streamBstart))
                 ])
                 // eslint-disable-next-line no-unused-vars

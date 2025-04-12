@@ -73,7 +73,7 @@ describe('sendgroup streams', function () {
     const streamHighPrio = await client.createBidirectionalStream({
       sendOrder: 50n
     })
-    const verylongarray = new Array(10).fill(KNOWN_BYTES_LONG).flat(1)
+    const verylongarray = new Array(100).fill(KNOWN_BYTES_LONG).flat(1)
     // now we send the data out, the high priority one should be ready as first
     await Promise.all([
       writeStream(streamLowPrio.writable, verylongarray),
