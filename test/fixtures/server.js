@@ -420,6 +420,12 @@ export async function createServer() {
                     const streamTime = performance.now()
                     const writer = stream.writable.getWriter()
                     const floats = new Float64Array(1)
+                    console.log(
+                      'debug stream time',
+                      streamTime,
+                      startStart,
+                      streamTime - startStart
+                    )
                     floats[0] = streamTime - startStart
                     await writer.write(floats.buffer)
                   }
