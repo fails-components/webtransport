@@ -425,12 +425,14 @@ export async function createServer() {
                   }
                 }
                 await Promise.all([
-                  readStream(streamA.readable, KNOWN_BYTES_LONG_LENGTH).then(
-                    confirmStream(streamA, streamAstart)
-                  ),
-                  readStream(streamB.readable, KNOWN_BYTES_LONG_LENGTH).then(
-                    confirmStream(streamB, streamBstart)
-                  )
+                  readStream(
+                    streamA.readable,
+                    10 * KNOWN_BYTES_LONG_LENGTH
+                  ).then(confirmStream(streamA, streamAstart)),
+                  readStream(
+                    streamB.readable,
+                    10 * KNOWN_BYTES_LONG_LENGTH
+                  ).then(confirmStream(streamB, streamBstart))
                 ])
                 // eslint-disable-next-line no-unused-vars
               } catch (error) {

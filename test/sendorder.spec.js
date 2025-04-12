@@ -67,21 +67,17 @@ describe('sendgroup streams', function () {
       sendOrder: 10n
     })
     if (typeof streamLowPrio.writable.sendOrder === 'undefined') {
-      console.log(
-        'peek writable',
-        streamLowPrio.writable,
-        streamLowPrio.writable.sendOrder
-      )
       console.log('sendOrder is not implemented, skipping')
       return // not implemented
     }
     const streamHighPrio = await client.createBidirectionalStream({
       sendOrder: 50n
     })
+    const verylongarray = new Array(10).fill(KNOWN_BYTES_LONG).flat(1)
     // now we send the data out, the high priority one should be ready as first
     await Promise.all([
-      writeStream(streamLowPrio.writable, KNOWN_BYTES_LONG),
-      writeStream(streamHighPrio.writable, KNOWN_BYTES_LONG)
+      writeStream(streamLowPrio.writable, verylongarray),
+      writeStream(streamHighPrio.writable, verylongarray)
     ])
     const sizeOfDouble = 8
     const buffersLowPrio = await readStream(
@@ -104,7 +100,7 @@ describe('sendgroup streams', function () {
       bufferHighPrio.byteOffset,
       bufferHighPrio.byteLength / Float64Array.BYTES_PER_ELEMENT
     )[0]
-    expect(Math.floor(timeLowPrio) + 3).to.be.greaterThanOrEqual(
+    expect(Math.floor(timeLowPrio)).to.be.greaterThanOrEqual(
       Math.floor(timeHighPrio)
     )
   })
