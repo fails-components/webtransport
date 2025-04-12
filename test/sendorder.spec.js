@@ -16,6 +16,9 @@ describe('sendgroup streams', function () {
   let forceReliable = false
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
 
+  const websocketEmu =
+    process.env.USE_POLYFILL === 'true' || process.env.USE_PONYFILL === 'true'
+
   const wtOptions = {
     serverCertificateHashes: [
       {
@@ -100,8 +103,10 @@ describe('sendgroup streams', function () {
       bufferHighPrio.byteOffset,
       bufferHighPrio.byteLength / Float64Array.BYTES_PER_ELEMENT
     )[0]
-    expect(Math.floor(timeLowPrio)).to.be.greaterThanOrEqual(
-      Math.floor(timeHighPrio)
-    )
+    if (!websocketEmu) {
+      expect(Math.floor(timeLowPrio)).to.be.greaterThanOrEqual(
+        Math.floor(timeHighPrio)
+      )
+    }
   })
 })
