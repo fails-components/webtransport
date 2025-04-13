@@ -13,7 +13,6 @@ const log = logger(`webtransport:httpwtsession(${pid})`)
  * @typedef {import('./types').SessionReadyEvent} SessionReadyEvent
  * @typedef {import('./types').SessionCloseEvent} SessionCloseEvent
  * @typedef {import('./types').DatagramReceivedEvent} DatagramReceivedEvent
- * @typedef {import('./types').DatagramSendEvent} DatagramSendEvent
  * @typedef {import('./types').GoawayReceivedEvent} GoawayReceivedEvent
  * @typedef {import('./types').DatagramStatsEvent} DatagramStatsEvent
  * @typedef {import('./types').SessionStatsEvent} SessionStatsEvent
@@ -30,6 +29,8 @@ const log = logger(`webtransport:httpwtsession(${pid})`)
  * @typedef {import('./dom').WebTransportSendGroup} WebTransportSendGroup
  * @typedef {import('./dom').WebTransportStats} WebTransportStats
  * @typedef {import('./dom').WebTransportDatagramStats} WebTransportDatagramStats
+ * @typedef {import('./dom').WebTransportSendOptions} WebTransportSendOptions
+ * @typedef {import('./dom').WebTransportDatagramsWritable} WebTransportDatagramsWritable
  *
  * @typedef {import('./types').NativeHttpWTSession} NativeHttpWTSession
  *
@@ -113,12 +114,6 @@ export class HttpWTSession {
       }
     })
 
-    /** @type {Array<() => void>} */
-    this.writeDatagramRes = []
-    /** @type {Array<(err?: Error) => void>} */
-    this.writeDatagramRej = []
-    /** @type {Array<Promise<void>>} */
-    this.writeDatagramProm = []
     const readableopts = {
       start: (
         /** @type {import("stream/web").ReadableByteStreamController} */ controller
@@ -136,31 +131,76 @@ export class HttpWTSession {
       /** @type {ReadableStream<Uint8Array>} */
       // @ts-ignore
       readable: new ReadableStream(readableopts),
-      writable: new WritableStream({
-        start: (controller) => {
-          this.outgoDatagramController = controller
-        },
-        // eslint-disable-next-line no-unused-vars
-        write: (chunk, controller) => {
-          if (this.state === 'closed') throw new Error('Session is closed')
-          if (chunk instanceof Uint8Array) {
-            /** @type {Promise<void>} */
-            const ret = new Promise((resolve, reject) => {
-              this.writeDatagramRes.push(resolve)
-              this.writeDatagramRej.push(reject)
-            })
-            this.writeDatagramProm.push(ret)
-            if (this.objint == null) {
-              throw new Error('this.objint is not set')
+      /**
+       *  @param {WebTransportSendOptions|undefined} options
+       *  @return {import('./dom').WebTransportDatagramsWritable}
+       */
+      createWritable: (options) => {
+        let sendOrder = options?.sendOrder ?? 0n
+        let sendGroup = options?.sendGroup
+        /** @type {WebTransportSendStream} */
+        // @ts-expect-error some props are initially missing
+        const retWritable = new WritableStream({
+          start: (controller) => {
+            this.outgoDatagramController = controller
+          },
+          // eslint-disable-next-line no-unused-vars
+          write: (chunk, controller) => {
+            if (this.state === 'closed') throw new Error('Session is closed')
+            if (chunk instanceof Uint8Array) {
+              /** @type {Promise<void>} */
+              if (this.objint == null) {
+                throw new Error('this.objint is not set')
+              }
+              const { code, message } = this.objint.writeDatagram(chunk)
+              if (code !== 'success') {
+                throw new WebTransportError(code + ':' + message)
+              }
+            } else throw new Error('chunk is not of type Uint8Array')
+          },
+          close: () => {
+            // do nothing
+          }
+        })
+        Object.defineProperties(retWritable, {
+          sendOrder: {
+            get: () => {
+              return sendOrder
+            },
+            /**
+             * @param {bigint} value
+             */
+            set: (value) => {
+              sendOrder = value
             }
-            this.objint.writeDatagram(chunk)
-            return ret
-          } else throw new Error('chunk is not of type Uint8Array')
-        },
-        close: () => {
-          // do nothing
+          },
+          sendGroup: {
+            get: () => {
+              return sendGroup
+            },
+            /**
+             * @param {WebTransportSendGroup} value
+             */
+            set: (value) => {
+              if (value !== sendGroup) {
+                sendGroup = value
+              }
+            }
+          }
+        })
+        return retWritable
+      },
+      get maxDatagramSize() {
+        // @ts-ignore
+        return this._getMaxDatagramSize()
+      },
+      // @ts-ignore
+      _getMaxDatagramSize: () => {
+        if (this.objint == null) {
+          throw new Error('this.objint is not set')
         }
-      })
+        return this.objint.getMaxDatagramSize()
+      }
     }
 
     /** @type {Array<(stream: WebTransportBidirectionalStream) => void>} */
@@ -288,16 +328,6 @@ export class HttpWTSession {
         droppedIncoming: BigInt(0),
         lostOutgoing
       })
-  }
-
-  async waitForDatagramsSend() {
-    while (this.writeDatagramProm.length > 0) {
-      try {
-        await Promise.allSettled(this.writeDatagramProm)
-      } catch (error) {
-        log.error('datagram promise failed ', error)
-      }
-    }
   }
 
   notifySessionDraining() {
@@ -495,13 +525,9 @@ export class HttpWTSession {
 
     for (const rej of this.rejectBiDi) rej(error)
     for (const rej of this.rejectUniDi) rej(error)
-    for (const rej of this.writeDatagramRej) rej(error)
     for (const rej of this.rejectSessionStats) rej(error)
     for (const rej of this.rejectDatagramStats) rej(error)
 
-    this.writeDatagramRej = []
-    this.writeDatagramRes = []
-    this.writeDatagramProm = []
     this.resolveBiDi = []
     this.resolveUniDi = []
     this.rejectBiDi = []
@@ -624,21 +650,6 @@ export class HttpWTSession {
       byob.respond(args.datagram.byteLength)
     } else {
       this.incomDatagramController.enqueue(new Uint8Array(args.datagram))
-    }
-  }
-
-  /**
-   * @param {DatagramSendEvent} args
-   */
-  // eslint-disable-next-line no-unused-vars
-  onDatagramSend(args) {
-    if (this.state === 'closed') return
-    this.writeDatagramRej.shift()
-    this.writeDatagramProm.shift()
-    const res = this.writeDatagramRes.shift()
-
-    if (res != null) {
-      res()
     }
   }
 

@@ -3,6 +3,7 @@ import { HttpWTSession } from './session.js'
 import { HttpClient } from './client.js'
 import { Http2WebTransportBrowser } from './http2/browser/browser.js'
 import { logger } from './utils.js'
+import { WebTransportError } from './error'
 
 const log = logger(`webtransport:browser()`)
 
@@ -13,7 +14,7 @@ const log = logger(`webtransport:browser()`)
  * @typedef {import('./dom').WebTransportSendStream} WebTransportSendStream
  * @typedef {import('./dom').WebTransportSendStreamOptions} WebTransportSendStreamOptions
  * @typedef {import('./dom').WebTransportReceiveStream} WebTransportReceiveStream
- * @typedef {import('./error').WebTransportError} WebTransportError
+ * @typedef {import('./dom').WebTransportSendGroup} WebTransportSendGroup
  */
 
 /**
@@ -233,23 +234,67 @@ export class WebTransportPolyfill {
       }
     })
     // @ts-ignore
-    this.datagrams.writable = new WritableStream({
-      // eslint-disable-next-line no-unused-vars
-      start: async (controller) => {
-        await this.ready
-        this.datagramsWriter = this.curtransport.datagrams.writable.getWriter()
-      },
-      // eslint-disable-next-line no-unused-vars
-      write: async (chunk, controller) => {
-        await this.datagramsWriter.write(chunk)
-      },
-      abort: async (reason) => {
-        await this.datagramsWriter.abort(reason)
-      },
-      close: async () => {
-        await this.datagramsWriter.close()
+    this.datagrams.createWritable = (options) => {
+      // @ts-ignore Must not exist for older browser
+      if (this.curtransport.datagrams.createWritable) {
+        return this.curtransport.datagrams.createWritable(options)
       }
-    })
+      // we need to fallback to the old default writable
+      // @ts-ignore
+      if (!this.curtransport.datagrams.writable) {
+        throw new WebTransportError('No way to send out datagrams')
+      }
+      let sendOrder = options?.sendOrder
+      let sendGroup = options?.sendGroup
+      const retWritable = new WritableStream({
+        // eslint-disable-next-line no-unused-vars
+        start: async (controller) => {
+          await this.ready
+          if (!this.datagramsWriter) {
+            this.datagramsWriter =
+              // @ts-ignore
+              this.curtransport.datagrams.writable.getWriter()
+          }
+        },
+        // eslint-disable-next-line no-unused-vars
+        write: async (chunk, controller) => {
+          await this.datagramsWriter.write(chunk)
+        },
+        abort: async (reason) => {
+          await this.datagramsWriter.abort(reason)
+        },
+        close: async () => {
+          await this.datagramsWriter.close()
+        }
+      })
+      Object.defineProperties(retWritable, {
+        sendOrder: {
+          get: () => {
+            return sendOrder
+          },
+          /**
+           * @param {bigint} value
+           */
+          set: (value) => {
+            sendOrder = value
+          }
+        },
+        sendGroup: {
+          get: () => {
+            return sendGroup
+          },
+          /**
+           * @param {WebTransportSendGroup} value
+           */
+          set: (value) => {
+            if (value !== sendGroup) {
+              sendGroup = value
+            }
+          }
+        }
+      })
+      return retWritable
+    }
     this.incomingBidirectionalStreams = new ReadableStream({
       // eslint-disable-next-line no-unused-vars
       start: async (controller) => {

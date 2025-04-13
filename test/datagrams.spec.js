@@ -59,7 +59,15 @@ describe('datagrams', function () {
     )
     await client.ready
 
-    const writer = client.datagrams.writable.getWriter()
+    let writer
+    if (client.datagrams.createWritable) {
+      writer = client.datagrams.createWritable().getWriter()
+    } else {
+      console.log(
+        'createWriteable for datagrams unsupported, fallback to old writable'
+      )
+      writer = client.datagrams.writable.getWriter()
+    }
     let closed = false
 
     // write datagrams until the server receives one and closes the connection

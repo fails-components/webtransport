@@ -15,12 +15,13 @@ import { HttpClient } from './client'
 export interface NativeHttpWTSession {
   jsobj: WebTransportSessionEventHandler
   sendInitialParameters?: () => void
-  writeDatagram: (chunk: Uint8Array) => void
+  writeDatagram: (chunk: Uint8Array) => { code: 'success' | 'blocked' | 'internalError' | 'tooBig', message?: string}
   orderUnidiStream: (opts: WebTransportSendStreamOptions) => boolean
   orderBidiStream: (opts: WebTransportSendStreamOptions)  => boolean
   orderSessionStats: () => void
   orderDatagramStats: () => void
   notifySessionDraining: () => void
+  getMaxDatagramSize: () => number
   close: (arg: { code: number; reason: string }) => void
 }
 
@@ -186,8 +187,6 @@ export interface DatagramReceivedEvent {
   datagram: Uint8Array
 }
 
-export interface DatagramSendEvent {}
-
 export interface GoawayReceivedEvent {}
 
 export interface NewStreamEvent {
@@ -202,7 +201,6 @@ export interface WebTransportSessionEventHandler {
   onReady: (evt: SessionReadyEvent) => void
   onClose: (evt: SessionCloseEvent) => void
   onDatagramReceived: (evt: DatagramReceivedEvent) => void
-  onDatagramSend: (evt: DatagramSendEvent) => void
   onGoAwayReceived: (evt: GoawayReceivedEvent) => void
   onSessionStats: (evt: SessionStatsEvent) => void
   onDatagramStats: (evt: DatagramStatsEvent) => void

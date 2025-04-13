@@ -73,6 +73,8 @@ export class Http2WebTransportSession {
       maxAllowedIncomingStreams: initialBidirectionalReceiveStreams,
       maxAllowedOutgoingStreams: initialBidirectionalSendStreams
     })
+    /** @type {Array<Uint8Array>} */
+    this.datagramsWaiting_ = []
     /** @type {Array<{sendOrder: bigint, sendGroupId: bigint}>} */
     this.orderUniStreams = []
     /** @type {Array<{sendOrder: bigint, sendGroupId: bigint}>} */
@@ -112,18 +114,37 @@ export class Http2WebTransportSession {
     this.streamIdMngrUni.sendMaxStreamsFrameInitial()
   }
 
+  drainWrites() {
+    while (!this.capsParser.blocked && this.datagramsWaiting_.length > 0) {
+      const outChunk = this.datagramsWaiting_.shift()
+      this.capsParser.writeCapsule({
+        type: ParserBase.DATAGRAM,
+        headerVints: [],
+        payload: outChunk
+      })
+    }
+    if (this.datagramsWaiting_.length > 0) {
+      this.capsParser.scheduleDrainWrites()
+    }
+  }
+
   /**
    * @param {Uint8Array} chunk
+   * @return {{ code: "success" | "blocked" | "internalError" | "tooBig", message?: string | undefined; }}
    */
   writeDatagram(chunk) {
+    if (chunk.byteLength > this.getMaxDatagramSize()) return { code: 'tooBig' }
+    if (this.capsParser.blocked) {
+      this.datagramsWaiting_.push(chunk)
+      this.capsParser.scheduleDrainWrites()
+      return { code: 'blocked' }
+    }
     this.capsParser.writeCapsule({
       type: ParserBase.DATAGRAM,
       headerVints: [],
       payload: chunk
     })
-    processnextTick(() => {
-      this.jsobj.onDatagramSend({})
-    })
+    return { code: 'success' }
   }
 
   trySendingUnidirectionalStreams() {
@@ -221,6 +242,10 @@ export class Http2WebTransportSession {
       expiredOutgoing: 0n,
       lostOutgoing: 0n
     })
+  }
+
+  getMaxDatagramSize() {
+    return 16384 // this completly arbitry, we do not have a real restriction, but we choose more than quiche, to make things interesting
   }
 
   /*

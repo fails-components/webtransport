@@ -104,6 +104,12 @@ namespace quic
             getJS()->processDatagramStats(session_->GetDatagramStats());
     }
 
+    size_t Http3WTSession::getMaxDatagramSizeInt()
+    {
+        if (!session_) return 0;
+        return session_->GetMaxDatagramSize();
+    }
+
     void Http3WTSession::TrySendingBidirectionalStreams()
     {
         if (!session_)
@@ -164,18 +170,22 @@ namespace quic
         }
     }
 
-    void Http3WTSession::writeDatagramInt(char *buffer, size_t len, Napi::ObjectReference *bufferhandle)
+    webtransport::DatagramStatus Http3WTSession::writeDatagramInt(char *buffer, size_t len, Napi::ObjectReference *bufferhandle)
     {
         // printf("Datagram write %d %x %x\n", getpid(), this, session_ );
         if (!session_)
         {
             // printf("Datagram session gone %d %x %x\n", getpid(), this, session_);
-            getJS()->processDatagramSend(bufferhandle);
-            return;
+            bufferhandle->Unref(); // release the outgoing buffer
+            delete bufferhandle;   // free the handle object
+            webtransport::DatagramStatus status(webtransport::DatagramStatusCode::kInternalError, "Session not present");
+            return status;
         }
-        auto status = session_->SendOrQueueDatagram(absl::string_view(buffer, len));
+        webtransport::DatagramStatus status = session_->SendOrQueueDatagram(absl::string_view(buffer, len));
         // printf("Datagram status %d %d %s %x %x\n", getpid(), status.code, status.error_message.c_str(), this, session_);
-        getJS()->processDatagramSend(bufferhandle);
+        bufferhandle->Unref(); // release the outgoing buffer
+        delete bufferhandle;   // free the handle object
+        return status;
     }
 
     void Http3WTSessionJS::processStream(bool incom, bool bidi, uint64_t sendOrder, uint64_t sendGroupId, Http3WTStream *stream)

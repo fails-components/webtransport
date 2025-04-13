@@ -207,7 +207,7 @@ export async function createServer() {
             for await (const session of getReaderStream(
               server.sessionStream('/datagrams_server_send')
             )) {
-              const writer = session.datagrams.writable.getWriter()
+              const writer = session.datagrams.createWritable().getWriter()
               let closed = false
 
               // write datagrams until the client receives one and closes the connection
