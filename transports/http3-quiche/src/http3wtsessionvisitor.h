@@ -137,13 +137,15 @@ namespace quic
 
         void orderDatagramStatsInt();
 
+        size_t getMaxDatagramSizeInt();
+
         void closeInt(int code, std::string &reason)
         {
             if (session_)
                 session_->CloseSession(code, reason);
         }
 
-        void writeDatagramInt(char *buffer, size_t len, Napi::ObjectReference *bufferhandle);
+        webtransport::DatagramStatus writeDatagramInt(char *buffer, size_t len, Napi::ObjectReference *bufferhandle);
 
         WebTransportSession *session_;
         bool echo_stream_opened_ = false;
@@ -248,7 +250,7 @@ namespace quic
             }
         }
 
-        void writeDatagram(const Napi::CallbackInfo &info)
+        Napi::Value writeDatagram(const Napi::CallbackInfo &info)
         {
             if (!info[0].IsUndefined())
             {
@@ -257,8 +259,27 @@ namespace quic
                 *bufferhandle = Napi::Persistent(bufferlocal);
                 char *buffer = bufferlocal.As<Napi::Buffer<char>>().Data();
                 size_t len = bufferlocal.As<Napi::Buffer<char>>().Length();
-                wtsession_->writeDatagramInt(buffer, len, bufferhandle);
+                webtransport::DatagramStatus status = wtsession_->writeDatagramInt(buffer, len, bufferhandle);
+
+                Napi::Object retObj = Napi::Object::New(Env());
+                switch (status.code) {
+                case webtransport::DatagramStatusCode::kBlocked:
+                    retObj.Set("code", "blocked");
+                break;
+                case webtransport::DatagramStatusCode::kInternalError:
+                    retObj.Set("code", "internalError");
+                break;
+                case webtransport::DatagramStatusCode::kSuccess:
+                    retObj.Set("code", "success");
+                break;
+                case webtransport::DatagramStatusCode::kTooBig:
+                    retObj.Set("code", "tooBig");
+                break;
+                };
+                retObj.Set("message", status.error_message);
+                return retObj;
             }
+            return Napi::Object::New(Env());
         }
 
         void notifySessionDraining(const Napi::CallbackInfo &info)
@@ -274,6 +295,11 @@ namespace quic
         void orderDatagramStats(const Napi::CallbackInfo &info)
         {
             wtsession_->orderDatagramStatsInt();
+        }
+
+        Napi::Value getMaxDatagramSize(const Napi::CallbackInfo &info) {
+            size_t size = wtsession_->getMaxDatagramSizeInt();
+            return Napi::Value::From(Env(), size);
         }
 
         void close(const Napi::CallbackInfo &info)
@@ -318,6 +344,8 @@ namespace quic
                                                                                                                 static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                                            InstanceMethod<&Http3WTSessionJS::orderDatagramStats>("orderDatagramStats",
                                                                                                                  static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                                           InstanceMethod<&Http3WTSessionJS::getMaxDatagramSize>("getMaxDatagramSize",
+                                                                                                                    static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                                            InstanceMethod<&Http3WTSessionJS::close>("close",
                                                                                                     static_cast<napi_property_attributes>(napi_writable | napi_configurable))});
             constr->session = Napi::Persistent(tplwt);

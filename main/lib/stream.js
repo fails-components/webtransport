@@ -151,14 +151,7 @@ export class HttpWTStream {
               this.pendingoperation = new Promise((resolve, reject) => {
                 this.pendingres = resolve
               })
-              this.parentobj
-                .waitForDatagramsSend()
-                .finally(() => {
-                  this.objint.writeChunk(wchunk)
-                })
-                .catch((/** @type {any} */ err) => {
-                  log.error(err)
-                })
+              this.objint.writeChunk(wchunk)
               return this.pendingoperation
             } else {
               log.trace('chunk info:', chunk)
@@ -234,7 +227,7 @@ export class HttpWTStream {
            */
           set: (value) => {
             if (value !== this._sendGroup) {
-              this._sendGroup = args.sendGroup
+              this._sendGroup = value
               this.updateSendOrderAndGroup()
             }
           }

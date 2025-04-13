@@ -39,10 +39,20 @@ export interface WebTransportCloseInfo {
   reason: string
 }
 
+export interface WebTransportDatagramsWritable extends WritableStream {
+  sendGroup?: WebTransportSendGroup;
+  sendOrder: bigint;
+};
+
+export interface WebTransportSendOptions {
+  sendGroup?: WebTransportSendGroup;
+  sendOrder: bigint;
+};
+
 export interface WebTransportDatagramDuplexStream {
+  createWritable: (options?:  WebTransportSendOptions) => WebTransportDatagramsWritable;
   readable: ReadableStream<Uint8Array>
-  writable: WritableStream<Uint8Array>
-  // readonly maxDatagramSize: number
+  readonly maxDatagramSize: number
   // incomingMaxAge?: number
   // outgoingMaxAge?: number
   // incomingHighWaterMark: number
