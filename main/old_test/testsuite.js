@@ -70,7 +70,9 @@ export async function unidirectionalEchoTest(session) {
  */
 export async function datagramEchoTest(session) {
   try {
-    session.datagrams.readable.pipeTo(session.datagrams.writable)
+    const writable =
+      session.datagrams.writable || session.datagrams.createWritable()
+    session.datagrams.readable.pipeTo(writable)
   } catch (error) {
     console.log('datagram echo exited with', error)
   }
@@ -287,7 +289,9 @@ export async function echoTestsConnection(transport) {
   console.log('TEST 3: finish')
   console.log('TEST 4: start')
   console.log('finally test datagrams')
-  const datawrite = await transport.datagrams.writable.getWriter()
+  const dwritable =
+    transport.datagrams.writable || transport.datagrams.createWritable()
+  const datawrite = await dwritable.getWriter()
   const data7 = new Uint8Array([83, 84, 85])
   const data8 = new Uint8Array([86, 87, 88])
 
