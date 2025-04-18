@@ -27,6 +27,12 @@ describe('streamlimits', function () {
 
   const skipall = browser === 'firefox'
 
+  if (skipall) {
+    console.log(
+      'all streamlimits test skipped, as firefox does not support these!'
+    )
+  }
+
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
 
@@ -68,6 +74,9 @@ describe('streamlimits', function () {
       console.log('Problem in waitUntilAvailable detection', error)
     }
     dowaitUntilAvailable ||= supported
+    if (!dowaitUntilAvailable) {
+      console.log('waitUntilAvailable is not supported skipping!')
+    }
   })
 
   // @ts-ignore
