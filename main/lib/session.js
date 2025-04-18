@@ -402,7 +402,7 @@ export class HttpWTSession {
     })
     const notblocked = this.objint.orderBidiStream({
       sendGroup: opts?.sendGroup || null, // maybe replace, when implemented
-      sendOrder: opts?.sendOrder || 0n,
+      sendOrder: BigInt(opts?.sendOrder || 0n),
       waitUntilAvailable: opts?.waitUntilAvailable || false
     })
     if (!notblocked) {
