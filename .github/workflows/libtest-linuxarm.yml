@@ -71,6 +71,9 @@ jobs:
       - name: Run node unit tests
         run:  NODE_ENV=production npm run test:node 
 
+      - name: Run firefox unit tests
+        run:  NODE_ENV=production npm run test:firefox 
+
       - name: Run chromium unit tests
         run:  NODE_ENV=production npm run test:chromium 
       
