@@ -273,7 +273,7 @@ export class WebTransportPolyfill {
             return sendOrder
           },
           /**
-           * @param {bigint} value
+           * @param {number} value
            */
           set: (value) => {
             sendOrder = value
