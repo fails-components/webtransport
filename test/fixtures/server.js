@@ -149,6 +149,44 @@ export async function createServer() {
             }
           },
 
+          // echo server, initiated by local, with zero length transmission
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream(
+                '/bidirectional_server_initiated_echo_with_zero_send'
+              )
+            )) {
+              try {
+                const stream = await session.createBidirectionalStream()
+
+                await writeStream(stream.writable, [
+                  new Uint8Array(),
+                  ...KNOWN_BYTES
+                ])
+
+                const received = await readStream(
+                  stream.readable,
+                  KNOWN_BYTES_LENGTH
+                )
+                // await stream.readable.cancel() // cancel so that the client can progress
+
+                // if we did not get the data we sent, close the session with a reason
+                if (
+                  !ui8.equals(ui8.concat(KNOWN_BYTES), ui8.concat(received))
+                ) {
+                  session.close({
+                    closeCode: 500,
+                    reason: 'data did not match'
+                  })
+                } else {
+                  session.close()
+                }
+              } catch {
+                // in some tests the client closes the stream
+              }
+            }
+          },
+
           // echo server, initiated by local
           async () => {
             for await (const session of getReaderStream(

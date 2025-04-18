@@ -147,6 +147,10 @@ export class HttpWTStream {
               wchunk = new Uint8Array(wchunk)
             }
             if (wchunk instanceof Uint8Array) {
+              if (wchunk.byteLength === 0) {
+                // or should we throw an error ?, Ask the W3C people!
+                return
+              }
               // eslint-disable-next-line no-unused-vars
               this.pendingoperation = new Promise((resolve, reject) => {
                 this.pendingres = resolve
