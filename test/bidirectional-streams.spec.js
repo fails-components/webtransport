@@ -81,6 +81,24 @@ describe('bidirectional streams', function () {
     )
   })
 
+  it('sends and receives data over an outgoing bidirectional stream including a zero length chunk', async () => {
+    // client context - connects to the server, opens a bidi stream, sends some data and reads the response
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/bidirectional_client_initiated_echo`,
+      wtOptions
+    )
+    await client.ready
+
+    const stream = await client.createBidirectionalStream()
+    await writeStream(stream.writable, [new Uint8Array(), ...KNOWN_BYTES])
+
+    const output = await readStream(stream.readable, KNOWN_BYTES_LENGTH)
+    expect(ui8.concat(KNOWN_BYTES)).to.deep.equal(
+      ui8.concat(output),
+      'Did not receive the same bytes we sent'
+    )
+  })
+
   it('sends and receives data over an outgoing bidirectional stream with big buffers', async function () {
     this.timeout(5000)
     // client context - connects to the server, opens a bidi stream, sends some data and reads the response
@@ -167,6 +185,31 @@ describe('bidirectional streams', function () {
     // client context - waits for the server to open a bidi stream then pipes it back to them
     client = new WebTransport(
       `${process.env.SERVER_URL}/bidirectional_server_initiated_echo`,
+      wtOptions
+    )
+    await client.ready
+
+    const bidiStream = await getReaderValue(client.incomingBidirectionalStreams)
+
+    // redirect input to output
+    try {
+      await bidiStream.readable.pipeTo(bidiStream.writable)
+    } catch (error) {
+      console.log('Pipe to error (ignore)', error) // Actually all you can get is, that the fin is catched
+    }
+
+    // the remote will close the session
+    const result = await client.closed
+
+    // should receive the default close info
+    expect(result).to.have.property('reason', '')
+    expect(result).to.have.property('closeCode', 0)
+  })
+
+  it('sends and receives data over an incoming bidirectional stream with zero length send', async () => {
+    // client context - waits for the server to open a bidi stream then pipes it back to them
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/bidirectional_server_initiated_echo_with_zero_send`,
       wtOptions
     )
     await client.ready
