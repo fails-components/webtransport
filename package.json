@@ -44,5 +44,10 @@
     "transports/*",
     "main",
     "test"
-  ]
+  ],
+  "overrides": {
+    "playwright-test": {
+      "playwright-core": "1.52.0"
+    }
+  }
 }
