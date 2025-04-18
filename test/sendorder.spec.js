@@ -68,14 +68,14 @@ describe('sendgroup streams', function () {
     }
 
     const streamLowPrio = await client.createBidirectionalStream({
-      sendOrder: 10n
+      sendOrder: 10
     })
     if (typeof streamLowPrio.writable.sendOrder === 'undefined') {
       console.log('sendOrder is not implemented, skipping')
       return // not implemented
     }
     const streamHighPrio = await client.createBidirectionalStream({
-      sendOrder: 50n
+      sendOrder: 50
     })
     const verylongarray = new Array(100).fill(KNOWN_BYTES_LONG).flat(1)
     // now we send the data out, the high priority one should be ready as first

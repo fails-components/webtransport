@@ -46,7 +46,7 @@ export interface WebTransportDatagramsWritable extends WritableStream {
 
 export interface WebTransportSendOptions {
   sendGroup?: WebTransportSendGroup;
-  sendOrder: bigint;
+  sendOrder: number;
 };
 
 export interface WebTransportDatagramDuplexStream {
