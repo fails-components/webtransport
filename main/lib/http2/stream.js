@@ -1,6 +1,7 @@
 import { FlowController } from './flowcontroller.js'
 import { ParserBase } from './parserbase.js'
 import { logger } from '../utils.js'
+import { WebTransportError } from '../error.js'
 
 const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:http2webtransportstream(${pid})`)
@@ -309,6 +310,11 @@ export class Http2WebTransportStream {
       if (cur) {
         let payload = cur.buf
         if (payload) {
+          if (payload.byteLength === 0 && !cur.fin) {
+            throw new WebTransportError(
+              'Trying to send zero length capsule without a fin'
+            )
+          }
           const sessWindow = this.sessionFlowController.sendWindowSize()
           const streamWindow = this.flowController.sendWindowSize()
           if (
