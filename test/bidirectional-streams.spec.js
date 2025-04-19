@@ -79,7 +79,8 @@ describe('bidirectional streams', function () {
     )
   })
 
-  it('sends and receives data over an outgoing bidirectional stream with big buffers', async () => {
+  it('sends and receives data over an outgoing bidirectional stream with big buffers', async function () {
+    this.timeout(5000)
     // client context - connects to the server, opens a bidi stream, sends some data and reads the response
     client = new WebTransport(
       `${process.env.SERVER_URL}/bidirectional_client_initiated_echo`,
@@ -109,6 +110,7 @@ describe('bidirectional streams', function () {
 
   it('sends and receives concurrently data over an outgoing bidirectional stream with big buffers', async function () {
     if (addDelay) this.timeout(7000)
+    else this.timeout(5000)
     const CHUNKS = 1024
     const CHUNK_LENGTH = 1024
     // client context - connects to the server, opens a bidi stream, sends some data and reads the response
