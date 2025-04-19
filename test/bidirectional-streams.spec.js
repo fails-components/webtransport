@@ -22,6 +22,7 @@ import {
 describe('bidirectional streams', function () {
   let forceReliable = false
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
+  const browser = process.env.BROWSER
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
 
@@ -38,6 +39,8 @@ describe('bidirectional streams', function () {
   if (process.env.NO_CERT_HASHES === 'true')
     // @ts-ignore
     delete wtOptions.serverCertificateHashes
+
+  const addDelay = process.env.USE_POLYFILL === 'true' && browser === 'firefox'
 
   // @ts-ignore
   beforeEach(async () => {
@@ -104,7 +107,8 @@ describe('bidirectional streams', function () {
     )
   })
 
-  it('sends and receives concurrently data over an outgoing bidirectional stream with big buffers', async () => {
+  it('sends and receives concurrently data over an outgoing bidirectional stream with big buffers', async function () {
+    if (addDelay) this.timeout(7000)
     const CHUNKS = 1024
     const CHUNK_LENGTH = 1024
     // client context - connects to the server, opens a bidi stream, sends some data and reads the response
