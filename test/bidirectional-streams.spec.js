@@ -40,7 +40,9 @@ describe('bidirectional streams', function () {
     // @ts-ignore
     delete wtOptions.serverCertificateHashes
 
-  const addDelay = process.env.USE_POLYFILL === 'true' && browser === 'firefox'
+  const addDelay =
+    (process.env.USE_POLYFILL === 'true' && browser === 'firefox') ||
+    (process.env.USE_HTTP2 === 'true' && process.platform === 'win32')
 
   // @ts-ignore
   beforeEach(async () => {
@@ -109,8 +111,7 @@ describe('bidirectional streams', function () {
   })
 
   it('sends and receives concurrently data over an outgoing bidirectional stream with big buffers', async function () {
-    if (addDelay) this.timeout(7000)
-    else this.timeout(5000)
+    if (addDelay) this.timeout(12000)
     const CHUNKS = 1024
     const CHUNK_LENGTH = 1024
     // client context - connects to the server, opens a bidi stream, sends some data and reads the response
