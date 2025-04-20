@@ -155,10 +155,14 @@ export class ParserBase {
 
   scheduleDrainWrites() {
     if (this._scheduledDrainWriteCall) return
-    this._scheduledDrainWriteCall = setTimeout(() => {
-      delete this._scheduledDrainWriteCall
-      this.drainWrites()
-    })
+    const prom = Promise.resolve()
+    this._scheduledDrainWriteCall = prom
+    prom
+      .then(() => {
+        delete this._scheduledDrainWriteCall
+        this.drainWrites()
+      })
+      .catch((error) => log('Error in drainWrites', error))
   }
 
   drainWrites() {
