@@ -439,6 +439,45 @@ export async function createServer() {
               }
             }
           },
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/send_order_bidi_two_10MB')
+            )) {
+              try {
+                const streamA = await getReaderValue(
+                  session.incomingBidirectionalStreams
+                )
+                const streamB = await getReaderValue(
+                  session.incomingBidirectionalStreams
+                )
+                let lengthA = 0
+                let lengthB = 0
+                const confirmStream = (stream) => {
+                  return async () => {
+                    const writer = stream.writable.getWriter()
+                    const sizes = new BigUint64Array(2)
+                    sizes[0] = BigInt(lengthA)
+                    sizes[1] = BigInt(lengthB)
+                    await writer.write(sizes.buffer)
+                  }
+                }
+                const finalLength = 10 * 1024 * 1024
+                const reportLengthA = (length) => (lengthA = length)
+                const reportLengthB = (length) => (lengthB = length)
+                await Promise.all([
+                  readStream(streamA.readable, finalLength, {
+                    outputreportCB: reportLengthA
+                  }).then(confirmStream(streamA)),
+                  readStream(streamB.readable, finalLength, {
+                    outputreportCB: reportLengthB
+                  }).then(confirmStream(streamB))
+                ])
+                // eslint-disable-next-line no-unused-vars
+              } catch (error) {
+                // in some tests the client closes the stream
+              }
+            }
+          },
 
           // send data over unidirectional stream, initiated by local
           async () => {
