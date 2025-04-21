@@ -132,8 +132,8 @@ function applyMask(ms, buffer, offset, length) {
     for (let run = 0 /* Math.round(length / 4) * 4 */; run < length; run++) {
       data[run] ^= workmask[run % 4]
     }
-    ms.offset += length
   }
+  ms.offset += length
 }
 /*
 function readDWord(bs) {
