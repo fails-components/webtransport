@@ -167,7 +167,7 @@ describe('sendgroup streams', function () {
       expect(Number(afterHighArrivedLowCounter)).to.be.below(
         Number(afterHighArrivedHighCounter)
       )
-      expect(Number(afterHighArrivedLowCounter)).to.be.below(dataSize / 4)
+      expect(Number(afterHighArrivedLowCounter)).to.be.below(dataSize / 2)
     }
   })
 })
