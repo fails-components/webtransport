@@ -33,12 +33,12 @@ export class Http2WebTransportServer {
       args?.initialUnidirectionalStreams || 100
 
     this.streamShouldAutoTuneReceiveWindow =
-      args.streamShouldAutoTuneReceiveWindow || false
+      args.streamShouldAutoTuneReceiveWindow || true
     this.streamFlowControlWindowSizeLimit =
       args?.streamFlowControlWindowSizeLimit || 6 * 1024 * 1024
 
     this.sessionShouldAutoTuneReceiveWindow =
-      args.sessionShouldAutoTuneReceiveWindow || false
+      args.sessionShouldAutoTuneReceiveWindow || true
     this.sessionFlowControlWindowSizeLimit =
       args?.sessionFlowControlWindowSizeLimit || 15 * 1024 * 1024
 
@@ -525,7 +525,7 @@ export class Http2WebTransportServer {
                 initialUnidirectionalReceiveStreams:
                   this.initialUnidirectionalStreams,
                 sendWindowOffset: 0,
-                receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
+                receiveWindowOffset: this.initialSessionFlowControlWindow,
                 shouldAutoTuneReceiveWindow:
                   this.sessionShouldAutoTuneReceiveWindow,
                 receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
@@ -622,7 +622,7 @@ export class Http2WebTransportServer {
                 ? remoteSessionFlowControlWindow ||
                   this.sessionFlowControlWindowSizeLimit
                 : 0, // TODO, once supported by node, use initial settings
-            receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
+            receiveWindowOffset: this.initialSessionFlowControlWindow,
             shouldAutoTuneReceiveWindow:
               this.sessionShouldAutoTuneReceiveWindow,
             receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit

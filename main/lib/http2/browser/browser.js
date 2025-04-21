@@ -24,12 +24,12 @@ export class Http2WebTransportBrowser {
       args?.initialUnidirectionalSendStreams || 100
 
     this.streamShouldAutoTuneReceiveWindow =
-      args.streamShouldAutoTuneReceiveWindow || false
+      args.streamShouldAutoTuneReceiveWindow || true
     this.streamFlowControlWindowSizeLimit =
       args?.streamFlowControlWindowSizeLimit || 6 * 1024 * 1024
 
     this.sessionShouldAutoTuneReceiveWindow =
-      args.sessionShouldAutoTuneReceiveWindow || false
+      args.sessionShouldAutoTuneReceiveWindow || true
     this.sessionFlowControlWindowSizeLimit =
       args?.sessionFlowControlWindowSizeLimit || 15 * 1024 * 1024
     /** @type {import('../../session.js').HttpClient} */
@@ -222,7 +222,7 @@ export class Http2WebTransportBrowser {
           return session
         },
         sendWindowOffset: 0,
-        receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
+        receiveWindowOffset: this.initialSessionFlowControlWindow,
         shouldAutoTuneReceiveWindow: this.sessionShouldAutoTuneReceiveWindow,
         receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit,
         initialBidirectionalSendStreams: this.initialBidirectionalStreams, // TODO, once supported by node, use initial settings
