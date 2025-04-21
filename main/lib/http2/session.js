@@ -306,16 +306,19 @@ export class Http2WebTransportSession {
   }
 
   smoothedRtt() {
+    let toret
     if (this.stream) {
       // we are on node
       // @ts-ignore
-      return this.stream.session?.WTrtt || 26
+      toret = this.stream.session?.WTrtt || 25
     } else if (this.ws) {
       // we are at the Browser, so we use the connection rtt?
       // @ts-ignore
       // eslint-disable-next-line no-undef
-      return navigator?.connection?.rtt || 26
+      toret = navigator?.connection?.rtt || 25
     }
+    toret = Math.ceil(toret / 25) * 25 // to do be to accurate!
+    return toret
   }
 
   /**

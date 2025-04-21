@@ -95,7 +95,7 @@ export class Http2WebTransportServer {
       let rtt = 100
       let adjust = 1
       // ok we got a session and want to measure RTT
-      let pingsender = setInterval(() => {
+      const pingupdater = () => {
         if (!session.closed)
           // eslint-disable-next-line no-unused-vars
           session.ping((err, duration, payload) => {
@@ -111,7 +111,9 @@ export class Http2WebTransportServer {
           // @ts-ignore
           pingsender = undefined
         }
-      }, 1000)
+      }
+      let pingsender = setInterval(pingupdater, 1000)
+      pingupdater()
 
       session.on('close', () => {
         if (pingsender) clearInterval(pingsender)

@@ -110,26 +110,8 @@ export class Http2WebTransportClient {
       http2Options
     )
 
-    let rtt = 100
-    let adjust = 1
-    // ok we got a session and want to measure RTT
-    let pingsender = setInterval(() => {
-      if (this.clientInt && !this.clientInt.closed) {
-        // eslint-disable-next-line no-unused-vars
-        this.clientInt.ping((err, duration, payload) => {
-          if (!err) {
-            rtt = adjust * duration + (1 - adjust) * rtt
-            adjust = 0.2
-            // @ts-ignore
-            this.clientInt.WTrtt = rtt
-          }
-        })
-      } else {
-        clearInterval(pingsender)
-        // @ts-ignore
-        pingsender = undefined
-      }
-    }, 1000)
+    /** @type {NodeJS.Timeout|undefined} */
+    let pingsender
 
     this.clientInt.on('close', () => {
       if (pingsender) clearInterval(pingsender)
@@ -181,6 +163,28 @@ export class Http2WebTransportClient {
         this.jsobj.onClientConnected({
           success: true
         })
+        let rtt = 100
+        let adjust = 1
+        // ok we got a session and want to measure RTT
+        const pingupdater = () => {
+          if (this.clientInt && !this.clientInt.closed) {
+            // eslint-disable-next-line no-unused-vars
+            this.clientInt.ping((err, duration, payload) => {
+              if (!err) {
+                rtt = adjust * duration + (1 - adjust) * rtt
+                adjust = 0.2
+                // @ts-ignore
+                this.clientInt.WTrtt = rtt
+              }
+            })
+          } else {
+            clearInterval(pingsender)
+            // @ts-ignore
+            pingsender = undefined
+          }
+        }
+        pingsender = setInterval(pingupdater, 1000)
+        pingupdater()
       }
     })
     this.clientInt.on('error', (error) => {
