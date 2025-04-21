@@ -30,12 +30,12 @@ export class Http2WebTransportClient {
       args?.initialUnidirectionalSendStreams || 100
 
     this.streamShouldAutoTuneReceiveWindow =
-      args.streamShouldAutoTuneReceiveWindow || false
+      args.streamShouldAutoTuneReceiveWindow || true
     this.streamFlowControlWindowSizeLimit =
       args?.streamFlowControlWindowSizeLimit || 6 * 1024 * 1024
 
     this.sessionShouldAutoTuneReceiveWindow =
-      args.sessionShouldAutoTuneReceiveWindow || false
+      args.sessionShouldAutoTuneReceiveWindow || true
     this.sessionFlowControlWindowSizeLimit =
       args?.sessionFlowControlWindowSizeLimit || 15 * 1024 * 1024
     /** @type {import('../../session.js').HttpClient} */
@@ -93,9 +93,9 @@ export class Http2WebTransportClient {
           0x2b63: this.initialStreamFlowControlWindow, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAM_DATA_BIDI
           0x2b64: this.initialUnidirectionalStreams, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAMS_UNI
           0x2b65: this.initialBidirectionalStreams // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAMS_BIDI
-        },
-        remoteCustomSettings: [0x2b60, 0x2b61, 0x2b62, 0x2b63, 0x2b64, 0x2b65]
+        }
       },
+      remoteCustomSettings: [0x2b60, 0x2b61, 0x2b62, 0x2b63, 0x2b64, 0x2b65],
       localPort: this.localPort,
       // TODO: REMOVE BEFORE RELEASE; UNSAFE SETTING
       rejectUnauthorized: !this.serverCertificateHashes
@@ -262,7 +262,7 @@ export class Http2WebTransportClient {
         sendWindowOffset:
           remoteSessionFlowControlWindow ||
           this.sessionFlowControlWindowSizeLimit,
-        receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
+        receiveWindowOffset: this.initialSessionFlowControlWindow,
         shouldAutoTuneReceiveWindow: this.sessionShouldAutoTuneReceiveWindow,
         receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
       }),

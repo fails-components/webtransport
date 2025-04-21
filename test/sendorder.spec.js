@@ -54,7 +54,7 @@ describe('sendgroup streams', function () {
   })
 
   // currently the test is broken, as we need a throtteling mechanism to work consistently
-  it('sends data over two outgoing unidirectional stream with different priority (not the best test)', async () => {
+  it('sends data over two outgoing bidirectional streams with different priority (not the best test)', async () => {
     // client context - connects to the server, opens a uni stream, sends some data and reads the response
     try {
       client = new WebTransport(
@@ -83,7 +83,7 @@ describe('sendgroup streams', function () {
       writeStream(streamLowPrio.writable, verylongarray),
       writeStream(streamHighPrio.writable, verylongarray)
     ])
-    const sizeOfDouble = 8
+    const sizeOfDouble = Float64Array.BYTES_PER_ELEMENT
     const buffersLowPrio = await readStream(
       streamLowPrio.readable,
       sizeOfDouble
@@ -108,6 +108,67 @@ describe('sendgroup streams', function () {
       expect(Math.floor(timeLowPrio)).to.be.greaterThanOrEqual(
         Math.floor(timeHighPrio)
       )
+    }
+  })
+
+  it('sends data over two outgoing bidirectional streams with different priority (10 MB)', async function () {
+    this.timeout(10000)
+    // suggested by vvasiliev
+    // client context - connects to the server, opens a uni stream, sends some data and reads the response
+    try {
+      client = new WebTransport(
+        `${process.env.SERVER_URL}/send_order_bidi_two_10MB`,
+        wtOptions
+      )
+      await client.ready
+    } catch (error) {
+      console.log('Peak sendorder error:', error)
+      throw error
+    }
+
+    const streamLowPrio = await client.createBidirectionalStream({
+      sendOrder: 10
+    })
+    if (typeof streamLowPrio.writable.sendOrder === 'undefined') {
+      console.log('sendOrder is not implemented, skipping')
+      return // not implemented
+    }
+    const streamHighPrio = await client.createBidirectionalStream({
+      sendOrder: 50
+    })
+    const dataSize = 10 * 1024 * 1024
+    const verylongarray = new Uint8Array(dataSize)
+    // now we send the data out, the high priority one should be ready as first
+    await Promise.all([
+      writeStream(streamLowPrio.writable, [verylongarray]),
+      writeStream(streamHighPrio.writable, [verylongarray])
+    ])
+    const sizeOfData = BigUint64Array.BYTES_PER_ELEMENT * 2
+    const buffersLowPrio = await readStream(streamLowPrio.readable, sizeOfData)
+    const buffersHighPrio = await readStream(
+      streamHighPrio.readable,
+      sizeOfData
+    )
+    const bufferLowPrio = ui8.concat(buffersLowPrio)
+    const bufferHighPrio = ui8.concat(buffersHighPrio)
+    // eslint-disable-next-line no-unused-vars
+    const [afterLowArrivedLowCounter, afterLowArrivedHighCounter] =
+      new BigUint64Array(
+        bufferLowPrio.buffer,
+        bufferLowPrio.byteOffset,
+        bufferLowPrio.byteLength / BigUint64Array.BYTES_PER_ELEMENT
+      )
+    const [afterHighArrivedLowCounter, afterHighArrivedHighCounter] =
+      new BigUint64Array(
+        bufferHighPrio.buffer,
+        bufferHighPrio.byteOffset,
+        bufferHighPrio.byteLength / BigUint64Array.BYTES_PER_ELEMENT
+      )
+    if (!websocketEmu) {
+      expect(Number(afterHighArrivedLowCounter)).to.be.below(
+        Number(afterHighArrivedHighCounter)
+      )
+      expect(Number(afterHighArrivedLowCounter)).to.be.below(dataSize / 2)
     }
   })
 })
