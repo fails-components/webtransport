@@ -54,7 +54,7 @@ describe('sendgroup streams', function () {
   })
 
   // currently the test is broken, as we need a throtteling mechanism to work consistently
-  it('sends data over two outgoing unidirectional stream with different priority (not the best test)', async () => {
+  it('sends data over two outgoing bidirectional streams with different priority (not the best test)', async () => {
     // client context - connects to the server, opens a uni stream, sends some data and reads the response
     try {
       client = new WebTransport(
@@ -111,7 +111,7 @@ describe('sendgroup streams', function () {
     }
   })
 
-  it('sends data over two outgoing unidirectional stream with different priority (10 MB)', async () => {
+  it('sends data over two outgoing bidirectional streams with different priority (10 MB)', async () => {
     // suggested by vvasiliev
     // client context - connects to the server, opens a uni stream, sends some data and reads the response
     try {
