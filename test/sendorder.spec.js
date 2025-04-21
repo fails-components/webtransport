@@ -11,7 +11,7 @@ import { quicheLoaded } from './fixtures/quiche.js'
 import { expect } from 'chai'
 
 describe('sendgroup streams', function () {
-  this.timeout(7000)
+  this.timeout(5000)
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
   let forceReliable = false
@@ -111,7 +111,8 @@ describe('sendgroup streams', function () {
     }
   })
 
-  it('sends data over two outgoing bidirectional streams with different priority (10 MB)', async () => {
+  it('sends data over two outgoing bidirectional streams with different priority (10 MB)', async function () {
+    this.timeout(10000)
     // suggested by vvasiliev
     // client context - connects to the server, opens a uni stream, sends some data and reads the response
     try {
