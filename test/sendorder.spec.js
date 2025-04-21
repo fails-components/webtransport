@@ -112,7 +112,6 @@ describe('sendgroup streams', function () {
   })
 
   it('sends data over two outgoing bidirectional streams with different priority (10 MB)', async function () {
-    this.timeout(10000)
     // suggested by vvasiliev
     // client context - connects to the server, opens a uni stream, sends some data and reads the response
     try {
