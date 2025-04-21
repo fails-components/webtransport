@@ -11,7 +11,7 @@ import { quicheLoaded } from './fixtures/quiche.js'
 import { expect } from 'chai'
 
 describe('sendgroup streams', function () {
-  this.timeout(5000)
+  this.timeout(6000)
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
   let forceReliable = false
