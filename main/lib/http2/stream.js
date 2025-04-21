@@ -69,6 +69,7 @@ export class Http2WebTransportStream {
     this.streamIdManager = streamIdManager
 
     this.final = false
+    this.finalmessagesend = false
     this.stopReading_ = true
     this.drainReads_ = true
     this.recvBytes = 0
@@ -289,6 +290,10 @@ export class Http2WebTransportStream {
     this.capsuleParser.scheduleDrainWrites()
   }
 
+  hasPendingData() {
+    return this.outgochunks.length > 0
+  }
+
   drainWrites() {
     let finsend = false
     while (
@@ -300,6 +305,7 @@ export class Http2WebTransportStream {
       this.sessionFlowController.sendWindowSize() > 0n
     ) {
       const cur = this.outgochunks.shift()
+      let outgoChunkSend = true
       if (cur) {
         let payload = cur.buf
         if (payload) {
@@ -323,6 +329,7 @@ export class Http2WebTransportStream {
               const dest = new Uint8Array(payload.byteLength - len)
               dest.set(src)
               this.outgochunks.unshift({ fin: cur.fin, buf: dest })
+              outgoChunkSend = false // remaing part is send later
             }
             cur.fin = false
             payload = cur.buf = new Uint8Array(
@@ -346,9 +353,11 @@ export class Http2WebTransportStream {
           this.sessionFlowController.addBytesSent(payload?.byteLength)
         }
       }
-      this.jsobj.onStreamWrite({
-        success: true
-      })
+      if (outgoChunkSend) {
+        this.jsobj.onStreamWrite({
+          success: true
+        })
+      }
     }
     if (finsend) {
       this.capsuleParser.removeStream(this.streamid)
@@ -365,18 +374,21 @@ export class Http2WebTransportStream {
     ) {
       this.capsuleParser.scheduleDrainWriteStream(this.streamid)
     }
+    if (this.final && this.outgochunks.length === 0 && !this.finalmessagesend) {
+      processnextTick(() => {
+        this.jsobj.onStreamNetworkFinish({
+          nettask: 'streamFinal'
+        })
+      })
+      this.finalmessagesend = true
+    }
   }
 
   streamFinal() {
     this.final = true
     this.outgochunks.push({ fin: true })
     this.capsuleParser.scheduleDrainWriteStream(this.streamid)
-    this.drainWrites()
-    processnextTick(() =>
-      this.jsobj.onStreamNetworkFinish({
-        nettask: 'streamFinal'
-      })
-    )
+    this.capsuleParser.scheduleDrainWrites()
   }
 
   /**
