@@ -628,6 +628,11 @@ export class HttpWTSession {
    */
   onDatagramReceived(args) {
     log.trace('datagram received', args.datagram)
+    // streams spec says zero length chunk on byob stream is illegal
+    if (args.datagram.byteLength) {
+      log.trace('zerolength datagram dropped')
+      return
+    }
     // console.log('datagram received', args.datagram, Date.now())
     if (this.incomDatagramController.byobRequest) {
       /** @type {ReadableStreamBYOBRequest} */
