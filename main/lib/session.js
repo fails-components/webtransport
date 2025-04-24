@@ -629,7 +629,7 @@ export class HttpWTSession {
   onDatagramReceived(args) {
     log.trace('datagram received', args.datagram)
     // streams spec says zero length chunk on byob stream is illegal
-    if (args.datagram.byteLength) {
+    if (args.datagram.byteLength === 0) {
       log.trace('zerolength datagram dropped')
       return
     }
