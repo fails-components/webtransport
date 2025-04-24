@@ -148,7 +148,8 @@ export class HttpWTStream {
             }
             if (wchunk instanceof Uint8Array) {
               if (wchunk.byteLength === 0) {
-                throw new RangeError('Passed zero length chunk to sendstream')
+                // or should we throw an error ?, Ask the W3C people!
+                return
               }
               // eslint-disable-next-line no-unused-vars
               this.pendingoperation = new Promise((resolve, reject) => {
