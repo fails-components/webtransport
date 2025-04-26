@@ -190,6 +190,13 @@ export class HttpWTSession {
         })
         return retWritable
       },
+      // @ts-ignore
+      get writable() {
+        if (!this.datagramwritablepolyfilled_) {
+          console.warn('datagrams.writable is deprecated')
+        }
+        return (this.datagramwritablepolyfilled_ ||= this.createWritable())
+      },
       get maxDatagramSize() {
         // @ts-ignore
         return this._getMaxDatagramSize()
