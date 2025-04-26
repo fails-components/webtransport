@@ -216,7 +216,17 @@ export class WebTransportPolyfill {
     }
     /** @type {import('./dom').WebTransportDatagramDuplexStream} */
     // @ts-ignore
-    this.datagrams = {}
+    this.datagrams = {
+      // @ts-ignore
+      get writable() {
+        // @ts-ignore
+        if (!this.datagramwritablepolyfilled_) {
+          console.warn('datagrams.writable is deprecated')
+        }
+        // @ts-ignore
+        return (this.datagramwritablepolyfilled_ ||= this.createWritable())
+      }
+    }
     // @ts-ignore
     this.datagrams.readable = new ReadableStream({
       // eslint-disable-next-line no-unused-vars
