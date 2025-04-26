@@ -192,9 +192,11 @@ export class HttpWTSession {
       },
       // @ts-ignore
       get writable() {
+        // @ts-ignore
         if (!this.datagramwritablepolyfilled_) {
           console.warn('datagrams.writable is deprecated')
         }
+        // @ts-ignore
         return (this.datagramwritablepolyfilled_ ||= this.createWritable())
       },
       get maxDatagramSize() {
