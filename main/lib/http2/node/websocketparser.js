@@ -876,4 +876,8 @@ export class WebSocketParser extends ParserBaseHttp2 {
     } else if (stream.end) stream.end()
     else throw new Error('http2:session not close method')
   }
+
+  initialParametersMandatory() {
+    return true
+  }
 }

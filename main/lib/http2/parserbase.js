@@ -83,6 +83,14 @@ export class ParserBase {
   }
 
   /**
+   * @abstract
+   * @return{boolean}
+   */
+  initialParametersMandatory() {
+    throw new Error('Implement initialParametersMandatory in derived Class')
+  }
+
+  /**
    * @param{{code: Number, reason: string}}arg
    */
   sendClose({ code, reason }) {
