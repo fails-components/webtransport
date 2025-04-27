@@ -124,7 +124,9 @@ export class BrowserParser extends ParserBase {
 
     const offsetend = bufferstate.size
 
-    const type = Number(readVarInt(bufferstate))
+    const rtype = readVarInt(bufferstate)
+    if (typeof rtype === 'undefined') return
+    const type = Number(rtype)
 
     switch (type) {
       case ParserBase.PADDING:

@@ -64,9 +64,9 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               )
               return
             }
-            const type = Number(readVarInt(bufferstate))
+            const rtype = readVarInt(bufferstate)
             if (
-              typeof type === 'undefined' ||
+              typeof rtype === 'undefined' ||
               bufferstate.size < 1 + bufferstate.offset
             ) {
               this.saveddata = Buffer.from(
@@ -76,8 +76,9 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               )
               return
             }
-            const length = Number(readVarInt(bufferstate))
-            if (typeof length === 'undefined') {
+            const type = Number(rtype)
+            const rlength = readVarInt(bufferstate)
+            if (typeof rlength === 'undefined') {
               this.saveddata = Buffer.from(
                 bufferstate.buffer.buffer,
                 capsulestart,
@@ -85,6 +86,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               )
               return
             }
+            const length = Number(rlength)
             let checklength = length // we want to read most times the full capsule
             const offsetend = Math.min(
               bufferstate.offset + length,
