@@ -126,6 +126,7 @@ export class HttpWTSession {
       // @ts-ignore
       delete readableopts.type
     }
+    this._lastGetMaxDatagramSize = 0
     /** @type {WebTransportDatagramDuplexStream} */
     this.datagrams = {
       /** @type {ReadableStream<Uint8Array>} */
@@ -153,7 +154,11 @@ export class HttpWTSession {
                 throw new Error('this.objint is not set')
               }
               const { code, message } = this.objint.writeDatagram(chunk)
-              if (code !== 'success') {
+              if (
+                code !== 'success' &&
+                code !== 'blocked' &&
+                code !== 'tooBig'
+              ) {
                 throw new WebTransportError(code + ':' + message)
               }
             } else throw new Error('chunk is not of type Uint8Array')
@@ -205,10 +210,10 @@ export class HttpWTSession {
       },
       // @ts-ignore
       _getMaxDatagramSize: () => {
-        if (this.objint == null) {
-          throw new Error('this.objint is not set')
+        if (this.objint) {
+          this._lastGetMaxDatagramSize = this.objint.getMaxDatagramSize()
         }
-        return this.objint.getMaxDatagramSize()
+        return this._lastGetMaxDatagramSize
       }
     }
 
