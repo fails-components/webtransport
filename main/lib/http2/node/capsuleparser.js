@@ -18,7 +18,9 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
     initialStreamSendWindowOffsetUnidi,
     initialStreamReceiveWindowOffset,
     streamShouldAutoTuneReceiveWindow,
-    streamReceiveWindowSizeLimit
+    streamReceiveWindowSizeLimit,
+    maxDatagramSize,
+    remoteMaxDatagramSize
   }) {
     super({
       stream,
@@ -28,7 +30,9 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
       initialStreamSendWindowOffsetUnidi,
       initialStreamReceiveWindowOffset,
       streamShouldAutoTuneReceiveWindow,
-      streamReceiveWindowSizeLimit
+      streamReceiveWindowSizeLimit,
+      maxDatagramSize,
+      remoteMaxDatagramSize
     })
     this.mode = 's' // capsule start
     /** @type {Buffer|undefined} */
@@ -96,8 +100,9 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
             if (
               type === Http2CapsuleParser.PADDING ||
               type === Http2CapsuleParser.WT_STREAM_WOFIN ||
-              type ===
-                Http2CapsuleParser.WT_STREAM_WFIN /* || type === Http2CapsuleParser.DATAGRAM */
+              type === Http2CapsuleParser.WT_STREAM_WFIN ||
+              (type === Http2CapsuleParser.DATAGRAM &&
+                length > this.maxDatagramSize) // if we exceed maximum size of datagram we drop
             ) {
               checklength = Math.min(length, 64) // stream id + some Data
             }
@@ -109,7 +114,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               // too long abort, could be an attack vector
               this.session.closeConnection({
                 code: 63, // QUIC_FLOW_CONTROL_SENT_TOO_MUCH_DATA, // probably the right one...
-                reason: 'Frame length too big :' + length
+                reason: 'Frame length too big : ' + length
               })
               return
             }
@@ -223,6 +228,9 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               case Http2CapsuleParser.WT_STREAMS_BLOCKED_BIDI:
                 this.onStreamsBlockedBidi(readVarInt(bufferstate))
                 break
+              case Http2CapsuleParser.WT_MAX_DATAGRAM_SIZE:
+                this.onMaxDatagramSize(readVarInt(bufferstate))
+                break
               case Http2CapsuleParser.CLOSE_WEBTRANSPORT_SESSION:
                 {
                   const code = readUint32(bufferstate) || 0
@@ -241,13 +249,16 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                 this.onDrain()
                 break
               case Http2CapsuleParser.DATAGRAM:
-                this.session.jsobj.onDatagramReceived({
-                  datagram: new Uint8Array(
-                    bufferstate.buffer.buffer,
-                    bufferstate.buffer.byteOffset + bufferstate.offset,
-                    offsetend - bufferstate.offset
-                  )
-                })
+                if (length <= this.maxDatagramSize) {
+                  // drop too large datagrams
+                  this.session.jsobj.onDatagramReceived({
+                    datagram: new Uint8Array(
+                      bufferstate.buffer.buffer,
+                      bufferstate.buffer.byteOffset + bufferstate.offset,
+                      offsetend - bufferstate.offset
+                    )
+                  })
+                }
                 break
               default:
               // do nothing

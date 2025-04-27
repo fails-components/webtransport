@@ -86,7 +86,9 @@ export class BrowserParser extends ParserBase {
     initialStreamSendWindowOffsetBidi,
     initialStreamReceiveWindowOffset,
     streamShouldAutoTuneReceiveWindow,
-    streamReceiveWindowSizeLimit
+    streamReceiveWindowSizeLimit,
+    maxDatagramSize,
+    remoteMaxDatagramSize
   }) {
     super({
       nativesession,
@@ -95,7 +97,9 @@ export class BrowserParser extends ParserBase {
       initialStreamSendWindowOffsetBidi,
       initialStreamReceiveWindowOffset,
       streamShouldAutoTuneReceiveWindow,
-      streamReceiveWindowSizeLimit
+      streamReceiveWindowSizeLimit,
+      maxDatagramSize,
+      remoteMaxDatagramSize
     })
     this.ws = ws
     /** @type {Buffer|undefined} */
@@ -220,6 +224,9 @@ export class BrowserParser extends ParserBase {
       case ParserBase.WT_STREAMS_BLOCKED_BIDI:
         this.onStreamsBlockedBidi(readVarInt(bufferstate))
         break
+      case ParserBase.WT_MAX_DATAGRAM_SIZE:
+        this.onMaxDatagramSize(readVarInt(bufferstate))
+        break
       case ParserBase.CLOSE_WEBTRANSPORT_SESSION:
         {
           const code = readUint32(bufferstate) || 0
@@ -238,13 +245,18 @@ export class BrowserParser extends ParserBase {
         this.onDrain()
         break
       case ParserBase.DATAGRAM:
-        this.session.jsobj.onDatagramReceived({
-          datagram: new Uint8Array(
-            bufferstate.buffer.buffer,
-            bufferstate.buffer.byteOffset + bufferstate.offset,
-            offsetend - bufferstate.offset
-          )
-        })
+        if (offsetend - bufferstate.offset <= this.maxDatagramSize) {
+          // actually for the browser it is already too late
+          // but to give developers a consitent behaviour, we drop it here as well
+          // drop too large datagrams
+          this.session.jsobj.onDatagramReceived({
+            datagram: new Uint8Array(
+              bufferstate.buffer.buffer,
+              bufferstate.buffer.byteOffset + bufferstate.offset,
+              offsetend - bufferstate.offset
+            )
+          })
+        }
 
         break
       default:

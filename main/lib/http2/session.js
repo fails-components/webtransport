@@ -122,6 +122,7 @@ export class Http2WebTransportSession {
       this.flowController.sendWindowUpdate()
       this.streamIdMngrBi.sendMaxStreamsFrameInitial()
       this.streamIdMngrUni.sendMaxStreamsFrameInitial()
+      this.capsParser.sendMaxDatagramSize()
     }
   }
 
@@ -256,7 +257,7 @@ export class Http2WebTransportSession {
   }
 
   getMaxDatagramSize() {
-    return 16384 // this completly arbitry, we do not have a real restriction, but we choose more than quiche, to make things interesting
+    return this.capsParser.remoteMaxDatagramSize
   }
 
   /*
