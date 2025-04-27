@@ -40,7 +40,7 @@ export class Http2WebTransportClient {
       args?.sessionFlowControlWindowSizeLimit || 15 * 1024 * 1024
 
     this.initialDatagramSize =
-      args.initialDatagramSize || this.streamFlowControlWindowSizeLimit - 128
+      args.initialDatagramSize || this.initialSessionFlowControlWindow - 128
     /** @type {import('../../session.js').HttpClient} */
     // @ts-ignore
     this.jsobj = undefined // the transport will set this

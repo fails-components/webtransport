@@ -43,7 +43,7 @@ export class Http2WebTransportServer {
       args?.sessionFlowControlWindowSizeLimit || 15 * 1024 * 1024
 
     this.initialDatagramSize =
-      args.initialDatagramSize || this.streamFlowControlWindowSizeLimit - 128
+      args.initialDatagramSize || this.initialSessionFlowControlWindow - 128
 
     /** @type {Record<string, boolean>} */
     this.paths = {}
