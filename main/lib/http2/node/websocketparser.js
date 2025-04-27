@@ -458,7 +458,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
               let wbufferstate
               if (
                 type !== ParserBase.WT_STREAM_WOFIN ||
-                type !== ParserBase.WT_STREAM_WOFIN
+                type !== ParserBase.WT_STREAM_WFIN
               ) {
                 if (fin) {
                   wbufferstate = bufferstate
