@@ -109,9 +109,20 @@ export class Http2WebTransportSession {
   }
 
   sendInitialParameters() {
-    this.flowController.sendWindowUpdate()
-    this.streamIdMngrBi.sendMaxStreamsFrameInitial()
-    this.streamIdMngrUni.sendMaxStreamsFrameInitial()
+    let skip = false //skips the initial parameters at environment with settings
+    if (process) {
+      if (process.version) {
+        const majorVersion = parseInt(
+          process.version.split('.')[0].substring(1)
+        )
+        if (majorVersion >= 20) skip = true
+      }
+    }
+    if (!skip || this.capsParser.initialParametersMandatory()) {
+      this.flowController.sendWindowUpdate()
+      this.streamIdMngrBi.sendMaxStreamsFrameInitial()
+      this.streamIdMngrUni.sendMaxStreamsFrameInitial()
+    }
   }
 
   drainWrites() {

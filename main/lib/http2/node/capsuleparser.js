@@ -337,4 +337,8 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
     this.stream.close(code)
     this.stream.destroy()
   }
+
+  initialParametersMandatory() {
+    return false
+  }
 }

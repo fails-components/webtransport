@@ -285,4 +285,8 @@ export class BrowserParser extends ParserBase {
   closeHttp2Stream(code) {
     this.ws.close(1000)
   }
+
+  initialParametersMandatory() {
+    return true
+  }
 }
