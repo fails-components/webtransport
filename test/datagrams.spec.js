@@ -3,6 +3,7 @@
 import WebTransport from './fixtures/webtransport.js'
 import { expect } from './fixtures/chai.js'
 import { readStream } from './fixtures/read-stream.js'
+import { writeStream } from './fixtures/write-stream.js'
 import { readCertHash } from './fixtures/read-cert-hash.js'
 import { pTimeout } from './fixtures/p-timeout.js'
 import { quicheLoaded } from './fixtures/quiche.js'
@@ -92,6 +93,99 @@ describe('datagrams', function () {
     expect(result).to.have.property('closeCode', 0)
   })
 
+  it('client sends datagrams to the server below and over maxDatagramSize', async () => {
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/datagrams_client_send_count`,
+      wtOptions
+    )
+    await client.ready
+
+    let writable
+    if (client.datagrams.createWritable) {
+      writable = client.datagrams.createWritable()
+    } else {
+      console.log(
+        'createWriteable for datagrams unsupported, fallback to old writable'
+      )
+      writable = client.datagrams.writable
+    }
+    expect(client.datagrams.maxDatagramSize).to.be.greaterThan(0)
+    const maxDatagramSize = Math.min(
+      client.datagrams.maxDatagramSize,
+      1_000_000
+    )
+
+    const datagramsOutgoing = Array(10)
+      .fill(
+        [
+          200,
+          500,
+          maxDatagramSize * 0.5,
+          maxDatagramSize * 0.2,
+          maxDatagramSize,
+          2 * maxDatagramSize,
+          3 * maxDatagramSize,
+          10 * maxDatagramSize,
+          Math.min(100 * maxDatagramSize, 10_000_000),
+          10
+        ]
+          .map((el) => Math.ceil(el))
+          .map((el) => new Uint8Array(el))
+      )
+      .flat()
+
+    const datagramSizesIncom = []
+
+    const expected = datagramsOutgoing.reduce(
+      (prevVal, el) => prevVal + el.byteLength,
+      0
+    )
+
+    await Promise.all([
+      writeStream(writable, datagramsOutgoing),
+      Promise.any([
+        new Promise((resolve) => setTimeout(resolve, 500)),
+        readStream(client.datagrams.readable, expected, {
+          outputreportValue: (value) => {
+            const array = new Uint32Array(
+              value.buffer,
+              value.byteOffset,
+              value.byteLength / Uint32Array.BYTES_PER_ELEMENT
+            )
+            if (array.length > 0) {
+              datagramSizesIncom.push(array[0])
+            }
+          }
+        })
+      ])
+    ])
+
+    const datagramsBelowLimit = datagramSizesIncom.filter(
+      (el) => el <= client.datagrams.maxDatagramSize
+    ).length
+    const datagramsOverLimit = datagramSizesIncom.filter(
+      (el) => el > client.datagrams.maxDatagramSize
+    ).length
+
+    const datagramsBelowLimitOut = datagramsOutgoing
+      .map((el) => el.byteLength)
+      .filter((el) => el <= client.datagrams.maxDatagramSize).length
+    const datagramsOverLimitOut = datagramsOutgoing
+      .map((el) => el.byteLength)
+      .filter((el) => el > client.datagrams.maxDatagramSize).length
+
+    expect(datagramsOverLimit).to.be.equal(0, 'Datagrams over limit received')
+    expect(datagramsBelowLimit).to.be.at.most(
+      datagramsBelowLimitOut,
+      'More datagrams received than send out'
+    )
+    expect(datagramsOverLimitOut).to.be.at.least(1)
+    expect(datagramsBelowLimitOut).to.be.at.least(1)
+    expect(datagramsBelowLimit).to.be.at.least(
+      Math.ceil(0.3 * datagramsBelowLimitOut),
+      'We should least receive a  third of the datagrams'
+    )
+  })
   it('receives datagrams from the server', async () => {
     // client context - pipes the server's datagrams back to them
     client = new WebTransport(

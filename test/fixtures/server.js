@@ -240,6 +240,40 @@ export async function createServer() {
             }
           },
 
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/datagrams_client_send_count')
+            )) {
+              // datagram transport is unreliable, at least one message should make it through
+              const expected = 100
+              let received = 0
+
+              try {
+                const reader = await session.datagrams.readable.getReader()
+                const writer = session.datagrams.createWritable().getWriter()
+
+                while (expected > received) {
+                  const { done, value } = await reader.read()
+                  if (done) {
+                    break
+                  }
+                  if (value != null) {
+                    const outarr = new Uint32Array(1)
+                    outarr[0] = value.length
+                    await writer.write(new Uint8Array(outarr.buffer))
+                  }
+                }
+                await writer.close()
+                await session.closed
+              } catch (error) {
+                session.close({
+                  closeCode: 500,
+                  reason: error.message
+                })
+              }
+            }
+          },
+
           // echo datagrams, initiated by local
           async () => {
             for await (const session of getReaderStream(
