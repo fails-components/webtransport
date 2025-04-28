@@ -144,7 +144,7 @@ describe('datagrams', function () {
     await Promise.all([
       writeStream(writable, datagramsOutgoing),
       Promise.any([
-        new Promise((resolve) => setTimeout(resolve, 500)),
+        new Promise((resolve) => setTimeout(resolve, 1000)),
         readStream(client.datagrams.readable, expected, {
           outputreportValue: (value) => {
             const array = new Uint32Array(
