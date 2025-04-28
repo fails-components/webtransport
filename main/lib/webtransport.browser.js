@@ -227,6 +227,13 @@ export class WebTransportPolyfill {
         return (this.datagramwritablepolyfilled_ ||= this.createWritable())
       }
     }
+    Object.defineProperties(this.datagrams, {
+      maxDatagramSize: {
+        get: () => {
+          return this.curtransport.datagrams.maxDatagramSize
+        }
+      }
+    })
     // @ts-ignore
     this.datagrams.readable = new ReadableStream({
       // eslint-disable-next-line no-unused-vars
