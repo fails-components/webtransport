@@ -19,6 +19,9 @@ describe('datagrams', function () {
   let forceReliable = false
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
 
+  const waitForSettings =
+    process.env.USE_POLYFILL === 'true' || process.env.USE_PONYFILL === 'true'
+
   const wtOptions = {
     serverCertificateHashes: [
       {
@@ -109,6 +112,8 @@ describe('datagrams', function () {
       )
       writable = client.datagrams.writable
     }
+    if (waitForSettings) await new Promise((resolve) => setTimeout(resolve, 50)) // we have to wait before initial settings arrive
+    expect(client.datagrams.maxDatagramSize).to.be.lessThan(1000_000_000)
     expect(client.datagrams.maxDatagramSize).to.be.greaterThan(0)
     const maxDatagramSize = Math.min(
       client.datagrams.maxDatagramSize,
