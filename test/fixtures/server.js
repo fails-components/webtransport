@@ -325,7 +325,7 @@ export async function createServer() {
                       tosend[0] +
                         Math.min(
                           Math.ceil(tosend[1] * mDatagramSize),
-                          10_000_000
+                          10_000_000_000
                         ) /
                           1000
                     )
