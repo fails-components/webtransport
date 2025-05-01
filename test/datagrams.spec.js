@@ -247,7 +247,7 @@ describe('datagrams', function () {
     const datagramsOutgoing = datagramsOutgoingPlan.map((el) => {
       const uint32arr = new Uint32Array(2)
       uint32arr[0] = el.bytesize
-      uint32arr[1] = el.dasize
+      uint32arr[1] = Math.ceil(el.dasize * 1000)
       return new Uint8Array(uint32arr.buffer)
     })
 

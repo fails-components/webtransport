@@ -321,16 +321,17 @@ export async function createServer() {
                   if (value != null) {
                     const mDatagramSize = session.datagrams.maxDatagramSize
                     const tosend = new Uint32Array(value.buffer)
-                    const outarr = new Uint32Array(
-                      (tosend[0] +
+                    const outarr = new Uint8Array(
+                      tosend[0] +
                         Math.min(
                           Math.ceil(tosend[1] * mDatagramSize),
                           10_000_000
-                        )) /
-                        Uint32Array.BYTES_PER_ELEMENT
+                        ) /
+                          1000
                     )
-                    outarr[0] = mDatagramSize
-                    outarr[1] = outarr.byteLength
+                    const outarr32 = new Uint32Array(outarr.buffer, 0, 2)
+                    outarr32[0] = mDatagramSize
+                    outarr32[1] = outarr.byteLength
                     await writer.write(new Uint8Array(outarr.buffer))
                   }
                 }
