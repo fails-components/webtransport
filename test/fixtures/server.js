@@ -301,6 +301,51 @@ export async function createServer() {
             }
           },
 
+          // echo send datagrams of different sizes, initiated by local
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/datagrams_server_send_count')
+            )) {
+              const expected = 100
+              let received = 0
+
+              try {
+                const reader = await session.datagrams.readable.getReader()
+                const writer = session.datagrams.createWritable().getWriter()
+
+                while (expected > received) {
+                  const { done, value } = await reader.read()
+                  if (done) {
+                    break
+                  }
+                  if (value != null) {
+                    const mDatagramSize = session.datagrams.maxDatagramSize
+                    const tosend = new Uint32Array(value.buffer)
+                    const outarr = new Uint32Array(
+                      (tosend[0] +
+                        Math.min(
+                          Math.ceil(tosend[1] * mDatagramSize),
+                          10_000_000
+                        )) /
+                        Uint32Array.BYTES_PER_ELEMENT
+                    )
+                    outarr[0] = mDatagramSize
+                    outarr[1] = outarr.byteLength
+                    await writer.write(new Uint8Array(outarr.buffer))
+                  }
+                }
+                await writer.close()
+                await session.closed
+              } catch (error) {
+                session.close({
+                  closeCode: 500,
+                  reason: error.message
+                })
+                await session.closed
+              }
+            }
+          },
+
           // receive 100+ bidi streams and block
           async () => {
             for await (const session of getReaderStream(
