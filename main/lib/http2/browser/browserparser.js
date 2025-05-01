@@ -247,7 +247,7 @@ export class BrowserParser extends ParserBase {
       case ParserBase.DATAGRAM:
         if (offsetend - bufferstate.offset <= this.maxDatagramSize) {
           // actually for the browser it is already too late
-          // but to give developers a consitent behaviour, we drop it here as well
+          // but to give developers a consistent behaviour, we drop it here as well
           // drop too large datagrams
           this.session.jsobj.onDatagramReceived({
             datagram: new Uint8Array(

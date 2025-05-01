@@ -328,7 +328,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
     writeVarInt(bufferstate, type)
     writeVarInt(bufferstate, length)
     for (const ind in headerVints) writeVarInt(bufferstate, headerVints[ind])
-    if (!this.stream) return
+    if (!this.stream) return true
     // note it might be illegal to split the write
     if (!end) {
       let blocked = !this.stream.write(cdata)
