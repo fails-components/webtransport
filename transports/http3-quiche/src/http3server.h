@@ -84,8 +84,8 @@ namespace quic
             exports.Set("Http3WebTransportServer", tplsrv);
         }
 
-        void processNewSession(Http3WTSession *session, const std::string &path, Napi::Reference<Napi::Value> *header, Napi::Reference<Napi::Value> *userData);
-        void processNewSessionRequest(WebTransportSession *session, const quiche::HttpHeaderBlock &reqheadcopy, WebTransportRespPromisePtr promise);
+        void processNewSession(Http3WTSession *session, const std::string &path,  const std::string &peer_address, Napi::Reference<Napi::Value> *header, Napi::Reference<Napi::Value> *userData);
+        void processNewSessionRequest(WebTransportSession *session, const quiche::HttpHeaderBlock &reqheadcopy,  const std::string &peer_address, WebTransportRespPromisePtr promise);
 
     protected:
         std::unique_ptr<Http3Server> server_;

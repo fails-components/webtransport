@@ -152,6 +152,7 @@ export class Http2WebTransportServer {
 
           const retObj = {
             header,
+            peerAddress: stream.remoteAddress + ':' + stream.remotePort,
             session: stream,
             protocol: 'websocketoverhttp1',
             head,
@@ -198,6 +199,7 @@ export class Http2WebTransportServer {
                 }),
                 path,
                 header,
+                peerAddress: stream.remoteAddress + ':' + stream.remotePort,
                 reliable: true,
                 object: this // My server
               }
@@ -259,14 +261,18 @@ export class Http2WebTransportServer {
       }
       header[':path'] = path // also adapt it for the middleware
       if (this.hasrequesthandler) {
+        const socket = stream.session?.socket
+
         const retObj = {
           header,
+          peerAddress: socket?.remoteAddress + ':' + socket?.remotePort,
           session: stream,
           protocol: websocketProt ? 'websocket' : 'capsule',
           transportPrivate: { websocketProt }
         }
         this.jsobj.onSessionRequest(retObj)
       } else if (this.paths[path]) {
+        const socket = stream.session?.socket
         const {
           0x2b65: remoteBidirectionalStreams = undefined,
           0x2b64: remoteUnidirectionalStreams = undefined,
@@ -338,6 +344,7 @@ export class Http2WebTransportServer {
           }),
           path,
           header,
+          peerAddress: socket?.remoteAddress + ':' + socket?.remotePort,
           reliable: true,
           object: this // My server
         }
@@ -465,6 +472,7 @@ export class Http2WebTransportServer {
    */
   finishSessionRequest({
     header,
+    peerAddress,
     userData,
     session: stream,
     status,
@@ -534,9 +542,9 @@ export class Http2WebTransportServer {
               }),
               path,
               header,
+              peerAddress,
               userData
             }
-            // @ts-ignore
             this.jsobj.onHttpWTSessionVisitor(retObj)
           })
           .catch((error) => {
@@ -631,9 +639,9 @@ export class Http2WebTransportServer {
           }),
           path,
           header,
+          peerAddress,
           userData
         }
-        // @ts-ignore
         this.jsobj.onHttpWTSessionVisitor(retObj)
       }
 

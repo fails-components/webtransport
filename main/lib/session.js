@@ -54,6 +54,7 @@ export class HttpWTSession {
    * @param {HttpServer | HttpClient} args.parentobj
    * @param {Object | undefined} [args.header= undefined]
    * @param {Object | undefined} [args.userData= undefined]
+   * @param {string | undefined} [args.peerAddress= undefined]
    */
   constructor(args) {
     if (args.object) {
@@ -75,6 +76,9 @@ export class HttpWTSession {
     this.header = args.header
     /** @type {(Object | null | undefined)} */
     this.userData = args.userData
+
+    /** @type {(string | undefined)} */
+    this.peerAddress_ = args.peerAddress
 
     /** @type {Promise<void>} */
     this.ready = new Promise((resolve, reject) => {
@@ -679,5 +683,9 @@ export class HttpWTSession {
   onGoAwayReceived(args) {
     if (this.drainingResolve) this.drainingResolve(undefined)
     this.state = 'draining'
+  }
+
+  get peerAddress() {
+    return this.peerAddress_
   }
 }
