@@ -395,7 +395,11 @@ namespace quic
     }
   }*/
 
-  void Http3ServerJS::processNewSession(Http3WTSession *session, const std::string &path, Napi::Reference<Napi::Value> *header, Napi::Reference<Napi::Value> *userData)
+  void Http3ServerJS::processNewSession(Http3WTSession *session,
+     const std::string &path,
+     const std::string& peer_address,
+     Napi::Reference<Napi::Value> *header,
+     Napi::Reference<Napi::Value> *userData)
   {
     Napi::HandleScope scope(Env());
 
@@ -421,12 +425,16 @@ namespace quic
       retObj.Set("userData", userData->Value());
       userData->Unref();
     }
+    retObj.Set("peerAddress", peer_address);
     objVal.Get("onHttpWTSessionVisitor")
         .As<Napi::Function>()
         .Call(objVal, {retObj});
   }
 
-  void Http3ServerJS::processNewSessionRequest(WebTransportSession *session, const quiche::HttpHeaderBlock &reqhead, WebTransportRespPromisePtr promise)
+  void Http3ServerJS::processNewSessionRequest(WebTransportSession *session,
+     const quiche::HttpHeaderBlock &reqhead,  
+     const std::string&  peer_address, 
+     WebTransportRespPromisePtr promise)
   {
     Napi::HandleScope scope(Env());
 
@@ -464,7 +472,8 @@ namespace quic
                                                  });
     retObj.Set("session", wtsObj);
     retObj.Set("protocol", "http3:libquiche");
-
+    retObj.Set("peerAddress", peer_address);
+                                          
     objVal.Get("onSessionRequest")
         .As<Napi::Function>()
         .Call(objVal, {retObj});
@@ -524,6 +533,13 @@ namespace quic
         else
           return Napi::Error::New(Env(), "No session passed for finishSessionRequest").ThrowAsJavaScriptException();
 
+        std::string peer_address;
+        if (lobj.Has("peerAddress") && !(lobj).Get("peerAddress").IsEmpty()) {
+          Napi::Value peerAddressValue = lobj.Get("peerAddress");
+          peer_address= peerAddressValue.ToString().Utf8Value();
+        } else 
+          return Napi::Error::New(Env(), "No peerAddress passed for finishSessionRequest").ThrowAsJavaScriptException();
+        
         if (lobj.Has("promise") && !(lobj).Get("promise").IsEmpty())
         {
           Napi::Value promiseVal = (lobj).Get("promise");
@@ -576,7 +592,8 @@ namespace quic
             wtsession->init(session);
             response->visitor =
                 std::make_unique<Http3WTSession::Visitor>(wtsession);
-            processNewSession(static_cast<Http3WTSession *>(wtsession), path, headerValue, userDataValue);
+            processNewSession(static_cast<Http3WTSession *>(wtsession), path, peer_address,
+                     headerValue, userDataValue);
             (*prom)->resolve(std::move(response));
           }
         }

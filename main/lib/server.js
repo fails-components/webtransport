@@ -250,6 +250,7 @@ export class HttpServer {
         .then((/** @type {any} */ result) => {
           log('oSR', result)
           this.transportInt.finishSessionRequest({
+            peerAddress: args.peerAddress,
             promise: args.promise,
             header: args.header,
             session: args.session,
@@ -273,6 +274,7 @@ export class HttpServer {
     const sesobj = new HttpWTSession({
       object: args.session,
       header: args.header,
+      peerAddress: args.peerAddress,
       userData: args.userData ?? {},
       parentobj: this
     })

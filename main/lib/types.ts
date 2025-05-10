@@ -111,6 +111,7 @@ export interface ReadBuffer {
 export interface NativeFinishSessionRequest {
   path: string
   header: IncomingHttpHeaders
+  peerAddress: string
   session: ServerHttp2Stream
   status: number
   protocol: 'capsule' | 'websocket' | 'websocketoverhttp1' | 'http3'
@@ -229,6 +230,7 @@ export interface HttpWTServerSessionVisitorEvent
   extends HttpWTSessionVisitorEvent {
   path: string
   header: Object
+  peerAddress: string
   userData?: Object | undefined
 }
 
@@ -238,6 +240,7 @@ export interface ServerSessionRequestEvent {
   promise?: any
   session: any
   object?: any // the actual transport object itself, actually present on all messages, but required here
+  peerAddress: string
   protocol: string //'capsule' | 'websocket' | 'http3'
   transportPrivate?: Object //private information from the transport object
 }

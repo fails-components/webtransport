@@ -46,7 +46,8 @@ namespace quic
   Http3ServerBackend::WebTransportRespPromisePtr
   Http3ServerBackend::ProcessWebTransportRequest(
       const quiche::HttpHeaderBlock &request_headers,
-      WebTransportSession *session)
+      WebTransportSession *session,
+      const QuicSocketAddress peer_address)
   {
     WebTransportRespPromisePtr promise = std::make_shared<WebTransportRespPromise>();
     if (!SupportsWebTransport())
@@ -73,7 +74,7 @@ namespace quic
       // not necessary anymore
 
       // second step inform the js side
-      server_->getJS()->processNewSessionRequest(session, request_headers, promise);
+      server_->getJS()->processNewSessionRequest(session, request_headers, peer_address.ToString(), promise);
       return promise;
     } 
     
@@ -85,7 +86,7 @@ namespace quic
       response->response_headers[":status"] = "200";
       response->visitor =
           std::make_unique<Http3WTSession::Visitor>(wtsession);
-      server_->getJS()->processNewSession(static_cast<Http3WTSession *>(wtsession), path, nullptr, nullptr);
+      server_->getJS()->processNewSession(static_cast<Http3WTSession *>(wtsession), path, peer_address.ToString(), nullptr, nullptr);
       promise->resolve(std::move(response));
       return promise;
     }

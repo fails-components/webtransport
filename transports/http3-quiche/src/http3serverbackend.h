@@ -16,6 +16,7 @@
 #include "quiche/quic/core/quic_types.h"
 #include "quiche/quic/core/web_transport_interface.h"
 #include "quiche/common/http/http_header_block.h"
+#include "quiche/quic/platform/api/quic_socket_address.h"
 
 namespace quic
 {
@@ -78,7 +79,8 @@ namespace quic
 
     WebTransportRespPromisePtr ProcessWebTransportRequest(
         const quiche::HttpHeaderBlock & /*request_headers*/,
-        WebTransportSession * /*session*/);
+        WebTransportSession * /*session*/,
+        const QuicSocketAddress/* peer_address */);
     bool SupportsWebTransport() { return true; }
     bool UsesDatagramContexts() { return true; }
     bool SupportsExtendedConnect() { return true; }

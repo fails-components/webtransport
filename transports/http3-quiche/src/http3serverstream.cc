@@ -197,10 +197,11 @@ namespace quic
 
     if (web_transport() != nullptr)
     {
+      quic::QuicSocketAddress peer_address = spdy_session()->connection()->peer_address();
       // to do synchronize lifetime of object, so maybe store promises
       Http3ServerBackend::WebTransportRespPromisePtr response =
           http3_server_backend_->ProcessWebTransportRequest(
-              request_headers_, web_transport());
+              request_headers_, web_transport(), peer_address);
       pending_proms_.insert(response);
       response->finally([this, response](Http3ServerBackend::WebTransportResponse *resp)
                         { 
