@@ -88,7 +88,6 @@ platform/quiche_platform_impl/quiche_stream_buffer_allocator_impl.h
 platform/quiche_platform_impl/quiche_time_utils_impl.h
 platform/quiche_platform_impl/quiche_udp_socket_platform_impl.h
 platform/quiche_platform_impl/quiche_server_stats_impl.h
-platform/quiche_platform_impl/quiche_mem_slice_impl.h
 platform/quiche_platform_impl/quiche_flag_utils_impl.h
 #protofiles
 #${PROTO_SRCS}
@@ -157,7 +156,6 @@ third_party/quiche/quiche/common/platform/api/quiche_hostname_utils.cc
 third_party/quiche/quiche/common/platform/api/quiche_hostname_utils.h
 third_party/quiche/quiche/common/platform/api/quiche_iovec.h
 third_party/quiche/quiche/common/platform/api/quiche_logging.h
-third_party/quiche/quiche/common/platform/api/quiche_mem_slice.h
 third_party/quiche/quiche/common/platform/api/quiche_reference_counted.h
 third_party/quiche/quiche/common/platform/api/quiche_time_utils.h
 third_party/quiche/quiche/common/platform/api/quiche_url_utils.h
@@ -168,7 +166,6 @@ third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_fl
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_flags_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_logging_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_logging_impl.h
-third_party/quiche/quiche/common/platform/api/quiche_mem_slice.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.cc
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_stack_trace_impl.h
 third_party/quiche/quiche/common/platform/default/quiche_platform_impl/quiche_iovec_impl.h
@@ -189,6 +186,8 @@ third_party/quiche/quiche/common/quiche_ip_address.h
 third_party/quiche/quiche/common/quiche_ip_address_family.cc
 third_party/quiche/quiche/common/quiche_ip_address_family.h
 third_party/quiche/quiche/common/quiche_linked_hash_map.h
+third_party/quiche/quiche/common/quiche_mem_slice.cc
+third_party/quiche/quiche/common/quiche_mem_slice.h
 third_party/quiche/quiche/common/quiche_mem_slice_storage.h
 third_party/quiche/quiche/common/quiche_mem_slice_storage.cc
 third_party/quiche/quiche/common/quiche_random.cc
