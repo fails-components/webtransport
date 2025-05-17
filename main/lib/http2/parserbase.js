@@ -115,7 +115,7 @@ export class ParserBase {
    * @param {{sendOrder: bigint,sendGroupId: bigint}} priority
    */
   newStream(streamid, priority) {
-    const incoming = this.isclient ? !(streamid & 0x1n) : !!(streamid & 0x1n)
+    const incoming = this.isclient ? !!(streamid & 0x1n) : !(streamid & 0x1n)
     const streamIdManager =
       streamid & 0x2n
         ? this.session.streamIdMngrUni
