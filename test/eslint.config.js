@@ -1,6 +1,8 @@
 import js from '@eslint/js'
 import promise from 'eslint-plugin-promise'
+import importplug from 'eslint-plugin-import'
 import babelParser from '@babel/eslint-parser'
+// eslint-disable-next-line import/extensions
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 import globals from 'globals'
 
@@ -9,7 +11,8 @@ export default [
   eslintPluginPrettierRecommended,
   {
     plugins: {
-      promise
+      promise,
+      import: importplug
     },
     languageOptions: {
       globals: {
@@ -37,7 +40,15 @@ export default [
       'import/export': 0,
       'promise/catch-or-return': 'error',
       'no-useless-return': 1,
-      camelcase: 1
+      camelcase: 1,
+      'import/extensions': [
+        'error',
+        'always',
+        {
+          js: 'always',
+          jsx: 'always'
+        }
+      ]
     }
   },
   {
