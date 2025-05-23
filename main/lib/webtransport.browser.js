@@ -3,7 +3,7 @@ import { HttpWTSession } from './session.js'
 import { HttpClient } from './client.js'
 import { Http2WebTransportBrowser } from './http2/browser/browser.js'
 import { logger } from './utils.js'
-import { WebTransportError } from './error'
+import { WebTransportError } from './error.js'
 
 const log = logger(`webtransport:browser()`)
 
