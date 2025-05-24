@@ -77,7 +77,9 @@ export async function createServer() {
               .map((el) => el.trim())
           : undefined
         // we chose for testing always the last one
-        const selectedProtocol = protocols && protocols[protocols.length - 1]
+        let selectedProtocol = protocols && protocols[protocols.length - 1]
+        // however if it says noprot we remove it
+        if (selectedProtocol === 'noprot') selectedProtocol = undefined
 
         return {
           ...args,
