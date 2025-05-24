@@ -743,6 +743,8 @@ third_party/quiche/quiche/quic/core/quic_stream_id_manager.cc
 third_party/quiche/quiche/quic/core/quic_stream_id_manager.h
 third_party/quiche/quiche/quic/core/quic_stream_priority.cc
 third_party/quiche/quiche/quic/core/quic_stream_priority.h
+third_party/quiche/quiche/quic/core/quic_stream_send_buffer_base.cc
+third_party/quiche/quiche/quic/core/quic_stream_send_buffer_base.h
 third_party/quiche/quiche/quic/core/quic_stream_send_buffer.cc
 third_party/quiche/quiche/quic/core/quic_stream_send_buffer.h
 third_party/quiche/quiche/quic/core/quic_stream_sequencer.cc
