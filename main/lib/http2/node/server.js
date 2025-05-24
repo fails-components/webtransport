@@ -393,10 +393,12 @@ export class Http2WebTransportServer {
       prots = prots.filter((el) => el[1] === selWtVersion)
       /** @type {{websocketProt: string|undefined, webtransportProt?: string}} */
       const retObj = { websocketProt: prots[0].slice(0, 2).join('_') }
-      if (prots[0][2]) {
+      if (prots.some((el) => el[2])) {
         // @ts-ignore
         retObj.webtransportProt = [
-          ...new Set(prots.map((el) => el.slice(2).join('_')))
+          ...new Set(
+            prots.filter((el) => el[2]).map((el) => el.slice(2).join('_'))
+          )
         ].join(',')
       }
       return retObj

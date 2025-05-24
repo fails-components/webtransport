@@ -54,10 +54,12 @@ export class Http2WebTransportBrowser {
         (/** @type {string} */ el) => 'webtransport_' + el
       )
       if (this.protocols.length > 0) {
+        const oldprotocols = protocols
         protocols = protocols
           .filter((el) => el !== 'kDraft1')
           .map((el) => this.protocols.map((el2) => el + '_' + el2))
           .flat(1)
+        protocols.push(...oldprotocols) // also need to support no protocol selection
       }
       // eslint-disable-next-line no-undef
       this.clientInt = new WebSocket(url, protocols)

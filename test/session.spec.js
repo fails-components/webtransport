@@ -156,6 +156,23 @@ describe('session', function () {
     await client.closed
   })
 
+  it('should select the no protocol while connecting', async () => {
+    client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
+      protocols: ['protA', 'protB', 'noprot'],
+      ...wtOptions
+    })
+
+    await client.ready
+
+    if (!('protocol' in client)) {
+      console.log('Application protocol is not implemented skipping')
+      return // not implemented is also fine
+    }
+
+    expect(client.protocol).to.equal(undefined)
+    await client.closed
+  })
+
   if (
     process.env.USE_POLYFILL !== 'true' &&
     process.env.USE_PONYFILL !== 'true' &&
