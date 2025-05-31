@@ -56,11 +56,11 @@ jobs:
     needs: version-check
     strategy:
       matrix:
-        os: [ubuntu-22.04, windows-2022, macos-13 ]
+        os: [ubuntu-22.04, windows-2025, macos-13 ]
         arch: [x64]
         include:
           - arch: ia32
-            os: windows-2019
+            os: windows-2025
           - arch: arm64
             os: macos-latest
           - arch: arm64
