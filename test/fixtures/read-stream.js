@@ -6,7 +6,11 @@
  * @param {number} [expected]
  * @returns {T[]}
  */
-export async function readStream(readable, expected, { outputreportCB } = {}) {
+export async function readStream(
+  readable,
+  expected,
+  { outputreportCB, outputreportValue } = {}
+) {
   const reader = readable.getReader()
 
   try {
@@ -24,6 +28,7 @@ export async function readStream(readable, expected, { outputreportCB } = {}) {
       if (value != null) {
         outputlength += value.length
         outputreportCB?.(outputlength)
+        outputreportValue?.(value)
         output.push(value)
       }
 
