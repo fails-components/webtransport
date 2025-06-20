@@ -168,29 +168,29 @@ describe('session', function () {
       console.log('Application protocol is not implemented skipping')
       return // not implemented is also fine
     }
-
     expect(client.protocol).to.equal(undefined)
     await client.closed
   })
+  if (browser !== 'chromium' || browser !== 'firefox' || browser !== 'webkit') {
+    it('should error when connecting with a bad certificate (non serverCertificateHashes)', async () => {
+      client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
+        // @ts-ignore
+        forceReliable
+      })
 
-  it('should error when connecting with a bad certificate (non serverCertificateHashes)', async () => {
-    client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
-      // @ts-ignore
-      forceReliable
+      const [closedResult, readyResult] = await Promise.all([
+        client.closed.catch((err) => err),
+        client.ready.catch((err) => err)
+      ])
+
+      expect(closedResult)
+        .to.be.a('WebTransportError')
+        .with.property('message', handshakemess)
+      expect(readyResult)
+        .to.be.a('WebTransportError')
+        .with.property('message', handshakemess)
     })
-
-    const [closedResult, readyResult] = await Promise.all([
-      client.closed.catch((err) => err),
-      client.ready.catch((err) => err)
-    ])
-
-    expect(closedResult)
-      .to.be.a('WebTransportError')
-      .with.property('message', handshakemess)
-    expect(readyResult)
-      .to.be.a('WebTransportError')
-      .with.property('message', handshakemess)
-  })
+  }
 
   if (
     process.env.USE_POLYFILL !== 'true' &&
