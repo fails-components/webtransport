@@ -91,12 +91,14 @@ namespace quic
                 retObj.Set("hostname", hostname);
                 retObj.Set("port", port);
                 retObj.Set("serverconfig", server_config);
-                // todo certs
 
                 Napi::Array jscerts = Napi::Array::New(env, certs.size());
                 for (size_t i = 0; i < certs.size(); i++) {
-                    jscerts.Set(i, certs[i]);
+                    jscerts.Set(i, Napi::Buffer<uint8_t>::Copy(env,
+                            reinterpret_cast<const uint8_t*>(certs[i].data()),
+                             certs[i].size()));
                 }
+                retObj.Set("certs", jscerts);
                 retObj.Set("signature", signature);
 
                 Napi::Value verifyres = env.Global().Get("FAILSVerifyProof").As<Napi::Function>().Call({
@@ -125,13 +127,15 @@ namespace quic
 
                 Napi::Array jscerts = Napi::Array::New(env, certs.size());
                 for (size_t i = 0; i < certs.size(); i++) {
-                    jscerts.Set(i, certs[i]);
+                    jscerts.Set(i, Napi::Buffer<uint8_t>::Copy(env,
+                            reinterpret_cast<const uint8_t*>(certs[i].data()),
+                             certs[i].size()));
                 }
+                retObj.Set("certs", jscerts);
                 Napi::Value verifyres = env.Global().Get("FAILSVerifyProof").As<Napi::Function>().Call({
                     retObj });
                 if (verifyres.As<Napi::Boolean>().Value()) {
                     return QUIC_SUCCESS;
-
                 } else {
                     return QUIC_FAILURE;
                 }
