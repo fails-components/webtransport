@@ -171,7 +171,7 @@ describe('session', function () {
     expect(client.protocol).to.equal(undefined)
     await client.closed
   })
-  if (browser !== 'chromium' || browser !== 'firefox' || browser !== 'webkit') {
+  if (browser !== 'chromium' && browser !== 'firefox' && browser !== 'webkit') {
     it('should error when connecting with a bad certificate (non serverCertificateHashes)', async () => {
       client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
         // @ts-ignore
