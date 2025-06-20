@@ -173,6 +173,25 @@ describe('session', function () {
     await client.closed
   })
 
+  it('should error when connecting with a bad certificate (non serverCertificateHashes)', async () => {
+    client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
+      // @ts-ignore
+      forceReliable
+    })
+
+    const [closedResult, readyResult] = await Promise.all([
+      client.closed.catch((err) => err),
+      client.ready.catch((err) => err)
+    ])
+
+    expect(closedResult)
+      .to.be.a('WebTransportError')
+      .with.property('message', handshakemess)
+    expect(readyResult)
+      .to.be.a('WebTransportError')
+      .with.property('message', handshakemess)
+  })
+
   if (
     process.env.USE_POLYFILL !== 'true' &&
     process.env.USE_PONYFILL !== 'true' &&

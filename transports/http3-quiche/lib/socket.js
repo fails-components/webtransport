@@ -10,12 +10,25 @@ globalThis.FAILSsetTimeoutAlarm = (
   return setTimeout(alarm.fireJS.bind(alarm), delay)
 }
 
+function convertToPem(/** @type {ArrayBuffer} */ cert) {
+  return (
+    '-----BEGIN CERTIFICATE-----\n' +
+    Buffer.from(new Uint8Array(cert)).toString('base64') +
+    '\n-----END CERTIFICATE-----\n'
+  )
+}
+
 globalThis.FAILSVerifyProof = (
-  /** @type {{ certs: string[]; hostname: string; server_config?: string; signature?: string; }} */ obj
+  /** @type {{ certs: ArrayBuffer[]; hostname: string; server_config?: string; signature?: string; }} */ obj
 ) => {
   try {
+    console.warn(
+      'Non serverCertificateHashes certificate verification is an experimental feature for webtransport node client and not covered by tests and thus may be broken (DO NOT USE IN PRODUCTION)'
+    )
+    console.log('obj', obj)
     if (obj.certs.length < 1) return false
-    const leafcert = new X509Certificate(obj.certs[0])
+    const pem = convertToPem(obj.certs[0])
+    const leafcert = new X509Certificate(pem)
     if (!leafcert.checkHost(obj.hostname)) return false
 
     if (obj.server_config) {
@@ -36,7 +49,8 @@ globalThis.FAILSVerifyProof = (
 
     let curcert = leafcert
     for (let certnum = 1; certnum < obj.certs.length; certnum++) {
-      const nextcert = new X509Certificate(obj.certs[certnum])
+      const nextpem = convertToPem(obj.certs[certnum])
+      const nextcert = new X509Certificate(nextpem)
 
       if (
         new Date(nextcert.validFrom) > curdate ||
