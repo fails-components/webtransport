@@ -222,7 +222,12 @@ export class Http2WebTransportClient {
     }
     if (this.protocols.length > 0) {
       // @ts-ignore
-      requestOpts['wt-available-protocols'] = this.protocols.join(',')
+      requestOpts['wt-available-protocols'] =
+        '"' +
+        this.protocols
+          .map((el) => el.replace(/\\/g, '\\\\').replace(/"/g, '\\"'))
+          .join('","') +
+        '"'
     }
 
     const stream = this.clientInt.request(requestOpts)

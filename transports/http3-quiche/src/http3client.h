@@ -365,7 +365,7 @@ namespace quic
         // tracking its state.
         void SetLatestCreatedStream(QuicSpdyClientStream *stream);
 
-        void openWTSessionInt(absl::string_view path);
+        bool openWTSessionInt(absl::string_view path);
 
         bool closeClientInt();
 

@@ -17,6 +17,7 @@
 #include "quiche/quic/tools/quic_simple_crypto_server_stream_helper.h"
 #include "quiche/quic/core/crypto/proof_source_x509.h"
 #include "quiche/common/platform/api/quiche_reference_counted.h"
+#include "quiche/web_transport/web_transport_headers.h"
 
 using namespace Napi;
 
@@ -448,6 +449,17 @@ namespace quic
     for (auto pair : reqhead)
     {
       // we iterate over all header fields
+      if (pair.first.compare("wt-available-protocols") == 0) {
+        absl::StatusOr<std::vector<std::string>> prots = webtransport::ParseSubprotocolRequestHeader(pair.second);
+        if (prots.ok()) {
+          Napi::Array protArray = Napi::Array::New(Env(), (*prots).size());
+          for (size_t i = 0; i < (*prots).size(); i++) {
+            protArray.Set(i, std::string((*prots)[i]));
+          }
+          headObj.Set(std::string("wt-available-protocols"), protArray);
+          continue;
+        } // otherwise fall through to default
+      }
       headObj.Set(std::string(pair.first), std::string(pair.second));
     }
     retObj.Set("header", headObj);
@@ -586,7 +598,11 @@ namespace quic
             std::unique_ptr<Http3ServerBackend::WebTransportResponse> response = std::make_unique<Http3ServerBackend::WebTransportResponse>();
             response->response_headers[":status"] = std::to_string(status);
             if (selectedProtocol != "") {
-              response->response_headers["wt-protocol"] = selectedProtocol;
+              absl::StatusOr<std::string> selprot = webtransport::SerializeSubprotocolResponseHeader(selectedProtocol);
+              if (!selprot.ok()) {
+                 return Napi::Error::New(Env(), "Selected protocol is invalid").ThrowAsJavaScriptException();
+              }
+              response->response_headers["wt-protocol"] = *selprot;
             }
             Http3WTSession *wtsession = new Http3WTSession();
             wtsession->init(session);

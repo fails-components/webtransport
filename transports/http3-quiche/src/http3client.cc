@@ -38,6 +38,7 @@
 #include "quiche/quic/core/quic_udp_socket.h"
 #include "quiche/quic/tools/quic_url.h"
 #include "quiche/common/quiche_text_utils.h"
+#include "quiche/web_transport/web_transport_headers.h"
 
 using quiche::HttpHeaderBlock;
 
@@ -620,7 +621,7 @@ namespace quic
         return finish_stream_open_.size() > 0;
     }
 
-    void Http3Client::openWTSessionInt(absl::string_view path)
+    bool Http3Client::openWTSessionInt(absl::string_view path)
     {
         quiche::HttpHeaderBlock headers;
         headers[":scheme"] = "https";
@@ -628,17 +629,15 @@ namespace quic
         headers[":path"] = path;
         headers[":method"] = "CONNECT";
         headers[":protocol"] = "webtransport";
-        if (protocols_.size() > 0) { // not very efficient
-            std::string protocols = "";
-            for (size_t i=0; i < protocols_.size(); i++) {
-                protocols += protocols_[i];
-                if (i!= protocols_.size()-1) {
-                    protocols += ',';
-                }
+        if (protocols_.size() > 0) {
+            absl::StatusOr<std::string> wtavail = webtransport::SerializeSubprotocolRequestHeader(protocols_);
+            if (!wtavail.ok()) {
+                return false;
             }
-            headers["wt-available-protocols"] = protocols;
+            headers["wt-available-protocols"] = *wtavail;
         }
         SendMessageAsync(headers, "", /*fin=*/false);
+        return true;
     }
 
     void Http3Client::StartConnect()
@@ -1380,7 +1379,9 @@ namespace quic
         {
             std::string lpath(info[0].ToString().Utf8Value());
 
-            obj->openWTSessionInt(lpath);
+            if (!obj->openWTSessionInt(lpath)) {
+                Napi::Error::New(info.Env(), "openWTSessionInt failed, invalid protocols?").ThrowAsJavaScriptException();
+            }
         }
         else
         {

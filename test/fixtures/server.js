@@ -73,8 +73,6 @@ export async function createServer() {
         }
         const protocols = args.header['wt-available-protocols']
           ? args.header['wt-available-protocols']
-              .split(',')
-              .map((el) => el.trim())
           : undefined
         // we chose for testing always the last one
         let selectedProtocol = protocols && protocols[protocols.length - 1]
