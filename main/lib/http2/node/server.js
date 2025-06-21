@@ -241,6 +241,40 @@ export class Http2WebTransportServer {
           header['wt-available-protocols'] = obj.webtransportProt
         }
       }
+      if (
+        header[':protocol'] === 'webtransport' &&
+        header['wt-available-protocols']
+      ) {
+        let splitted = header['wt-available-protocols']
+          // @ts-ignore
+          .split(',')
+          .map((/** @type {string} */ el) => el.trim())
+        if (
+          splitted.some(
+            (/** @type {string} */ el) =>
+              typeof el !== 'string' ||
+              el.length < 2 ||
+              el[0] !== '"' ||
+              el.at(-1) !== '"'
+          )
+        ) {
+          stream.respond({
+            ':status': '406'
+          })
+          stream.close(constants.NGHTTP2_REFUSED_STREAM)
+          return
+        }
+        splitted = splitted.map((/** @type {string} */ el) => el.slice(1, -1))
+        if (
+          splitted.some((/** @type {string} */ el) => /\\([^"\\])/.test(el))
+        ) {
+          stream.close(constants.NGHTTP2_REFUSED_STREAM)
+          return
+        }
+        header['wt-available-protocols'] = splitted.map(
+          (/** @type {string} */ el) => el.replace(/\\(["\\])/g, '$1')
+        )
+      }
       if (header[':protocol'] !== 'webtransport' && !websocketProt) {
         stream.respond({
           ':status': '406'
@@ -399,7 +433,7 @@ export class Http2WebTransportServer {
           ...new Set(
             prots.filter((el) => el[2]).map((el) => el.slice(2).join('_'))
           )
-        ].join(',')
+        ]
       }
       return retObj
     } else return { websocketProt: undefined }
