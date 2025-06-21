@@ -25,7 +25,6 @@ globalThis.FAILSVerifyProof = (
     console.warn(
       'Non serverCertificateHashes certificate verification is an experimental feature for webtransport node client and not covered by tests and thus may be broken (DO NOT USE IN PRODUCTION)'
     )
-    console.log('obj', obj)
     if (obj.certs.length < 1) return false
     const pem = convertToPem(obj.certs[0])
     const leafcert = new X509Certificate(pem)
