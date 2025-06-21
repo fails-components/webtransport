@@ -58,6 +58,7 @@ export interface NativeServerOptions {
   initialUnidirectionalSendStreams?: number
   initialUnidirectionalReceiveStreams?: number
   initialStreamFlowControlWindow?: number
+  initialDatagramSize?: number
   streamShouldAutoTuneReceiveWindow?: boolean
   streamFlowControlWindowSizeLimit?: number
   initialSessionFlowControlWindow?: number
@@ -79,6 +80,7 @@ export interface NativeClientOptions {
   initialUnidirectionalSendStreams?: number
   initialUnidirectionalReceiveStreams?: number
   initialStreamFlowControlWindow?: number
+  initialDatagramSize?: number
   streamShouldAutoTuneReceiveWindow?: boolean
   streamFlowControlWindowSizeLimit?: number
   initialSessionFlowControlWindow?: number
@@ -357,7 +359,9 @@ export interface ParserInit {
   initialStreamSendWindowOffsetUnidi: number
   initialStreamReceiveWindowOffset: number
   streamShouldAutoTuneReceiveWindow: boolean
-  streamReceiveWindowSizeLimit: number
+  streamReceiveWindowSizeLimit: number,
+  maxDatagramSize: number,
+  remoteMaxDatagramSize: number
 }
 
 export interface ParserHttp2Init extends ParserInit {

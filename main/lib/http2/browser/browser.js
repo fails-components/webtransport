@@ -32,6 +32,9 @@ export class Http2WebTransportBrowser {
       args.sessionShouldAutoTuneReceiveWindow || true
     this.sessionFlowControlWindowSizeLimit =
       args?.sessionFlowControlWindowSizeLimit || 15 * 1024 * 1024
+
+    this.initialDatagramSize =
+      args.initialDatagramSize || this.initialSessionFlowControlWindow - 128
     /** @type {import('../../session.js').HttpClient} */
     // @ts-ignore
     this.jsobj = undefined // the transport will set this
@@ -150,7 +153,9 @@ export class Http2WebTransportBrowser {
               this.initialStreamFlowControlWindow,
             streamShouldAutoTuneReceiveWindow:
               this.streamShouldAutoTuneReceiveWindow,
-            streamReceiveWindowSizeLimit: this.streamFlowControlWindowSizeLimit
+            streamReceiveWindowSizeLimit: this.streamFlowControlWindowSizeLimit,
+            maxDatagramSize: this.initialDatagramSize,
+            remoteMaxDatagramSize: 2 ** 62 - 1
           })
           if (this.clientInt)
             this.clientInt.addEventListener('close', (event) => {
