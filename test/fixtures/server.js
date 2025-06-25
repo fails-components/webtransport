@@ -240,6 +240,40 @@ export async function createServer() {
             }
           },
 
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/datagrams_client_send_count')
+            )) {
+              // datagram transport is unreliable, at least one message should make it through
+              const expected = 100
+              let received = 0
+
+              try {
+                const reader = await session.datagrams.readable.getReader()
+                const writer = session.datagrams.createWritable().getWriter()
+
+                while (expected > received) {
+                  const { done, value } = await reader.read()
+                  if (done) {
+                    break
+                  }
+                  if (value != null) {
+                    const outarr = new Uint32Array(1)
+                    outarr[0] = value.length
+                    await writer.write(new Uint8Array(outarr.buffer))
+                  }
+                }
+                await writer.close()
+                await session.closed
+              } catch (error) {
+                session.close({
+                  closeCode: 500,
+                  reason: error.message
+                })
+              }
+            }
+          },
+
           // echo datagrams, initiated by local
           async () => {
             for await (const session of getReaderStream(
@@ -264,6 +298,52 @@ export async function createServer() {
 
               await session.closed
               closed = true
+            }
+          },
+
+          // echo send datagrams of different sizes, initiated by local
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/datagrams_server_send_count')
+            )) {
+              const expected = 100
+              let received = 0
+
+              try {
+                const reader = await session.datagrams.readable.getReader()
+                const writer = session.datagrams.createWritable().getWriter()
+
+                while (expected > received) {
+                  const { done, value } = await reader.read()
+                  if (done) {
+                    break
+                  }
+                  if (value != null) {
+                    const mDatagramSize = session.datagrams.maxDatagramSize
+                    const tosend = new Uint32Array(value.buffer)
+                    const outarr = new Uint8Array(
+                      tosend[0] +
+                        Math.min(
+                          Math.ceil(tosend[1] * mDatagramSize),
+                          10_000_000_000
+                        ) /
+                          1000
+                    )
+                    const outarr32 = new Uint32Array(outarr.buffer, 0, 2)
+                    outarr32[0] = mDatagramSize
+                    outarr32[1] = outarr.byteLength
+                    await writer.write(new Uint8Array(outarr.buffer))
+                  }
+                }
+                await writer.close()
+                await session.closed
+              } catch (error) {
+                session.close({
+                  closeCode: 500,
+                  reason: error.message
+                })
+                await session.closed
+              }
             }
           },
 

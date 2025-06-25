@@ -31,6 +31,7 @@ export class ParserBase {
   static WT_STREAM_DATA_BLOCKED = 0x190b4d42
   static WT_STREAMS_BLOCKED_UNIDI = 0x190b4d43
   static WT_STREAMS_BLOCKED_BIDI = 0x190b4d44
+  static WT_MAX_DATAGRAM_SIZE = 0x190b4d45
   static CLOSE_WEBTRANSPORT_SESSION = 0x2843
   static DRAIN_WEBTRANSPORT_SESSION = 0x78ae
   static DATAGRAM = 0x00
@@ -45,7 +46,9 @@ export class ParserBase {
     initialStreamSendWindowOffsetUnidi,
     initialStreamReceiveWindowOffset,
     streamShouldAutoTuneReceiveWindow,
-    streamReceiveWindowSizeLimit
+    streamReceiveWindowSizeLimit,
+    maxDatagramSize,
+    remoteMaxDatagramSize
   }) {
     this.session = nativesession
     this.isclient = isclient
@@ -57,6 +60,12 @@ export class ParserBase {
     this.initialStreamReceiveWindowOffset = initialStreamReceiveWindowOffset
     this.streamShouldAutoTuneReceiveWindow = streamShouldAutoTuneReceiveWindow
     this.streamReceiveWindowSizeLimit = streamReceiveWindowSizeLimit
+    this.remoteMaxDatagramSize = remoteMaxDatagramSize
+    this.maxDatagramSize = Math.min(
+      maxDatagramSize,
+      this.streamReceiveWindowSizeLimit,
+      Math.max(this.streamReceiveWindowSizeLimit - 128, 9000)
+    )
 
     /** @type {Map<bigint,Http2WebTransportStream>} */
     this.wtstreams = new Map()
@@ -107,6 +116,14 @@ export class ParserBase {
       end: () => {
         this.closeHttp2Stream(code)
       }
+    })
+  }
+
+  sendMaxDatagramSize() {
+    this.writeCapsule({
+      type: ParserBase.WT_MAX_DATAGRAM_SIZE,
+      headerVints: [this.maxDatagramSize],
+      payload: undefined
     })
   }
 
@@ -248,6 +265,14 @@ export class ParserBase {
     log('Stream ' + streamid + ' received blocked frame ' + offset)
     // const object = this.wtstreams.get(streamid)
     // if (object && offset) object.flowController.reportBlocked(offset)
+  }
+
+  /**
+   * @param {bigint|undefined} maxDatagramSize
+   */
+  onMaxDatagramSize(maxDatagramSize) {
+    if (typeof maxDatagramSize === 'undefined') return
+    this.remoteMaxDatagramSize = Number(maxDatagramSize)
   }
 
   /**

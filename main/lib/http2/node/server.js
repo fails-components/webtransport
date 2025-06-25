@@ -42,6 +42,9 @@ export class Http2WebTransportServer {
     this.sessionFlowControlWindowSizeLimit =
       args?.sessionFlowControlWindowSizeLimit || 15 * 1024 * 1024
 
+    this.initialDatagramSize =
+      args.initialDatagramSize || this.initialSessionFlowControlWindow - 128
+
     /** @type {Record<string, boolean>} */
     this.paths = {}
     this.hasrequesthandler = false
@@ -64,10 +67,13 @@ export class Http2WebTransportServer {
           0x2b62: this.initialStreamFlowControlWindow, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAM_DATA_UNI
           0x2b63: this.initialStreamFlowControlWindow, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAM_DATA_BIDI
           0x2b64: this.initialUnidirectionalStreams, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAMS_UNI
-          0x2b65: this.initialBidirectionalStreams // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAMS_BIDI
+          0x2b65: this.initialBidirectionalStreams, // SETTINGS_WEBTRANSPORT_INITIAL_MAX_STREAMS_BIDI
+          0x2b66: this.initialDatagramSize // SETTINGS_MAX_DATAGRAM_SIZE
         }
       },
-      remoteCustomSettings: [0x2b60, 0x2b61, 0x2b62, 0x2b63, 0x2b64, 0x2b65]
+      remoteCustomSettings: [
+        0x2b60, 0x2b61, 0x2b62, 0x2b63, 0x2b64, 0x2b65, 0x2b66
+      ]
     })
 
     this.serverInt.on('listening', () => {
@@ -180,7 +186,9 @@ export class Http2WebTransportServer {
                       streamShouldAutoTuneReceiveWindow:
                         this.streamShouldAutoTuneReceiveWindow,
                       streamReceiveWindowSizeLimit:
-                        this.streamFlowControlWindowSizeLimit
+                        this.streamFlowControlWindowSizeLimit,
+                      maxDatagramSize: this.initialDatagramSize,
+                      remoteMaxDatagramSize: 2 ** 62 - 1 // we wait for the settings frame to be received
                     }))
                     if (head.byteLength > 0) parse.parseData(head)
                     return parse
@@ -312,7 +320,8 @@ export class Http2WebTransportServer {
           0x2b64: remoteUnidirectionalStreams = undefined,
           0x2b63: remoteBidirectionalStreamFlowControlWindow = undefined,
           0x2b62: remoteUnidirectionalStreamFlowControlWindow = undefined,
-          0x2b61: remoteSessionFlowControlWindow = undefined
+          0x2b61: remoteSessionFlowControlWindow = undefined,
+          0x2b66: remoteMaxDatagramSize = 2 ** 62 - 1 // note this exceeds safe integer
           // @ts-ignore
         } = stream?.session?.remoteSettings?.customSettings || {}
         const retObj = {
@@ -338,7 +347,9 @@ export class Http2WebTransportServer {
                   streamShouldAutoTuneReceiveWindow:
                     this.streamShouldAutoTuneReceiveWindow,
                   streamReceiveWindowSizeLimit:
-                    this.streamFlowControlWindowSizeLimit
+                    this.streamFlowControlWindowSizeLimit,
+                  maxDatagramSize: this.initialDatagramSize,
+                  remoteMaxDatagramSize
                 })
               } else {
                 return (this.capsParser = new WebSocketParser({
@@ -352,7 +363,9 @@ export class Http2WebTransportServer {
                   streamShouldAutoTuneReceiveWindow:
                     this.streamShouldAutoTuneReceiveWindow,
                   streamReceiveWindowSizeLimit:
-                    this.streamFlowControlWindowSizeLimit
+                    this.streamFlowControlWindowSizeLimit,
+                  maxDatagramSize: this.initialDatagramSize,
+                  remoteMaxDatagramSize
                 }))
               }
             },
@@ -559,7 +572,9 @@ export class Http2WebTransportServer {
                     streamShouldAutoTuneReceiveWindow:
                       this.streamShouldAutoTuneReceiveWindow,
                     streamReceiveWindowSizeLimit:
-                      this.streamFlowControlWindowSizeLimit
+                      this.streamFlowControlWindowSizeLimit,
+                    maxDatagramSize: this.initialDatagramSize,
+                    remoteMaxDatagramSize: 2 ** 62 - 1 // we wait for the frame
                   }))
                   if (head && head.byteLength > 0) parse.parseData(head)
                   return parse
@@ -606,7 +621,8 @@ export class Http2WebTransportServer {
           0x2b64: remoteUnidirectionalStreams = undefined,
           0x2b63: remoteBidirectionalStreamFlowControlWindow = undefined,
           0x2b62: remoteUnidirectionalStreamFlowControlWindow = undefined,
-          0x2b61: remoteSessionFlowControlWindow = undefined
+          0x2b61: remoteSessionFlowControlWindow = undefined,
+          0x2b66: remoteMaxDatagramSize = 2 ** 62 - 1 // note this exceeds safe integer
           // @ts-ignore
         } = stream?.session?.remoteSettings?.customSettings || {}
         const retObj = {
@@ -632,7 +648,9 @@ export class Http2WebTransportServer {
                   streamShouldAutoTuneReceiveWindow:
                     this.streamShouldAutoTuneReceiveWindow,
                   streamReceiveWindowSizeLimit:
-                    this.streamFlowControlWindowSizeLimit
+                    this.streamFlowControlWindowSizeLimit,
+                  maxDatagramSize: this.initialDatagramSize,
+                  remoteMaxDatagramSize
                 })
               } else {
                 return (this.capsParser = new WebSocketParser({
@@ -646,7 +664,9 @@ export class Http2WebTransportServer {
                   streamShouldAutoTuneReceiveWindow:
                     this.streamShouldAutoTuneReceiveWindow,
                   streamReceiveWindowSizeLimit:
-                    this.streamFlowControlWindowSizeLimit
+                    this.streamFlowControlWindowSizeLimit,
+                  maxDatagramSize: this.initialDatagramSize,
+                  remoteMaxDatagramSize
                 }))
               }
             },

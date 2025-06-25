@@ -183,7 +183,9 @@ export class WebSocketParser extends ParserBaseHttp2 {
     initialStreamSendWindowOffsetBidi,
     initialStreamReceiveWindowOffset,
     streamShouldAutoTuneReceiveWindow,
-    streamReceiveWindowSizeLimit
+    streamReceiveWindowSizeLimit,
+    maxDatagramSize,
+    remoteMaxDatagramSize
   }) {
     super({
       stream,
@@ -193,7 +195,9 @@ export class WebSocketParser extends ParserBaseHttp2 {
       initialStreamSendWindowOffsetBidi,
       initialStreamReceiveWindowOffset,
       streamShouldAutoTuneReceiveWindow,
-      streamReceiveWindowSizeLimit
+      streamReceiveWindowSizeLimit,
+      maxDatagramSize,
+      remoteMaxDatagramSize
     })
     this.mode = 's' // frame start
     /** @type {Buffer|undefined} */
@@ -433,8 +437,8 @@ export class WebSocketParser extends ParserBaseHttp2 {
               if (
                 type === ParserBase.PADDING ||
                 type === ParserBase.WT_STREAM_WOFIN ||
-                type ===
-                  ParserBase.WT_STREAM_WFIN /* || type === ParserBase.DATAGRAM */
+                type === ParserBase.WT_STREAM_WFIN ||
+                (type === ParserBase.DATAGRAM && length > this.maxDatagramSize) // if we exceed maximum size of datagram we drop
               ) {
                 checklength = Math.min(length, 64) // stream id + some Data
               }
@@ -608,6 +612,9 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 case ParserBase.WT_STREAMS_BLOCKED_BIDI:
                   this.onStreamsBlockedBidi(readVarInt(bufferstate))
                   break
+                case ParserBase.WT_MAX_DATAGRAM_SIZE:
+                  this.onMaxDatagramSize(readVarInt(bufferstate))
+                  break
                 case ParserBase.CLOSE_WEBTRANSPORT_SESSION:
                   {
                     const code = readUint32(bufferstate) || 0
@@ -626,14 +633,17 @@ export class WebSocketParser extends ParserBaseHttp2 {
                   this.onDrain()
                   break
                 case ParserBase.DATAGRAM:
-                  if (wbufferstate) {
-                    this.session.jsobj.onDatagramReceived({
-                      datagram: new Uint8Array(
-                        wbufferstate.buffer.buffer,
-                        wbufferstate.buffer.byteOffset + wbufferstate.offset,
-                        offsetend - wbufferstate.offset
-                      )
-                    })
+                  if (length <= this.maxDatagramSize) {
+                    // drop too large datagrams
+                    if (wbufferstate) {
+                      this.session.jsobj.onDatagramReceived({
+                        datagram: new Uint8Array(
+                          wbufferstate.buffer.buffer,
+                          wbufferstate.buffer.byteOffset + wbufferstate.offset,
+                          offsetend - wbufferstate.offset
+                        )
+                      })
+                    }
                   }
                   break
                 default:

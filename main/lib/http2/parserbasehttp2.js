@@ -78,7 +78,9 @@ export class ParserBaseHttp2 extends ParserBase {
     initialStreamSendWindowOffsetUnidi,
     initialStreamReceiveWindowOffset,
     streamShouldAutoTuneReceiveWindow,
-    streamReceiveWindowSizeLimit
+    streamReceiveWindowSizeLimit,
+    maxDatagramSize,
+    remoteMaxDatagramSize
   }) {
     super({
       nativesession,
@@ -87,7 +89,9 @@ export class ParserBaseHttp2 extends ParserBase {
       initialStreamSendWindowOffsetUnidi,
       initialStreamReceiveWindowOffset,
       streamShouldAutoTuneReceiveWindow,
-      streamReceiveWindowSizeLimit
+      streamReceiveWindowSizeLimit,
+      maxDatagramSize,
+      remoteMaxDatagramSize
     })
     this.stream = stream
     this.session = nativesession
