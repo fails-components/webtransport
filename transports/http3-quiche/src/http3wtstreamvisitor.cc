@@ -138,10 +138,11 @@ namespace quic
         while (chunks_.size() > 0)
         {
             auto cur = chunks_.front();
-            bool success = stream_->Write(absl::string_view(cur.buffer, cur.len));
+            absl::Status status = 
+                WriteIntoStream(*stream_, absl::string_view(cur.buffer, cur.len));
             QUIC_DVLOG(1) << "Attempted writing on WebTransport bidirectional stream "
-                          << ", success: " << (success ? "yes" : "no");
-            if (!success)
+                          << ", success: " << status;
+            if (!status.ok())
             {
                 return;
             }
@@ -153,8 +154,8 @@ namespace quic
 
         if (send_fin_)
         {
-            bool success = stream_->SendFin();
-            if (success) {
+            absl::Status status = SendFinOnStream(*stream_);
+            if (status.ok()) {
                 fin_was_sent_ = true;
                 getJS()->processStreamNetworkFinish(NetworkTask::streamFinal);
             }
