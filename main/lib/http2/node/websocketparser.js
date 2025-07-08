@@ -608,7 +608,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 case ParserBase.WT_STREAMS_BLOCKED_BIDI:
                   this.onStreamsBlockedBidi(readVarInt(bufferstate))
                   break
-                case ParserBase.CLOSE_WEBTRANSPORT_SESSION:
+                case ParserBase.WT_CLOSE_SESSION:
                   {
                     const code = readUint32(bufferstate) || 0
                     const decoder = new TextDecoder()
@@ -622,7 +622,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
                     this.onCloseWebTransportSession({ code, reason })
                   }
                   break
-                case ParserBase.DRAIN_WEBTRANSPORT_SESSION:
+                case ParserBase.WT_DRAIN_SESSION:
                   this.onDrain()
                   break
                 case ParserBase.DATAGRAM:

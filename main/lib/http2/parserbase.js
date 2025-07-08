@@ -31,8 +31,8 @@ export class ParserBase {
   static WT_STREAM_DATA_BLOCKED = 0x190b4d42
   static WT_STREAMS_BLOCKED_UNIDI = 0x190b4d43
   static WT_STREAMS_BLOCKED_BIDI = 0x190b4d44
-  static CLOSE_WEBTRANSPORT_SESSION = 0x2843
-  static DRAIN_WEBTRANSPORT_SESSION = 0x78ae
+  static WT_CLOSE_SESSION = 0x2843
+  static WT_DRAIN_SESSION = 0x78ae
   static DATAGRAM = 0x00
 
   /**
@@ -101,7 +101,7 @@ export class ParserBase {
     payload[2] = (code >> 8) & 0xff
     payload[3] = code & 0xff
     this.writeCapsule({
-      type: ParserBase.CLOSE_WEBTRANSPORT_SESSION,
+      type: ParserBase.WT_CLOSE_SESSION,
       headerVints: [],
       payload,
       end: () => {

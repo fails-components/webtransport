@@ -223,7 +223,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               case Http2CapsuleParser.WT_STREAMS_BLOCKED_BIDI:
                 this.onStreamsBlockedBidi(readVarInt(bufferstate))
                 break
-              case Http2CapsuleParser.CLOSE_WEBTRANSPORT_SESSION:
+              case Http2CapsuleParser.WT_CLOSE_SESSION:
                 {
                   const code = readUint32(bufferstate) || 0
                   const decoder = new TextDecoder()
@@ -237,7 +237,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                   this.onCloseWebTransportSession({ code, reason })
                 }
                 break
-              case Http2CapsuleParser.DRAIN_WEBTRANSPORT_SESSION:
+              case Http2CapsuleParser.WT_DRAIN_SESSION:
                 this.onDrain()
                 break
               case Http2CapsuleParser.DATAGRAM:
