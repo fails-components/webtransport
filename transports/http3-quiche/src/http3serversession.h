@@ -63,7 +63,6 @@ namespace quic
     QuicSpdyStream *CreateIncomingStream(QuicStreamId id) override;
     QuicSpdyStream *CreateIncomingStream(PendingStream *pending) override;
     QuicSpdyStream *CreateOutgoingBidirectionalStream() override;
-    Http3ServerStream *CreateOutgoingUnidirectionalStream() override;
 
     // QuicServerSessionBaseMethod:
     std::unique_ptr<QuicCryptoServerStreamBase> CreateQuicCryptoServerStream(
