@@ -266,6 +266,31 @@ export async function createServer() {
               closed = true
             }
           },
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/datagrams_server_send_zero')
+            )) {
+              const writer = session.datagrams.createWritable().getWriter()
+              let closed = false
+
+              // write datagrams until the client receives one and closes the connection
+              // eslint-disable-next-line promise/catch-or-return
+              Promise.resolve().then(async () => {
+                while (!closed) {
+                  try {
+                    await writer.ready
+                    await writer.write(Uint8Array.from([]))
+                    await new Promise((resolve) => setTimeout(resolve, 1)) // do not flood everything
+                  } catch {
+                    // the session can be closed while we are writing
+                  }
+                }
+              })
+
+              await session.closed
+              closed = true
+            }
+          },
 
           // receive 100+ bidi streams and block
           async () => {

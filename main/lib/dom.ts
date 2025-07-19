@@ -85,10 +85,13 @@ export interface WebTransportHash {
   value: BufferSource
 }
 
+export type DatagramsReadableMode = "bytes";
+
 export interface WebTransportOptions {
   allowPooling?: boolean
   requireUnreliable?: boolean
   serverCertificateHashes?: WebTransportHash[]
+  datagramsReadableMode?: DatagramsReadableMode;
 
   /**
    * Nonstandard option - when a new connection is opened, how long to wait for the quic handshake to complete in ms before rejecting or switching to http2

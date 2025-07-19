@@ -1,4 +1,4 @@
-class TimeoutError extends Error {
+export class TimeoutError extends Error {
   /**
    * @param {string} message
    */

@@ -31,6 +31,7 @@ const log = logger(`webtransport:httpwtsession(${pid})`)
  * @typedef {import('./dom').WebTransportDatagramStats} WebTransportDatagramStats
  * @typedef {import('./dom').WebTransportSendOptions} WebTransportSendOptions
  * @typedef {import('./dom').WebTransportDatagramsWritable} WebTransportDatagramsWritable
+ * @typedef {import('./dom').DatagramsReadableMode} DatagramsReadableMode
  *
  * @typedef {import('./types').NativeHttpWTSession} NativeHttpWTSession
  *
@@ -55,6 +56,7 @@ export class HttpWTSession {
    * @param {Object | undefined} [args.header= undefined]
    * @param {Object | undefined} [args.userData= undefined]
    * @param {string | undefined} [args.peerAddress= undefined]
+   * @param {DatagramsReadableMode} [args.datagramsReadableMode]
    */
   constructor(args) {
     if (args.object) {
@@ -79,6 +81,8 @@ export class HttpWTSession {
 
     /** @type {(string | undefined)} */
     this.peerAddress_ = args.peerAddress
+
+    this.datagramsReadableMode_ = args.datagramsReadableMode
 
     /** @type {Promise<void>} */
     this.ready = new Promise((resolve, reject) => {
@@ -117,14 +121,32 @@ export class HttpWTSession {
         this.incomUniDiController = controller
       }
     })
+    /** @type {import("stream/web").ReadableByteStreamController | undefined} */
+    this.incomDatagramControllerBytes_ = undefined
+    /** @type {import("stream/web").ReadableStreamController<Uint8Array> | undefined} */
+    this.incomDatagramController_ = undefined
 
     const readableopts = {
       start: (
-        /** @type {import("stream/web").ReadableByteStreamController} */ controller
+        /** @type {import("stream/web").ReadableByteStreamController | import("stream/web").ReadableStreamController<Uint8Array>} */ controller
       ) => {
-        this.incomDatagramController = controller
+        if (this.datagramsReadableMode_ === 'bytes') {
+          this.incomDatagramControllerBytes_ =
+            /** @type {import("stream/web").ReadableByteStreamController} */ (
+              controller
+            )
+        } else {
+          this.incomDatagramController_ =
+            /** @type {import("stream/web").ReadableStreamController<Uint8Array>} */ (
+              controller
+            )
+        }
       },
-      type: 'bytes'
+      /** @type {undefined | 'bytes'} */
+      type: undefined
+    }
+    if (this.datagramsReadableMode_ === 'bytes') {
+      readableopts.type = 'bytes'
     }
     if (!canByteStream) {
       // @ts-ignore
@@ -558,7 +580,10 @@ export class HttpWTSession {
 
     this.incomBiDiController.close()
     this.incomUniDiController.close()
-    this.incomDatagramController.close()
+    // @ts-ignore
+    ;(
+      this.incomDatagramController_ || this.incomDatagramControllerBytes_
+    ).close()
     // this.outgoDatagramController.error(errorcode)
     this.state = 'closed'
 
@@ -645,16 +670,19 @@ export class HttpWTSession {
    * @param {DatagramReceivedEvent} args
    */
   onDatagramReceived(args) {
-    log.trace('datagram received', args.datagram)
+    log('datagram received', args.datagram)
     // streams spec says zero length chunk on byob stream is illegal
-    if (args.datagram.byteLength === 0) {
-      log.trace('zerolength datagram dropped')
+    if (
+      args.datagram.byteLength === 0 &&
+      this.datagramsReadableMode_ === 'bytes'
+    ) {
+      log('zerolength datagram dropped for a byte stream')
       return
     }
     // console.log('datagram received', args.datagram, Date.now())
-    if (this.incomDatagramController.byobRequest) {
+    if (this.incomDatagramControllerBytes_?.byobRequest) {
       /** @type {ReadableStreamBYOBRequest} */
-      const byob = this.incomDatagramController.byobRequest
+      const byob = this.incomDatagramControllerBytes_.byobRequest
       /** @type {Uint8Array} */
       // @ts-ignore
       const view = byob?.view
@@ -672,7 +700,10 @@ export class HttpWTSession {
       destview.set(args.datagram)
       byob.respond(args.datagram.byteLength)
     } else {
-      this.incomDatagramController.enqueue(new Uint8Array(args.datagram))
+      // @ts-ignore
+      ;(
+        this.incomDatagramController_ || this.incomDatagramControllerBytes_
+      ).enqueue(new Uint8Array(args.datagram))
     }
   }
 
