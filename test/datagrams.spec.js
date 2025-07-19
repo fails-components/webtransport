@@ -130,6 +130,7 @@ describe('datagrams', function () {
   })
 
   if (browser !== 'chromium') {
+    // chromium defaults to byte stream
     it('receives zero datagrams from the server', async () => {
       // client context - pipes the server's datagrams back to them
       client = new WebTransport(
@@ -149,27 +150,31 @@ describe('datagrams', function () {
     })
   }
 
-  it('receives zero datagrams from the server (byte stream)', async () => {
-    // client context - pipes the server's datagrams back to them
-    client = new WebTransport(
-      `${process.env.SERVER_URL}/datagrams_server_send_zero`,
-      { ...wtOptions, datagramsReadableMode: 'bytes' }
-    )
-    await client.ready
+  if (browser !== 'firefox') {
+    // firefox defaults to non byte stream
+    it('receives zero datagrams from the server (byte stream)', async () => {
+      // client context - pipes the server's datagrams back to them
+      client = new WebTransport(
+        `${process.env.SERVER_URL}/datagrams_server_send_zero`,
+        { ...wtOptions, datagramsReadableMode: 'bytes' }
+      )
+      await client.ready
 
-    // datagram transport is unreliable, since we use a byte stream all datagrams should be droped
-    const expected = 0
-    let timeout = false
+      // datagram transport is unreliable, since we use a byte stream all datagrams should be droped
+      const expected = 0
+      let timeout = false
 
-    await pTimeout(readStream(client.datagrams.readable, expected), 1000).catch(
-      (error) => {
+      await pTimeout(
+        readStream(client.datagrams.readable, expected),
+        1000
+      ).catch((error) => {
         if (!(error instanceof TimeoutError)) {
           throw error
         } else {
           timeout = true
         }
-      }
-    )
-    expect(timeout).to.equal(true)
-  })
+      })
+      expect(timeout).to.equal(true)
+    })
+  }
 })
