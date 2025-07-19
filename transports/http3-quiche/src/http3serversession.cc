@@ -109,20 +109,6 @@ namespace quic
     return stream;
   }
 
-  Http3ServerStream *
-  Http3ServerSession::CreateOutgoingUnidirectionalStream()
-  {
-    if (!ShouldCreateOutgoingUnidirectionalStream())
-    {
-      return nullptr;
-    }
-
-    Http3ServerStream *stream = new Http3ServerStream(
-        GetNextOutgoingUnidirectionalStreamId(), this, WRITE_UNIDIRECTIONAL,
-        http3_server_backend_);
-    ActivateStream(absl::WrapUnique(stream));
-    return stream;
-  }
 
   void Http3ServerSession::OnCanCreateNewOutgoingStream(bool unidirectional) {
     if (SupportsWebTransport()) {
