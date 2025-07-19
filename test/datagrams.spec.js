@@ -4,7 +4,7 @@ import WebTransport from './fixtures/webtransport.js'
 import { expect } from './fixtures/chai.js'
 import { readStream } from './fixtures/read-stream.js'
 import { readCertHash } from './fixtures/read-cert-hash.js'
-import { pTimeout } from './fixtures/p-timeout.js'
+import { pTimeout, TimeoutError } from './fixtures/p-timeout.js'
 import { quicheLoaded } from './fixtures/quiche.js'
 
 /**
@@ -17,6 +17,7 @@ describe('datagrams', function () {
   let client
   let forceReliable = false
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
+  const browser = process.env.BROWSER
 
   const wtOptions = {
     serverCertificateHashes: [
@@ -108,5 +109,67 @@ describe('datagrams', function () {
       1000
     )
     expect(received).to.have.lengthOf(expected)
+  })
+
+  it('receives datagrams from the server (byte stream)', async () => {
+    // client context - pipes the server's datagrams back to them
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/datagrams_server_send`,
+      { ...wtOptions, datagramsReadableMode: 'bytes' }
+    )
+    await client.ready
+
+    // datagram transport is unreliable, at least one message should make it through
+    const expected = 1
+
+    const received = await pTimeout(
+      readStream(client.datagrams.readable, expected),
+      1000
+    )
+    expect(received).to.have.lengthOf(expected)
+  })
+
+  if (browser !== 'chromium') {
+    it('receives zero datagrams from the server', async () => {
+      // client context - pipes the server's datagrams back to them
+      client = new WebTransport(
+        `${process.env.SERVER_URL}/datagrams_server_send_zero`,
+        wtOptions
+      )
+      await client.ready
+
+      // datagram transport is unreliable, at least one datagram should made it through
+      const expected = 1
+
+      const received = await pTimeout(
+        readStream(client.datagrams.readable, 0 /* this is length */),
+        1000
+      )
+      expect(received).to.have.lengthOf(expected)
+    })
+  }
+
+  it('receives zero datagrams from the server (byte stream)', async () => {
+    // client context - pipes the server's datagrams back to them
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/datagrams_server_send_zero`,
+      { ...wtOptions, datagramsReadableMode: 'bytes' }
+    )
+    await client.ready
+
+    // datagram transport is unreliable, since we use a byte stream all datagrams should be droped
+    const expected = 0
+    let timeout = false
+
+    await pTimeout(readStream(client.datagrams.readable, expected), 1000).catch(
+      (error) => {
+        if (!(error instanceof TimeoutError)) {
+          throw error
+        } else {
+          timeout = true
+        }
+      }
+    )
+    expect(timeout).to.equal(true)
   })
 })

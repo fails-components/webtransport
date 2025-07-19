@@ -136,6 +136,8 @@ export class HttpServer {
     this.port = null
     this.host = null
 
+    this.defaultDatagramsReadableMode_ = args.defaultDatagramsReadableMode
+
     // FIX ME TYPE
     /** @type {any} */
     this.requestHandler = null
@@ -276,6 +278,7 @@ export class HttpServer {
       header: args.header,
       peerAddress: args.peerAddress,
       userData: args.userData ?? {},
+      datagramsReadableMode: this.defaultDatagramsReadableMode_,
       parentobj: this
     })
     args.session.jsobj = sesobj

@@ -142,6 +142,7 @@ export class WebTransport extends WebTransportBase {
     })
     const sessionint = new HttpWTSession({
       /* object: args.session, */
+      datagramsReadableMode: args.datagramsReadableMode,
       parentobj: client
     })
     return { client, sessionint }

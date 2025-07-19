@@ -2,7 +2,8 @@ import type {
   WebTransportSession,
   WebTransportHash,
   WebTransportOptions,
-  WebTransportSendStreamOptions
+  WebTransportSendStreamOptions,
+  DatagramsReadableMode
 } from './dom'
 import type { IncomingHttpHeaders, Http2Stream, ServerHttp2Stream } from 'http2'
 import { ParserBase } from './http2/parserbase'
@@ -316,6 +317,7 @@ export interface HttpServerInit extends HttpWebTransportInit {
   sessionShouldAutoTuneReceiveWindow?: boolean
   sessionFlowControlWindowSizeLimit?: number
   reliability?: WebTransportServerReliability
+  defaultDatagramsReadableMode: DatagramsReadableMode
 }
 
 // see HttpClientJS C++ type
