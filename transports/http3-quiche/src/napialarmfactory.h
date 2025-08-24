@@ -57,9 +57,9 @@ namespace quic
         FAILSsetTimeoutAlarm_ = Napi::Persistent(Env().Global().Get("FAILSsetTimeoutAlarm").As<Napi::Function>());
         FAILSsetTimeoutAlarm_.SuppressDestruct();
       }
-      if (clearTimeout_.IsEmpty()) {
-        clearTimeout_ = Napi::Persistent(Env().Global().Get("clearTimeout").As<Napi::Function>());
-        clearTimeout_.SuppressDestruct();
+      if (FAILSclearTimeoutAlarm_.IsEmpty()) {
+        FAILSclearTimeoutAlarm_ = Napi::Persistent(Env().Global().Get("FAILSclearTimeoutAlarm").As<Napi::Function>());
+        FAILSclearTimeoutAlarm_.SuppressDestruct();
       }
     }
 
@@ -86,7 +86,7 @@ namespace quic
   protected:
     NapiAlarm* alarm_; // unowned
     static Napi::FunctionReference FAILSsetTimeoutAlarm_;
-    static Napi::FunctionReference clearTimeout_;
+    static Napi::FunctionReference FAILSclearTimeoutAlarm_;
   };
 
   class NapiAlarm : public QuicAlarm
@@ -103,7 +103,7 @@ namespace quic
     {
       if (timerset_)
       {
-        NapiAlarmJS::clearTimeout_.Call({alarmref_.Value()});
+        NapiAlarmJS::FAILSclearTimeoutAlarm_.Call({alarmref_.Value()});
         alarmref_.Unref();
         timerset_ = false;
       }
@@ -148,7 +148,7 @@ namespace quic
     {
       if (timerset_)
       {
-        NapiAlarmJS::clearTimeout_.Call({alarmref_.Value()});
+        NapiAlarmJS::FAILSclearTimeoutAlarm_.Call({alarmref_.Value()});
         alarmref_.Unref();
         timerset_ = false;
       }

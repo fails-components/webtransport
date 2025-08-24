@@ -7,7 +7,17 @@ globalThis.FAILSsetTimeoutAlarm = (
   /** @type {{ fireJS: () => void; }} */ alarm,
   /** @type {number} */ delay
 ) => {
-  return setTimeout(alarm.fireJS.bind(alarm), delay)
+  if (delay < 1) {
+    return { immediate: setImmediate(alarm.fireJS.bind(alarm)) }
+  }
+  return { timeout: setTimeout(alarm.fireJS.bind(alarm), delay) }
+}
+
+globalThis.FAILSclearTimeoutAlarm = (
+  /** @type {{ timeout: string | number | NodeJS.Timeout | undefined; immediate: NodeJS.Immediate | undefined; }} */ obj
+) => {
+  if (obj.timeout) clearTimeout(obj.timeout)
+  if (obj.immediate) clearImmediate(obj.immediate)
 }
 
 function convertToPem(/** @type {ArrayBuffer} */ cert) {

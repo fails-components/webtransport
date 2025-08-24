@@ -14,7 +14,7 @@
 namespace quic
 {
   Napi::FunctionReference NapiAlarmJS::FAILSsetTimeoutAlarm_;
-  Napi::FunctionReference NapiAlarmJS::clearTimeout_;
+  Napi::FunctionReference NapiAlarmJS::FAILSclearTimeoutAlarm_;
 
   void NapiAlarmJS::fireJS(const Napi::CallbackInfo &info)
   {
