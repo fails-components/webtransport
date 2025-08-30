@@ -495,6 +495,8 @@ third_party/quiche/quiche/quic/core/frames/quic_connection_close_frame.cc
 third_party/quiche/quiche/quic/core/frames/quic_connection_close_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_crypto_frame.cc
 third_party/quiche/quiche/quic/core/frames/quic_crypto_frame.h
+third_party/quiche/quiche/quic/core/frames/quic_datagram_frame.cc
+third_party/quiche/quiche/quic/core/frames/quic_datagram_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_frame.cc
 third_party/quiche/quiche/quic/core/frames/quic_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_goaway_frame.cc
@@ -506,8 +508,6 @@ third_party/quiche/quiche/quic/core/frames/quic_immediate_ack_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_inlined_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_max_streams_frame.cc
 third_party/quiche/quiche/quic/core/frames/quic_max_streams_frame.h
-third_party/quiche/quiche/quic/core/frames/quic_message_frame.cc
-third_party/quiche/quiche/quic/core/frames/quic_message_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_mtu_discovery_frame.h
 third_party/quiche/quiche/quic/core/frames/quic_new_connection_id_frame.cc
 third_party/quiche/quiche/quic/core/frames/quic_new_connection_id_frame.h
