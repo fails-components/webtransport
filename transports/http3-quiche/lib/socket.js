@@ -127,7 +127,6 @@ export class Http3WebTransportSocket {
       address,
       this.packetSendCB
     )
-    // @ts-ignore
     const blocked = this.socketInt.getSendQueueCount() > 0
     this.blocked = this.blocked || blocked
     return blocked
@@ -136,7 +135,6 @@ export class Http3WebTransportSocket {
   packetSendCB() {
     if (
       !this.closed &&
-      // @ts-ignore
       this.socketInt.getSendQueueCount() === 0 &&
       this.blocked
     ) {
