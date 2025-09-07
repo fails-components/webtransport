@@ -15,7 +15,7 @@
     }
   },
   "engines": {
-    "node": ">=16.5"
+    "node": ">=20"
   },
   "type": "module",
   "types": "./dist/lib/index.types.d.ts",
