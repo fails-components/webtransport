@@ -304,6 +304,15 @@ export class HttpWTStream {
         this.cancelres = null
         res()
       }
+      const parentstate = this.parentobj.state
+      if (parentstate === 'closed' || parentstate === 'failed') {
+        log('no parent cleanup for fin as parent was closed or failed')
+      } else {
+        this.parentobj.removeReceiveStream(
+          this.readable,
+          this.readableController
+        )
+      }
       if (!this.readableclosed) {
         this.readableController.close()
         this.readableclosed = true
@@ -343,10 +352,12 @@ export class HttpWTStream {
               this.readable,
               this.readableController
             )
-          this.readableclosed = true
-          this.readableController.error(
-            new WebTransportError('Resetstream with code:' + (args.code || 0))
-          )
+          if (!this.readableclosed) {
+            this.readableclosed = true
+            this.readableController.error(
+              new WebTransportError('Resetstream with code:' + (args.code || 0))
+            )
+          }
         } else {
           log.error('resetStream without readable')
         }
@@ -359,11 +370,12 @@ export class HttpWTStream {
               this.writable,
               this.writableController
             )
-
-          this.writableclosed = true
-          this.writableController.error(
-            new WebTransportError('StopSending with code:' + (args.code || 0))
-          )
+          if (!this.writableclosed) {
+            this.writableclosed = true
+            this.writableController.error(
+              new WebTransportError('StopSending with code:' + (args.code || 0))
+            )
+          }
         } else {
           log.error('stopSending without writable')
         }
