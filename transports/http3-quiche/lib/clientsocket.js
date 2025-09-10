@@ -41,6 +41,10 @@ export class Http3WebTransportClientSocket extends Http3WebTransportSocket {
           ipv6Only: this.forceIpv6
         })
 
+        if (!this.socketInt.getSendQueueCount) {
+          this.socketInt.getSendQueueCount = function() { return 0 }
+        }
+
         this.socketInt.on('error', (evt) => {
           this.jsobj.onClientError({ errorcode: 100, error: evt.toString() })
         })
