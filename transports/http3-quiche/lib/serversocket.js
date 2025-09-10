@@ -32,6 +32,10 @@ export class Http3WebTransportServerSocket extends Http3WebTransportSocket {
           type: result.family === 4 ? 'udp4' : 'udp6'
         })
 
+        if (!this.socketInt.getSendQueueCount) {
+          this.socketInt.getSendQueueCount = function() { return 0 }
+        }
+
         this.socketInt.on('listening', () => {
           const addr = this.socketInt.address()
           const retObj = {
