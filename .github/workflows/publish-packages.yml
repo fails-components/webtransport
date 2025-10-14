@@ -38,7 +38,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: https://npm.pkg.github.com/
       - name: Check if version has been updated
         id: check
@@ -56,7 +56,7 @@ jobs:
     needs: version-check
     strategy:
       matrix:
-        os: [ubuntu-22.04, windows-2025, macos-13 ]
+        os: [ubuntu-24.04, windows-2025, macos-13 ]
         arch: [x64]
         include:
           - arch: ia32
@@ -64,7 +64,7 @@ jobs:
           - arch: arm64
             os: macos-latest
           - arch: arm64
-            os: ubuntu-22.04-arm
+            os: ubuntu-24.04-arm
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -88,7 +88,7 @@ jobs:
         submodules: recursive
      - uses: actions/setup-node@v4
        with:
-         node-version: 20
+         node-version: 22
          registry-url: https://npm.pkg.github.com/
      - name: Install
        if: needs.version-check.outputs.changed == 'true'
@@ -148,7 +148,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: https://npm.pkg.github.com/
 
       - name: Install
@@ -194,7 +194,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: https://registry.npmjs.org/
 
       - name: Install
