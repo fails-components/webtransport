@@ -545,6 +545,8 @@ third_party/quiche/quiche/quic/core/http/http_decoder.h
 third_party/quiche/quiche/quic/core/http/http_encoder.cc
 third_party/quiche/quiche/quic/core/http/http_encoder.h
 third_party/quiche/quiche/quic/core/http/http_frames.h
+third_party/quiche/quiche/quic/core/http/quic_connection_migration_manager.cc
+third_party/quiche/quiche/quic/core/http/quic_connection_migration_manager.h
 third_party/quiche/quiche/quic/core/http/quic_header_list.cc
 third_party/quiche/quiche/quic/core/http/quic_header_list.h
 third_party/quiche/quiche/quic/core/http/quic_headers_stream.cc
@@ -559,6 +561,8 @@ third_party/quiche/quiche/quic/core/http/quic_server_session_base.cc
 third_party/quiche/quiche/quic/core/http/quic_server_session_base.h
 third_party/quiche/quiche/quic/core/http/quic_spdy_client_session.cc
 third_party/quiche/quiche/quic/core/http/quic_spdy_client_session.h
+third_party/quiche/quiche/quic/core/http/quic_spdy_client_session_with_migration.cc
+third_party/quiche/quiche/quic/core/http/quic_spdy_client_session_with_migration.h
 third_party/quiche/quiche/quic/core/http/quic_spdy_client_session_base.cc
 third_party/quiche/quiche/quic/core/http/quic_spdy_client_session_base.h
 third_party/quiche/quiche/quic/core/http/quic_spdy_client_stream.cc
