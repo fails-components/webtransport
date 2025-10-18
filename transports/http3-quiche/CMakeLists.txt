@@ -349,6 +349,8 @@ third_party/quiche/quiche/http2/hpack/varint/hpack_varint_encoder.h
 #third_party/quiche/quiche/quic/bindings/quic_libevent.cc
 third_party/quiche/quiche/quic/core/chlo_extractor.cc
 third_party/quiche/quiche/quic/core/chlo_extractor.h
+third_party/quiche/quiche/quic/core/quic_force_blockable_packet_writer.cc
+third_party/quiche/quiche/quic/core/quic_force_blockable_packet_writer.h
 third_party/quiche/quiche/quic/core/quic_ping_manager.cc
 third_party/quiche/quiche/quic/core/quic_ping_manager.h
 third_party/quiche/quiche/quic/core/congestion_control/bandwidth_sampler.cc
