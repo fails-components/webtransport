@@ -29,9 +29,6 @@ set(ABSL_PROPAGATE_CXX_STD ON)
 # include abseil
 set(ABSL_MSVC_STATIC_RUNTIME ON)
 add_subdirectory(third_party/abseil-cpp EXCLUDE_FROM_ALL)
-IF(APPLE)
-     set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for Mac OS X" FORCE)
-ENDIF(APPLE)
 
 
 # include protobuf
@@ -39,9 +36,17 @@ SET(protobuf_WITH_ZLIB OFF CACHE BOOL "Build with zlib support")
 SET(protobuf_BUILD_TESTS OFF CACHE BOOL "Build tests off")
 set(protobuf_INSTALL OFF CACHE BOOL "Install protobuf off" FORCE)
 add_subdirectory(third_party/protobuf EXCLUDE_FROM_ALL)
-IF(APPLE)
-    set_target_properties(protoc libprotoc libprotobuf PROPERTIES OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for Mac OS X" FORCE )
-ENDIF(APPLE)
+if(APPLE)
+    execute_process(
+        COMMAND uname -m
+        OUTPUT_VARIABLE HOST_ARCH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    set_target_properties(protoc libprotoc libprotobuf
+        PROPERTIES
+            OSX_ARCHITECTURES "${HOST_ARCH}"
+    )
+endif()
 
 IF (WIN32)
     add_compile_definitions(WIN32_LEAN_AND_MEAN NOGDI)
