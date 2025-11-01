@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.2
-FROM node:22-bookworm
+FROM node:24-trixie
 
 ARG ENV
 
