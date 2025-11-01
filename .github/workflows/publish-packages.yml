@@ -56,7 +56,7 @@ jobs:
     needs: version-check
     strategy:
       matrix:
-        os: [ubuntu-24.04, windows-2025, macos-13 ]
+        os: [ubuntu-24.04, windows-2025, macos-15-intel ]
         arch: [x64]
         include:
           - arch: ia32
@@ -81,7 +81,7 @@ jobs:
           echo ${{matrix.os == 'macos-latest'}}
           echo ${{ matrix.arch == 'arm64' && matrix.os == 'macos-latest' }}
           echo ${{matrix.arch == 'x64'}}
-          echo ${{ matrix.arch == 'x64' && matrix.os == 'macos-13' }}
+          echo ${{ matrix.arch == 'x64' && matrix.os == 'macos-15-intel' }}
      - name: Checkout code
        uses: actions/checkout@v4
        with:
