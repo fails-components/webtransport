@@ -33,7 +33,8 @@ add_subdirectory(third_party/abseil-cpp EXCLUDE_FROM_ALL)
 
 # include protobuf
 SET(protobuf_WITH_ZLIB OFF CACHE BOOL "Build with zlib support")
-SET(protobuf_BUILD_TESTS OFF CACHE BOOL "Build tests")
+SET(protobuf_BUILD_TESTS OFF CACHE BOOL "Build tests off")
+set(protobuf_INSTALL OFF CACHE BOOL "Install protobuf off" FORCE)
 add_subdirectory(third_party/protobuf EXCLUDE_FROM_ALL)
 IF(APPLE)
     set_target_properties(protoc libprotoc libprotobuf PROPERTIES OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for Mac OS X" FORCE )
