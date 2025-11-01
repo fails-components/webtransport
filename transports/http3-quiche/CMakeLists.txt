@@ -29,6 +29,9 @@ set(ABSL_PROPAGATE_CXX_STD ON)
 # include abseil
 set(ABSL_MSVC_STATIC_RUNTIME ON)
 add_subdirectory(third_party/abseil-cpp EXCLUDE_FROM_ALL)
+IF(APPLE)
+     set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for Mac OS X" FORCE)
+ENDIF(APPLE)
 
 
 # include protobuf
