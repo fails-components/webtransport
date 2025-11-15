@@ -129,6 +129,7 @@ third_party/googleurl/url/url_canon_etc.cc
 third_party/googleurl/url/url_canon_fileurl.cc
 third_party/googleurl/url/url_canon_internal.h
 third_party/googleurl/url/url_canon_mailtourl.cc
+third_party/googleurl/url/url_canon_non_special_url.cc
 third_party/googleurl/url/url_canon_pathurl.cc
 third_party/googleurl/url/url_canon_path.cc
 third_party/googleurl/url/url_canon_relative.cc
