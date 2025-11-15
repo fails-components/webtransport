@@ -137,7 +137,7 @@ third_party/googleurl/url/url_parse_internal.h
 third_party/googleurl/url/url_parse_file.cc
 third_party/googleurl/url/url_canon_host.cc
 third_party/googleurl/url/url_canon_ip.cc
-third_party/googleurl/url/url_constants.cc
+third_party/googleurl/url/url_constants.h
 third_party/googleurl/url/url_features.cc
 third_party/googleurl/url/url_features.h
 third_party/googleurl/url/url_util.cc
