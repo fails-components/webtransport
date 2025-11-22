@@ -154,7 +154,7 @@ namespace quic
         QuicTransportVersion version, int n)
     {
         int num = n;
-        if (!VersionUsesHttp3(version))
+        if (!!VersionIsIetfQuic(version))
         {
             num++;
         }
