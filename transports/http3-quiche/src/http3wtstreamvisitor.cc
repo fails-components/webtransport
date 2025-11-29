@@ -41,6 +41,7 @@ namespace quic
         }
         else
         {
+            delete stream_;
             stream_->stream_ = nullptr;
         }
     }
