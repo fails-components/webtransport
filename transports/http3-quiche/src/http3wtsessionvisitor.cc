@@ -9,10 +9,10 @@ namespace quic
 
     Http3WTSession::Visitor::~Visitor()
     {
-        // printf("~Visitor %d %x %x\n", getpid(), this, session_);
+        // printf("Session ~Visitor %d %x %x\n", getpid(), this, session_);
         Http3WTSessionJS *sessobj = session_->getJS();
         if (sessobj) {
-            session_->getJS()->Unref();
+            sessobj->Unref();
         } else
             delete session_;
         session_ = nullptr;
