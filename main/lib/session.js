@@ -432,6 +432,11 @@ export class HttpWTSession {
    * @returns {Promise<WebTransportBidirectionalStream>}
    */
   createBidirectionalStream(opts) {
+    if (this.state === 'closed' || this.state === 'failed')
+      throw new DOMException(
+        'Session is failed or closed and can not open streams',
+        'InvalidStateError'
+      )
     if (this.objint == null) {
       throw new Error('this.objint not set')
     }
@@ -459,6 +464,11 @@ export class HttpWTSession {
    * @returns {Promise<WebTransportSendStream>}
    */
   createUnidirectionalStream(opts) {
+    if (this.state === 'closed' || this.state === 'failed')
+      throw new DOMException(
+        'Session is failed or closed and can not open streams',
+        'InvalidStateError'
+      )
     if (this.objint == null) {
       throw new Error('this.objint not set')
     }
