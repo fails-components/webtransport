@@ -681,6 +681,9 @@ export class HttpWTSession {
    */
   onDatagramReceived(args) {
     log('datagram received', args.datagram)
+    if (this.state === 'closed' || this.state === 'failed') {
+      log('datagram dropped, session in wrong state')
+    }
     // streams spec says zero length chunk on byob stream is illegal
     if (
       args.datagram.byteLength === 0 &&
