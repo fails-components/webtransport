@@ -14,6 +14,17 @@ project (webtransport)
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 set(CMAKE_CXX_STANDARD 20)
 
+if(NOT WIN32)
+    find_program(CLANG_EXECUTABLE clang)
+    find_program(CLANGXX_EXECUTABLE clang++)
+
+    if(CLANG_EXECUTABLE AND CLANGXX_EXECUTABLE)
+        set(CMAKE_C_COMPILER ${CLANG_EXECUTABLE} CACHE PATH "C Compiler" FORCE)
+        set(CMAKE_CXX_COMPILER ${CLANGXX_EXECUTABLE} CACHE PATH "C++ Compiler" FORCE)
+        message(STATUS "Non-WIN32 environment detected. Using Clang as preferred compiler.")
+    endif()
+endif()
+
 set(BUILD_TESTING OFF)
 
 set(protobuf_BUILD_PROTOC_BINARIES ON)
@@ -341,7 +352,6 @@ third_party/quiche/quiche/http2/hpack/hpack_output_stream.cc
 third_party/quiche/quiche/http2/hpack/hpack_output_stream.h
 third_party/quiche/quiche/http2/hpack/hpack_static_table.cc
 third_party/quiche/quiche/http2/hpack/hpack_static_table.h
-third_party/quiche/quiche/http2/hpack/hpack_static_table_entries.inc
 third_party/quiche/quiche/http2/hpack/http2_hpack_constants.cc
 third_party/quiche/quiche/http2/hpack/http2_hpack_constants.h
 third_party/quiche/quiche/http2/hpack/huffman/hpack_huffman_decoder.cc
