@@ -186,6 +186,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -197,6 +198,10 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org/
 
+      # Ensure npm 11.5.1 or later is installed
+      - name: Update npm
+        run: npm install -g npm@latest
+
       - name: Install
         if: needs.version-check.outputs.changed == 'true'
         run: npm ci --ignore-scripts=true
@@ -207,22 +212,14 @@ jobs:
 
       - run: npm publish --tag stable --workspace main --workspace transports/http3-quiche
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: npm publish --tag next --workspace main --workspace transports/http3-quiche
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: |
           npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latest
           npm dist-tag add @fails-components/webtransport-transport-http3-quiche@${{ needs.version-check.outputs.version }} latest
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: |
           npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latestunstable
           npm dist-tag add @fails-components/webtransport-transport-http3-quiche@${{ needs.version-check.outputs.version }} latestunstable
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
