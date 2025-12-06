@@ -1,6 +1,6 @@
 {
   "name": "@fails-components/webtransport",
-  "version": "1.4.6",
+  "version": "1.4.7",
   "description": "A component to add webtransport support (server and client) to node.js using libquiche",
   "exports": {
     ".": {
