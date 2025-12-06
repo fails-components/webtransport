@@ -14,17 +14,6 @@ project (webtransport)
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 set(CMAKE_CXX_STANDARD 20)
 
-if(NOT WIN32)
-    find_program(CLANG_EXECUTABLE clang)
-    find_program(CLANGXX_EXECUTABLE clang++)
-
-    if(CLANG_EXECUTABLE AND CLANGXX_EXECUTABLE)
-        set(CMAKE_C_COMPILER ${CLANG_EXECUTABLE} CACHE PATH "C Compiler" FORCE)
-        set(CMAKE_CXX_COMPILER ${CLANGXX_EXECUTABLE} CACHE PATH "C++ Compiler" FORCE)
-        message(STATUS "Non-WIN32 environment detected. Using Clang as preferred compiler.")
-    endif()
-endif()
-
 set(BUILD_TESTING OFF)
 
 set(protobuf_BUILD_PROTOC_BINARIES ON)
