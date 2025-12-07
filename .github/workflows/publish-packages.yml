@@ -218,8 +218,12 @@ jobs:
           npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latest
           npm dist-tag add @fails-components/webtransport-transport-http3-quiche@${{ needs.version-check.outputs.version }} latest
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: |
           npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latestunstable
           npm dist-tag add @fails-components/webtransport-transport-http3-quiche@${{ needs.version-check.outputs.version }} latestunstable
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
