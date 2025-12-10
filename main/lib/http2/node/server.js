@@ -82,10 +82,8 @@ export class Http2WebTransportServer {
       this.jsobj.onServerListening(retObj)
     })
 
-    this.serverInt.on('error', () => {
-      const retObj = {}
-      // @ts-ignore
-      this.jsobj.onServerError(retObj)
+    this.serverInt.on('error', (error) => {
+      this.jsobj.onServerError(error)
       /* TODO (stream) => {
         stream.close(constants.NGHTTP2_CONNECT_ERROR)
       }) */

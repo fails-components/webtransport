@@ -217,7 +217,7 @@ export class HttpWTStream {
            */
           set: (value) => {
             if (value !== this._sendOrder) {
-              this._sendOrder = args.sendOrder
+              this._sendOrder = value
               this.updateSendOrderAndGroup()
             }
           }
