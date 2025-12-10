@@ -503,7 +503,7 @@ export class HttpWTSession {
     if (this.objint) {
       this.objint.close({
         code: closeInfo?.closeCode ?? 0,
-        reason: closeInfo?.reason.substring(0, 1023) ?? ''
+        reason: (closeInfo?.reason ?? '').substring(0, 1023)
       })
     }
   }
