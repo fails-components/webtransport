@@ -217,7 +217,7 @@ export class HttpWTStream {
            */
           set: (value) => {
             if (value !== this._sendOrder) {
-              this._sendOrder = args.sendOrder
+              this._sendOrder = value
               this.updateSendOrderAndGroup()
             }
           }
@@ -276,10 +276,15 @@ export class HttpWTStream {
    */
   commitReadBuffer({ buffer, byob, drained, readBytes, fin }) {
     if (!this.readableclosed) {
-      if (byob && readBytes !== undefined) {
-        byob.respond(readBytes)
-      } else if (buffer) {
-        this.readableController.enqueue(buffer)
+      try {
+        if (byob && readBytes !== undefined) {
+          byob.respond(readBytes)
+        } else if (buffer) {
+          this.readableController.enqueue(buffer)
+        }
+      } catch {
+        // Stream closed between check and operation - expected race condition
+        log('commitReadBuffer: stream controller already closed')
       }
     }
     const retObj = {}
@@ -314,7 +319,12 @@ export class HttpWTStream {
         )
       }
       if (!this.readableclosed) {
-        this.readableController.close()
+        try {
+          this.readableController.close()
+        } catch {
+          // Stream already closed - expected race condition
+          log('commitReadBuffer: stream controller already closed during fin')
+        }
         this.readableclosed = true
       }
     }
@@ -325,7 +335,7 @@ export class HttpWTStream {
     this.objint.updateSendOrderAndGroup({
       sendOrder: this._sendOrder,
       // @ts-ignore
-      sendGroupId: this._sendGroup._sendGroupId
+      sendGroupId: this._sendGroup?._sendGroupId ?? 0n
     })
   }
 
@@ -354,9 +364,15 @@ export class HttpWTStream {
             )
           if (!this.readableclosed) {
             this.readableclosed = true
-            this.readableController.error(
-              new WebTransportError('Resetstream with code:' + (args.code || 0))
-            )
+            try {
+              this.readableController.error(
+                new WebTransportError(
+                  'Resetstream with code:' + (args.code || 0)
+                )
+              )
+            } catch {
+              // Controller already errored/closed - expected race condition
+            }
           }
         } else {
           log.error('resetStream without readable')
@@ -372,9 +388,15 @@ export class HttpWTStream {
             )
           if (!this.writableclosed) {
             this.writableclosed = true
-            this.writableController.error(
-              new WebTransportError('StopSending with code:' + (args.code || 0))
-            )
+            try {
+              this.writableController.error(
+                new WebTransportError(
+                  'StopSending with code:' + (args.code || 0)
+                )
+              )
+            } catch {
+              // Controller already errored/closed - expected race condition
+            }
           }
         } else {
           log.error('stopSending without writable')

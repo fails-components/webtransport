@@ -179,7 +179,11 @@ export class HttpServer {
   stopServer() {
     this.transportInt.stopServer()
     for (const i in this.sessionController) {
-      this.sessionController[i].close() // inform the controller, that we are closing
+      try {
+        this.sessionController[i].close() // inform the controller, that we are closing
+      } catch {
+        // Controller already closed - expected race condition
+      }
       delete this.sessionController[i]
     }
     this.stopped = true
@@ -272,6 +276,11 @@ export class HttpServer {
    * @param {HttpWTServerSessionVisitorEvent} args
    */
   onHttpWTSessionVisitor(args) {
+    // Check if server is stopped - session arrived too late
+    if (this.stopped) {
+      log('session dropped, server is stopped')
+      return
+    }
     // create Http3 Visitor
     const sesobj = new HttpWTSession({
       object: args.session,
@@ -282,8 +291,14 @@ export class HttpServer {
       parentobj: this
     })
     args.session.jsobj = sesobj
-    if (this.sessionController[args.path])
-      this.sessionController[args.path].enqueue(sesobj)
+    if (this.sessionController[args.path]) {
+      try {
+        this.sessionController[args.path].enqueue(sesobj)
+      } catch {
+        // Controller closed, session arrived too late - expected race condition
+        log('session dropped, session controller already closed')
+      }
+    }
   }
 
   /**

@@ -67,7 +67,7 @@ export class Http3WebTransportServerSocket extends Http3WebTransportSocket {
       .catch((error) => {
         log('Problem server:', error)
         // hostname not known
-        this.jsobj.onServerError()
+        this.jsobj.onServerError(error)
       })
   }
 

@@ -503,7 +503,7 @@ export class HttpWTSession {
     if (this.objint) {
       this.objint.close({
         code: closeInfo?.closeCode ?? 0,
-        reason: closeInfo?.reason.substring(0, 1023) ?? ''
+        reason: (closeInfo?.reason ?? '').substring(0, 1023)
       })
     }
   }
@@ -604,8 +604,20 @@ export class HttpWTSession {
         args.error
     )
 
-    this.sendStreamsController.forEach((ele) => ele.error(wtError))
-    this.receiveStreamsController.forEach((ele) => ele.error(wtError))
+    this.sendStreamsController.forEach((ele) => {
+      try {
+        ele.error(wtError)
+      } catch {
+        // Controller already errored/closed - expected during cleanup
+      }
+    })
+    this.receiveStreamsController.forEach((ele) => {
+      try {
+        ele.error(wtError)
+      } catch {
+        // Controller already errored/closed - expected during cleanup
+      }
+    })
 
     this.streamObjs.forEach((ele) => (ele.readableclosed = true))
 
@@ -630,6 +642,11 @@ export class HttpWTSession {
    * @param {NewStreamEvent} args
    */
   onStream(args) {
+    // Check if session is already closed - stream arrived too late
+    if (this.state === 'closed' || this.state === 'failed') {
+      log('stream dropped, session in wrong state')
+      return
+    }
     const strobj = new HttpWTStream({
       object: args.stream,
       parentobj: this,
@@ -641,10 +658,15 @@ export class HttpWTSession {
     })
     this.addStreamObj(strobj)
     if (args.incoming) {
-      if (args.bidirectional) {
-        this.incomBiDiController.enqueue(strobj)
-      } else {
-        this.incomUniDiController.enqueue(strobj.readable)
+      try {
+        if (args.bidirectional) {
+          this.incomBiDiController.enqueue(strobj)
+        } else {
+          this.incomUniDiController.enqueue(strobj.readable)
+        }
+      } catch {
+        // Stream controller closed, stream arrived too late - expected race condition
+        log('stream dropped, stream controller already closed')
       }
     } else {
       if (args.bidirectional) {
@@ -712,12 +734,22 @@ export class HttpWTSession {
         args.datagram.byteLength
       )
       destview.set(args.datagram)
-      byob.respond(args.datagram.byteLength)
+      try {
+        byob.respond(args.datagram.byteLength)
+      } catch {
+        // Stream closed, datagram arrived too late - expected race condition with UDP
+        log('datagram dropped, stream controller already closed (byob)')
+      }
     } else {
-      // @ts-ignore
-      ;(
-        this.incomDatagramController_ || this.incomDatagramControllerBytes_
-      ).enqueue(new Uint8Array(args.datagram))
+      try {
+        // @ts-ignore
+        ;(
+          this.incomDatagramController_ || this.incomDatagramControllerBytes_
+        ).enqueue(new Uint8Array(args.datagram))
+      } catch {
+        // Stream closed, datagram arrived too late - expected race condition with UDP
+        log('datagram dropped, stream controller already closed')
+      }
     }
   }
 
