@@ -516,7 +516,6 @@ export class HttpWTSession {
       throw new Error('InvalidState')
     const _sendGroupId = this._sendGroupNum++
     const sendGroup = {
-      // @ts-ignore
       _sendGroupId,
       getStats: async () => {
         // TODO implement
