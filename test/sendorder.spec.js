@@ -170,4 +170,66 @@ describe('sendgroup streams', function () {
       expect(Number(afterHighArrivedLowCounter)).to.be.below(dataSize / 2)
     }
   })
+  it('should correctly update sendOrder on writable stream', async () => {
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/bidirectional_client_initiated_echo`,
+      wtOptions
+    )
+    await client.ready
+
+    // Create a stream with initial sendOrder
+    const stream = await client.createBidirectionalStream({
+      sendOrder: 100n
+    })
+
+    // Check if sendOrder property exists (it may not in all implementations)
+    if ('sendOrder' in stream.writable) {
+      // Get initial value
+      const initialOrder = stream.writable.sendOrder
+
+      // Set a new value
+      stream.writable.sendOrder = 200n
+
+      // Verify the value was updated (this tests the bug fix)
+      // Before the fix, the value would remain unchanged
+      expect(stream.writable.sendOrder).to.equal(200n)
+      expect(stream.writable.sendOrder).to.not.equal(initialOrder)
+
+      // Test setting to another value
+      stream.writable.sendOrder = 300n
+      expect(stream.writable.sendOrder).to.equal(300n)
+    } else {
+      console.log('sendOrder property not available, skipping')
+    }
+
+    client.close()
+    await client.closed
+  })
+
+  it('should handle stream without sendGroup', async () => {
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/bidirectional_client_initiated_echo`,
+      wtOptions
+    )
+    await client.ready
+
+    // Create a stream without specifying sendGroup
+    const stream = await client.createBidirectionalStream()
+
+    // Should not crash when sendGroup is undefined
+    if ('sendOrder' in stream.writable) {
+      // This should not throw even when sendGroup is undefined
+      try {
+        stream.writable.sendOrder = 100n
+      } catch (err) {
+        // If it throws, the null safety fix isn't working
+        console.error('Caught error:', err)
+        expect.fail(
+          `Setting sendOrder should not throw when sendGroup is undefined: ${err.message}`
+        )
+      }
+    }
+    client.close()
+    await client.closed
+  })
 })
