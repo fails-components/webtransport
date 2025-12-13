@@ -102,6 +102,10 @@ export class HttpWTStream {
             else code = reason.code
           }
           this.readableclosed = true
+          this.parentobj.removeReceiveStream(
+            this.readable,
+            this.readableController
+          )
           this.objint.stopSending(code)
           return promise
         },
@@ -169,6 +173,10 @@ export class HttpWTStream {
               return Promise.resolve()
             }
             this.objint.streamFinal()
+            this.parentobj.removeSendStream(
+              this.writable,
+              this.writableController
+            )
             // eslint-disable-next-line no-unused-vars
             this.pendingoperation = new Promise((resolve, reject) => {
               this.pendingres = resolve
@@ -188,6 +196,10 @@ export class HttpWTStream {
               else if (reason.code > 255) code = 255
               else code = reason.code
             }
+            this.parentobj.removeSendStream(
+              this.writable,
+              this.writableController
+            )
             /** @type {Promise<void>} */
             // eslint-disable-next-line no-unused-vars
             const promise = new Promise((resolve, reject) => {
