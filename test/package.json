@@ -1,6 +1,6 @@
 {
   "name": "@fails-components/webtransport-tests",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "An automated test for the webtransport component",
   "exports": {
     ".": {
