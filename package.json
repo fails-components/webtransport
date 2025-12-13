@@ -47,7 +47,7 @@
   ],
   "overrides": {
     "playwright-test": {
-      "playwright-core": "1.52.0"
+      "playwright-core": "1.57.0"
     }
   }
 }
