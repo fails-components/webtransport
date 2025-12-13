@@ -364,7 +364,7 @@ export class WebTransportPolyfill {
   }
 
   get protocol() {
-    return this.curtransport?.protocol || undefined
+    return this.curtransport?.protocol || ''
   }
 
   getStats() {

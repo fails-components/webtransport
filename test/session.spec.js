@@ -168,7 +168,7 @@ describe('session', function () {
       console.log('Application protocol is not implemented skipping')
       return // not implemented is also fine
     }
-    expect(client.protocol).to.equal(undefined)
+    expect(client.protocol).to.equal('')
     await client.closed
   })
   if (browser !== 'chromium' && browser !== 'firefox' && browser !== 'webkit') {
