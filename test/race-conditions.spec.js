@@ -127,8 +127,8 @@ describe('race conditions', function () {
             : tempClient.datagrams.writable.getWriter()
 
           // Fire off writes without waiting
-          writer.write(Uint8Array.from([1, 2, 3])).catch(() => {})
-          writer.write(Uint8Array.from([4, 5, 6])).catch(() => {})
+          writer.write(Uint8Array.from([1, 2, 3])).catch(() => { })
+          writer.write(Uint8Array.from([4, 5, 6])).catch(() => { })
 
           // Close immediately
           tempClient.close()
@@ -248,28 +248,20 @@ describe('race conditions', function () {
 
       // Should not crash when sendGroup is undefined
       if ('sendOrder' in stream.writable) {
-        // Note: HTTP2 has a known limitation with the priority scheduler
-        // when streams are created without a sendGroup. The fix for
-        // updateSendOrderAndGroup (passing 0n when sendGroup is undefined)
-        // works correctly, but the HTTP2 priority scheduler has a separate
-        // issue that causes an error when trying to update streams without
-        // a send group. This is a pre-existing limitation, not caused by our fix.
-        if (process.env.USE_HTTP2 !== 'true') {
-          // This should not throw even when sendGroup is undefined
-          try {
-            stream.writable.sendOrder = 100n
-          } catch (err) {
-            // If it throws, the null safety fix isn't working
-            console.error('Caught error:', err)
-            expect.fail(
-              `Setting sendOrder should not throw when sendGroup is undefined: ${err.message}`
-            )
-          }
-        } else {
-          console.log(
-            'Skipping sendOrder update test for HTTP2 (known scheduler limitation)'
+        // This should not throw even when sendGroup is undefined
+        try {
+          stream.writable.sendOrder = 100n
+        } catch (err) {
+          // If it throws, the null safety fix isn't working
+          console.error('Caught error:', err)
+          expect.fail(
+            `Setting sendOrder should not throw when sendGroup is undefined: ${err.message}`
           )
         }
+      } else {
+        console.log(
+          'Skipping sendOrder update test for HTTP2 (known scheduler limitation)'
+        )
       }
 
       client.close()

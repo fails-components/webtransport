@@ -527,7 +527,7 @@ export class PriorityScheduler {
     }
     const isScheduled = scheduler.IsScheduled(streamId)
     const sendOrder = scheduler.GetPriorityFor(streamId)
-    if (!sendOrder) {
+    if (sendOrder == null) {
       throw new Error(
         'Stream registered at the top level scheduler, but not at the per-group one'
       )
