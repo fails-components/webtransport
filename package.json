@@ -1,6 +1,6 @@
 {
   "name": "@fails-components/webtransport-workspace",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "A component to add webtransport support (server and client) to node.js using libquiche",
   "repository": {
     "type": "git",
