@@ -278,8 +278,8 @@ export class HttpWTSession {
     /** @type {Map<bigint,WebTransportSendGroup>} */
     this._sendGroupIndex = new Map()
 
-    /** @type {undefined|string} */
-    this._selectedProtocol = undefined
+    /** @type {string} */
+    this._selectedProtocol = ''
   }
 
   /**
