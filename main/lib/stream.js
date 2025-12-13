@@ -172,6 +172,7 @@ export class HttpWTStream {
             if (this.writableclosed) {
               return Promise.resolve()
             }
+            this.writableclosed = true
             this.objint.streamFinal()
             this.parentobj.removeSendStream(
               this.writable,
@@ -190,6 +191,7 @@ export class HttpWTStream {
                 resolve()
               })
             }
+            this.writableclosed = true
             let code = 0
             if (reason && reason.code) {
               if (reason.code < 0) code = 0
