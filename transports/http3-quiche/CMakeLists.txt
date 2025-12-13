@@ -303,8 +303,7 @@ third_party/quiche/quiche/http2/hpack/decoder/hpack_block_decoder.cc
 third_party/quiche/quiche/http2/hpack/decoder/hpack_block_decoder.h
 third_party/quiche/quiche/http2/hpack/decoder/hpack_decoder.cc
 third_party/quiche/quiche/http2/hpack/decoder/hpack_decoder.h
-#exclude tempory to fix build problem
-#third_party/quiche/quiche/http2/hpack/decoder/hpack_decoder_listener.cc
+third_party/quiche/quiche/http2/hpack/decoder/hpack_decoder_listener.cc
 third_party/quiche/quiche/http2/hpack/decoder/hpack_decoder_listener.h
 third_party/quiche/quiche/http2/hpack/decoder/hpack_decoder_state.cc
 third_party/quiche/quiche/http2/hpack/decoder/hpack_decoder_state.h
@@ -836,6 +835,12 @@ third_party/quiche/quiche/web_transport/web_transport_headers.cc
 third_party/quiche/quiche/web_transport/web_transport_headers.h
 third_party/quiche/quiche/web_transport/web_transport_priority_scheduler.cc
 third_party/quiche/quiche/web_transport/web_transport_priority_scheduler.h
+)
+# workaround gquiche problem
+target_precompile_headers(
+    gquiche
+    PRIVATE
+        <cstdint>
 )
 
 IF(APPLE OR WIN32)
