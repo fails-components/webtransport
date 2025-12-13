@@ -324,8 +324,9 @@ export class HttpWTStream {
   updateSendOrderAndGroup() {
     this.objint.updateSendOrderAndGroup({
       sendOrder: this._sendOrder,
-      // @ts-ignore
-      sendGroupId: this._sendGroup._sendGroupId
+      // 0n is reserved for no sendgroup
+      // @ts-ignore _sendGroupId is internal, FIXME convert to symbol
+      sendGroupId: this._sendGroup?._sendGroupId || 0n
     })
   }
 
