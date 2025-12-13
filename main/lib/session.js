@@ -163,7 +163,7 @@ export class HttpWTSession {
        *  @return {import('./dom').WebTransportDatagramsWritable}
        */
       createWritable: (options) => {
-        let sendOrder = options?.sendOrder ?? 0n
+        let sendOrder = options?.sendOrder ?? 0
         let sendGroup = options?.sendGroup
         /** @type {WebTransportSendStream} */
         // @ts-expect-error some props are initially missing
@@ -199,7 +199,7 @@ export class HttpWTSession {
               return sendOrder
             },
             /**
-             * @param {bigint} value
+             * @param {number} value
              */
             set: (value) => {
               sendOrder = value
@@ -318,8 +318,8 @@ export class HttpWTSession {
    */
   onSessionStats({
     timestamp,
-    expiredOutgoing = BigInt(0),
-    lostOutgoing = BigInt(0),
+    expiredOutgoing = 0,
+    lostOutgoing = 0,
     // non Datagram
     minRtt = 0,
     smoothedRtt = 0,
@@ -331,13 +331,13 @@ export class HttpWTSession {
     if (res)
       res({
         timestamp,
-        bytesSent: BigInt(0),
-        packetsSent: BigInt(0),
-        packetsLost: BigInt(0),
+        bytesSent: 0,
+        packetsSent: 0,
+        packetsLost: 0,
         numOutgoingStreamsCreated: 0,
         numIncomingStreamsCreated: 0,
-        bytesReceived: BigInt(0),
-        packetsReceived: BigInt(0),
+        bytesReceived: 0,
+        packetsReceived: 0,
         smoothedRtt,
         rttVariation,
         minRtt,
@@ -345,7 +345,7 @@ export class HttpWTSession {
         datagrams: {
           timestamp,
           expiredOutgoing,
-          droppedIncoming: BigInt(0),
+          droppedIncoming: 0,
           lostOutgoing
         }
       })
@@ -354,18 +354,14 @@ export class HttpWTSession {
   /**
    * @param {DatagramStatsEvent} evt
    */
-  onDatagramStats({
-    timestamp,
-    expiredOutgoing = BigInt(0),
-    lostOutgoing = BigInt(0)
-  }) {
+  onDatagramStats({ timestamp, expiredOutgoing = 0, lostOutgoing = 0 }) {
     const res = this.resolveDatagramStats.pop()
     this.rejectDatagramStats.pop()
     if (res)
       res({
         timestamp,
         expiredOutgoing,
-        droppedIncoming: BigInt(0),
+        droppedIncoming: 0,
         lostOutgoing
       })
   }
@@ -447,7 +443,7 @@ export class HttpWTSession {
     })
     const notblocked = this.objint.orderBidiStream({
       sendGroup: opts?.sendGroup || null, // maybe replace, when implemented
-      sendOrder: BigInt(opts?.sendOrder || 0n),
+      sendOrder: opts?.sendOrder || 0,
       waitUntilAvailable: opts?.waitUntilAvailable || false
     })
     if (!notblocked) {
@@ -479,7 +475,7 @@ export class HttpWTSession {
     })
     const notblocked = this.objint.orderUnidiStream({
       sendGroup: opts?.sendGroup || null, // maybe replace, when implemented
-      sendOrder: opts?.sendOrder || 0n,
+      sendOrder: opts?.sendOrder || 0,
       waitUntilAvailable: opts?.waitUntilAvailable || false
     })
     if (!notblocked) {
@@ -520,9 +516,9 @@ export class HttpWTSession {
       getStats: async () => {
         // TODO implement
         return {
-          bytesWritten: 0n,
-          bytesSent: 0n,
-          bytesAcknowledged: 0n
+          bytesWritten: 0,
+          bytesSent: 0,
+          bytesAcknowledged: 0
         }
       }
     }

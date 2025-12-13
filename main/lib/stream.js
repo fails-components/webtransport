@@ -36,7 +36,7 @@ export class HttpWTStream {
    * @param {boolean} args.bidirectional
    * @param {boolean} args.incoming
    * @param {WebTransportSendGroup|undefined} args.sendGroup
-   * @param {bigint} args.sendOrder
+   * @param {number} args.sendOrder
    */
   constructor(args) {
     this.objint = args.object
@@ -216,9 +216,9 @@ export class HttpWTStream {
       this.writable.getStats = () => {
         return Promise.resolve({
           timestamp: 0,
-          bytesWritten: 0n,
-          bytesSent: 0n,
-          bytesAcknowledged: 0n
+          bytesWritten: 0,
+          bytesSent: 0,
+          bytesAcknowledged: 0
         })
       }
       Object.defineProperties(this.writable, {
@@ -227,7 +227,7 @@ export class HttpWTStream {
             return this._sendOrder
           },
           /**
-           * @param {bigint} value
+           * @param {number} value
            */
           set: (value) => {
             if (value !== this._sendOrder) {

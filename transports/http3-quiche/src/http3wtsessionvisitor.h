@@ -197,8 +197,7 @@ namespace quic
                     }
                     if (lobj.Has("sendOrder") && !(lobj).Get("sendOrder").IsEmpty()) {
                         Napi::Value sendOrderValue = (lobj).Get("sendOrder");
-                        bool lossless;
-                        sendOrder = sendOrderValue.As<Napi::BigInt>().Uint64Value(&lossless);
+                        sendOrder = sendOrderValue.As<Napi::Number>().Int64Value();
                     }
                 }
             }
@@ -235,8 +234,7 @@ namespace quic
                     }
                     if (lobj.Has("sendOrder") && !(lobj).Get("sendOrder").IsEmpty()) {
                         Napi::Value sendOrderValue = (lobj).Get("sendOrder");
-                        bool lossless;
-                        sendOrder = sendOrderValue.As<Napi::BigInt>().Uint64Value(&lossless);
+                        sendOrder = sendOrderValue.As<Napi::Number>().Int64Value();
                     }
                 }
             }

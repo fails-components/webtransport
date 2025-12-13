@@ -41,7 +41,7 @@ export interface NativeHttpWTStream {
   writeChunk: (buf: Uint8Array) => void
   streamFinal: () => void
   updateSendOrderAndGroup: (args :{
-    sendOrder: bigint,
+    sendOrder: number,
     sendGroupId: bigint
   }) => void
 }
@@ -169,20 +169,20 @@ export interface SessionCloseEvent {
 
 export interface SessionStatsEvent {
   timestamp: number
-  expiredOutgoing: bigint
-  lostOutgoing: bigint
+  expiredOutgoing: number
+  lostOutgoing: number
 
   // non Datagram
   minRtt: number
   smoothedRtt: number
   rttVariation: number
-  estimatedSendRateBps: bigint
+  estimatedSendRateBps: number
 }
 
 export interface DatagramStatsEvent {
   timestamp: number
-  expiredOutgoing: bigint
-  lostOutgoing: bigint
+  expiredOutgoing: number
+  lostOutgoing: number
 }
 
 export interface DatagramReceivedEvent {
@@ -196,7 +196,7 @@ export interface NewStreamEvent {
   bidirectional: boolean
   incoming: boolean
   sendGroupId?: bigint;
-  sendOrder: bigint;
+  sendOrder: number;
 }
 
 export interface WebTransportSessionEventHandler {

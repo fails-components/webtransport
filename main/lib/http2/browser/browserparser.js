@@ -165,7 +165,7 @@ export class BrowserParser extends ParserBase {
             let object = this.wtstreams.get(streamid)
             if (!object) {
               object = this.newStream(streamid, {
-                sendOrder: 0n,
+                sendOrder: 0,
                 sendGroupId: 0n
               })
               if (!object) return // stream broken

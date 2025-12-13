@@ -229,18 +229,18 @@ namespace quic
         Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
 
         Napi::Object retObj = Napi::Object::New(Env());
-        //  expiredOutgoing: bigint
-        // lostOutgoing: bigint
+        //  expiredOutgoing: number
+        // lostOutgoing: number
 
         // non Datagram
         //  minRtt: number
         //  smoothedRtt: number
         //  rttVariation: number
-        // estimatedSendRateBps: bigint
+        // estimatedSendRateBps: number
         retObj.Set("timestamp", absl::ToDoubleMilliseconds(absl::Duration())); // absl::Duration
         // datagram
-        retObj.Set("expiredOutgoing", Napi::BigInt::New(Env(), sessstats.datagram_stats.expired_outgoing)); // uint64_t
-        retObj.Set("lostOutgoing", Napi::BigInt::New(Env(), sessstats.datagram_stats.lost_outgoing));       // uint64_t
+        retObj.Set("expiredOutgoing", sessstats.datagram_stats.expired_outgoing); // uint64_t
+        retObj.Set("lostOutgoing", sessstats.datagram_stats.lost_outgoing);       // uint64_t
 
         // non Datagram
         retObj.Set("minRtt", absl::ToDoubleMilliseconds(sessstats.min_rtt));             // absl::Duration
@@ -260,8 +260,8 @@ namespace quic
         Napi::Object retObj = Napi::Object::New(Env());
         retObj.Set("timestamp", absl::ToDoubleMilliseconds(absl::Duration())); // absl::Duration
         // datagram
-        retObj.Set("expiredOutgoing", Napi::BigInt::New(Env(), datastats.expired_outgoing)); // uint64_t
-        retObj.Set("lostOutgoing", Napi::BigInt::New(Env(), datastats.lost_outgoing));       // uint64_t
+        retObj.Set("expiredOutgoing", datastats.expired_outgoing); // uint64_t
+        retObj.Set("lostOutgoing", datastats.lost_outgoing);       // uint64_t
 
         objVal.Get("onDatagramStats").As<Napi::Function>().Call(objVal, {retObj});
     }

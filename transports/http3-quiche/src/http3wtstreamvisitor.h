@@ -294,8 +294,7 @@ namespace quic
                 if (obj.Has("sendOrder") && !(obj).Get("sendOrder").IsEmpty())
                 {
                     Napi::Value sendOrderValue = (obj).Get("sendOrder");
-                    bool approx;
-                    sendOrder = sendOrderValue.As<Napi::BigInt>().Uint64Value(&approx);
+                    sendOrder = sendOrderValue.As<Napi::Number>().Int64Value();
                 }
                 if (obj.Has("sendGroupId") && !(obj).Get("sendGroupId").IsEmpty())
                 {

@@ -75,9 +75,9 @@ export class Http2WebTransportSession {
     })
     /** @type {Array<Uint8Array>} */
     this.datagramsWaiting_ = []
-    /** @type {Array<{sendOrder: bigint, sendGroupId: bigint}>} */
+    /** @type {Array<{sendOrder: number, sendGroupId: bigint}>} */
     this.orderUniStreams = []
-    /** @type {Array<{sendOrder: bigint, sendGroupId: bigint}>} */
+    /** @type {Array<{sendOrder: number, sendGroupId: bigint}>} */
     this.orderBiStreams = []
     if (stream) {
       if (isclient) {
@@ -172,7 +172,7 @@ export class Http2WebTransportSession {
       })
       this.capsParser.newStream(
         streamid,
-        priority || { sendGroupId: 0n, sendOrder: 0n }
+        priority || { sendGroupId: 0n, sendOrder: 0 }
       )
     }
   }
@@ -188,7 +188,7 @@ export class Http2WebTransportSession {
       this.orderUniStreams.push({
         // @ts-ignore
         sendGroupId: sendGroup?._sendGroupId || 0n,
-        sendOrder: sendOrder ?? 0n
+        sendOrder: sendOrder ?? 0
       })
       this.trySendingUnidirectionalStreams()
       return true
@@ -210,7 +210,7 @@ export class Http2WebTransportSession {
       })
       this.capsParser.newStream(
         streamid,
-        priority || { sendGroupId: 0n, sendOrder: 0n }
+        priority || { sendGroupId: 0n, sendOrder: 0 }
       )
     }
   }
@@ -226,7 +226,7 @@ export class Http2WebTransportSession {
       this.orderBiStreams.push({
         // @ts-ignore
         sendGroupId: sendGroup?._sendGroupId || 0n,
-        sendOrder: sendOrder ?? 0n
+        sendOrder: sendOrder ?? 0
       })
       this.trySendingBidirectionalStreams()
       return true

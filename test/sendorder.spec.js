@@ -179,7 +179,7 @@ describe('sendgroup streams', function () {
 
     // Create a stream with initial sendOrder
     const stream = await client.createBidirectionalStream({
-      sendOrder: 100n
+      sendOrder: 100
     })
 
     // Check if sendOrder property exists (it may not in all implementations)
@@ -188,16 +188,16 @@ describe('sendgroup streams', function () {
       const initialOrder = stream.writable.sendOrder
 
       // Set a new value
-      stream.writable.sendOrder = 200n
+      stream.writable.sendOrder = 200
 
       // Verify the value was updated (this tests the bug fix)
       // Before the fix, the value would remain unchanged
-      expect(stream.writable.sendOrder).to.equal(200n)
+      expect(stream.writable.sendOrder).to.equal(200)
       expect(stream.writable.sendOrder).to.not.equal(initialOrder)
 
       // Test setting to another value
-      stream.writable.sendOrder = 300n
-      expect(stream.writable.sendOrder).to.equal(300n)
+      stream.writable.sendOrder = 300
+      expect(stream.writable.sendOrder).to.equal(300)
     } else {
       console.log('sendOrder property not available, skipping')
     }
@@ -220,7 +220,7 @@ describe('sendgroup streams', function () {
     if ('sendOrder' in stream.writable) {
       // This should not throw even when sendGroup is undefined
       try {
-        stream.writable.sendOrder = 100n
+        stream.writable.sendOrder = 100
       } catch (err) {
         // If it throws, the null safety fix isn't working
         console.error('Caught error:', err)

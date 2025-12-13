@@ -112,7 +112,7 @@ export class ParserBase {
 
   /**
    * @param {bigint} streamid
-   * @param {{sendOrder: bigint,sendGroupId: bigint}} priority
+   * @param {{sendOrder: number,sendGroupId: bigint}} priority
    */
   newStream(streamid, priority) {
     const incoming = this.isclient ? !(streamid & 0x1n) : !!(streamid & 0x1n)
@@ -321,7 +321,7 @@ export class ParserBase {
   /**
    *
    * @param {bigint} streamid
-   * @param {{sendOrder: bigint, sendGroupId: bigint}} arg2
+   * @param {{sendOrder: number, sendGroupId: bigint}} arg2
    */
   streamUpdateSendOrderAndGroup(streamid, { sendOrder, sendGroupId }) {
     this.scheduler.UpdateSendGroup(streamid, sendGroupId)
