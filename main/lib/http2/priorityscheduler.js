@@ -8,7 +8,7 @@
 /**
  * @typedef {object} Priority
  * @property {SendGroupId} sendGroupId
- * @property {bigint} sendOrder
+ * @property {number} sendOrder
  */
 
 /**
@@ -16,7 +16,7 @@
  */
 
 /**
- * @typedef {bigint} SendOrder
+ * @typedef {number} SendOrder
  */
 
 /**
@@ -506,7 +506,7 @@ export class PriorityScheduler {
   // Alters the priority of an already registered stream.
   /**
    * @param {StreamId} streamId
-   * @param {bigint} newSendOrder
+   * @param {number} newSendOrder
    */
   UpdateSendOrder(streamId, newSendOrder) {
     const scheduler = this.SchedulerForStream(streamId)

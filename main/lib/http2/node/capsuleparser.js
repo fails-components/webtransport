@@ -157,7 +157,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                   let object = this.wtstreams.get(streamid)
                   if (!object) {
                     object = this.newStream(streamid, {
-                      sendOrder: 0n,
+                      sendOrder: 0,
                       sendGroupId: 0n
                     })
                     if (!object) return // stream broken

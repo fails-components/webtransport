@@ -399,7 +399,7 @@ export class Http2WebTransportStream {
 
   /**
    *
-   * @param {{sendOrder: bigint, sendGroupId: bigint}} args
+   * @param {{sendOrder: number, sendGroupId: bigint}} args
    */
   updateSendOrderAndGroup({ sendOrder, sendGroupId }) {
     this.capsuleParser.streamUpdateSendOrderAndGroup(this.streamid, {

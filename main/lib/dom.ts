@@ -3,31 +3,31 @@
 
 export interface WebTransportDatagramStats {
   timestamp: number
-  expiredOutgoing: bigint
-  droppedIncoming: bigint
-  lostOutgoing: bigint
+  expiredOutgoing: number
+  droppedIncoming: number
+  lostOutgoing: number
 }
 
 export interface WebTransportStats {
   timestamp: number
-  bytesSent: bigint
-  packetsSent: bigint
-  packetsLost: bigint
+  bytesSent: number
+  packetsSent: number
+  packetsLost: number
   numOutgoingStreamsCreated: number
   numIncomingStreamsCreated: number
-  bytesReceived: bigint
-  packetsReceived: bigint
+  bytesReceived: number
+  packetsReceived: number
   smoothedRtt: number
   rttVariation: number
   minRtt: number
-  estimatedSendRate: bigint
+  estimatedSendRate: number
   datagrams: WebTransportDatagramStats
 }
 
 export interface  WebTransportSendStreamStats {
-  bytesWritten: bigint
-  bytesSent: bigint
-  bytesAcknowledged: bigint
+  bytesWritten: number
+  bytesSent: number
+  bytesAcknowledged: number
 }
 
 export interface WebTransportSendGroup {
@@ -41,7 +41,7 @@ export interface WebTransportCloseInfo {
 
 export interface WebTransportDatagramsWritable extends WritableStream {
   sendGroup?: WebTransportSendGroup;
-  sendOrder: bigint;
+  sendOrder: number;
 };
 
 export interface WebTransportSendOptions {
@@ -61,7 +61,7 @@ export interface WebTransportDatagramDuplexStream {
 
 export interface WebTransportSendStream extends WritableStream<Uint8Array> {
   sendGroup?: WebTransportSendGroup;
-  sendOrder: bigint;
+  sendOrder: number;
   getStats: () => Promise<WebTransportSendStreamStats>
 }
 
@@ -106,15 +106,9 @@ export interface WebTransportOptions {
   protocols?: string[] 
 }
 
-export interface WebTransportSendStreamStats {
-  bytesWritten: bigint;
-  bytesSent: bigint;
-  bytesAcknowledged: bigint;
-}
-
 export interface WebTransportSendStreamOptions {
   sendGroup:  WebTransportSendGroup|null
-  sendOrder?: bigint
+  sendOrder?: number
   waitUntilAvailable?: boolean
 }
 
