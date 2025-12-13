@@ -233,6 +233,9 @@ export class HttpServer {
     this.sessionStreams[path] = new ReadableStream({
       start: async (controller) => {
         this.sessionController[path] = controller
+      },
+      cancel: () => {
+        delete this.sessionController[path]
       }
     })
     if (!args || !args.noAutoPaths) {
