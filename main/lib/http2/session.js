@@ -110,7 +110,7 @@ export class Http2WebTransportSession {
 
   sendInitialParameters() {
     let skip = false //skips the initial parameters at environment with settings
-    if (process) {
+    if (typeof process !== 'undefined') {
       if (process.version) {
         const majorVersion = parseInt(
           process.version.split('.')[0].substring(1)
