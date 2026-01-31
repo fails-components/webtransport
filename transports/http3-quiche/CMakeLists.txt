@@ -836,12 +836,6 @@ third_party/quiche/quiche/web_transport/web_transport_headers.h
 third_party/quiche/quiche/web_transport/web_transport_priority_scheduler.cc
 third_party/quiche/quiche/web_transport/web_transport_priority_scheduler.h
 )
-# workaround gquiche problem
-target_precompile_headers(
-    gquiche
-    PRIVATE
-        <cstdint>
-)
 
 IF(APPLE OR WIN32)
 target_sources(gquiche PRIVATE third_party/googleurl/url/url_idna_ascii_only.cc)
