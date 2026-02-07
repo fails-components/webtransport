@@ -437,8 +437,6 @@ third_party/quiche/quiche/quic/core/crypto/chacha_base_decrypter.cc
 third_party/quiche/quiche/quic/core/crypto/chacha_base_decrypter.h
 third_party/quiche/quiche/quic/core/crypto/chacha_base_encrypter.cc
 third_party/quiche/quiche/quic/core/crypto/chacha_base_encrypter.h
-third_party/quiche/quiche/quic/core/crypto/channel_id.cc
-third_party/quiche/quiche/quic/core/crypto/channel_id.h
 third_party/quiche/quiche/quic/core/crypto/client_proof_source.cc
 third_party/quiche/quiche/quic/core/crypto/client_proof_source.h
 third_party/quiche/quiche/quic/core/crypto/crypto_framer.cc
