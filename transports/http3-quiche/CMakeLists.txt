@@ -829,6 +829,7 @@ third_party/quiche/quiche/quic/platform/api/quic_stack_trace.h
 third_party/quiche/quiche/quic/platform/api/quic_thread.h
 third_party/quiche/quiche/quic/tools/quic_simple_crypto_server_stream_helper.cc
 third_party/quiche/quiche/quic/tools/quic_simple_crypto_server_stream_helper.h
+third_party/quiche/quiche/web_transport/stream_helpers.h
 third_party/quiche/quiche/web_transport/web_transport_headers.cc
 third_party/quiche/quiche/web_transport/web_transport_headers.h
 third_party/quiche/quiche/web_transport/web_transport_priority_scheduler.cc
