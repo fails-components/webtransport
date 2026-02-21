@@ -4,6 +4,7 @@
 
 #include "src/http3wtstreamvisitor.h"
 #include "src/http3server.h"
+#include "quiche/web_transport/stream_helpers.h"
 
 namespace quic
 {
@@ -140,7 +141,7 @@ namespace quic
         {
             auto cur = chunks_.front();
             absl::Status status = 
-                WriteIntoStream(*stream_, absl::string_view(cur.buffer, cur.len));
+                webtransport::WriteIntoStream(*stream_, absl::string_view(cur.buffer, cur.len));
             QUIC_DVLOG(1) << "Attempted writing on WebTransport bidirectional stream "
                           << ", success: " << status;
             if (!status.ok())
@@ -155,7 +156,7 @@ namespace quic
 
         if (send_fin_)
         {
-            absl::Status status = SendFinOnStream(*stream_);
+            absl::Status status = webtransport::SendFinOnStream(*stream_);
             if (status.ok()) {
                 fin_was_sent_ = true;
                 getJS()->processStreamNetworkFinish(NetworkTask::streamFinal);
