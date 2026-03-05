@@ -8,7 +8,7 @@ const log = logger(`webtransport:Http3WebTransportServerSocket(${process.pid})`)
 
 export class Http3WebTransportServerSocket extends Http3WebTransportSocket {
   /**
-   * @param {import('../../../main/lib/types.js').HttpWebTransportInit|undefined} args
+   * @param {import('../../../main/lib/types.js').Http3QuicheServerWebTransportInit|undefined} args
    */
   constructor(args) {
     super(args)
@@ -22,6 +22,8 @@ export class Http3WebTransportServerSocket extends Http3WebTransportSocket {
 
     /** @type {import('node:dns').LookupAddress|undefined} */
     this.address = undefined
+
+    this.socketOptions = args?.quicheNodeSocketOptions ?? {}
   }
 
   init() {
@@ -29,7 +31,11 @@ export class Http3WebTransportServerSocket extends Http3WebTransportSocket {
       .then((result) => {
         this.address = result
         this.socketInt = createSocket({
-          type: result.family === 4 ? 'udp4' : 'udp6'
+          ...{
+            type: result.family === 4 ? 'udp4' : 'udp6',
+            reuseAddr: true
+          },
+          ...this.socketOptions
         })
 
         this.socketInt.on('listening', () => {

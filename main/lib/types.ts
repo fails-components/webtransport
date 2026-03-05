@@ -9,6 +9,7 @@ import type { IncomingHttpHeaders, Http2Stream, ServerHttp2Stream } from 'http2'
 import { ParserBase } from './http2/parserbase'
 import { Http2WebTransportSession } from './http2/session'
 import { HttpClient } from './client'
+import { SocketOptions } from 'dgram'
 
 /**
  * Native HttpWTSession counterpart
@@ -297,6 +298,10 @@ export interface HttpWebTransportInit extends WebTransportOptions {
   localPort?: number
 }
 
+export interface Http3QuicheServerWebTransportInit extends HttpWebTransportInit {
+  quicheNodeSocketOptions?: SocketOptions
+}
+
 export type WebTransportServerReliability =
   | 'unreliableOnly'
   | 'reliableOnly'
@@ -318,6 +323,7 @@ export interface HttpServerInit extends HttpWebTransportInit {
   sessionFlowControlWindowSizeLimit?: number
   reliability?: WebTransportServerReliability
   defaultDatagramsReadableMode: DatagramsReadableMode
+  quicheNodeSocketOptions?: SocketOptions // options only for quiche and node
 }
 
 // see HttpClientJS C++ type
