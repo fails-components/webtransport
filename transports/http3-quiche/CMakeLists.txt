@@ -158,6 +158,8 @@ third_party/quiche/quiche/common/http/http_header_block.cc
 third_party/quiche/quiche/common/http/http_header_block.h
 third_party/quiche/quiche/common/http/http_header_storage.cc
 third_party/quiche/quiche/common/http/http_header_storage.h
+third_party/quiche/quiche/common/moq_varint.h
+third_party/quiche/quiche/common/moq_varint.cc
 third_party/quiche/quiche/common/platform/api/quiche_bug_tracker.h
 third_party/quiche/quiche/common/platform/api/quiche_export.h
 third_party/quiche/quiche/common/platform/api/quiche_flag_utils.h
