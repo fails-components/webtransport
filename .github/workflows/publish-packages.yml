@@ -210,20 +210,5 @@ jobs:
         if: needs.version-check.outputs.changed == 'true'
         run: npm run types
 
-      - run: npm publish --tag stable --workspace main --workspace transports/http3-quiche
+      - run: npm publish --tag latest --workspace main --workspace transports/http3-quiche
         if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
-      - run: npm publish --tag next --workspace main --workspace transports/http3-quiche
-        if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
-      - run: |
-          npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latest
-          npm dist-tag add @fails-components/webtransport-transport-http3-quiche@${{ needs.version-check.outputs.version }} latest
-        if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/master' }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: |
-          npm dist-tag add @fails-components/webtransport@${{ needs.version-check.outputs.version }} latestunstable
-          npm dist-tag add @fails-components/webtransport-transport-http3-quiche@${{ needs.version-check.outputs.version }} latestunstable
-        if: ${{ needs.version-check.outputs.changed == 'true' && github.ref == 'refs/heads/next' }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
