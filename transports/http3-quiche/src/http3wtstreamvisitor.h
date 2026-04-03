@@ -37,7 +37,7 @@ namespace quic
         {
         }
 
-        ~Http3WTStream(){/*printf("stream destruct %x\n", this);*/};
+        ~Http3WTStream() { /*printf("stream destruct %x\n", this);*/ };
 
         class Visitor : public WebTransportStreamVisitor
         {
@@ -184,23 +184,20 @@ namespace quic
         {
         public:
             StreamReadBuffer(Http3WTStreamJS *jsobj) : fin(false), jsobj_(jsobj),
-                                                 buffer_(nullptr), buffersize_(0)
+                                                       buffer_(nullptr), buffersize_(0)
             {
             }
 
             void getBuffer(size_t reqsize);
 
+            unsigned char *bufferData() { return buffer_; };
+            size_t bufferSize() { return buffersize_; };
 
-           
-            unsigned char * bufferData() { return buffer_;};
-            size_t bufferSize() { return buffersize_;};
-
-            bool hasBuffer() {return buffer_ != nullptr;}
+            bool hasBuffer() { return buffer_ != nullptr; }
 
             void commitBuffer(uint32_t readbytes, bool drained);
 
-            void setFin() { fin = true;}
-
+            void setFin() { fin = true; }
 
         protected:
             Napi::ObjectReference bufferObj;
@@ -212,8 +209,7 @@ namespace quic
             Http3WTStreamJS *jsobj_; // unowned
         };
 
-        public: 
-        
+    public:
         Http3WTStreamJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Http3WTStreamJS>(info)
         {
         }
@@ -310,21 +306,22 @@ namespace quic
         {
             Napi::Function tplwtsv =
                 DefineClass(env, "Http3WTStreamVisitor",
-                            {InstanceMethod<&Http3WTStreamJS::writeChunk>("writeChunk",
-                                                                          static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                             InstanceMethod<&Http3WTStreamJS::resetStream>("resetStream",
-                                                                           static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                             InstanceMethod<&Http3WTStreamJS::stopSending>("stopSending", static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                             InstanceMethod<&Http3WTStreamJS::streamFinal>("streamFinal", static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                             InstanceMethod<&Http3WTStreamJS::startReading>("startReading",
-                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                             InstanceMethod<&Http3WTStreamJS::startReading>("drainReads",
-                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                             InstanceMethod<&Http3WTStreamJS::stopReading>("stopReading",
-                                                                           static_cast<napi_property_attributes>(napi_writable | napi_configurable)),                                            
-                            InstanceMethod<&Http3WTStreamJS::updateSendOrderAndGroup>("updateSendOrderAndGroup",
-                                                                            static_cast<napi_property_attributes>(napi_writable | napi_configurable)), 
-                                                                        });
+                            {
+                                InstanceMethod<&Http3WTStreamJS::writeChunk>("writeChunk",
+                                                                             static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                InstanceMethod<&Http3WTStreamJS::resetStream>("resetStream",
+                                                                              static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                InstanceMethod<&Http3WTStreamJS::stopSending>("stopSending", static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                InstanceMethod<&Http3WTStreamJS::streamFinal>("streamFinal", static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                InstanceMethod<&Http3WTStreamJS::startReading>("startReading",
+                                                                               static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                InstanceMethod<&Http3WTStreamJS::drainReads>("drainReads",
+                                                                             static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                InstanceMethod<&Http3WTStreamJS::stopReading>("stopReading",
+                                                                              static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                                InstanceMethod<&Http3WTStreamJS::updateSendOrderAndGroup>("updateSendOrderAndGroup",
+                                                                                          static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
+                            });
             constr->stream = Napi::Persistent(tplwtsv);
             exports.Set("Http3WTStreamVisitor", tplwtsv);
         }
