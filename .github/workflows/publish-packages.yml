@@ -32,17 +32,17 @@ jobs:
       packages: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://npm.pkg.github.com/
       - name: Check if version has been updated
         id: check
-        uses: EndBug/version-check@v2
+        uses: EndBug/version-check@v3
         with:
          diff-search: true
 
@@ -83,12 +83,12 @@ jobs:
           echo ${{matrix.arch == 'x64'}}
           echo ${{ matrix.arch == 'x64' && matrix.os == 'macos-15-intel' }}
      - name: Checkout code
-       uses: actions/checkout@v4
+       uses: actions/checkout@v5
        with:
         submodules: recursive
-     - uses: actions/setup-node@v4
+     - uses: actions/setup-node@v5
        with:
-         node-version: 22
+         node-version: 24
          registry-url: https://npm.pkg.github.com/
      - name: Install
        if: needs.version-check.outputs.changed == 'true'
@@ -142,13 +142,13 @@ jobs:
       packages: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://npm.pkg.github.com/
 
       - name: Install
@@ -189,13 +189,13 @@ jobs:
       id-token: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org/
 
       # Ensure npm 11.5.1 or later is installed
