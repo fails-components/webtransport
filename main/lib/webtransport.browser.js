@@ -31,7 +31,7 @@ if (globalThis.WebTransport) {
   try {
     // @ts-ignore
     // eslint-disable-next-line no-undef
-    const transport = new WebTransport('https://127.0.0.1:23333/test', {
+    const transport = new WebTransport('https://example.com:23333/test', {
       serverCertificateHashes: []
     })
     transport.ready
