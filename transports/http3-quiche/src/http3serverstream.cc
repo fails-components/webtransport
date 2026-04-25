@@ -48,7 +48,7 @@ namespace quic
   Http3ServerStream::Http3ServerStream(
       PendingStream *pending, QuicSpdySession *session,
       Http3ServerBackend *http3_server_backend)
-      : QuicSpdyServerStreamBase(pending, session),
+      : QuicSpdyServerStreamBase(*pending, session),
         content_length_(-1),
         generate_bytes_length_(0),
         http3_server_backend_(http3_server_backend)
