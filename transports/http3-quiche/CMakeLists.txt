@@ -378,6 +378,8 @@ third_party/quiche/quiche/quic/core/congestion_control/bbr2_sender.cc
 third_party/quiche/quiche/quic/core/congestion_control/bbr2_sender.h
 third_party/quiche/quiche/quic/core/congestion_control/bbr2_startup.cc
 third_party/quiche/quiche/quic/core/congestion_control/bbr2_startup.h
+third_party/quiche/quiche/quic/core/congestion_control/bbr3_sender.cc
+third_party/quiche/quiche/quic/core/congestion_control/bbr3_sender.h
 third_party/quiche/quiche/quic/core/congestion_control/bbr_sender.cc
 third_party/quiche/quiche/quic/core/congestion_control/bbr_sender.h
 third_party/quiche/quiche/quic/core/congestion_control/cubic_bytes.cc
