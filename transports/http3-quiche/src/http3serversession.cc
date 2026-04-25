@@ -79,15 +79,6 @@ namespace quic
     return stream;
   }
 
-  QuicSpdyStream *Http3ServerSession::CreateIncomingStream(
-      PendingStream *pending)
-  {
-    QuicSpdyStream *stream =
-        new Http3ServerStream(pending, this, http3_server_backend_);
-    ActivateStream(absl::WrapUnique(stream));
-    return stream;
-  }
-
   QuicSpdyStream *Http3ServerSession::CreateOutgoingBidirectionalStream()
   {
     if (!WillNegotiateWebTransport())
