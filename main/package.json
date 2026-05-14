@@ -23,6 +23,9 @@
     "start": "node test/echoserver.js",
     "oldtest": "node old_test/test.js",
     "oldtesthttp2": "node old_test/test.js http2",
+    "oldtestnative": "node old_test/test.js nodenative",
+    "oldtestnativeclient": "node old_test/test.js nodenativeclient",
+    "oldtestnativeserver": "node old_test/test.js nodenativeserver",
     "lint": "eslint lib old_test"
   },
   "repository": {

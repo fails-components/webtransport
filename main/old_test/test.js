@@ -19,11 +19,28 @@ if (process.argv.some((el) => el === 'http2')) {
   http2 = true
 }
 
+let nodenativequicClient = false
+
+if (process.argv.some((el) => el === 'nodenativeclient')) {
+  nodenativequicClient = true
+}
+
+let nodenativequicServer = false
+if (process.argv.some((el) => el === 'nodenativeserver')) {
+  nodenativequicServer = true
+}
+
+if (process.argv.some((el) => el === 'nodenative')) {
+  nodenativequicServer = true
+  nodenativequicClient = true
+}
+
 async function run() {
   if (
     process.env.USE_HTTP2 !== 'true' &&
     process.env.USE_PONYFILL !== 'true' &&
-    process.env.USE_POLYFILL !== 'true'
+    process.env.USE_POLYFILL !== 'true' &&
+    (!nodenativequicClient || !nodenativequicServer)
   ) {
     await quicheLoaded
   }
@@ -37,7 +54,8 @@ async function run() {
           'hex'
         )
       }
-    ]
+    ],
+    nodenativequic: nodenativequicClient
   })
   await Promise.all([badClient.ready, badClient.closed])
     .then(() => {
@@ -75,7 +93,8 @@ async function run() {
       host: '127.0.0.1',
       secret: 'mysecret',
       cert: certificate.cert, // unclear if it is the correct format
-      privKey: certificate.private
+      privKey: certificate.private,
+      nodenativequic: nodenativequicServer
     })
   } else {
     httpserver = new Http2Server({
@@ -99,7 +118,10 @@ async function run() {
 
   /** @type {import('../lib/dom').WebTransport | null} */
   let client = new WebTransport(url, {
-    serverCertificateHashes: [{ algorithm: 'sha-256', value: certificate.hash }]
+    serverCertificateHashes: [
+      { algorithm: 'sha-256', value: certificate.hash }
+    ],
+    nodenativequic: nodenativequicClient
   })
   client.closed
     .then(() => {

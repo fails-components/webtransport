@@ -17,6 +17,8 @@ describe('streamlimits', function () {
     forceReliable = true
     adjustlimit = 0
   }
+  let nodenativequic = false
+  if (process.env.USE_HTTP3_NODE_NATIVE === 'true') nodenativequic = true
   const browser = process.env.BROWSER
   /*  const handshakemess =
     browser !== 'firefox' ||
@@ -44,7 +46,8 @@ describe('streamlimits', function () {
       }
     ],
     // @ts-ignore
-    forceReliable
+    forceReliable,
+    nodenativequic
   }
 
   if (process.env.NO_CERT_HASHES === 'true')

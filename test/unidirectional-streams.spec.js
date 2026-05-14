@@ -15,6 +15,8 @@ describe('unidirectional streams', function () {
   let client
   let forceReliable = false
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
+  let nodenativequic = false
+  if (process.env.USE_HTTP3_NODE_NATIVE === 'true') nodenativequic = true
 
   const wtOptions = {
     serverCertificateHashes: [
@@ -24,7 +26,8 @@ describe('unidirectional streams', function () {
       }
     ],
     // @ts-ignore
-    forceReliable
+    forceReliable,
+    nodenativequic
   }
   if (process.env.NO_CERT_HASHES === 'true')
     // @ts-ignore

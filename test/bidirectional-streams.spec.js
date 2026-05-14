@@ -22,6 +22,8 @@ import {
 describe('bidirectional streams', function () {
   let forceReliable = false
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
+  let nodenativequic = false
+  if (process.env.USE_HTTP3_NODE_NATIVE === 'true') nodenativequic = true
   const browser = process.env.BROWSER
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
@@ -34,7 +36,8 @@ describe('bidirectional streams', function () {
       }
     ],
     // @ts-ignore
-    forceReliable
+    forceReliable,
+    nodenativequic
   }
   if (process.env.NO_CERT_HASHES === 'true')
     // @ts-ignore
