@@ -16,6 +16,8 @@ describe('sendgroup streams', function () {
   let client
   let forceReliable = false
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
+  let nodenativequic = false
+  if (process.env.USE_HTTP3_NODE_NATIVE === 'true') nodenativequic = true
 
   const websocketEmu =
     process.env.USE_POLYFILL === 'true' || process.env.USE_PONYFILL === 'true'
@@ -28,7 +30,8 @@ describe('sendgroup streams', function () {
       }
     ],
     // @ts-ignore
-    forceReliable
+    forceReliable,
+    nodenativequic
   }
   if (process.env.NO_CERT_HASHES === 'true')
     // @ts-ignore

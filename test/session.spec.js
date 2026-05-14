@@ -16,6 +16,8 @@ describe('session', function () {
   let forceReliable = false
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
   const browser = process.env.BROWSER
+  let nodenativequic = false
+  if (process.env.USE_HTTP3_NODE_NATIVE === 'true') nodenativequic = true
   const handshakemess =
     (browser !== 'firefox' &&
       (browser !== 'localserver' || !navigator.userAgent.includes('Gecko/'))) ||
@@ -35,7 +37,8 @@ describe('session', function () {
       }
     ],
     // @ts-ignore
-    forceReliable
+    forceReliable,
+    nodenativequic
   }
 
   if (process.env.NO_CERT_HASHES === 'true')

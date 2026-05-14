@@ -50,6 +50,30 @@ const quicheLoaded = new Promise((resolve, reject) => {
   console.log('http3 loader:', error)
 })
 
+const nodeNativeAvailable =
+  Boolean(process?.versions?.openssl) &&
+  !process?.env?.NODE_SKIP_CRYPTO &&
+  !!process?.features?.quic &&
+  parseInt(process?.versions?.node?.split?.('.')?.[0], 10) >= 27
+
+/** @type {typeof import('./http3native/index.js').Http3WebTransportServerNative} */
+let Http3WebTransportServerNative
+let nodeNativeLoaded = false
+const loadNodeNative = async () => {
+  if (nodeNativeAvailable && !nodeNativeLoaded) {
+    try {
+      const module = await import('./http3native/index.js')
+      // Use the module here
+      Http3WebTransportServerNative = module.Http3WebTransportServerNative
+      nodeNativeLoaded = true
+    } catch (err) {
+      console.warn('Feature is flagged but failed to load:', err)
+    }
+  } else {
+    console.log('Node native support for quic and http3 is not available')
+  }
+}
+
 /**
  * @typedef {import('./types').WebTransportSessionImpl} WebTransportSession
  * @typedef {import('./types').NativeHttpWTSession} NativeHttpWTSession
@@ -127,6 +151,11 @@ export class HttpServer {
    */
   constructor(args) {
     this.args = args
+    if (this.args.nodenativequic) {
+      log('Experimental node native quic is requested')
+      if (!nodeNativeAvailable)
+        throw new WebTransportError('Native node quic support is not available')
+    }
     /** @type {Record<string, ReadableStream>} */
     this.sessionStreams = {}
 
@@ -231,6 +260,9 @@ export class HttpServer {
       return this.sessionStreams[path]
     }
     this.sessionStreams[path] = new ReadableStream({
+      /**
+       * @param {ReadableStreamDefaultController<HttpWTSession>} controller
+       */
       start: async (controller) => {
         this.sessionController[path] = controller
       },
@@ -327,10 +359,23 @@ export class HttpServer {
         // @ts-ignore
         typeof this.args?.reliability === 'undefined' ||
         // @ts-ignore
-        this.args?.reliability === 'both')
+        this.args?.reliability === 'both') &&
+      !this.args?.nodenativequic
     ) {
       await quicheLoaded
       checkQuicheInit(args)
+    }
+
+    if (
+      this.args?.nodenativequic &&
+      this.args?.reliability !== 'reliableOnly'
+    ) {
+      if (!nodeNativeLoaded) {
+        await loadNodeNative()
+      }
+      if (!nodeNativeLoaded) {
+        throw new WebTransportError('Unable to load node native quic support')
+      }
     }
 
     try {
@@ -339,15 +384,19 @@ export class HttpServer {
       const reliability = this.args?.reliability || 'unreliableOnly'
       switch (reliability) {
         case 'unreliableOnly':
-          socket = new Http3WebTransportServerSocket(this.args)
-          this.transportInt = new Http3WebTransportServer(this.args)
-          this.transportInt.stopServer = socket.stopServer.bind(socket)
-          socket.init()
-          socket.cobj = this.transportInt
-          // @ts-ignore
-          socket.jsobj = this
-          // @ts-ignore
-          this.transportInt.socket = socket
+          if (this.args?.nodenativequic) {
+            this.transportInt = new Http3WebTransportServerNative(this.args)
+          } else {
+            socket = new Http3WebTransportServerSocket(this.args)
+            this.transportInt = new Http3WebTransportServer(this.args)
+            this.transportInt.stopServer = socket.stopServer.bind(socket)
+            socket.init()
+            socket.cobj = this.transportInt
+            // @ts-ignore
+            socket.jsobj = this
+            // @ts-ignore
+            this.transportInt.socket = socket
+          }
           break
         case 'reliableOnly':
           // @ts-ignore
@@ -356,10 +405,15 @@ export class HttpServer {
         case 'both':
           {
             socket = new Http3WebTransportServerSocket(this.args)
-            const server3 = new Http3WebTransportServer(this.args)
-            server3.stopServer = socket.stopServer.bind(socket)
-            socket.init()
-            server3.socket = socket
+            let server3
+            if (this.args?.nodenativequic) {
+              server3 = new Http3WebTransportServerNative(this.args)
+            } else {
+              server3 = new Http3WebTransportServer(this.args)
+              server3.stopServer = socket.stopServer.bind(socket)
+              socket.init()
+              server3.socket = socket
+            }
             socket.cobj = server3
             // @ts-ignore
             socket.jsobj = this

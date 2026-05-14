@@ -49,7 +49,8 @@ export async function createServer() {
       ...hostandport,
       secret: 'mysecret',
       cert: certificate.cert, // unclear if it is the correct format
-      privKey: certificate.private
+      privKey: certificate.private,
+      nodenativequic: process.env.USE_HTTP3_NODE_NATIVE === 'true'
     })
   }
 

@@ -5,8 +5,24 @@ import { execa } from 'execa'
  * getting stuck waiting for the custom event loop to end.
  */
 async function startServer() {
+  let nodenativeServer = false
   let http2 = false
-  if (process.argv[3] === 'http2') http2 = true
+  switch (process.argv[3]) {
+    case 'http2':
+      http2 = true
+      break
+    case 'http3':
+      // the default do notthinh
+      break
+    case 'http3:native:server':
+      nodenativeServer = true
+      break
+    case 'http3:native:client':
+      break
+    case 'http3:native':
+      nodenativeServer = true
+      break
+  }
   let localserver = false
   if (process.argv[2] === 'localserver') localserver = true
   // eslint-disable-next-line no-unused-vars
@@ -17,7 +33,8 @@ async function startServer() {
       stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
       env: {
         USE_HTTP2: http2 ? 'true' : 'false',
-        LOCAL_SERVER: localserver ? 'true' : 'false'
+        LOCAL_SERVER: localserver ? 'true' : 'false',
+        USE_HTTP3_NODE_NATIVE: nodenativeServer ? 'true' : 'false'
       }
     })
     server.on('message', (data) => {
@@ -37,7 +54,24 @@ async function startServer() {
 async function runTests(certificate, serverAddress) {
   const env = process.argv[2]
   let http2 = false
-  if (process.argv[3] === 'http2') http2 = true
+  let nodenativeClient = false
+  switch (process.argv[3]) {
+    case 'http2':
+      http2 = true
+      break
+    case 'http3':
+      // the default do notthinh
+      break
+    case 'http3:native:server':
+      break
+    case 'http3:native:client':
+      nodenativeClient = true
+      break
+    case 'http3:native':
+      if (env === 'node') nodenativeClient = true
+      break
+  }
+
   let polyfill = false
   let ponyfill = false
   let slice = 4
@@ -68,7 +102,8 @@ async function runTests(certificate, serverAddress) {
         DEBUG_COLORS: process.env.CI ? '' : 'true',
         CERT_HASH: certificate,
         SERVER_URL: serverAddress,
-        USE_HTTP2: http2 ? 'true' : 'false'
+        USE_HTTP2: http2 ? 'true' : 'false',
+        USE_HTTP3_NODE_NATIVE: nodenativeClient ? 'true' : 'false'
       },
       stdio: ['inherit', 'inherit', 'inherit']
     })

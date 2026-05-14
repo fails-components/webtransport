@@ -296,6 +296,7 @@ export interface HttpWebTransportInit extends WebTransportOptions {
   quicheLogVerbose?: QUICHE_LOG
   forceIpv6?: boolean
   localPort?: number
+  nodenativequic?: boolean
 }
 
 export interface Http3QuicheServerWebTransportInit extends HttpWebTransportInit {

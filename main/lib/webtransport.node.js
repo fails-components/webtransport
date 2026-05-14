@@ -53,6 +53,33 @@ export const quicheLoaded = new Promise((resolve, reject) => {
   console.log('http3 loader:', error)
 })
 
+const nodeNativeAvailable =
+  Boolean(process?.versions?.openssl) &&
+  !process?.env?.NODE_SKIP_CRYPTO &&
+  !!process?.features?.quic &&
+  parseInt(process?.versions?.node?.split?.('.')?.[0], 10) >= 27
+
+/** @type {typeof import('./http3native/index.js').Http3WebTransportClientNative} */
+let Http3WebTransportClientNative
+let nodeNativeLoaded = false
+const loadNodeNative = async () => {
+  if (nodeNativeAvailable && !nodeNativeLoaded) {
+    try {
+      const module = await import('./http3native/index.js')
+      // Use the module here
+      Http3WebTransportClientNative = module.Http3WebTransportClientNative
+      nodeNativeLoaded = true
+    } catch (err) {
+      console.warn('Feature is flagged but failed to load:', err)
+    }
+  } else {
+    console.log('Node native support for quic and http3 is not available')
+  }
+}
+if (nodeNativeAvailable) {
+  loadNodeNative()
+}
+
 /**
  * @typedef {import('./dom').WebTransportCloseInfo} WebTransportCloseInfo
  * @typedef {import('./dom').WebTransportBidirectionalStream} WebTransportBidirectionalStream
@@ -109,12 +136,23 @@ export class WebTransport extends WebTransportBase {
    */
   createClient(args) {
     let createUnreliableClient
-    // @ts-ignore
-    if (!quicheLoadedReady && !args?.forceReliable)
+    if (
+      !quicheLoadedReady &&
+      // @ts-ignore
+      !args?.forceReliable &&
+      !args?.nodenativequic
+    )
       throw new Error('Lib quiche loading attempt did not end')
+    const nodenativequic = !!args?.nodenativequic
+    if (nodenativequic && !nodeNativeLoaded) {
+      throw new Error('Lib node native attempt did not end')
+    }
     if (checkQuicheInit) {
       // eslint-disable-next-line no-unused-vars
       createUnreliableClient = function (/** @type {any} */ _client) {
+        if (nodenativequic) {
+          return new Http3WebTransportClientNative(args)
+        }
         if (
           // @ts-ignore
           !args?.forceReliable
