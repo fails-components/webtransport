@@ -151,6 +151,7 @@ namespace quic
 
   void Http3ServerStream::SendResponse()
   {
+    if (fin_buffered()) return; // we already exited
     if (request_headers_.empty())
     {
       QUIC_DVLOG(1) << "Request headers empty.";
@@ -357,6 +358,7 @@ namespace quic
   void Http3ServerStream::SendNotFoundResponse()
   {
     QUIC_DVLOG(1) << "Stream " << id() << " sending not found response.";
+    if (fin_buffered()) return; // we already exited
     HttpHeaderBlock headers;
     headers[":status"] = "404";
     headers["content-length"] = absl::StrCat(strlen(kNotFoundResponseBody));
@@ -375,6 +377,7 @@ namespace quic
     {
       StopReading();
     }
+    if (fin_buffered()) return; // we already exited
     HttpHeaderBlock headers;
     if (resp_code <= 0)
     {
@@ -392,6 +395,7 @@ namespace quic
       HttpHeaderBlock response_headers,
       absl::string_view body)
   {
+    if (fin_buffered()) return; // we already exited
     QUIC_DLOG(INFO) << "Stream " << id() << " writing headers (fin = false) : "
                     << response_headers.DebugString();
     WriteHeaders(std::move(response_headers), /*fin=*/false, nullptr);
@@ -410,6 +414,7 @@ namespace quic
       HttpHeaderBlock response_headers,
       absl::string_view body)
   {
+    if (fin_buffered()) return; // we already exited
     SendHeadersAndBodyAndTrailers(std::move(response_headers), body,
                                   HttpHeaderBlock());
   }
@@ -419,6 +424,7 @@ namespace quic
       absl::string_view body,
       HttpHeaderBlock response_trailers)
   {
+    if (fin_buffered()) return; // we already exited
     // Send the headers, with a FIN if there's nothing else to send.
     bool send_fin = (body.empty() && response_trailers.empty());
     QUIC_DLOG(INFO) << "Stream " << id() << " writing headers (fin = " << send_fin
