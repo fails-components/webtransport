@@ -68,8 +68,8 @@ npm install @fails-components/webtransport-transport-http3-quiche
 ```
 this allows a faster installation for people only interested in the http2 WebTransport support or the ponyfill/polyfill mapping the http2 protocol to WebSocket. 
 
-The package `webtransport-transport-http3-quiche` provides prebuild binaries for `windows`, `linux` and `macos` for the platform `x64` and `ia32` (only Windows).
-Other platforms may be possible via cross-compiling in the GitHub actions, if someone needs this, PRs are welcome.
+The package `webtransport-transport-http3-quiche` provides prebuilt binaries for `windows` (x64, ia32), `linux` (x64, arm64), and `macos` (x64, arm64).
+Other platforms may be possible via cross-compiling in the GitHub actions; if someone needs this, PRs are welcome.
 
 Of course, you can also build the binary on your system.
 If you are running the compiling install as root, you need to use `--unsafe-perm` as a flag.
