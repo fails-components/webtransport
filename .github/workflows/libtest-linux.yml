@@ -30,7 +30,7 @@ jobs:
       - name: Set up NodeJS
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: 24.15.0 # Pin node.js version until playwright related problem is fixed in node.js
 
       - name: Install dependencies
         run:  npm install --ignore-scripts
