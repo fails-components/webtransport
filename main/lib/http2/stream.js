@@ -72,7 +72,7 @@ export class Http2WebTransportStream {
     this.final = false
     this.finalmessagesend = false
     this.stopReading_ = true
-    this.drainReads_ = true
+    this.drainReads_ = false
     this.recvBytes = 0
 
     this.outgoingClosed_ = false
