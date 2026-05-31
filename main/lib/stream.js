@@ -109,8 +109,7 @@ export class HttpWTStream {
           this.objint.stopSending(code)
           return promise
         },
-        type: 'bytes',
-        autoAllocateChunkSize: 4096 // lets take this as buffer size
+        type: 'bytes'
       }
 
       if (!canByteStream) {
