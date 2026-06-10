@@ -77,7 +77,7 @@ const loadNodeNative = async () => {
   }
 }
 if (nodeNativeAvailable) {
-  loadNodeNative()
+  await loadNodeNative()
 }
 
 /**

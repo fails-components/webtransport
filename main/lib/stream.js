@@ -110,7 +110,7 @@ export class HttpWTStream {
           return promise
         },
         type: 'bytes',
-        autoAllocateChunkSize: 4096 // lets take this as buffer size
+        autoAllocateChunkSize: 4096 // lets take this as buffer size */
       }
 
       if (!canByteStream) {
@@ -267,7 +267,7 @@ export class HttpWTStream {
 
   /**
    * @param {{byteSize: number}} args
-   * @returns {ReadBuffer}
+   * @returns {ReadBuffer|undefined}
    */
   getReadBuffer({ byteSize }) {
     const byob = this.readableController.byobRequest
@@ -283,6 +283,10 @@ export class HttpWTStream {
       const buffer = new Uint8Array(byteSize)
       return { buffer, byob: undefined, readBytes: 0, fin: false }
     }
+  }
+
+  hasByob() {
+    return !!this.readableController.byobRequest
   }
 
   /**
