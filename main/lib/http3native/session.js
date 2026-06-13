@@ -153,6 +153,47 @@ export class Http3WebTransportSession {
   }
 
   /**
+   * @param {WebTransportSendStreamOptions} opts
+   */
+  orderUnidiStream({ sendGroup, sendOrder, waitUntilAvailable }) {
+    // must be replaced with mechanism for flow control
+    // const canopen = this.streamIdMngrUni.canOpenNextOutgoingStream()
+    // const maxset = this.streamIdMngrUni.isMaxStreamSet() // we block if the maxsetting did not arrive
+
+    if (!this.stream.session) return false // session has been destroyed
+
+    // eslint-disable-next-line no-constant-condition
+    if (/* canopen || */ waitUntilAvailable /* || !maxset */ || true) {
+      this.stream.session
+        .createUnidirectionalStream({
+          incremental: true,
+          highWaterMark: this.initialStreamSendWindowOffset,
+          webtransportSession: this.stream /* that is the session stream */
+        })
+        .then((/** @type {QuicStream} */ qstream) => {
+          const stream = new Http3WebTransportStream({
+            stream: qstream,
+            unidirectional: true,
+            incoming: false
+          })
+          this.jsobj.onStream({
+            bidirectional: false,
+            incoming: false,
+            stream,
+            // @ts-ignore
+            sendGroupId: sendGroup?._sendGroupId || 0n,
+            sendOrder: sendOrder ?? 0
+          })
+        })
+        .catch((error) => {
+          log('error creating bidirectional stream', error)
+        })
+      return true
+    }
+    return false
+  }
+
+  /**
    * @param {{ code: number, reason: string }} arg
    */
   close({ code, reason }) {
