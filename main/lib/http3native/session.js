@@ -215,6 +215,29 @@ export class Http3WebTransportSession {
     return false
   }
 
+  orderSessionStats() {
+    const stats = this.session.stats
+    this.jsobj.onSessionStats({
+      timestamp: 0,
+      expiredOutgoing: 0n,
+      lostOutgoing: stats.datagramsLost,
+      // non Datagram
+      minRtt: stats.minRtt,
+      smoothedRtt: stats.smoothedRtt,
+      rttVariation: stats.rttVar,
+      estimatedSendRateBps: 0n
+    })
+  }
+
+  orderDatagramStats() {
+    const stats = this.session.stats
+    this.jsobj.onDatagramStats({
+      timestamp: 0,
+      expiredOutgoing: 0n,
+      lostOutgoing: stats.datagramsLost
+    })
+  }
+
   getMaxDatagramSize() {
     return Number(this.session.remoteTransportParams?.maxDatagramFrameSize)
   }
