@@ -11,13 +11,19 @@ import { Http2WebTransportSession } from './http2/session'
 import { HttpClient } from './client'
 import { SocketOptions } from 'dgram'
 
+
+type NativeWriteDatagramResult = { 
+  code: 'success' | 'blocked' | 'internalError' | 'tooBig'; 
+  message?: string;
+};
+
 /**
  * Native HttpWTSession counterpart
  */
 export interface NativeHttpWTSession {
   jsobj: WebTransportSessionEventHandler
   sendInitialParameters?: () => void
-  writeDatagram: (chunk: Uint8Array) => { code: 'success' | 'blocked' | 'internalError' | 'tooBig', message?: string}
+  writeDatagram: (chunk: Uint8Array) => NativeWriteDatagramResult | Promise<NativeWriteDatagramResult>
   orderUnidiStream: (opts: WebTransportSendStreamOptions) => boolean
   orderBidiStream: (opts: WebTransportSendStreamOptions)  => boolean
   orderSessionStats: () => void

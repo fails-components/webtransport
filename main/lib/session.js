@@ -172,14 +172,14 @@ export class HttpWTSession {
             this.outgoDatagramController = controller
           },
           // eslint-disable-next-line no-unused-vars
-          write: (chunk, controller) => {
+          write: async (chunk, controller) => {
             if (this.state === 'closed') throw new Error('Session is closed')
             if (chunk instanceof Uint8Array) {
               /** @type {Promise<void>} */
               if (this.objint == null) {
                 throw new Error('this.objint is not set')
               }
-              const { code, message } = this.objint.writeDatagram(chunk)
+              const { code, message } = await this.objint.writeDatagram(chunk)
               if (
                 code !== 'success' &&
                 code !== 'blocked' &&

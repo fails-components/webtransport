@@ -4,6 +4,8 @@
  */
 import { Http3WebTransportStream } from './stream.js'
 import { logger } from '../utils.js'
+import { lengthVarInt } from '../http2/parserbase.js'
+import { writeVarInt, readVarInt } from '../http2/parserbasehttp2.js'
 const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:http3webtransportsession(${pid})`)
 
@@ -105,6 +107,26 @@ export class Http3WebTransportSession {
         }
       }
     }
+    /**
+     * @param {Uint8Array} datagram
+     *
+     * */
+    this.session.ondatagram = (datagram) => {
+      const buffer = {
+        offset: 0,
+        buffer: Buffer.from(datagram.buffer),
+        size: datagram.byteLength
+      }
+      const sessionId = readVarInt(buffer)
+      if (sessionId !== this.stream.id / 4n) return
+      this.jsobj.onDatagramReceived({
+        datagram: new Uint8Array(
+          datagram.buffer,
+          buffer.offset,
+          datagram.byteLength - buffer.offset
+        )
+      })
+    }
     /** @type {Array<{sendOrder: number, sendGroupId: bigint}>} */
     this.orderUniStreams = []
     /** @type {Array<{sendOrder: number, sendGroupId: bigint}>} */
@@ -191,6 +213,34 @@ export class Http3WebTransportSession {
       return true
     }
     return false
+  }
+
+  getMaxDatagramSize() {
+    return Number(this.session.remoteTransportParams?.maxDatagramFrameSize)
+  }
+
+  /**
+   * @param {Uint8Array} chunk
+   * @return {Promise<{ code: "success" | "blocked" | "internalError" | "tooBig", message?: string | undefined; }>}
+   */
+  async writeDatagram(chunk) {
+    if (chunk.byteLength > this.getMaxDatagramSize()) return { code: 'tooBig' }
+    const sessionId = this.stream.id / 4n // quarter stream id
+    const byteLengthSessId = lengthVarInt(sessionId)
+    // in case, node js changes handling of datagrams we can remove the varint stuff
+    const toSend = new Uint8Array(chunk.byteLength + byteLengthSessId)
+    writeVarInt(
+      { offset: 0, buffer: Buffer.from(toSend.buffer), size: byteLengthSessId },
+      sessionId
+    )
+
+    const dest = new Uint8Array(toSend.buffer, byteLengthSessId)
+    dest.set(chunk) // copy over
+
+    this.session.sendDatagram(toSend)
+    // FIX me may be report errors
+    console.log('should report succeess')
+    return { code: 'success' }
   }
 
   /**
