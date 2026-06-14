@@ -595,8 +595,9 @@ export class Http2WebTransportServer {
               transportPrivate.websocketProt + '_' + selectedProtocol
             : // @ts-ignore
               transportPrivate.websocketProt
-        // @ts-ignore
-        else if (selectedProtocol) resp['wt-protocol'] = selectedProtocol
+        else if (selectedProtocol)
+          // @ts-ignore
+          resp['wt-protocol'] = '"' + selectedProtocol + '"'
         stream.respond(resp)
         const {
           0x2b65: remoteBidirectionalStreams = undefined,

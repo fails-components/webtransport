@@ -38,8 +38,11 @@ export class Http3WebTransportSession {
             if (Number(headers[':status']) === 200) {
               const beReady = {}
               if (stream && headers['wt-protocol']) {
-                // @ts-ignore
-                beReady.protocol = headers['wt-protocol']
+                const match = headers['wt-protocol'].match(/\s*"([^"]+)"\s*/)
+                if (match) {
+                  // @ts-ignore
+                  beReady.protocol = match[1]
+                }
               }
               // on ready
               this.jsobj.onReady(beReady)
