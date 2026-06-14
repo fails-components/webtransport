@@ -86,9 +86,11 @@ export class Http2WebTransportSession {
             if (headers[':status'] === 200) {
               const beReady = {}
               if (stream && headers['wt-protocol']) {
-                // http/2 case
-                // @ts-ignore
-                beReady.protocol = headers['wt-protocol']
+                const match = headers['wt-protocol'].match(/\s*"([^"]+)"\s*/)
+                if (match) {
+                  // @ts-ignore
+                  beReady.protocol = match[1]
+                }
               }
               // on ready
               this.jsobj.onReady(beReady)
@@ -262,7 +264,7 @@ export class Http2WebTransportSession {
   /*
    * @returns {void}
    */
-  notifySessionDraining() {}
+  notifySessionDraining() { }
   /**
    * @param {{ code: number, reason: string }} arg
    */

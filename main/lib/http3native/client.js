@@ -191,19 +191,24 @@ export class Http3WebTransportClientNative {
           new Promise((resolve) => setTimeout(() => resolve(stream), 100))
       )*/
       .then((stream) => {
-        if (
-          !stream.sendHeaders(
-            {
-              ':method': 'CONNECT',
-              ':scheme': 'https',
-              // this one depends on draft, draft14 says "webtransport", draft15 says "webtransport-h3"
-              ':protocol': 'webtransport',
-              ':path': path,
-              ':authority': this.hostname + ':' + this.port
-            },
-            { webtransport: true }
-          )
-        )
+        const sendHeadersOpts = {
+          ':method': 'CONNECT',
+          ':scheme': 'https',
+          // this one depends on draft, draft14 says "webtransport", draft15 says "webtransport-h3"
+          ':protocol': 'webtransport',
+          ':path': path,
+          ':authority': this.hostname + ':' + this.port
+        }
+        if (this.protocols.length > 0) {
+          // @ts-ignore
+          sendHeadersOpts['wt-available-protocols'] =
+            '"' +
+            this.protocols
+              .map((el) => el.replace(/\\/g, '\\\\').replace(/"/g, '\\"'))
+              .join('","') +
+            '"'
+        }
+        if (!stream.sendHeaders(sendHeadersOpts, { webtransport: true }))
           throw new Error('Sending headers failed')
         const retObj = {
           headers: {}, // TODO?
