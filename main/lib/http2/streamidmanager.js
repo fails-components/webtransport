@@ -190,8 +190,8 @@ export class StreamIdManager {
   onStreamClosed(streamId) {
     // Nothing to do for outgoing streams.
     if (
-      (this.isclient && streamId & 0x1n) ||
-      (!this.isclient && !(streamId & 0x1n))
+      (this.isclient && !(streamId & 0x1n)) ||
+      (!this.isclient && streamId & 0x1n)
     )
       return
 
@@ -283,7 +283,7 @@ export class StreamIdManager {
    * @param {number} id
    */
   isAvailableStream(id) {
-    if ((this.isclient && id & 0x1) || (!this.isclient && !(id & 0x1))) {
+    if ((this.isclient && !(id & 0x1)) || (!this.isclient && id & 0x1)) {
       // Stream IDs under next_ougoing_stream_id_ are either open or previously
       // open but now closed.
       return id >= this.nextOutgoingStreamId
@@ -298,14 +298,14 @@ export class StreamIdManager {
 
   getFirstOutgoingStreamId() {
     let streamid = 0n
-    if (this.isclient) streamid |= 0x1n
+    if (!this.isclient) streamid |= 0x1n
     if (this.unidirectional) streamid |= 0x2n
     return streamid
   }
 
   getFirstIncomingStreamId() {
     let streamid = 0n
-    if (!this.isclient) streamid |= 0x1n
+    if (this.isclient) streamid |= 0x1n
     if (this.unidirectional) streamid |= 0x2n
     return streamid
   }
