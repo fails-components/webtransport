@@ -34,25 +34,23 @@ export class Http3WebTransportSession {
     if (isclient) {
       headersReceivedProm
         .then((headers) => {
-          processnextTick(() => {
-            if (Number(headers[':status']) === 200) {
-              const beReady = {}
-              if (stream && headers['wt-protocol']) {
-                const match = headers['wt-protocol'].match(/\s*"([^"]+)"\s*/)
-                if (match) {
-                  // @ts-ignore
-                  beReady.protocol = match[1]
-                }
+          if (Number(headers[':status']) === 200) {
+            const beReady = {}
+            if (stream && headers['wt-protocol']) {
+              const match = headers['wt-protocol'].match(/\s*"([^"]+)"\s*/)
+              if (match) {
+                // @ts-ignore
+                beReady.protocol = match[1]
               }
-              // on ready
-              this.jsobj.onReady(beReady)
-            } else {
-              this.jsobj.onClose({
-                errorcode: headers[':status'],
-                error: 'Session stream errored'
-              })
             }
-          })
+            // on ready
+            this.jsobj.onReady(beReady)
+          } else {
+            this.jsobj.onClose({
+              errorcode: headers[':status'],
+              error: 'Session stream errored'
+            })
+          }
         })
         .catch((error) => {
           this.jsobj.onClose({
