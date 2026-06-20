@@ -110,6 +110,18 @@ export class Http3WebTransportSession {
         }
       }
     }
+
+    /**
+     * @param {number} code
+     * @param {string|undefined} reason
+     *
+     * */
+    stream.onwtsessionclose = (code, reason) => {
+      this.jsobj.onClose({
+        errorcode: code,
+        error: reason ?? ''
+      })
+    }
     /**
      * @param {Uint8Array} datagram
      *
