@@ -116,11 +116,25 @@ export class Http3WebTransportSession {
      * @param {string|undefined} reason
      *
      * */
-    stream.onwtsessionclose = (code, reason) => {
+    this.stream.onwtsessionclose = (code, reason) => {
       this.jsobj.onClose({
         errorcode: code,
         error: reason ?? ''
       })
+    }
+
+    this.stream.onerror = () => {
+      // @ts-ignore
+      if (!this.jsobj?.sessionobjint || this.jsobj?.state === 'connecting')
+        this.jsobj.onClientConnected({
+          success: false
+        })
+      else {
+        this.close({
+          code: 0,
+          reason: 'Session stream error'
+        })
+      }
     }
     /**
      * @param {Uint8Array} datagram
