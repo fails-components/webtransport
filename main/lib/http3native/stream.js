@@ -42,8 +42,9 @@ export class Http3WebTransportStream {
   async startReading() {
     if (this.inStartReading) return
     this.inStartReading = true
+    let stopReadingLoop = false
     try {
-      if (!this.readiterator_) return
+      if (!this.readiterator_ || stopReadingLoop) return
       // we just pull once from the iterator
       const result = await this.readiterator_.next()
       const fin = !!result.done
@@ -137,7 +138,10 @@ export class Http3WebTransportStream {
             chunks.length === 0
           ) {
             const { stopReading } = this.jsobj.commitReadBuffer(buffer)
-            if (stopReading) this.readiterator_ = undefined
+            if (stopReading) {
+              // we should stop for know, no more loop iterations
+              stopReadingLoop = true
+            }
             buffer = undefined
             bufferoffset = 0
           }
