@@ -53,8 +53,7 @@ export class Http3WebTransportClientNative {
         this.serverCertificateHashes &&
         this.serverCertificateHashes.some((el) => {
           if (el.algorithm !== 'sha-256') return false
-          const cbytes = cert
-            .fingerprint256() // after the interface is fixed remove ()
+          const cbytes = cert.fingerprint256
             .split(':')
             .map((el) => parseInt(el, 16))
           const val = Buffer.isBuffer(el.value)
@@ -95,9 +94,9 @@ export class Http3WebTransportClientNative {
         // I am wondering, how certificates are verified.
       },
       transportParams: {
-        initialMaxStreamDataBidiLocal: this.initialBidirectionalStreams,
-        initialMaxStreamDataBidiRemote: this.initialBidirectionalStreamsRemote,
-        initialMaxStreamDataUni: this.initialUnidirectionalStreams,
+        initialMaxStreamDataBidiLocal: this.initialStreamFlowControlWindow,
+        initialMaxStreamDataBidiRemote: this.initialStreamFlowControlWindow,
+        initialMaxStreamDataUni: this.initialStreamFlowControlWindow,
         initialMaxData: this.sessionFlowControlWindowSizeLimit, // or something else
         initialMaxStreamsBidi: this.initialBidirectionalStreams,
         initialMaxStreamsUni: this.initialUnidirectionalStreams,
