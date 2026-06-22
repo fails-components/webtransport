@@ -44,7 +44,7 @@
     "debug": "^4.3.4"
   },
   "devDependencies": {
-    "@babel/core": "^7.17.10",
+    "@babel/core": "^7.29.6",
     "@babel/eslint-parser": "^7.17.0",
     "@types/chai": "^4.3.3",
     "@types/chai-as-promised": "^7.1.5",
