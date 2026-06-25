@@ -17,12 +17,12 @@
 #include "quiche/quic/core/web_transport_interface.h"
 #include "quiche/common/http/http_header_block.h"
 #include "quiche/quic/platform/api/quic_socket_address.h"
+#include "src/http3wtsessionvisitor.h"
 
 namespace quic
 {
 
   class Http3Server;
-  class Http3EventLoop;
 
   template <typename T>
   class JSlikePromise
@@ -64,7 +64,7 @@ namespace quic
     struct WebTransportResponse
     {
       quiche::HttpHeaderBlock response_headers;
-      std::unique_ptr<WebTransportVisitor> visitor;
+      std::unique_ptr<Http3WTSession::Visitor> visitor;
     };
 
     using WebTransportRespPromise = JSlikePromise<WebTransportResponse>;

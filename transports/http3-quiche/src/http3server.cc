@@ -11,6 +11,7 @@
 #include "src/http3server.h"
 #include "src/http3dispatcher.h"
 #include "src/http3wtsessionvisitor.h"
+#include "src/http3serversession.h"
 #include "quiche/quic/core/quic_default_packet_writer.h"
 #include "quiche/quic/core/quic_default_connection_helper.h"
 #include "quiche/quic/core/quic_default_clock.h"
@@ -607,7 +608,7 @@ namespace quic
             Http3WTSession *wtsession = new Http3WTSession();
             wtsession->init(session);
             response->visitor =
-                std::make_unique<Http3WTSession::Visitor>(wtsession);
+                std::make_unique<Http3WTSession::Visitor>(wtsession, nullptr);
             processNewSession(static_cast<Http3WTSession *>(wtsession), path, peer_address,
                      headerValue, userDataValue);
             (*prom)->resolve(std::move(response));
