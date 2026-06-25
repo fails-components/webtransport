@@ -16,11 +16,12 @@
 
 #include "quiche/quic/core/http/quic_spdy_client_session.h"
 #include "src/http3clientstream.h"
+#include "src/http3wtsessionvisitor.h"
 
 namespace quic
 {
 
-  class Http3ClientSession : public QuicSpdyClientSession
+  class Http3ClientSession : public QuicSpdyClientSession, public Http3WTSession::VisitorRemoveVisitor
   {
   public:
     Http3ClientSession(const QuicConfig &config,
@@ -35,6 +36,7 @@ namespace quic
                        const QuicServerId &server_id,
                        QuicCryptoClientConfig *crypto_config,
                        bool drop_response_body, bool enable_web_transport);
+    ~Http3ClientSession();
 
     std::unique_ptr<QuicSpdyClientStream> CreateClientStream() override;
     WebTransportHttp3VersionSet LocallySupportedWebTransportVersions()
@@ -42,8 +44,13 @@ namespace quic
     HttpDatagramSupport LocalHttpDatagramSupport() override;
 
    void OnCanCreateNewOutgoingStream(bool unidirectional) override;
-   void AddVisitor(const WebTransportSessionId id, webtransport::SessionVisitor *visitor) {
+   void AddVisitor(const WebTransportSessionId id, Http3WTSession::Visitor *visitor) {
       svisitors_.try_emplace(id, visitor);
+    }
+
+    void RemoveVisitor(Http3WTSession::Visitor* visitor) override {
+      absl::erase_if(svisitors_,
+                     [&](const auto& pair) { return pair.second == visitor; });
     }
 
     void set_on_interim_headers(
@@ -56,7 +63,7 @@ namespace quic
     std::function<void(const quiche::HttpHeaderBlock &)> on_interim_headers_;
     const bool drop_response_body_;
     const bool enable_web_transport_;
-    absl::flat_hash_map<QuicStreamId, webtransport::SessionVisitor *> svisitors_;
+    absl::flat_hash_map<QuicStreamId, Http3WTSession::Visitor *> svisitors_;
   };
 
 } // namespace quic

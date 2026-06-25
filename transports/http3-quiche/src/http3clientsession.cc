@@ -38,6 +38,12 @@ namespace quic
         drop_response_body_(drop_response_body),
         enable_web_transport_(enable_web_transport) {}
 
+  Http3ClientSession::~Http3ClientSession() {
+     for (auto itty = svisitors_.begin(); itty != svisitors_.end(); itty++) {
+      (*itty).second->RemoveVisitorRemoveVisitor();
+    }
+  }
+
   std::unique_ptr<QuicSpdyClientStream>
   Http3ClientSession::CreateClientStream()
   {

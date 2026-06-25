@@ -11,6 +11,9 @@ namespace quic
     {
         // printf("Session ~Visitor %d %x %x\n", getpid(), this, session_);
         Http3WTSessionJS *sessobj = session_->getJS();
+        if (vrvis_) {
+            vrvis_->RemoveVisitor(this);
+        }
         if (sessobj) {
             sessobj->Unref();
         } else

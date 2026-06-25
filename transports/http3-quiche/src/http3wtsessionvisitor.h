@@ -50,12 +50,33 @@ namespace quic
         // need to be called immediately after new
         void init(WebTransportSession *session);
 
-        class Visitor : public WebTransportVisitor
-        {
-        public:
-            Visitor(Http3WTSession *session) : session_(session) {}
+        class Visitor;
 
-            ~Visitor();
+        class VisitorRemoveVisitor {
+         public:
+          virtual void RemoveVisitor(Http3WTSession::Visitor* visitor) = 0;
+        };
+
+        class Visitor : public WebTransportVisitor {
+         public:
+          Visitor(Http3WTSession* session, VisitorRemoveVisitor* vrvis)
+              : session_(session), vrvis_(vrvis) {
+            /* printf(
+                "Session created Visitor %d %x %x\n", getpid(), this, session_);*/
+          }
+
+          ~Visitor();
+
+          void AddVisitorRemoveVisitor(VisitorRemoveVisitor *vrvis) {
+            if (vrvis_) {
+                vrvis_->RemoveVisitor(this);
+            }
+            vrvis_ = vrvis;
+          }
+
+          void RemoveVisitorRemoveVisitor() {
+            vrvis_ = nullptr;
+          }
 
             void OnSessionReady() override;
 
@@ -68,19 +89,18 @@ namespace quic
 
             void OnDatagramReceived(absl::string_view datagram) override;
 
-            void OnCanCreateNewOutgoingBidirectionalStream() override
-            {
-                // unclear how we can stich this together?
-                session_->TrySendingBidirectionalStreams();
-            }
+          void OnCanCreateNewOutgoingBidirectionalStream() override {
+            // unclear how we can stich this together?
+            session_->TrySendingBidirectionalStreams();
+          }
 
-            void OnCanCreateNewOutgoingUnidirectionalStream() override
-            {
-                session_->TrySendingUnidirectionalStreams();
-            }
+          void OnCanCreateNewOutgoingUnidirectionalStream() override {
+            session_->TrySendingUnidirectionalStreams();
+          }
 
-        protected:
-            Http3WTSession *session_;
+         protected:
+          Http3WTSession* session_;
+          VisitorRemoveVisitor* vrvis_;
         };
 
         bool
@@ -146,7 +166,6 @@ namespace quic
         }
 
         webtransport::DatagramStatus writeDatagramInt(char *buffer, size_t len, Napi::ObjectReference *bufferhandle);
-
         WebTransportSession *session_;
         bool echo_stream_opened_ = false;
 

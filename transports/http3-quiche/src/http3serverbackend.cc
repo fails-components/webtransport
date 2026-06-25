@@ -85,7 +85,7 @@ namespace quic
       wtsession->init(session);
       response->response_headers[":status"] = "200";
       response->visitor =
-          std::make_unique<Http3WTSession::Visitor>(wtsession);
+          std::make_unique<Http3WTSession::Visitor>(wtsession, nullptr);
       server_->getJS()->processNewSession(static_cast<Http3WTSession *>(wtsession), path, peer_address.ToString(), nullptr, nullptr);
       promise->resolve(std::move(response));
       return promise;
