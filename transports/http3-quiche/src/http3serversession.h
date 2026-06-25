@@ -29,11 +29,12 @@
 // #include "quic/tools/quic_backend_response.h"
 #include "src/http3serverbackend.h"
 #include "src/http3serverstream.h" // todo
+#include "src/http3wtsessionvisitor.h"
 
 namespace quic
 {
 
-  class Http3ServerSession : public QuicServerSessionBase
+  class Http3ServerSession : public QuicServerSessionBase, public Http3WTSession::VisitorRemoveVisitor 
   {
   public:
     // Takes ownership of |connection|.
@@ -54,8 +55,13 @@ namespace quic
     void OnStreamFrame(const QuicStreamFrame &frame) override;
 
    void OnCanCreateNewOutgoingStream(bool unidirectional) override;
-   void AddVisitor(const WebTransportSessionId id, webtransport::SessionVisitor *visitor) {
+   void AddVisitor(const WebTransportSessionId id, Http3WTSession::Visitor *visitor) {
       svisitors_.try_emplace(id, visitor);
+    }
+
+    void RemoveVisitor(Http3WTSession::Visitor* visitor) override {
+      absl::erase_if(svisitors_,
+                     [&](const auto& pair) { return pair.second == visitor; });
     }
 
   protected:
@@ -91,7 +97,7 @@ namespace quic
     }
 
     Http3ServerBackend *http3_server_backend_; // Not owned.
-    absl::flat_hash_map<QuicStreamId, webtransport::SessionVisitor *> svisitors_;
+    absl::flat_hash_map<QuicStreamId, Http3WTSession::Visitor *> svisitors_;
   };
 
 } // namespace quic

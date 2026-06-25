@@ -609,7 +609,8 @@ namespace quic
                         wtsessionobj->init(
                             static_cast<WebTransportSession *>(wtsession));
                         getJS()->processNewClientSession(wtsessionobj);
-                        auto visitor = std::make_unique<Http3WTSession::Visitor>(wtsessionobj);
+                        auto visitor = std::make_unique<Http3WTSession::Visitor>(wtsessionobj,
+                            static_cast<Http3ClientSession *>(session_.get()));
                         static_cast<Http3ClientSession *>(session_.get())->AddVisitor(id, visitor.get());
                         wtsession->SetVisitor(std::move(visitor));
                     }
