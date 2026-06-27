@@ -27,11 +27,11 @@ describe('streamlimits', function () {
       ? 'Opening handshake failed.'
       : 'WebTransport connection rejected' */
 
-  const skipall = browser === 'firefox'
+  const skipall = browser === 'firefox' || nodenativequic
 
   if (skipall) {
     console.log(
-      'all streamlimits test skipped, as firefox does not support these!'
+      'all streamlimits test skipped, as firefox and node native does not support these!'
     )
   }
 

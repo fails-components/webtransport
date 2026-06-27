@@ -37,6 +37,15 @@ describe('sendgroup streams', function () {
     // @ts-ignore
     delete wtOptions.serverCertificateHashes
 
+  const skipall = nodenativequic
+  console.log('SKIPPALL inspect', skipall)
+  if (skipall) {
+    console.log(
+      'all sendorder test skipped, as node native does not support these!'
+    )
+    return
+  }
+
   // @ts-ignore
   beforeEach(async () => {
     if (
