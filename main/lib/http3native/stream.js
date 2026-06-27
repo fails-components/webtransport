@@ -37,6 +37,7 @@ export class Http3WebTransportStream {
     this.readiterator_ = this.stream[Symbol.asyncIterator]()
     this.final = false
     this.inStartReading = false
+    this.drainReads_ = false
   }
 
   async startReading() {
@@ -46,7 +47,28 @@ export class Http3WebTransportStream {
     try {
       if (!this.readiterator_ || stopReadingLoop) return
       // we just pull once from the iterator
-      const result = await this.readiterator_.next()
+      let tresult
+      if (!this.drainReads_) {
+        tresult = await this.readiterator_.next()
+      } else {
+        // FIXME: this is a workaround
+        const raceres = await Promise.race([
+          this.readiterator_.next(),
+          new Promise((resolve, reject) => {
+            setTimeout(resolve, 1)
+          })
+        ])
+        if (Array.isArray(raceres)) {
+          tresult = raceres
+        } else {
+          this.readiterator_ = undefined // drained
+          this.inStartReading = false
+          // no dataavailable
+          return
+        }
+      }
+
+      const result = tresult
       const fin = !!result.done
 
       const chunks = result.value
@@ -156,9 +178,8 @@ export class Http3WebTransportStream {
   }
 
   drainReads() {
-    while (this.readiterator_) {
-      this.startReading()
-    }
+    this.drainReads_ = true
+    this.startReading()
   }
 
   stopReading() {
