@@ -297,6 +297,7 @@ export class Http3WebTransportSession {
    * @param {{ code: number, reason: string }} arg
    */
   close({ code, reason }) {
+    this.stream.closeWebtransportSessionStream(code, reason)
     this.session.close({ code, reason })
     // should also close the stream
   }
