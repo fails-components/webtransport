@@ -154,7 +154,10 @@ export class HttpServer {
     if (this.args.nodenativequic) {
       log('Experimental node native quic is requested')
       if (!nodeNativeAvailable)
-        throw new WebTransportError('Native node quic support is not available')
+        throw new WebTransportError(
+          'Native node quic support is not available for binary: ' +
+            process?.execPath
+        )
     }
     /** @type {Record<string, ReadableStream>} */
     this.sessionStreams = {}
