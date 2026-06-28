@@ -49,8 +49,6 @@ export class Http2WebTransportServer {
     // @ts-ignore
     this.jsobj = undefined // the transport will set this
 
-    this.canHandleSettings = false // TODO replace with version check, or other check once my patch lands in node
-
     // @ts-ignore
     this.serverInt = createSecureServer({
       key,
