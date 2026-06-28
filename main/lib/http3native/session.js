@@ -311,4 +311,9 @@ export class Http3WebTransportSession {
     })
     this.close({ code, reason })
   }
+
+  /*
+   * @returns {void}
+   */
+  notifySessionDraining() {}
 }
