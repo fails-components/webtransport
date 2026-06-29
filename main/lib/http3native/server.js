@@ -96,7 +96,6 @@ export class Http3WebTransportServerNative {
               }
             }
             serverSession.onhandshake = function (info) {
-              console.log('onhandshake', info)
               if (
                 !this?.remoteTransportParams?.maxDatagramFrameSize ||
                 BigInt(this?.remoteTransportParams?.maxDatagramFrameSize) <= 0
