@@ -412,6 +412,7 @@ export async function createServer() {
             for await (const session of getReaderStream(
               server.sessionStream('/session_close_with_reason')
             )) {
+              await session.ready
               session.close({
                 closeCode: 7,
                 reason: 'this is the reason'

@@ -141,7 +141,8 @@ export class Http3WebTransportServerNative {
                 headers?.[':protocol'] !== 'webtransport'
               ) {
                 // no webtransport no nothing, go away I do not like you
-                this.sendHeaders({ ':status': '404' }, { terminal: true })
+                this.sendHeaders({ ':status': '404' })
+                this.writer.endSync()
                 return
               }
 
@@ -170,7 +171,8 @@ export class Http3WebTransportServerNative {
                     /\\([^"\\])/.test(el)
                   )
                 ) {
-                  this.sendHeaders({ ':status': '406' }, { terminal: true })
+                  this.sendHeaders({ ':status': '406' })
+                  this.writer.endSync()
                   return
                 }
                 headers['wt-available-protocols'] = splitted.map(
@@ -184,7 +186,7 @@ export class Http3WebTransportServerNative {
               headers[':path'] = path // also adapt it for the middleware
               const session = this.session
               const handshake = session.opened
-              if (this.hasrequesthandler) {
+              if (servernative.hasrequesthandler) {
                 const retObj = {
                   header: headers,
                   peerAddress:
@@ -197,7 +199,7 @@ export class Http3WebTransportServerNative {
                 const retObj = {
                   session: new Http3WebTransportSession({
                     stream: this,
-                    session: this.session,
+                    session,
                     isclient: false,
                     initialStreamSendWindowOffset:
                       servernative.initialStreamFlowControlWindow
@@ -215,6 +217,11 @@ export class Http3WebTransportServerNative {
                 )
                 // may be we need another call, see nghttp3 docu
                 servernative.jsobj.onHttpWTSessionVisitor(retObj)
+              } else {
+                this.sendHeaders({ ':status': '404' })
+                this.writer.writeSync('Path does not exist')
+                this.writer.endSync()
+                return
               }
             }
           }
@@ -289,13 +296,15 @@ export class Http3WebTransportServerNative {
   finishSessionRequest({
     header,
     peerAddress,
+    userData,
     session: stream,
     status,
     path,
     selectedProtocol
   }) {
     if (status !== 200) {
-      stream.sendHeaders({ ':status': status.toString() }, { terminal: true })
+      stream.sendHeaders({ ':status': status.toString() })
+      stream.writer.endSync()
       return
     }
     const resp = {
@@ -306,7 +315,7 @@ export class Http3WebTransportServerNative {
       resp['wt-protocol'] = '"' + selectedProtocol + '"'
     const retObj = {
       session: new Http3WebTransportSession({
-        stream: this,
+        stream,
         session: stream.session,
         isclient: false,
         initialStreamSendWindowOffset: this.initialStreamFlowControlWindow
@@ -314,6 +323,7 @@ export class Http3WebTransportServerNative {
       path,
       header,
       peerAddress,
+      userData,
       reliable: false,
       object: this // My server
     }
