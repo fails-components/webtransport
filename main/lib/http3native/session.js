@@ -127,7 +127,7 @@ export class Http3WebTransportSession {
         this.jsobj.onClientConnected({
           success: false
         })
-      }else {
+      } else {
         this.close({
           code: 0,
           reason: 'Session stream error'
@@ -297,7 +297,13 @@ export class Http3WebTransportSession {
    */
   close({ code, reason }) {
     this.stream.closeWebtransportSessionStream(code, reason)
-    this.session.close({ code, reason })
+    this.stream.closed
+      .then(() => {
+        this.session.close({ code, reason })
+      })
+      .catch(() => {
+        this.session.close({ code, reason })
+      })
   }
 
   /**
