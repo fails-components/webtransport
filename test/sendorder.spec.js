@@ -18,6 +18,8 @@ describe('sendgroup streams', function () {
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
   let nodenativequic = false
   if (process.env.USE_HTTP3_NODE_NATIVE === 'true') nodenativequic = true
+  let nodenativeserver = false
+  if (process.env.SERVER_HTTP3_NODE_NATIVE === 'true') nodenativeserver = true
 
   const websocketEmu =
     process.env.USE_POLYFILL === 'true' || process.env.USE_PONYFILL === 'true'
@@ -37,7 +39,7 @@ describe('sendgroup streams', function () {
     // @ts-ignore
     delete wtOptions.serverCertificateHashes
 
-  const skipall = nodenativequic
+  const skipall = nodenativequic || nodenativeserver
   console.log('SKIPPALL inspect', skipall)
   if (skipall) {
     console.log(

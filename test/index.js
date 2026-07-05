@@ -55,6 +55,7 @@ async function runTests(certificate, serverAddress) {
   const env = process.argv[2]
   let http2 = false
   let nodenativeClient = false
+  let nodenativeServer = false
   switch (process.argv[3]) {
     case 'http2':
       http2 = true
@@ -63,12 +64,14 @@ async function runTests(certificate, serverAddress) {
       // the default do notthinh
       break
     case 'http3:native:server':
+      nodenativeServer = true
       break
     case 'http3:native:client':
       nodenativeClient = true
       break
     case 'http3:native':
       if (env === 'node') nodenativeClient = true
+      nodenativeServer = true
       break
   }
 
