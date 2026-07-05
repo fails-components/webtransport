@@ -85,6 +85,9 @@ export class Http3WebTransportServerNative {
         return await listen(
           async (serverSession) => {
             // yay we got a server session
+           serverSession.onerror = (error) => {
+              log('Unknown serverSession error:', error)
+            }
             // what we really want is the client opening a webtransport session
             serverSession.onapplication = (aopts) => {
               if (!aopts.enableDatagrams) {
