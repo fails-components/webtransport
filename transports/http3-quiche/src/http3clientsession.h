@@ -59,6 +59,16 @@ namespace quic
       on_interim_headers_ = std::move(on_interim_headers);
     }
 
+    void OnWebTransportRejected(QuicStreamId id) {
+      // ok now find the visitor, and then we can signal, that it is closed
+      auto it = svisitors_.find(id);
+
+      if (it != svisitors_.end()) {
+        Http3WTSession::Visitor* visitor = it->second;
+        visitor->OnSessionClosed(255, "Webtransport connection rejected");
+      } 
+    }
+
   private:
     std::function<void(const quiche::HttpHeaderBlock &)> on_interim_headers_;
     const bool drop_response_body_;

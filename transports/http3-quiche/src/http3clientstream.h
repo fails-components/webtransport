@@ -28,6 +28,10 @@ class Http3ClientStream : public QuicSpdyClientStream {
     on_interim_headers_ = std::move(on_interim_headers);
   }
 
+  // Override to signal the new webtransport session
+  void OnInitialHeadersComplete(bool fin, size_t frame_len,
+                                const QuicHeaderList& header_list) override;
+
  protected:
   bool ParseAndValidateStatusCode() override;
 
