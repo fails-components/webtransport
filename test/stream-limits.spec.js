@@ -19,6 +19,8 @@ describe('streamlimits', function () {
   }
   let nodenativequic = false
   if (process.env.USE_HTTP3_NODE_NATIVE === 'true') nodenativequic = true
+  let nodenativeserver = false
+  if (process.env.SERVER_HTTP3_NODE_NATIVE === 'true') nodenativeserver = true
   const browser = process.env.BROWSER
   /*  const handshakemess =
     browser !== 'firefox' ||
@@ -27,7 +29,7 @@ describe('streamlimits', function () {
       ? 'Opening handshake failed.'
       : 'WebTransport connection rejected' */
 
-  const skipall = browser === 'firefox' || nodenativequic
+  const skipall = browser === 'firefox' || nodenativequic || nodenativeserver
 
   if (skipall) {
     console.log(
