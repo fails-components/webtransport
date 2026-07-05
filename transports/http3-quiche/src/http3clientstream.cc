@@ -9,7 +9,10 @@
 // found in the LICENSE file.
 
 #include "src/http3clientstream.h"
+#include "src/http3clientsession.h"
 #include "quiche/common/platform/api/quiche_logging.h"
+#include "quiche/web_transport/web_transport_headers.h"
+#include "quiche/quic/core/http/web_transport_http3.h"
 
 namespace quic {
 
@@ -47,6 +50,17 @@ bool Http3ClientStream::ParseAndValidateStatusCode() {
     }
   }
   return true;
+}
+
+void Http3ClientStream::OnInitialHeadersComplete(
+    bool fin, size_t frame_len, const QuicHeaderList& header_list) {
+  QuicSpdyClientStream::OnInitialHeadersComplete(fin, frame_len, header_list);
+  if (web_transport() != nullptr) {
+    if (!web_transport()->ready()) {
+      printf("Oninitial headers close\n");
+      static_cast<Http3ClientSession*>(spdy_session())->OnWebTransportRejected(id());
+    }
+  }
 }
 
 }  // namespace quic
