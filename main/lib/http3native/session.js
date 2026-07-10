@@ -63,6 +63,19 @@ export class Http3WebTransportSession {
         this.jsobj.onReady({})
       })
     }
+    this.session.onerror = () => {
+      // @ts-ignore
+      if (session.jsobj?.state === 'connecting') {
+        session.jsobj.onClientConnected({
+          success: false
+        })
+      } else {
+        /* session.close({
+          code: 0,
+          reason: 'Session stream error'
+        })*/
+      }
+    }
     this.session.onstream = (stream) => {
       stream.onheaders = (headers) => {
         if (isclient) {
