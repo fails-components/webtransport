@@ -138,6 +138,7 @@ export class Http3WebTransportSocket {
       this.socketInt.getSendQueueCount() === 0 &&
       this.blocked
     ) {
+      this.blocked = false
       this.cobj.onCanWrite()
     }
   }
