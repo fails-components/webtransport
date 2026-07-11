@@ -312,10 +312,12 @@ export class Http3WebTransportSession {
     this.stream.closeWebtransportSessionStream(code, reason)
     this.stream.closed
       .then(() => {
-        this.session.close({ code, reason })
+        // a server can have multiple wt sessions
+        if (this.isclient) this.session.close({ code, reason })
       })
       .catch(() => {
-        this.session.close({ code, reason })
+        // a server can have multiple wt sessions
+        if (this.isclient) this.session.close({ code, reason })
       })
   }
 
