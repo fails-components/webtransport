@@ -39,6 +39,7 @@ namespace quic
         else
         {
             // Blocked
+            writeBlocked_ = true;
             return WriteResult(WRITE_STATUS_BLOCKED_DATA_BUFFERED, 0); // we actually buffer the data
         }
     }
