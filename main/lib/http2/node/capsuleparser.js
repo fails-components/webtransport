@@ -256,7 +256,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
             if (bufferstate.size < length + offsetbegin) {
               this.remainlength = length + offsetbegin - bufferstate.size
               this.mode = 'c'
-              if (streamid) {
+              if (typeof streamid !== 'undefined') {
                 this.rstreamid = streamid
                 this.rfin = type === Http2CapsuleParser.WT_STREAM_WFIN
               }
@@ -270,7 +270,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               bufferstate.size - bufferstate.offset,
               this.remainlength
             )
-            if (this.rstreamid) {
+            if (typeof this.rstreamid !== 'undefined') {
               // TODO submitData
               const object = this.wtstreams.get(this.rstreamid)
               const fin =
