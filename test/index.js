@@ -44,6 +44,16 @@ async function startServer() {
         resolve(data)
       }
     })
+    server.on('exit', (code, signal) => {
+      console.log(
+        'Server with pid:',
+        server.pid,
+        'exited with code:',
+        code,
+        'and signal:',
+        signal
+      )
+    })
   })
 }
 
