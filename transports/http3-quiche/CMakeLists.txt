@@ -654,6 +654,8 @@ third_party/quiche/quiche/quic/core/qpack/value_splitting_header_list.cc
 third_party/quiche/quiche/quic/core/qpack/value_splitting_header_list.h
 third_party/quiche/quiche/quic/core/quic_ack_listener_interface.cc
 third_party/quiche/quiche/quic/core/quic_ack_listener_interface.h
+third_party/quiche/quiche/quic/core/quic_ack_timestamp_list.cc
+third_party/quiche/quiche/quic/core/quic_ack_timestamp_list.h
 third_party/quiche/quiche/quic/core/quic_alarm.cc
 third_party/quiche/quiche/quic/core/quic_alarm.h
 third_party/quiche/quiche/quic/core/quic_alarm_factory.h
