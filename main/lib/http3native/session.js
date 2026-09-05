@@ -176,83 +176,48 @@ export class Http3WebTransportSession {
   /**
    * @param {WebTransportSendStreamOptions} opts
    */
-  orderBidiStream({ sendGroup, sendOrder, waitUntilAvailable }) {
-    // must be replaced with mechanism for flow control
-    // const canopen = this.streamIdMngrBi.canOpenNextOutgoingStream()
-    // const maxset = this.streamIdMngrBi.isMaxStreamSet() // we block if the maxsetting did not arrive
+  async orderBidiStreamAsync({ waitUntilAvailable }) {
+    if (!this.stream.session) throw new Error('Session gone') // session has been destroyed
+    try {
+      const qstream = await this.stream.session.createBidirectionalStream({
+        incremental: true,
+        waitUntilAvailable,
+        highWaterMark: this.initialStreamSendWindowOffset,
+        webtransportSession: this.stream /* that is the session stream */
+      })
 
-    if (!this.stream.session) return false // session has been destroyed
-
-    // eslint-disable-next-line no-constant-condition
-    if (/* canopen || */ waitUntilAvailable /* || !maxset */ || true) {
-      this.stream.session
-        .createBidirectionalStream({
-          incremental: true,
-          highWaterMark: this.initialStreamSendWindowOffset,
-          webtransportSession: this.stream /* that is the session stream */
-        })
-        .then((/** @type {QuicStream} */ qstream) => {
-          const stream = new Http3WebTransportStream({
-            stream: qstream,
-            unidirectional: false,
-            incoming: false
-          })
-          this.jsobj.onStream({
-            bidirectional: true,
-            incoming: false,
-            stream,
-            // @ts-ignore
-            sendGroupId: sendGroup?._sendGroupId || 0n,
-            sendOrder: sendOrder ?? 0
-          })
-        })
-        .catch((error) => {
-          log('error creating bidirectional stream', error)
-        })
-      return true
+      return new Http3WebTransportStream({
+        stream: qstream,
+        unidirectional: false,
+        incoming: false
+      })
+    } catch (error) {
+      log('error creating bidirectional stream', error)
+      throw error
     }
-    return false
   }
 
   /**
    * @param {WebTransportSendStreamOptions} opts
    */
-  orderUnidiStream({ sendGroup, sendOrder, waitUntilAvailable }) {
-    // must be replaced with mechanism for flow control
-    // const canopen = this.streamIdMngrUni.canOpenNextOutgoingStream()
-    // const maxset = this.streamIdMngrUni.isMaxStreamSet() // we block if the maxsetting did not arrive
-
-    if (!this.stream.session) return false // session has been destroyed
-
-    // eslint-disable-next-line no-constant-condition
-    if (/* canopen || */ waitUntilAvailable /* || !maxset */ || true) {
-      this.stream.session
-        .createUnidirectionalStream({
-          incremental: true,
-          highWaterMark: this.initialStreamSendWindowOffset,
-          webtransportSession: this.stream /* that is the session stream */
-        })
-        .then((/** @type {QuicStream} */ qstream) => {
-          const stream = new Http3WebTransportStream({
-            stream: qstream,
-            unidirectional: true,
-            incoming: false
-          })
-          this.jsobj.onStream({
-            bidirectional: false,
-            incoming: false,
-            stream,
-            // @ts-ignore
-            sendGroupId: sendGroup?._sendGroupId || 0n,
-            sendOrder: sendOrder ?? 0
-          })
-        })
-        .catch((error) => {
-          log('error creating bidirectional stream', error)
-        })
-      return true
+  async orderUnidiStreamAsync({ waitUntilAvailable }) {
+    if (!this.stream.session) throw new Error('Session gone') // session has been destroyed
+    try {
+      const qstream = await this.stream.session.createUnidirectionalStream({
+        incremental: true,
+        waitUntilAvailable,
+        highWaterMark: this.initialStreamSendWindowOffset,
+        webtransportSession: this.stream /* that is the session stream */
+      })
+      return new Http3WebTransportStream({
+        stream: qstream,
+        unidirectional: true,
+        incoming: false
+      })
+    } catch (error) {
+      log('error creating bidirectional stream', error)
+      throw error
     }
-    return false
   }
 
   orderSessionStats() {

@@ -427,7 +427,7 @@ export class HttpWTSession {
    * @param {WebTransportSendStreamOptions} [opts]
    * @returns {Promise<WebTransportBidirectionalStream>}
    */
-  createBidirectionalStream(opts) {
+  async createBidirectionalStream(opts) {
     if (this.state === 'closed' || this.state === 'failed')
       throw new DOMException(
         'Session is failed or closed and can not open streams',
@@ -436,30 +436,56 @@ export class HttpWTSession {
     if (this.objint == null) {
       throw new Error('this.objint not set')
     }
-    /** @type {Promise<WebTransportBidirectionalStream>} */
-    const prom = new Promise((resolve, reject) => {
-      this.resolveBiDi.push(resolve)
-      this.rejectBiDi.push(reject)
-    })
-    const notblocked = this.objint.orderBidiStream({
-      sendGroup: opts?.sendGroup || null, // maybe replace, when implemented
-      sendOrder: opts?.sendOrder || 0,
-      waitUntilAvailable: opts?.waitUntilAvailable || false
-    })
-    if (!notblocked) {
-      const rej = this.rejectBiDi.pop()
-      this.resolveBiDi.pop()
-      if (rej)
-        rej(new DOMException('No streams available', 'QuotaExceededError'))
+    if (this.objint.orderBidiStream) {
+      /** @type {Promise<WebTransportBidirectionalStream>} */
+      const prom = new Promise((resolve, reject) => {
+        this.resolveBiDi.push(resolve)
+        this.rejectBiDi.push(reject)
+      })
+      const notblocked = this.objint.orderBidiStream({
+        sendGroup: opts?.sendGroup || null, // maybe replace, when implemented
+        sendOrder: opts?.sendOrder || 0,
+        waitUntilAvailable: opts?.waitUntilAvailable || false
+      })
+      if (!notblocked) {
+        const rej = this.rejectBiDi.pop()
+        this.resolveBiDi.pop()
+        if (rej)
+          rej(new DOMException('No streams available', 'QuotaExceededError'))
+      }
+      return prom
+    } else if (this.objint.orderBidiStreamAsync) {
+      const sendGroup = opts?.sendGroup || null // maybe replace, when implemented
+      const sendOrder = opts?.sendOrder || 0
+      const stream = await this.objint.orderBidiStreamAsync({
+        sendGroup,
+        sendOrder,
+        waitUntilAvailable: opts?.waitUntilAvailable || false
+      })
+      const strobj = new HttpWTStream({
+        object: stream,
+        parentobj: this,
+        transport: this.parentobj,
+        bidirectional: true,
+        incoming: false,
+        // @ts-ignore
+        sendGroup: this._sendGroupIndex.get(sendGroup?._sendGroupId || 0n),
+        sendOrder: sendOrder
+      })
+      this.addStreamObj(strobj)
+      return strobj
+    } else {
+      throw new Error(
+        'Neither orderBidiStream or orderBidiStreamAsync implemented'
+      )
     }
-    return prom
   }
 
   /**
    * @param {WebTransportSendStreamOptions} [opts]
    * @returns {Promise<WebTransportSendStream>}
    */
-  createUnidirectionalStream(opts) {
+  async createUnidirectionalStream(opts) {
     if (this.state === 'closed' || this.state === 'failed')
       throw new DOMException(
         'Session is failed or closed and can not open streams',
@@ -468,23 +494,49 @@ export class HttpWTSession {
     if (this.objint == null) {
       throw new Error('this.objint not set')
     }
-    /** @type {Promise<WebTransportSendStream>} */
-    const prom = new Promise((resolve, reject) => {
-      this.resolveUniDi.push(resolve)
-      this.rejectUniDi.push(reject)
-    })
-    const notblocked = this.objint.orderUnidiStream({
-      sendGroup: opts?.sendGroup || null, // maybe replace, when implemented
-      sendOrder: opts?.sendOrder || 0,
-      waitUntilAvailable: opts?.waitUntilAvailable || false
-    })
-    if (!notblocked) {
-      const rej = this.rejectUniDi.pop()
-      this.resolveUniDi.pop()
-      if (rej)
-        rej(new DOMException('No streams available', 'QuotaExceededError'))
+    if (this.objint.orderUnidiStream) {
+      /** @type {Promise<WebTransportSendStream>} */
+      const prom = new Promise((resolve, reject) => {
+        this.resolveUniDi.push(resolve)
+        this.rejectUniDi.push(reject)
+      })
+      const notblocked = this.objint.orderUnidiStream({
+        sendGroup: opts?.sendGroup || null, // maybe replace, when implemented
+        sendOrder: opts?.sendOrder || 0,
+        waitUntilAvailable: opts?.waitUntilAvailable || false
+      })
+      if (!notblocked) {
+        const rej = this.rejectUniDi.pop()
+        this.resolveUniDi.pop()
+        if (rej)
+          rej(new DOMException('No streams available', 'QuotaExceededError'))
+      }
+      return prom
+    } else if (this.objint.orderUnidiStreamAsync) {
+      const sendGroup = opts?.sendGroup || null // maybe replace, when implemented
+      const sendOrder = opts?.sendOrder || 0
+      const stream = await this.objint.orderUnidiStreamAsync({
+        sendGroup, // maybe replace, when implemented
+        sendOrder,
+        waitUntilAvailable: opts?.waitUntilAvailable || false
+      })
+      const strobj = new HttpWTStream({
+        object: stream,
+        parentobj: this,
+        transport: this.parentobj,
+        bidirectional: false,
+        incoming: false,
+        // @ts-ignore
+        sendGroup: this._sendGroupIndex.get(sendGroup?._sendGroupId || 0n),
+        sendOrder: sendOrder
+      })
+      this.addStreamObj(strobj)
+      return strobj.writable
+    } else {
+      throw new Error(
+        'Neither orderUnidiStream or orderunidiStreamAsync implemented'
+      )
     }
-    return prom
   }
 
   /**
