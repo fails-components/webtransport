@@ -533,8 +533,12 @@ export class HttpWTSession {
     this.state = 'connected'
     if (!this.reliable) this.reliability = 'supports-unreliable'
     else this.reliability = 'reliable-only'
-    if (this.readyResolve) this.readyResolve()
-    delete this.readyResolve
+    setTimeout(() => {
+      if (this.readyResolve) {
+        this.readyResolve()
+      }
+      delete this.readyResolve
+    }, 0)
   }
 
   /**
