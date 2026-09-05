@@ -24,8 +24,10 @@ export interface NativeHttpWTSession {
   jsobj: WebTransportSessionEventHandler
   sendInitialParameters?: () => void
   writeDatagram: (chunk: Uint8Array) => NativeWriteDatagramResult | Promise<NativeWriteDatagramResult>
-  orderUnidiStream: (opts: WebTransportSendStreamOptions) => boolean
-  orderBidiStream: (opts: WebTransportSendStreamOptions)  => boolean
+  orderUnidiStream?: (opts: WebTransportSendStreamOptions) => boolean
+  orderUnidiStreamAsync?: (opts: WebTransportSendStreamOptions) => Promise<NativeHttpWTStream>
+  orderBidiStream?: (opts: WebTransportSendStreamOptions)  => boolean
+  orderBidiStreamAsync?: (opts: WebTransportSendStreamOptions)  => Promise<NativeHttpWTStream>
   orderSessionStats: () => void
   orderDatagramStats: () => void
   notifySessionDraining: () => void
