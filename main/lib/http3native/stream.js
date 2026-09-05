@@ -234,11 +234,31 @@ export class Http3WebTransportStream {
     } catch (error) {
       log('Problem in stopSending', error)
     }
-    process.nextTick(() =>
-      this.jsobj.onStreamNetworkFinish({
-        nettask: 'stopSending'
-      })
-    )
+    process.nextTick(() => {
+      if (this.jsobj)
+        this.jsobj.onStreamNetworkFinish({
+          nettask: 'stopSending'
+        })
+    })
+  }
+
+  /**
+   * @param {Number} code
+   */
+  resetStream(code) {
+    this.outgoingClosed_ = true
+    if (this.incomingClosed_) this.onClose()
+    try {
+      this.stream.resetStream(code)
+    } catch (error) {
+      log('Problem in resetStream', error)
+    }
+    process.nextTick(() => {
+      if (this.jsobj)
+        this.jsobj.onStreamNetworkFinish({
+          nettask: 'resetStream'
+        })
+    })
   }
 
   onClose() {

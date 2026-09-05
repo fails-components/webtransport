@@ -683,8 +683,8 @@ export class HttpWTSession {
   onStream(args) {
     if (this.state === 'closed' || this.state === 'failed') {
       log('received stream after session closing')
-      args.stream.stopSending(0)
-      args.stream.resetStream(0)
+      if (args.bidirectional || args.incoming) args.stream.stopSending(0)
+      if (args.bidirectional || !args.incoming) args.stream.resetStream(0)
       return
     }
     const strobj = new HttpWTStream({
