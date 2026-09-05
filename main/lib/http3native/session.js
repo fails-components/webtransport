@@ -104,12 +104,14 @@ export class Http3WebTransportSession {
               unidirectional: stream.direction === 'uni',
               incoming: true
             })
-            this.jsobj.onStream({
-              bidirectional: stream.direction !== 'uni',
-              incoming: true,
-              stream: jsstream,
-              sendGroupId: 0n,
-              sendOrder: 0
+            setTimeout(() => {
+              this.jsobj.onStream({
+                bidirectional: stream.direction !== 'uni',
+                incoming: true,
+                stream: jsstream,
+                sendGroupId: 0n,
+                sendOrder: 0
+              })
             })
           } catch (error) {
             log('Error receiving wt stream:', error)
