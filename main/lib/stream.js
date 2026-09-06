@@ -102,10 +102,7 @@ export class HttpWTStream {
             else code = reason.code
           }
           this.readableclosed = true
-          this.parentobj.removeReceiveStream(
-            this.readable,
-            this.readableController
-          )
+          this.parentobj.removeReceiveStream(this)
           this.objint.stopSending(code)
           return promise
         },
@@ -129,8 +126,7 @@ export class HttpWTStream {
           bytesRead: 0n
         })
       }
-      // @ts-ignore
-      this.parentobj.addReceiveStream(this.readable, this.readableController)
+      this.parentobj.addReceiveStream(this)
     }
     if (this.bidirectional || !this.incoming) {
       /** @type {WebTransportSendStream} */
@@ -173,10 +169,7 @@ export class HttpWTStream {
             }
             this.writableclosed = true
             this.objint.streamFinal()
-            this.parentobj.removeSendStream(
-              this.writable,
-              this.writableController
-            )
+            this.parentobj.removeSendStream(this)
             // eslint-disable-next-line no-unused-vars
             this.pendingoperation = new Promise((resolve, reject) => {
               this.pendingres = resolve
@@ -197,10 +190,7 @@ export class HttpWTStream {
               else if (reason.code > 255) code = 255
               else code = reason.code
             }
-            this.parentobj.removeSendStream(
-              this.writable,
-              this.writableController
-            )
+            this.parentobj.removeSendStream(this)
             /** @type {Promise<void>} */
             // eslint-disable-next-line no-unused-vars
             const promise = new Promise((resolve, reject) => {
@@ -250,8 +240,7 @@ export class HttpWTStream {
           }
         }
       })
-      // @ts-ignore
-      this.parentobj.addSendStream(this.writable, this.writableController)
+      this.parentobj.addSendStream(this)
     }
 
     /** @type {(() => void) | null} */
@@ -321,10 +310,7 @@ export class HttpWTStream {
       if (parentstate === 'closed' || parentstate === 'failed') {
         log('no parent cleanup for fin as parent was closed or failed')
       } else {
-        this.parentobj.removeReceiveStream(
-          this.readable,
-          this.readableController
-        )
+        this.parentobj.removeReceiveStream(this)
       }
       if (!this.readableclosed) {
         this.readableController.close()
@@ -361,11 +347,7 @@ export class HttpWTStream {
       case 'resetStream':
         if (this.readable) {
           this.finalDrain()
-          if (parentcleanup)
-            this.parentobj.removeReceiveStream(
-              this.readable,
-              this.readableController
-            )
+          if (parentcleanup) this.parentobj.removeReceiveStream(this)
           if (!this.readableclosed) {
             this.readableclosed = true
             this.readableController.error(
@@ -379,11 +361,7 @@ export class HttpWTStream {
 
       case 'stopSending':
         if (this.writable) {
-          if (parentcleanup)
-            this.parentobj.removeSendStream(
-              this.writable,
-              this.writableController
-            )
+          if (parentcleanup) this.parentobj.removeSendStream(this)
           if (!this.writableclosed) {
             this.writableclosed = true
             this.writableController.error(
@@ -457,16 +435,8 @@ export class HttpWTStream {
           const res = this.abortres
           this.abortres = null
           res()
-          if (this.readable)
-            this.parentobj.removeReceiveStream(
-              this.readable,
-              this.readableController
-            )
-          if (this.writable)
-            this.parentobj.removeSendStream(
-              this.writable,
-              this.writableController
-            )
+          if (this.readable) this.parentobj.removeReceiveStream(this)
+          if (this.writable) this.parentobj.removeSendStream(this)
           this.readableclosed = true
           this.parentobj.removeStreamObj(this)
         }
