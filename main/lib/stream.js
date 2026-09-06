@@ -106,6 +106,7 @@ export class HttpWTStream {
             this.readable,
             this.readableController
           )
+          this.removeStreamObjIfFinished()
           this.objint.stopSending(code)
           return promise
         },
@@ -177,6 +178,7 @@ export class HttpWTStream {
               this.writable,
               this.writableController
             )
+            this.removeStreamObjIfFinished()
             // eslint-disable-next-line no-unused-vars
             this.pendingoperation = new Promise((resolve, reject) => {
               this.pendingres = resolve
@@ -201,6 +203,7 @@ export class HttpWTStream {
               this.writable,
               this.writableController
             )
+            this.removeStreamObjIfFinished()
             /** @type {Promise<void>} */
             // eslint-disable-next-line no-unused-vars
             const promise = new Promise((resolve, reject) => {
@@ -330,8 +333,18 @@ export class HttpWTStream {
         this.readableController.close()
         this.readableclosed = true
       }
+      if (parentstate !== 'closed' && parentstate !== 'failed') {
+        this.removeStreamObjIfFinished()
+      }
     }
     return retObj
+  }
+
+  /** Removes this stream from the session once both halves are closed. */
+  removeStreamObjIfFinished() {
+    if (this.readable && !this.readableclosed) return
+    if (this.writable && !this.writableclosed) return
+    this.parentobj.removeStreamObj(this)
   }
 
   updateSendOrderAndGroup() {
@@ -397,6 +410,7 @@ export class HttpWTStream {
       default:
         log.error('unhandled onStreamRecvSignal')
     }
+    if (parentcleanup) this.removeStreamObjIfFinished()
 
     if (this.pendingoperation) {
       const res = this.pendingres

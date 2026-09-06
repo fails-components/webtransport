@@ -13,6 +13,7 @@ import { quicheLoaded } from './fixtures/quiche.js'
 describe('unidirectional streams', function () {
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
+  const browser = process.env.BROWSER
   let forceReliable = false
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
 
@@ -130,4 +131,21 @@ describe('unidirectional streams', function () {
     // expect(result).to.have.property('reason', '')
     // expect(result).to.have.property('closeCode', 0)
   })
+
+  if (!browser) {
+    it('lets the session forget a unidirectional stream once it is closed', async () => {
+      client = new WebTransport(
+        `${process.env.SERVER_URL}/unidirectional_client_send_all`,
+        wtOptions
+      )
+      await client.ready
+      // @ts-expect-error sessionint is the node implementation's session object
+      const session = client.sessionint
+      for (let i = 0; i < 10; i++) {
+        const stream = await client.createUnidirectionalStream()
+        await writeStream(stream, KNOWN_BYTES)
+      }
+      expect(session.streamObjs.size).to.equal(0)
+    })
+  }
 })

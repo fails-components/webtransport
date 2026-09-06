@@ -437,6 +437,38 @@ export async function createServer() {
             }
           },
 
+          // echo server, initiated by remote, for every stream of the session
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/bidirectional_client_initiated_echo_all')
+            )) {
+              ;(async () => {
+                for await (const bidiStream of getReaderStream(
+                  session.incomingBidirectionalStreams
+                )) {
+                  bidiStream.readable
+                    .pipeTo(bidiStream.writable)
+                    .catch(() => {})
+                }
+              })().catch(() => {})
+            }
+          },
+
+          // drains every unidirectional stream of the session
+          async () => {
+            for await (const session of getReaderStream(
+              server.sessionStream('/unidirectional_client_send_all')
+            )) {
+              ;(async () => {
+                for await (const stream of getReaderStream(
+                  session.incomingUnidirectionalStreams
+                )) {
+                  readStream(stream).catch(() => {})
+                }
+              })().catch(() => {})
+            }
+          },
+
           // send data over unidirectional stream, initiated by remote
           async () => {
             for await (const session of getReaderStream(

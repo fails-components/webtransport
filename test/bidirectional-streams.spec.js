@@ -249,4 +249,23 @@ describe('bidirectional streams', function () {
       }
     }
   })
+
+  if (!browser) {
+    it('lets the session forget a bidirectional stream once both sides closed it', async () => {
+      client = new WebTransport(
+        `${process.env.SERVER_URL}/bidirectional_client_initiated_echo_all`,
+        wtOptions
+      )
+      await client.ready
+      // @ts-expect-error sessionint is the node implementation's session object
+      const session = client.sessionint
+      for (let i = 0; i < 10; i++) {
+        const stream = await client.createBidirectionalStream()
+        await writeStream(stream.writable, KNOWN_BYTES)
+        const output = await readStream(stream.readable)
+        expect(ui8.concat(KNOWN_BYTES)).to.deep.equal(ui8.concat(output))
+      }
+      expect(session.streamObjs.size).to.equal(0)
+    })
+  }
 })
