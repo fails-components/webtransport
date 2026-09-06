@@ -187,6 +187,9 @@ export class Http3WebTransportSession {
         highWaterMark: this.initialStreamSendWindowOffset,
         webtransportSession: this.stream /* that is the session stream */
       })
+      if (qstream.pending) {
+        await qstream.ready
+      }
 
       return new Http3WebTransportStream({
         stream: qstream,
@@ -211,6 +214,9 @@ export class Http3WebTransportSession {
         highWaterMark: this.initialStreamSendWindowOffset,
         webtransportSession: this.stream /* that is the session stream */
       })
+      if (qstream.pending) {
+        await qstream.ready
+      }
       return new Http3WebTransportStream({
         stream: qstream,
         unidirectional: true,
