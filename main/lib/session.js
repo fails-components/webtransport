@@ -388,39 +388,41 @@ export class HttpWTSession {
   }
 
   /**
-   * @param {WebTransportSendStream} stream
-   * @param {WritableStreamDefaultController} controller
+   * @param {HttpWTStream} streamobj
    */
-  addSendStream(stream, controller) {
-    this.sendStreams.add(stream)
-    this.sendStreamsController.add(controller)
+  addSendStream(streamobj) {
+    this.sendStreams.add(streamobj.writable)
+    this.sendStreamsController.add(streamobj.writableController)
   }
 
   /**
-   * @param {WebTransportSendStream} stream
-   * @param {WritableStreamDefaultController} controller
+   * @param {HttpWTStream} streamobj
    */
-  removeSendStream(stream, controller) {
-    this.sendStreams.delete(stream)
-    this.sendStreamsController.delete(controller)
+  removeSendStream(streamobj) {
+    this.sendStreams.delete(streamobj.writable)
+    this.sendStreamsController.delete(streamobj.writableController)
+    if (!streamobj.readable || !this.receiveStreams.has(streamobj.readable)) {
+      this.streamObjs.delete(streamobj)
+    }
   }
 
   /**
-   * @param {WebTransportReceiveStream } stream
-   * @param {ReadableStreamDefaultController} controller
+   * @param {HttpWTStream} streamobj
    */
-  addReceiveStream(stream, controller) {
-    this.receiveStreams.add(stream)
-    this.receiveStreamsController.add(controller)
+  addReceiveStream(streamobj) {
+    this.receiveStreams.add(streamobj.readable)
+    this.receiveStreamsController.add(streamobj.readableController)
   }
 
   /**
-   * @param {WebTransportReceiveStream } stream
-   * @param {ReadableStreamDefaultController} controller
+   * @param {HttpWTStream} streamobj
    */
-  removeReceiveStream(stream, controller) {
-    this.receiveStreams.delete(stream)
-    this.receiveStreamsController.delete(controller)
+  removeReceiveStream(streamobj) {
+    this.receiveStreams.delete(streamobj.readable)
+    this.receiveStreamsController.delete(streamobj.readableController)
+    if (!streamobj.writable || !this.sendStreams.has(streamobj.writable)) {
+      this.streamObjs.delete(streamobj)
+    }
   }
 
   /**
