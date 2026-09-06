@@ -13,14 +13,20 @@ describe('streamlimits', function () {
   this.timeout(6000) // for debugging remove before commit
   let forceReliable = false
   let adjustlimit = 1
+  let adjustlimituni = 1
   if (process.env.USE_HTTP2 === 'true') {
     forceReliable = true
     adjustlimit = 0
+    adjustlimituni = 0
   }
   let nodenativequic = false
   if (process.env.USE_HTTP3_NODE_NATIVE === 'true') nodenativequic = true
   let nodenativeserver = false
   if (process.env.SERVER_HTTP3_NODE_NATIVE === 'true') nodenativeserver = true
+
+  if (nodenativequic) {
+    adjustlimituni = 3
+  }
   const browser = process.env.BROWSER
   /*  const handshakemess =
     browser !== 'firefox' ||
@@ -29,11 +35,11 @@ describe('streamlimits', function () {
       ? 'Opening handshake failed.'
       : 'WebTransport connection rejected' */
 
-  const skipall = browser === 'firefox' || nodenativequic || nodenativeserver
+  const skipall = browser === 'firefox'
 
   if (skipall) {
     console.log(
-      'all streamlimits test skipped, as firefox and node native does not support these!'
+      'all streamlimits test skipped, as firefox does not support these!'
     )
   }
 
@@ -103,49 +109,50 @@ describe('streamlimits', function () {
     }
   })
 
-  if (dowaitUntilAvailable && !skipall) {
-    it('should detect stream limit bidi outgoing with waitUntilAvailable = true', async () => {
-      client = new WebTransport(
-        `${process.env.SERVER_URL}/streamlimits_getbidis_wua`,
-        { ...wtOptions }
-      )
-      await client.ready
-      const bidistreams = []
-      let numbidi = 0
-      for (let i = 0; i < 150; i++) {
-        const curstream = client.createBidirectionalStream({
-          waitUntilAvailable: true
+  it('should detect stream limit bidi outgoing with waitUntilAvailable = true', async () => {
+    if (!dowaitUntilAvailable || skipall) {
+      this.skip()
+    }
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/streamlimits_getbidis_wua`,
+      { ...wtOptions }
+    )
+    await client.ready
+    const bidistreams = []
+    let numbidi = 0
+    for (let i = 0; i < 150; i++) {
+      const curstream = client.createBidirectionalStream({
+        waitUntilAvailable: true
+      })
+      bidistreams.push(curstream)
+      curstream
+        .then(() => {
+          numbidi++
         })
-        bidistreams.push(curstream)
-        curstream
-          .then(() => {
-            numbidi++
-          })
-          .catch(() => {})
-      }
-      await client.createUnidirectionalStream({
-        waitUntilAvailable: true
-      })
-      expect(numbidi).to.equal(100 - adjustlimit)
-      await client.createUnidirectionalStream({
-        waitUntilAvailable: true
-      })
-      for (let i = 0; i < 50 + adjustlimit; i++) {
-        const curstream = await bidistreams.shift()
-        await curstream.readable.cancel()
-        await curstream.writable.close()
-      }
-      await Promise.allSettled(bidistreams)
-      await client.createUnidirectionalStream({
-        waitUntilAvailable: true
-      })
-      expect(numbidi).to.equal(150)
-
-      const result = await client.closed
-      expect(result).to.have.property('closeCode', 0)
-      expect(result).to.have.property('reason', '')
+        .catch(() => {})
+    }
+    await client.createUnidirectionalStream({
+      waitUntilAvailable: true
     })
-  }
+    expect(numbidi).to.equal(100 - adjustlimit)
+    await client.createUnidirectionalStream({
+      waitUntilAvailable: true
+    })
+    for (let i = 0; i < 50 + adjustlimit; i++) {
+      const curstream = await bidistreams.shift()
+      await curstream.readable.cancel()
+      await curstream.writable.close()
+    }
+    await Promise.allSettled(bidistreams)
+    await client.createUnidirectionalStream({
+      waitUntilAvailable: true
+    })
+    expect(numbidi).to.equal(150)
+
+    const result = await client.closed
+    expect(result).to.have.property('closeCode', 0)
+    expect(result).to.have.property('reason', '')
+  })
 
   if (!skipall) {
     it('should detect stream limit bidi outgoing', async () => {
@@ -204,48 +211,49 @@ describe('streamlimits', function () {
     })
   }
 
-  if (dowaitUntilAvailable && !skipall) {
-    it('should detect stream limit unidi outgoing with waitUntilAvailable = true', async () => {
-      client = new WebTransport(
-        `${process.env.SERVER_URL}/streamlimits_getunidis_wua`,
-        { ...wtOptions }
-      )
-      await client.ready
-      const unidistreams = []
-      let numunidi = 0
-      for (let i = 0; i < 150; i++) {
-        const curstream = client.createUnidirectionalStream({
-          waitUntilAvailable: true
+  it('should detect stream limit unidi outgoing with waitUntilAvailable = true', async () => {
+    if (!dowaitUntilAvailable || skipall) {
+      this.skip()
+    }
+    client = new WebTransport(
+      `${process.env.SERVER_URL}/streamlimits_getunidis_wua`,
+      { ...wtOptions }
+    )
+    await client.ready
+    const unidistreams = []
+    let numunidi = 0
+    for (let i = 0; i < 150; i++) {
+      const curstream = client.createUnidirectionalStream({
+        waitUntilAvailable: true
+      })
+      unidistreams.push(curstream)
+      curstream
+        .then(() => {
+          numunidi++
         })
-        unidistreams.push(curstream)
-        curstream
-          .then(() => {
-            numunidi++
-          })
-          .catch(() => {})
-      }
-      await client.createBidirectionalStream({
-        waitUntilAvailable: true
-      })
-      expect(numunidi).to.equal(100)
-      await client.createBidirectionalStream({
-        waitUntilAvailable: true
-      })
-      for (let i = 0; i < 50 + adjustlimit; i++) {
-        const curstream = await unidistreams.shift()
-        await curstream.close()
-      }
-      await Promise.allSettled(unidistreams)
-      await client.createBidirectionalStream({
-        waitUntilAvailable: true
-      })
-      expect(numunidi).to.equal(150)
-
-      const result = await client.closed
-      expect(result).to.have.property('closeCode', 0)
-      expect(result).to.have.property('reason', '')
+        .catch(() => {})
+    }
+    await client.createBidirectionalStream({
+      waitUntilAvailable: true
     })
-  }
+    expect(numunidi + adjustlimituni).to.equal(100)
+    await client.createBidirectionalStream({
+      waitUntilAvailable: true
+    })
+    for (let i = 0; i < 50 + adjustlimit; i++) {
+      const curstream = await unidistreams.shift()
+      await curstream.close()
+    }
+    await Promise.allSettled(unidistreams)
+    await client.createBidirectionalStream({
+      waitUntilAvailable: true
+    })
+    expect(numunidi).to.equal(150)
+
+    const result = await client.closed
+    expect(result).to.have.property('closeCode', 0)
+    expect(result).to.have.property('reason', '')
+  })
 
   if (!skipall) {
     it('should detect stream limit unidi outgoing', async () => {
@@ -269,10 +277,10 @@ describe('streamlimits', function () {
           })
       }
       await Promise.allSettled(unidistreams)
-      expect(numunidi).to.equal(100)
-      expect(numfailed).to.equal(50)
+      expect(numunidi + adjustlimituni).to.equal(100)
+      expect(numfailed - adjustlimituni).to.equal(50)
       numfailed = 0
-      for (let i = 0; i < 50 + adjustlimit; i++) {
+      for (let i = 0; i < 50 + adjustlimituni; i++) {
         const curstream = await unidistreams.shift()
         await curstream.close()
       }
@@ -280,7 +288,7 @@ describe('streamlimits', function () {
       // actually no save measure exist, waiting for a typical rtt could be a way
       // to ensure that the update of maxstreams arrives
       await new Promise((resolve) => setTimeout(resolve, 200))
-      for (let i = 0; i < 50; i++) {
+      for (let i = 0; i < 50 + adjustlimituni; i++) {
         const curstream = client.createUnidirectionalStream()
         unidistreams.push(curstream)
         curstream
