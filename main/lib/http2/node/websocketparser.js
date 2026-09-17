@@ -643,7 +643,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
               if (bufferstate.size < length + offsetbegin) {
                 this.remainlength = length + offsetbegin - bufferstate.size
                 this.mode = 'c'
-                if (streamid) {
+                if (typeof streamid !== 'undefined') {
                   this.rstreamid = streamid
                   this.rfin = type === ParserBase.WT_STREAM_WFIN
                 }
@@ -669,7 +669,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
               bufferstate.size - bufferstate.offset,
               this.remainlength
             )
-            if (this.rstreamid) {
+            if (typeof this.rstreamid !== 'undefined') {
               // not in j mode
               // TODO submitData
               const object = this.wtstreams.get(this.rstreamid)
