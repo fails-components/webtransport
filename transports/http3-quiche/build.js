@@ -211,6 +211,7 @@ if (argv.length > 2) {
   const pbargs = []
   const pbargspre = []
   if (platform === 'win32') pbargs.push('-t', 'ClangCL')
+  if (platform === 'linux') platformargs.push('--prefer-clang')
   if (env.BUILDARCH) {
     pbargspre.push('--arch', env.BUILDARCH)
     platformargs.push('--arch', env.BUILDARCH)
