@@ -35,6 +35,7 @@ export class Http3WebTransportStream {
     this.outgoingClosed_ = false
     this.incomingClosed_ = false
     this.readiterator_ = this.stream[Symbol.asyncIterator]()
+    this.readiteratorFirst_ = this.readiterator_.next()
     this.final = false
     this.inStartReading = false
     this.drainReads_ = false
@@ -48,12 +49,19 @@ export class Http3WebTransportStream {
       if (!this.readiterator_ || stopReadingLoop) return
       // we just pull once from the iterator
       let tresult
+      let readprom
+      if (!this.readiteratorFirst_) {
+        readprom = this.readiterator_.next()
+      } else {
+        readprom = this.readiteratorFirst_
+        delete this.readiteratorFirst_
+      }
       if (!this.drainReads_) {
-        tresult = await this.readiterator_.next()
+        tresult = await readprom
       } else {
         // FIXME: this is a workaround
         const raceres = await Promise.race([
-          this.readiterator_.next(),
+          readprom,
           new Promise((resolve, reject) => {
             setTimeout(resolve, 1)
           })
