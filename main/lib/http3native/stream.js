@@ -36,6 +36,8 @@ export class Http3WebTransportStream {
     this.incomingClosed_ = false
     this.readiterator_ = this.stream[Symbol.asyncIterator]()
     this.readiteratorFirst_ = this.readiterator_.next()
+    // consume errors
+    this.readiteratorFirst_.catch(() => {})
     this.final = false
     this.inStartReading = false
     this.drainReads_ = false
