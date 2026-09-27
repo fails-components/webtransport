@@ -240,7 +240,7 @@ describe('streamlimits', function () {
     await client.createBidirectionalStream({
       waitUntilAvailable: true
     })
-    for (let i = 0; i < 50 + adjustlimit; i++) {
+    for (let i = 0; i < 50 + adjustlimituni; i++) {
       const curstream = await unidistreams.shift()
       await curstream.close()
     }

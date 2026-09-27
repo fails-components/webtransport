@@ -55,8 +55,10 @@ export async function createServer() {
   }
 
   let adjustlimit = 1
+  let adjustlimituni = 1
   if (process.env.USE_HTTP2 === 'true') {
     adjustlimit = 0
+    adjustlimituni = 0
   }
 
   server.ready
@@ -353,7 +355,7 @@ export async function createServer() {
               try {
                 await session.ready
                 const unidistreams = []
-                while (unidistreams.length < 100 - adjustlimit) {
+                while (unidistreams.length < 100 - adjustlimituni) {
                   unidistreams.push(
                     await getReaderValue(session.incomingUnidirectionalStreams)
                   )
@@ -363,7 +365,7 @@ export async function createServer() {
                 for (let i = 0; i < 50 + adjustlimit; i++) {
                   unidistreams.shift()
                 }
-                while (unidistreams.length < 100 - adjustlimit) {
+                while (unidistreams.length < 100 - adjustlimituni) {
                   unidistreams.push(
                     await getReaderValue(session.incomingUnidirectionalStreams)
                   )
