@@ -13,7 +13,7 @@ describe('streamlimits', function () {
   this.timeout(6000) // for debugging remove before commit
   let forceReliable = false
   let adjustlimit = 1
-  let adjustlimituni = 1
+  let adjustlimituni = 0
   if (process.env.USE_HTTP2 === 'true') {
     forceReliable = true
     adjustlimit = 0
@@ -24,7 +24,7 @@ describe('streamlimits', function () {
   let nodenativeserver = false
   if (process.env.SERVER_HTTP3_NODE_NATIVE === 'true') nodenativeserver = true
 
-  if (nodenativequic) {
+  if (nodenativeserver) {
     adjustlimituni = 3
   }
   const browser = process.env.BROWSER
