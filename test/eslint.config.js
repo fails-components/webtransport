@@ -19,7 +19,7 @@ export default [
         ...globals.node
       },
       parser: babelParser,
-      ecmaVersion: 2020,
+      ecmaVersion: 2023,
       parserOptions: {
         ecmaFeatures: {
           legacyDecorators: true,

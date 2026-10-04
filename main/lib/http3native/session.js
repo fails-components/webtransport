@@ -4,8 +4,7 @@
  */
 import { Http3WebTransportStream } from './stream.js'
 import { logger } from '../utils.js'
-import { lengthVarInt } from '../http2/parserbase.js'
-import { writeVarInt, readVarInt } from '../http2/parserbasehttp2.js'
+import { lengthVarInt, writeVarInt, readVarInt } from '../http2/bufferHelper.js'
 const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:http3webtransportsession(${pid})`)
 
