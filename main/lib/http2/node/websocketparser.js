@@ -1,11 +1,25 @@
 import { randomBytes } from 'node:crypto'
-import { ParserBase, lengthVarInt } from '../parserbase.js'
+import { ParserBase } from '../parserbase.js'
 import {
-  ParserBaseHttp2,
+  advanceBufferToOffset,
+  lengthVarInt,
   readVarInt,
   writeVarInt,
-  readUint32
-} from '../parserbasehttp2.js'
+  writeUInt8,
+  writeUint16BE,
+  writeUint32BE,
+  writeBigInt64BE,
+  readUInt8,
+  readUint32,
+  advanceBuffer,
+  getUint8ArrayfromBuffer,
+  getUint8ArraysfromBuffer,
+  advanceBufferBy,
+  readUInt16BE,
+  readString,
+  detachReadBuffers
+} from '../bufferHelper.js'
+import { ParserBaseHttp2 } from '../parserbasehttp2.js'
 import { logger } from '../../utils.js'
 
 const log = logger(`webtransport:http2:node:websocketparser(${process?.pid})`)
@@ -14,32 +28,32 @@ const log = logger(`webtransport:http2:node:websocketparser(${process?.pid})`)
  */
 
 /**
- * @param{{offset: Number, buffer: Buffer, size: Number}} bs
+ * @param{{offset: Number, buffer: Uint8Array[], size: Number, curBuf: Number, curBufOffset: Number}} bs
  */
 function readByte(bs) {
-  const val = bs.buffer.readUInt8(bs.offset)
-  bs.offset++
+  const val = readUInt8(bs)
+  advanceBuffer(bs)
   return val
 }
 
 /**
- * @param{{offset: Number, buffer: Buffer, size: Number}} bs
+ * @param{{offset: Number, buffer: Uint8Array[], size: Number, curBuf: Number, curBufOffset: Number}} bs
  */
 function readWord(bs) {
-  let val = bs.buffer.readUInt8(bs.offset)
-  bs.offset++
-  val = (val << 8) | bs.buffer.readUInt8(bs.offset)
-  bs.offset++
+  let val = readUInt8(bs)
+  advanceBuffer(bs)
+  val = (val << 8) | readUInt8(bs)
+  advanceBuffer(bs)
   return val
 }
 
 /**
- * @param{{offset: Number, buffer: Buffer, size: Number}} bs
+ * @param{{offset: Number, buffer: Uint8Array[], size: Number, curBuf: Number, curBufOffset: Number}} bs
  * @param{{offset: Number, mask: Uint8Array}} ms
  */
 export function readVarIntMasked(bs, ms) {
-  let val = bs.buffer.readUInt8(bs.offset) ^ ms.mask[ms.offset % 4]
-  bs.offset++
+  let val = readUInt8(bs) ^ ms.mask[ms.offset % 4]
+  advanceBuffer(bs)
   ms.offset++
   const prefix = val >>> 6
   const intlength = 1 << prefix
@@ -49,49 +63,48 @@ export function readVarIntMasked(bs, ms) {
   }
   val = val & 0x3f
   for (let i = 0; i < intlength - 1; i++) {
-    val = (val << 8) | (bs.buffer.readUInt8(bs.offset) ^ ms.mask[ms.offset % 4])
-    bs.offset++
+    val = (val << 8) | (readUInt8(bs) ^ ms.mask[ms.offset % 4])
+    advanceBuffer(bs)
     ms.offset++
   }
   return val
 }
 
 /**
- * @param{{offset: Number, buffer: Buffer, size: Number}} bs
+ * @param{{offset: Number, buffer: Uint8Array[], size: Number, curBuf: Number, curBufOffset: Number}} bs
  */
 function readQWord(bs) {
-  let val = bs.buffer.readUInt8(bs.offset)
-  bs.offset++
-  val = (val << 8) | bs.buffer.readUInt8(bs.offset)
-  bs.offset++
-  val = (val << 8) | bs.buffer.readUInt8(bs.offset)
-  bs.offset++
-  val = (val << 8) | bs.buffer.readUInt8(bs.offset)
-  bs.offset++
-  val = (val << 8) | bs.buffer.readUInt8(bs.offset)
-  bs.offset++
-  val = (val << 8) | bs.buffer.readUInt8(bs.offset)
-  bs.offset++
-  val = (val << 8) | bs.buffer.readUInt8(bs.offset)
-  bs.offset++
-  val = (val << 8) | bs.buffer.readUInt8(bs.offset)
-  bs.offset++
+  let val = readUInt8(bs)
+  advanceBuffer(bs)
+  val = (val << 8) | readUInt8(bs)
+  advanceBuffer(bs)
+  val = (val << 8) | readUInt8(bs)
+  advanceBuffer(bs)
+  val = (val << 8) | readUInt8(bs)
+  advanceBuffer(bs)
+  val = (val << 8) | readUInt8(bs)
+  advanceBuffer(bs)
+  val = (val << 8) | readUInt8(bs)
+  advanceBuffer(bs)
+  val = (val << 8) | readUInt8(bs)
+  advanceBuffer(bs)
+  val = (val << 8) | readUInt8(bs)
+  advanceBuffer(bs)
   return val
 }
 
 /**
  * @param{{offset: Number, mask: Uint8Array}} ms
- * @param{Buffer} buffer
+ * @param{Uint8Array} data
  * @param{number} offset
  * @param{number} length
  */
-function applyMask(ms, buffer, offset, length) {
+function applyMask(ms, data, offset, length) {
   // Note offset: includes the byteOffset into the buffer
   if (length > 24) {
     let run = 0
     // alignment preamble, inspired from ws bufferutil
-    const data = new Uint8Array(buffer.buffer)
-    while (run < length && (offset + run) % 8) {
+    while (run < length && (offset + run + data.byteOffset) % 8) {
       data[run + offset] ^= ms.mask[(run + ms.offset) % 4]
       run++
     }
@@ -106,8 +119,8 @@ function applyMask(ms, buffer, offset, length) {
     workmask[6] = ms.mask[(6 + run + ms.offset) % 4]
     workmask[7] = ms.mask[(7 + run + ms.offset) % 4]
     const data64 = new BigUint64Array(
-      buffer.buffer,
-      run + offset,
+      data.buffer,
+      run + offset + data.byteOffset,
       Math.floor((length - run) / 8)
     )
     const workmask64 = new BigUint64Array(workmask.buffer)
@@ -128,40 +141,45 @@ function applyMask(ms, buffer, offset, length) {
     workmask[1] = ms.mask[(1 + ms.offset) % 4]
     workmask[2] = ms.mask[(2 + ms.offset) % 4]
     workmask[3] = ms.mask[(3 + ms.offset) % 4]
-    const data = new Uint8Array(buffer.buffer, offset, length)
     for (let run = 0 /* Math.round(length / 4) * 4 */; run < length; run++) {
-      data[run] ^= workmask[run % 4]
+      data[run + offset] ^= workmask[run % 4]
     }
   }
   ms.offset += length
 }
-/*
-function readDWord(bs) {
-  let val = bs.buffer.readUInt8(bs.offset)
-  bs.offset++
-  val = (val << 8) | bs.buffer.readUInt8(bs.offset)
-  bs.offset++
-  val = (val << 8) | bs.buffer.readUInt8(bs.offset)
-  bs.offset++
-  val = (val << 8) | bs.buffer.readUInt8(bs.offset)
-  bs.offset++
-  return val
+/**
+ * @param{{offset: Number, mask: Uint8Array}} ms
+ * @param{{offset: Number, buffer: Uint8Array[], size: Number, curBuf: Number, curBufOffset: Number}} bs
+ * @param{number} length
+ */
+function applyMaskBuffer(ms, bs, length) {
+  let curBufOffset = bs.curBufOffset
+  let curBuf = bs.curBuf
+  let remainLen = length
+
+  while (remainLen > 0) {
+    let buf = bs.buffer[curBuf]
+    let curbufsize = Math.min(buf.byteLength - curBufOffset, remainLen)
+    applyMask(ms, buf, curBufOffset, curbufsize)
+    curBufOffset = 0
+    curBuf++
+    remainLen -= curbufsize
+  }
 }
-*/
 
 /**
- * @param{{offset: Number, buffer: Buffer, size: Number}} bs
+ * @param{{offset: Number, buffer: Uint8Array[], size: Number, curBuf: Number, curBufOffset: Number}} bs
  */
 function readMask(bs) {
   const val = new Uint8Array(4)
-  val[0] = bs.buffer.readUInt8(bs.offset)
-  bs.offset++
-  val[1] = bs.buffer.readUInt8(bs.offset)
-  bs.offset++
-  val[2] = bs.buffer.readUInt8(bs.offset)
-  bs.offset++
-  val[3] = bs.buffer.readUInt8(bs.offset)
-  bs.offset++
+  val[0] = readUInt8(bs)
+  advanceBuffer(bs)
+  val[1] = readUInt8(bs)
+  advanceBuffer(bs)
+  val[2] = readUInt8(bs)
+  advanceBuffer(bs)
+  val[3] = readUInt8(bs)
+  advanceBuffer(bs)
   return val
 }
 
@@ -196,8 +214,18 @@ export class WebSocketParser extends ParserBaseHttp2 {
       streamReceiveWindowSizeLimit
     })
     this.mode = 's' // frame start
-    /** @type {Buffer|undefined} */
-    this.saveddata = undefined
+    this.bufferstate = {
+      /** @type {number} */
+      offset: 0,
+      /** @type {number} */
+      size: 0,
+      /** @type {Uint8Array[]} */
+      buffer: [],
+      /** @type {number} */
+      curBuf: 0,
+      /** @type {number} */
+      curBufOffset: 0
+    }
     /** @type {Number|undefined} */
     this.rtype = undefined
 
@@ -206,30 +234,25 @@ export class WebSocketParser extends ParserBaseHttp2 {
   }
 
   /**
-   * @param {Buffer} data
+   * @param {Uint8Array[]} data
    */
   parseData(data) {
-    let cdata = data
-    if (this.saveddata) {
-      cdata = Buffer.concat([this.saveddata, cdata])
-      delete this.saveddata
-    }
-    const bufferstate = { offset: 0, size: cdata.length, buffer: cdata }
+    const bufferstate = this.bufferstate
+    bufferstate.buffer.push(...data)
+    bufferstate.size += data.reduce((sum, chunk) => sum + chunk.byteLength, 0)
     while (bufferstate.size - bufferstate.offset > 0) {
       switch (this.mode) {
         case 's':
           {
-            const framestart =
-              bufferstate.offset + bufferstate.buffer.byteOffset
-            const framemaxlength =
-              bufferstate.buffer.byteLength - bufferstate.offset
+            const framestart = bufferstate.offset
+            const frameCurBuf = bufferstate.curBuf
+            const frameCurBufOffset = bufferstate.curBufOffset
             // we are at frame start
             if (bufferstate.size < 2 + bufferstate.offset) {
-              this.saveddata = Buffer.from(
-                bufferstate.buffer.buffer,
-                framestart,
-                framemaxlength
-              )
+              bufferstate.offset = framestart
+              bufferstate.curBuf = frameCurBuf
+              bufferstate.curBufOffset = frameCurBufOffset
+              detachReadBuffers(bufferstate)
               return
             }
             let curbyte = readByte(bufferstate)
@@ -245,31 +268,28 @@ export class WebSocketParser extends ParserBaseHttp2 {
             let plength = curbyte & 0x7f
             if (plength === 126) {
               if (bufferstate.size < 2 + bufferstate.offset) {
-                this.saveddata = Buffer.from(
-                  bufferstate.buffer.buffer,
-                  framestart,
-                  framemaxlength
-                )
+                bufferstate.offset = framestart
+                bufferstate.curBuf = frameCurBuf
+                bufferstate.curBufOffset = frameCurBufOffset
+                detachReadBuffers(bufferstate)
                 return
               }
               plength = readWord(bufferstate)
             } else if (plength === 127) {
               if (bufferstate.size < 8 + bufferstate.offset) {
-                this.saveddata = Buffer.from(
-                  bufferstate.buffer.buffer,
-                  framestart,
-                  framemaxlength
-                )
+                bufferstate.offset = framestart
+                bufferstate.curBuf = frameCurBuf
+                bufferstate.curBufOffset = frameCurBufOffset
+                detachReadBuffers(bufferstate)
                 return
               }
               plength = readQWord(bufferstate)
             }
             if (bufferstate.size < mlength + bufferstate.offset) {
-              this.saveddata = Buffer.from(
-                bufferstate.buffer.buffer,
-                framestart,
-                framemaxlength
-              )
+              bufferstate.offset = framestart
+              bufferstate.curBuf = frameCurBuf
+              bufferstate.curBufOffset = frameCurBufOffset
+              detachReadBuffers(bufferstate)
               return
             }
             if (mask) {
@@ -303,11 +323,10 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 return
               } else {
                 if (bufferstate.size < length + bufferstate.offset) {
-                  this.saveddata = Buffer.from(
-                    bufferstate.buffer.buffer,
-                    framestart,
-                    framemaxlength
-                  )
+                  bufferstate.offset = framestart
+                  bufferstate.curBuf = frameCurBuf
+                  bufferstate.curBufOffset = frameCurBufOffset
+                  detachReadBuffers(bufferstate)
                   return
                 }
               }
@@ -315,29 +334,16 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 case WebSocketParser.WS_CLOSE:
                   if (!this.closesend) {
                     if (this.maskcontext)
-                      applyMask(
-                        this.maskcontext,
-                        bufferstate.buffer,
-                        bufferstate.buffer.byteOffset + bufferstate.offset,
-                        length
-                      )
+                      applyMaskBuffer(this.maskcontext, bufferstate, length)
                     this.sendCloseInt(
-                      new Uint8Array(
-                        bufferstate.buffer.buffer,
-                        bufferstate.buffer.byteOffset + bufferstate.offset,
-                        length
-                      )
+                      getUint8ArrayfromBuffer(bufferstate, length)
                     )
                     let code = 0
                     let error = 'Session websocket closed'
                     if (length > 2) {
-                      const bufhelp = Buffer.from(
-                        bufferstate.buffer.buffer,
-                        bufferstate.buffer.byteOffset + bufferstate.offset,
-                        length
-                      )
-                      code = bufhelp.readUint16BE(0)
-                      const terror = bufhelp.toString('utf8', 2)
+                      const wbufferstate = { ...bufferstate } // working copy
+                      code = readUInt16BE(wbufferstate)
+                      const terror = readString(wbufferstate, length - 2)
                       let tokens = terror.split(':')
                       if (tokens.length > 1) {
                         code = parseInt(tokens[0])
@@ -345,33 +351,32 @@ export class WebSocketParser extends ParserBaseHttp2 {
                       }
                       error = tokens.join(':')
                     }
-                    this.session.jsobj.onClose({
-                      errorcode: code,
-                      error
-                    })
+                    if (
+                      !(
+                        this.session.jsobj.state === 'failed' ||
+                        this.session.jsobj.state === 'closed'
+                      )
+                    ) {
+                      this.session.jsobj.onClose({
+                        errorcode: code,
+                        error
+                      })
+                    }
                   } else {
                     // just the answer
                   }
                   break
                 case WebSocketParser.WS_PING:
                   if (this.maskcontext)
-                    applyMask(
-                      this.maskcontext,
-                      bufferstate.buffer,
-                      bufferstate.buffer.byteOffset + bufferstate.offset,
-                      length
-                    )
+                    applyMaskBuffer(this.maskcontext, bufferstate, length)
                   this.sendPong(
-                    new Uint8Array(
-                      bufferstate.buffer.buffer,
-                      bufferstate.buffer.byteOffset + bufferstate.offset,
-                      length
-                    )
+                    getUint8ArrayfromBuffer(bufferstate, length) ||
+                      new Uint8Array()
                   )
                   break
                 default: // aka pong
               }
-              bufferstate.offset += length
+              advanceBufferBy(bufferstate, length)
             } else if (
               opcode === WebSocketParser.WS_BINARY ||
               (opcode === WebSocketParser.WS_CONTINUE &&
@@ -384,17 +389,16 @@ export class WebSocketParser extends ParserBaseHttp2 {
               if (plength === 0) {
                 log('warning empty data frame')
                 // empty frame ?
-                bufferstate.offset += plength
+                advanceBufferBy(bufferstate, plength)
                 continue
               }
 
               if (opcode === WebSocketParser.WS_BINARY) {
                 if (bufferstate.size < 2 + bufferstate.offset) {
-                  this.saveddata = Buffer.from(
-                    bufferstate.buffer.buffer,
-                    framestart,
-                    framemaxlength
-                  )
+                  bufferstate.offset = framestart
+                  bufferstate.curBuf = frameCurBuf
+                  bufferstate.curBufOffset = frameCurBufOffset
+                  detachReadBuffers(bufferstate)
                   return
                 }
                 continuep = false
@@ -408,11 +412,10 @@ export class WebSocketParser extends ParserBaseHttp2 {
                   typeof type === 'undefined' ||
                   bufferstate.size < 1 + bufferstate.offset
                 ) {
-                  this.saveddata = Buffer.from(
-                    bufferstate.buffer.buffer,
-                    framestart,
-                    framemaxlength
-                  )
+                  bufferstate.offset = framestart
+                  bufferstate.curBuf = frameCurBuf
+                  bufferstate.curBufOffset = frameCurBufOffset
+                  detachReadBuffers(bufferstate)
                   return
                 }
                 this.curtype = type
@@ -439,19 +442,17 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 checklength = Math.min(length, 64) // stream id + some Data
               }
               if (bufferstate.size < checklength + bufferstate.offset) {
-                this.saveddata = Buffer.from(
-                  bufferstate.buffer.buffer,
-                  framestart,
-                  framemaxlength
-                )
+                bufferstate.offset = framestart
+                bufferstate.curBuf = frameCurBuf
+                bufferstate.curBufOffset = frameCurBufOffset
+                detachReadBuffers(bufferstate)
                 return
               }
               // all safeguards passed now apply the mask
               if (this.maskcontext)
-                applyMask(
+                applyMaskBuffer(
                   this.maskcontext,
-                  bufferstate.buffer,
-                  bufferstate.buffer.byteOffset + bufferstate.offset,
+                  bufferstate,
                   offsetend - bufferstate.offset
                 )
               let streamid
@@ -461,30 +462,25 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 type !== ParserBase.WT_STREAM_WFIN
               ) {
                 if (fin) {
-                  wbufferstate = bufferstate
+                  wbufferstate = { ...bufferstate }
                   if (this.contframes) {
-                    this.contframes.push(
-                      new Uint8Array(
-                        bufferstate.buffer.buffer,
-                        bufferstate.buffer.byteOffset + bufferstate.offset,
-                        offsetend - bufferstate.offset
-                      )
+                    const newframes = getUint8ArraysfromBuffer(
+                      bufferstate,
+                      offsetend - bufferstate.offset
                     )
+                    if (newframes) this.contframes.push(...newframes)
                     // we need to concat all buffers super
                     const nsize = this.contframes.reduce(
                       (length, val) => length + val.byteLength,
                       0
                     )
-                    const jbuffer = Buffer.allocUnsafe(nsize)
-                    this.contframes.reduce((offset, val) => {
-                      Buffer.from(
-                        val.buffer,
-                        val.byteOffset,
-                        val.byteLength
-                      ).copy(jbuffer, offset)
-                      return offset + val.byteLength
-                    }, 0)
-                    wbufferstate = { offset: 0, size: nsize, buffer: jbuffer }
+                    wbufferstate = {
+                      offset: 0,
+                      size: nsize,
+                      buffer: this.contframes, // Fix me
+                      curBuf: 0,
+                      curBufOffset: 0
+                    }
                   }
                 } else {
                   if (!this.contframes)
@@ -492,13 +488,11 @@ export class WebSocketParser extends ParserBaseHttp2 {
                      * @type {Uint8Array[]}
                      */
                     this.contframes = []
-                  this.contframes.push(
-                    new Uint8Array(
-                      bufferstate.buffer.buffer,
-                      bufferstate.buffer.byteOffset + bufferstate.offset,
-                      offsetend - bufferstate.offset
-                    )
+                  const newframes = getUint8ArraysfromBuffer(
+                    bufferstate,
+                    offsetend - bufferstate.offset
                   )
+                  if (newframes) this.contframes.push(...newframes)
                 }
               }
 
@@ -556,10 +550,8 @@ export class WebSocketParser extends ParserBaseHttp2 {
                       object.recvData({
                         data:
                           offsetend - bufferstate.offset > 0
-                            ? new Uint8Array(
-                                bufferstate.buffer.buffer,
-                                bufferstate.buffer.byteOffset +
-                                  bufferstate.offset,
+                            ? getUint8ArraysfromBuffer(
+                                bufferstate,
                                 offsetend - bufferstate.offset
                               )
                             : undefined,
@@ -612,13 +604,15 @@ export class WebSocketParser extends ParserBaseHttp2 {
                   {
                     const code = readUint32(bufferstate) || 0
                     const decoder = new TextDecoder()
-                    const reason = decoder.decode(
-                      new Uint8Array(
-                        bufferstate.buffer.buffer,
-                        bufferstate.buffer.byteOffset + bufferstate.offset,
-                        offsetend - bufferstate.offset
-                      )
-                    )
+                    const reason =
+                      offsetend - bufferstate.offset > 0
+                        ? decoder.decode(
+                            getUint8ArrayfromBuffer(
+                              bufferstate,
+                              offsetend - bufferstate.offset
+                            )
+                          )
+                        : ''
                     this.onCloseWebTransportSession({ code, reason })
                   }
                   break
@@ -628,11 +622,11 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 case ParserBase.DATAGRAM:
                   if (wbufferstate) {
                     this.session.jsobj.onDatagramReceived({
-                      datagram: new Uint8Array(
-                        wbufferstate.buffer.buffer,
-                        wbufferstate.buffer.byteOffset + wbufferstate.offset,
-                        offsetend - wbufferstate.offset
-                      )
+                      datagram:
+                        getUint8ArrayfromBuffer(
+                          wbufferstate,
+                          offsetend - wbufferstate.offset
+                        ) || new Uint8Array(0)
                     })
                   }
                   break
@@ -648,7 +642,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
                   this.rfin = type === ParserBase.WT_STREAM_WFIN
                 }
               }
-              bufferstate.offset = offsetend
+              advanceBufferToOffset(bufferstate, offsetend)
             } else {
               const length = plength
               if (bufferstate.offset + length > bufferstate.size) {
@@ -656,9 +650,9 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 this.rstreamid = undefined
                 this.remainlength =
                   bufferstate.offset + length - bufferstate.size
-                bufferstate.offset = bufferstate.size
+                advanceBufferToOffset(bufferstate, bufferstate.size)
               } else {
-                bufferstate.offset += length
+                advanceBufferBy(bufferstate, length)
               }
             }
           }
@@ -679,26 +673,17 @@ export class WebSocketParser extends ParserBaseHttp2 {
               if (object) {
                 if (fin) object.onFin()
                 if (this.maskcontext)
-                  applyMask(
-                    this.maskcontext,
-                    bufferstate.buffer,
-                    bufferstate.buffer.byteOffset + bufferstate.offset,
-                    clength
-                  )
+                  applyMaskBuffer(this.maskcontext, bufferstate, clength)
                 // TODO submit data
                 object.recvData({
-                  data: new Uint8Array(
-                    bufferstate.buffer.buffer,
-                    bufferstate.buffer.byteOffset + bufferstate.offset,
-                    clength
-                  ),
+                  data: getUint8ArraysfromBuffer(bufferstate, clength),
                   fin
                 })
               }
             }
 
             this.remainlength = this.remainlength - clength
-            bufferstate.offset += clength
+            advanceBufferBy(bufferstate, clength)
             if (this.remainlength === 0) {
               this.maskcontext = undefined
               this.mode = 's'
@@ -709,6 +694,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
           break
       }
     }
+    detachReadBuffers(bufferstate)
   }
 
   /**
@@ -754,8 +740,14 @@ export class WebSocketParser extends ParserBaseHttp2 {
       headlength += 2
     }
 
-    const cdata = Buffer.alloc(headlength)
-    const bufferstate = { offset: 0, size: cdata.length, buffer: cdata }
+    const cdata = new Uint8Array(headlength)
+    const bufferstate = {
+      offset: 0,
+      size: cdata.length,
+      buffer: [cdata],
+      curBuf: 0,
+      curBufOffset: 0
+    }
     const maskstate = this.writeHeader(bufferstate, {
       opcode: WebSocketParser.WS_BINARY,
       plength,
@@ -768,19 +760,8 @@ export class WebSocketParser extends ParserBaseHttp2 {
     for (const ind in headerVints) writeVarInt(bufferstate, headerVints[ind])
     const endmask = bufferstate.offset
     if (maskstate) {
-      applyMask(
-        maskstate,
-        bufferstate.buffer,
-        bufferstate.offset + bufferstate.buffer.byteOffset,
-        endmask - beginmask
-      )
-      if (payload)
-        applyMask(
-          maskstate,
-          Buffer.from(payload.buffer, payload.byteOffset, payload.byteLength),
-          payload.byteOffset,
-          payload.byteLength
-        )
+      applyMaskBuffer(maskstate, bufferstate, endmask - beginmask)
+      if (payload) applyMask(maskstate, payload, 0, payload.byteLength)
     }
     let blocked = false
     if (payload) {
@@ -795,12 +776,12 @@ export class WebSocketParser extends ParserBaseHttp2 {
   }
 
   /**
-   * @param {{ offset: number; size?: number; buffer: Buffer; }} bs
+   * @param{{offset: Number, buffer: Uint8Array[], size: Number, curBuf: Number, curBufOffset: Number}} bs
    * @param {{ opcode: number; plength: number; mask: number; }} args
    */
   writeHeader(bs, { opcode, plength, mask }) {
-    bs.buffer.writeUint8(0x80 | (opcode & 0x0f), bs.offset)
-    bs.offset++
+    writeUInt8(bs, 0x80 | (opcode & 0x0f))
+    advanceBuffer(bs)
     let splength = plength
     if (plength > 0xffff) {
       splength = 127
@@ -808,20 +789,17 @@ export class WebSocketParser extends ParserBaseHttp2 {
       splength = 126
     }
 
-    bs.buffer.writeUint8((mask && 0x80) | (splength & 0x7f), bs.offset)
-    bs.offset++
+    writeUInt8(bs, (mask && 0x80) | (splength & 0x7f))
+    advanceBuffer(bs)
     if (plength > 0xffff) {
-      bs.buffer.writeBigInt64BE(BigInt(plength), bs.offset)
-      bs.offset += 8
+      writeBigInt64BE(bs, BigInt(plength))
     } else if (plength > 125) {
-      bs.buffer.writeUint16BE(plength, bs.offset)
-      bs.offset += 2
+      writeUint16BE(bs, plength)
     }
     let maskstate
     if (mask) {
       maskstate = { offset: 0, mask: randomBytes(4) }
-      bs.buffer.writeUint32BE(maskstate.mask.readUInt32BE(0), bs.offset)
-      bs.offset += 4
+      writeUint32BE(bs, maskstate.mask.readUInt32BE(0))
     }
     return maskstate
   }
@@ -842,8 +820,14 @@ export class WebSocketParser extends ParserBaseHttp2 {
     } else if (plength > 125) {
       headlength += 2
     }
-    const cdata = Buffer.alloc(headlength)
-    const bufferstate = { offset: 0, size: cdata.length, buffer: cdata }
+    const cdata = new Uint8Array(headlength)
+    const bufferstate = {
+      offset: 0,
+      size: cdata.length,
+      buffer: [cdata],
+      curBuf: 0,
+      curBufOffset: 0
+    }
     const maskstate = this.writeHeader(bufferstate, { opcode, plength, mask })
 
     if (bufferstate.offset !== headlength)
@@ -851,12 +835,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
 
     let blocked = !this.stream.write(cdata)
     if (maskstate && payload)
-      applyMask(
-        maskstate,
-        Buffer.from(payload.buffer, payload.byteOffset, payload.byteLength),
-        0,
-        payload.byteLength
-      )
+      applyMask(maskstate, payload, 0, payload.byteLength)
     if (payload) blocked = !this.stream.write(payload) || blocked
     // do something if blocked
     if (blocked) this.blocked = true

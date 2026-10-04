@@ -1,72 +1,17 @@
-import { ParserBase, lengthVarInt } from '../parserbase.js'
+import { ParserBase } from '../parserbase.js'
+import {
+  lengthVarInt,
+  readUint32,
+  readVarInt,
+  writeVarInt,
+  getUint8ArrayfromBuffer,
+  getUint8ArraysfromBuffer,
+  advanceBufferToOffset,
+  detachReadBuffers
+} from '../bufferHelper.js'
 import { logger } from '../../utils.js'
 
 const log = logger(`webtransport:http2:browserparser`)
-/**
- * @param{{offset: Number, buffer: Uint8Array, size: Number}} bs
- */
-function readVarInt(bs) {
-  if (bs.offset + 1 > bs.size) return undefined
-  let val = BigInt(bs.buffer[bs.offset])
-  bs.offset++
-  const prefix = Number(val) >>> 6
-  const intlength = 1 << prefix
-
-  if (bs.offset + intlength - 1 > bs.size) {
-    return undefined
-  }
-  val = val & 0x3fn
-  for (let i = 0; i < intlength - 1; i++) {
-    val = (val << 8n) | BigInt(bs.buffer[bs.offset])
-    bs.offset++
-  }
-  return val
-}
-
-/**
- * @param{{offset: Number, buffer: Uint8Array, size: Number}} bs
- */
-function readUint32(bs) {
-  if (bs.offset + 4 > bs.size) return undefined
-  let val = bs.buffer[bs.offset]
-  bs.offset++
-  val = (val << 8) | bs.buffer[bs.offset]
-  bs.offset++
-  val = (val << 8) | bs.buffer[bs.offset]
-  bs.offset++
-  val = (val << 8) | bs.buffer[bs.offset]
-  bs.offset++
-  return val
-}
-
-/**
- * @param{{offset: Number, buffer: Uint8Array, size: Number}} bs
- * @param{Number|bigint} int
- */
-export function writeVarInt(bs, int) {
-  let numbytes = 8n
-  let msb = 0xc0n
-  const bint = BigInt(int)
-  if (bint < 64n) {
-    numbytes = 1n
-    msb = 0x0n
-  } else if (bint < 16384n) {
-    numbytes = 2n
-    msb = 0x40n
-  } else if (bint < 1073741824n) {
-    numbytes = 4n
-    msb = 0x80n
-  }
-  bs.buffer[bs.offset] = Number(
-    msb | ((bint >> ((numbytes - 1n) * 8n)) & 0xffn)
-  )
-  bs.offset++
-
-  for (let i = numbytes - 2n; i >= 0n; i--) {
-    bs.buffer[bs.offset] = Number((bint >> (i * 8n)) & 0xffn)
-    bs.offset++
-  }
-}
 
 export class BrowserParser extends ParserBase {
   static WS_CONTINUE = 0x0
@@ -98,8 +43,18 @@ export class BrowserParser extends ParserBase {
       streamReceiveWindowSizeLimit
     })
     this.ws = ws
-    /** @type {Buffer|undefined} */
-    this.saveddata = undefined
+    this.bufferstate = {
+      /** @type {number} */
+      offset: 0,
+      /** @type {number} */
+      size: 0,
+      /** @type {Uint8Array[]} */
+      buffer: [],
+      /** @type {number} */
+      curBuf: 0,
+      /** @type {number} */
+      curBufOffset: 0
+    }
     /** @type {Number|undefined} */
     this.rtype = undefined
 
@@ -108,7 +63,7 @@ export class BrowserParser extends ParserBase {
     this.ws.addEventListener('message', (event) => {
       if (event.data instanceof ArrayBuffer) {
         // binary frame
-        this.parseData(new Uint8Array(event.data, 0, event.data.byteLength))
+        this.parseData([new Uint8Array(event.data, 0, event.data.byteLength)])
       } else {
         // text frame
         log('Illegal text frame', event.data)
@@ -117,10 +72,12 @@ export class BrowserParser extends ParserBase {
   }
 
   /**
-   * @param {Uint8Array} data
+   * @param {Uint8Array[]} data
    */
   parseData(data) {
-    const bufferstate = { offset: 0, size: data.byteLength, buffer: data }
+    const bufferstate = this.bufferstate
+    bufferstate.buffer.push(...data)
+    bufferstate.size += data.reduce((sum, chunk) => sum + chunk.byteLength, 0)
 
     const offsetend = bufferstate.size
 
@@ -175,9 +132,8 @@ export class BrowserParser extends ParserBase {
               const fin = type === ParserBase.WT_STREAM_WFIN
               if (fin) object.onFin()
               object.recvData({
-                data: new Uint8Array(
-                  bufferstate.buffer.buffer,
-                  bufferstate.buffer.byteOffset + bufferstate.offset,
+                data: getUint8ArraysfromBuffer(
+                  bufferstate,
                   offsetend - bufferstate.offset
                 ),
                 fin
@@ -224,13 +180,15 @@ export class BrowserParser extends ParserBase {
         {
           const code = readUint32(bufferstate) || 0
           const decoder = new TextDecoder()
-          const reason = decoder.decode(
-            new Uint8Array(
-              bufferstate.buffer.buffer,
-              bufferstate.buffer.byteOffset + bufferstate.offset,
-              offsetend - bufferstate.offset
-            )
-          )
+          const reason =
+            offsetend - bufferstate.offset > 0
+              ? decoder.decode(
+                  getUint8ArrayfromBuffer(
+                    bufferstate,
+                    offsetend - bufferstate.offset
+                  )
+                )
+              : ''
           this.onCloseWebTransportSession({ code, reason })
         }
         break
@@ -239,19 +197,19 @@ export class BrowserParser extends ParserBase {
         break
       case ParserBase.DATAGRAM:
         this.session.jsobj.onDatagramReceived({
-          datagram: new Uint8Array(
-            bufferstate.buffer.buffer,
-            bufferstate.buffer.byteOffset + bufferstate.offset,
-            offsetend - bufferstate.offset
-          )
+          datagram:
+            getUint8ArrayfromBuffer(
+              bufferstate,
+              offsetend - bufferstate.offset
+            ) || new Uint8Array(0)
         })
 
         break
       default:
       // do nothing
     }
-
-    bufferstate.offset = offsetend
+    advanceBufferToOffset(bufferstate, offsetend)
+    detachReadBuffers(bufferstate)
   }
 
   /**
@@ -265,7 +223,13 @@ export class BrowserParser extends ParserBase {
     if (payload) plength += payload.byteLength
 
     const cdata = new Uint8Array(plength)
-    const bufferstate = { offset: 0, size: cdata.length, buffer: cdata }
+    const bufferstate = {
+      offset: 0,
+      size: cdata.length,
+      buffer: [cdata],
+      curBuf: 0,
+      curBufOffset: 0
+    }
     writeVarInt(bufferstate, type)
     for (const ind in headerVints) writeVarInt(bufferstate, headerVints[ind])
     const dest = new Uint8Array(cdata.buffer, cdata.byteOffset + hlength)

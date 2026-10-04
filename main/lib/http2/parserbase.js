@@ -5,18 +5,6 @@ import { PriorityScheduler } from './priorityscheduler.js'
 const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:parserbase(${pid})`)
 
-/**
- * @param{Number|bigint} int
- * @returns {Number}
- */
-export function lengthVarInt(int) {
-  if (BigInt(int) < 64n) return 1
-  if (BigInt(int) < 16384n) return 2
-  if (BigInt(int) < 1073741824n) return 4
-  /* if (BigInt(int) < 4611686018427387904 ) */
-  return 8
-}
-
 export class ParserBase {
   static PADDING = 0x190b4d38
   static WT_RESET_STREAM = 0x190b4d39
@@ -66,7 +54,7 @@ export class ParserBase {
 
   /**
    * @abstract
-   * @param {Buffer|Uint8Array} data
+   * @param {Uint8Array[]} data
    */
   // eslint-disable-next-line no-unused-vars
   parseData(data) {
@@ -282,10 +270,17 @@ export class ParserBase {
    * @param {{code:  number, reason: string}} opts
    */
   onCloseWebTransportSession({ code, reason }) {
-    this.session.jsobj.onClose({
-      errorcode: code,
-      error: reason
-    })
+    if (
+      !(
+        this.session.jsobj.state === 'failed' ||
+        this.session.jsobj.state === 'closed'
+      )
+    ) {
+      this.session.jsobj.onClose({
+        errorcode: code,
+        error: reason
+      })
+    }
     this.closeHttp2Stream(code) // is this necessary
   }
 

@@ -92,17 +92,26 @@ export class Http2WebTransportStream {
 
   /**
    * @param {Object} obj
-   * @param {Uint8Array|undefined} obj.data
+   * @param {Uint8Array[]|undefined} obj.data
    * @param {Boolean} obj.fin
    */
   recvData({ data, fin }) {
-    this.incomdata.push({ data, fin })
-    if (data && data?.byteLength > 0) {
-      const checkstream = this.flowController.updateHighestReceivedOffset(
-        data?.byteLength
-      )
+    let datasize = 0
+    if (data) {
+      const newincomdata = data.map((el, ind, array) => ({
+        data: el,
+        fin: fin && ind + 1 === array.length
+      }))
+      datasize = data.reduce((acc, curVal) => acc + curVal.byteLength, 0)
+      this.incomdata.push(...newincomdata)
+    } else if (fin) {
+      this.incomdata.push({ data: undefined, fin })
+    }
+    if (datasize > 0) {
+      const checkstream =
+        this.flowController.updateHighestReceivedOffset(datasize)
       const checksession =
-        this.sessionFlowController.updateHighestReceivedOffset(data?.byteLength)
+        this.sessionFlowController.updateHighestReceivedOffset(datasize)
       if (checksession && checkstream) {
         // As the highest received offset has changed, check to see if this is a
         // violation of flow control.

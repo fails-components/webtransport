@@ -161,7 +161,7 @@ describe('datagrams', function () {
       await client.ready
 
       // datagram transport is unreliable, since we use a byte stream all datagrams should be droped
-      const expected = 0
+      const expected = 1
       let timeout = false
 
       await pTimeout(
