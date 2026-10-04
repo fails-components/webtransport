@@ -1,10 +1,15 @@
+import { ParserBaseHttp2 } from '../parserbasehttp2.js'
 import {
-  ParserBaseHttp2,
+  lengthVarInt,
   readVarInt,
   readUint32,
-  writeVarInt
-} from '../parserbasehttp2.js'
-import { lengthVarInt } from '../parserbase.js'
+  writeVarInt,
+  advanceBufferToOffset,
+  getUint8ArrayfromBuffer,
+  getUint8ArraysfromBuffer,
+  advanceBufferBy,
+  detachReadBuffers
+} from '../bufferHelper.js'
 
 export class Http2CapsuleParser extends ParserBaseHttp2 {
   /**
@@ -31,37 +36,43 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
       streamReceiveWindowSizeLimit
     })
     this.mode = 's' // capsule start
-    /** @type {Buffer|undefined} */
-    this.saveddata = undefined
+    this.bufferstate = {
+      /** @type {number} */
+      offset: 0,
+      /** @type {number} */
+      size: 0,
+      /** @type {Uint8Array[]} */
+      buffer: [],
+      /** @type {number} */
+      curBuf: 0,
+      /** @type {number} */
+      curBufOffset: 0
+    }
     /** @type {Number|undefined} */
     this.rtype = undefined
   }
 
   /**
-   * @param {Buffer} data
+   * @param {Uint8Array[]} data
    */
   parseData(data) {
-    let cdata = data
-    if (this.saveddata) {
-      cdata = Buffer.concat([this.saveddata, cdata])
-      delete this.saveddata
-    }
-    const bufferstate = { offset: 0, size: cdata.length, buffer: cdata }
+    const bufferstate = this.bufferstate
+    bufferstate.buffer.push(...data)
+    bufferstate.size += data.reduce((sum, chunk) => sum + chunk.byteLength, 0)
+
     while (bufferstate.size - bufferstate.offset > 0) {
       switch (this.mode) {
         case 's':
           {
-            const capsulestart =
-              bufferstate.offset + bufferstate.buffer.byteOffset
-            const capsulemaxlength =
-              bufferstate.buffer.byteLength - bufferstate.offset
+            const capsulestart = bufferstate.offset
+            const capsuleCurBuf = bufferstate.curBuf
+            const capsuleCurBufOffset = bufferstate.curBufOffset
             // we are at capsule start
             if (bufferstate.size < 2 + bufferstate.offset) {
-              this.saveddata = Buffer.from(
-                bufferstate.buffer.buffer,
-                capsulestart,
-                capsulemaxlength
-              )
+              bufferstate.offset = capsulestart
+              bufferstate.curBuf = capsuleCurBuf
+              bufferstate.curBufOffset = capsuleCurBufOffset
+              detachReadBuffers(bufferstate)
               return
             }
             const rtype = readVarInt(bufferstate)
@@ -69,21 +80,19 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               typeof rtype === 'undefined' ||
               bufferstate.size < 1 + bufferstate.offset
             ) {
-              this.saveddata = Buffer.from(
-                bufferstate.buffer.buffer,
-                capsulestart,
-                capsulemaxlength
-              )
+              bufferstate.offset = capsulestart
+              bufferstate.curBuf = capsuleCurBuf
+              bufferstate.curBufOffset = capsuleCurBufOffset
+              detachReadBuffers(bufferstate)
               return
             }
             const type = Number(rtype)
             const rlength = readVarInt(bufferstate)
             if (typeof rlength === 'undefined') {
-              this.saveddata = Buffer.from(
-                bufferstate.buffer.buffer,
-                capsulestart,
-                capsulemaxlength
-              )
+              bufferstate.offset = capsulestart
+              bufferstate.curBuf = capsuleCurBuf
+              bufferstate.curBufOffset = capsuleCurBufOffset
+              detachReadBuffers(bufferstate)
               return
             }
             const length = Number(rlength)
@@ -114,11 +123,10 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               return
             }
             if (bufferstate.size < checklength + bufferstate.offset) {
-              this.saveddata = Buffer.from(
-                bufferstate.buffer.buffer,
-                capsulestart,
-                capsulemaxlength
-              )
+              bufferstate.offset = capsulestart
+              bufferstate.curBuf = capsuleCurBuf
+              bufferstate.curBufOffset = capsuleCurBufOffset
+              detachReadBuffers(bufferstate)
               return
             }
             let streamid
@@ -171,10 +179,8 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                     object.recvData({
                       data:
                         offsetend - bufferstate.offset > 0
-                          ? new Uint8Array(
-                              bufferstate.buffer.buffer,
-                              bufferstate.buffer.byteOffset +
-                                bufferstate.offset,
+                          ? getUint8ArraysfromBuffer(
+                              bufferstate,
                               offsetend - bufferstate.offset
                             )
                           : undefined,
@@ -228,9 +234,8 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                   const code = readUint32(bufferstate) || 0
                   const decoder = new TextDecoder()
                   const reason = decoder.decode(
-                    new Uint8Array(
-                      bufferstate.buffer.buffer,
-                      bufferstate.buffer.byteOffset + bufferstate.offset,
+                    getUint8ArrayfromBuffer(
+                      bufferstate,
                       offsetend - bufferstate.offset
                     )
                   )
@@ -242,11 +247,11 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                 break
               case Http2CapsuleParser.DATAGRAM:
                 this.session.jsobj.onDatagramReceived({
-                  datagram: new Uint8Array(
-                    bufferstate.buffer.buffer,
-                    bufferstate.buffer.byteOffset + bufferstate.offset,
-                    offsetend - bufferstate.offset
-                  )
+                  datagram:
+                    getUint8ArrayfromBuffer(
+                      bufferstate,
+                      offsetend - bufferstate.offset
+                    ) || new Uint8Array(0)
                 })
                 break
               default:
@@ -261,7 +266,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                 this.rfin = type === Http2CapsuleParser.WT_STREAM_WFIN
               }
             }
-            bufferstate.offset = offsetend
+            advanceBufferToOffset(bufferstate, offsetend)
           }
           break
         case 'c':
@@ -280,18 +285,14 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               if (object) {
                 if (fin) object.onFin()
                 object.recvData({
-                  data: new Uint8Array(
-                    bufferstate.buffer.buffer,
-                    bufferstate.buffer.byteOffset + bufferstate.offset,
-                    clength
-                  ),
+                  data: getUint8ArraysfromBuffer(bufferstate, clength),
                   fin
                 })
               }
             }
 
             this.remainlength = this.remainlength - clength
-            bufferstate.offset += clength
+            advanceBufferBy(bufferstate, clength)
             if (this.remainlength === 0) {
               this.mode = 's'
               delete this.rfin
@@ -301,6 +302,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
           break
       }
     }
+    detachReadBuffers(bufferstate)
   }
 
   /**
@@ -312,8 +314,14 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
     let headlength = length
     if (payload) length += payload.byteLength
     headlength += lengthVarInt(length) + lengthVarInt(type)
-    const cdata = Buffer.alloc(headlength)
-    const bufferstate = { offset: 0, size: cdata.length, buffer: cdata }
+    const cdata = new Uint8Array(headlength)
+    const bufferstate = {
+      offset: 0,
+      size: cdata.length,
+      buffer: [cdata],
+      curBuf: 0,
+      curBufOffset: 0
+    }
     writeVarInt(bufferstate, type)
     writeVarInt(bufferstate, length)
     for (const ind in headerVints) writeVarInt(bufferstate, headerVints[ind])
