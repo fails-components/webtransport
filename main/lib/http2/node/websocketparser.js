@@ -74,21 +74,21 @@ export function readVarIntMasked(bs, ms) {
  * @param{{offset: Number, buffer: Uint8Array[], size: Number, curBuf: Number, curBufOffset: Number}} bs
  */
 function readQWord(bs) {
-  let val = readUInt8(bs)
+  let val = BigInt(readUInt8(bs))
   advanceBuffer(bs)
-  val = (val << 8) | readUInt8(bs)
+  val = (val << 8n) | BigInt(readUInt8(bs))
   advanceBuffer(bs)
-  val = (val << 8) | readUInt8(bs)
+  val = (val << 8n) | BigInt(readUInt8(bs))
   advanceBuffer(bs)
-  val = (val << 8) | readUInt8(bs)
+  val = (val << 8n) | BigInt(readUInt8(bs))
   advanceBuffer(bs)
-  val = (val << 8) | readUInt8(bs)
+  val = (val << 8n) | BigInt(readUInt8(bs))
   advanceBuffer(bs)
-  val = (val << 8) | readUInt8(bs)
+  val = (val << 8n) | BigInt(readUInt8(bs))
   advanceBuffer(bs)
-  val = (val << 8) | readUInt8(bs)
+  val = (val << 8n) | BigInt(readUInt8(bs))
   advanceBuffer(bs)
-  val = (val << 8) | readUInt8(bs)
+  val = (val << 8n) | BigInt(readUInt8(bs))
   advanceBuffer(bs)
   return val
 }
@@ -265,6 +265,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
             curbyte = readByte(bufferstate)
             const mask = (curbyte & 0x80) >>> 7
             const mlength = mask ? 4 : 0
+            /** @type {Number|undefined} */
             let plength = curbyte & 0x7f
             if (plength === 126) {
               if (bufferstate.size < 2 + bufferstate.offset) {
@@ -283,7 +284,33 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 detachReadBuffers(bufferstate)
                 return
               }
-              plength = readQWord(bufferstate)
+              let longlength = readQWord(bufferstate)
+
+              if (
+                typeof longlength !== 'undefined' &&
+                longlength <= BigInt(Number.MAX_SAFE_INTEGER)
+              ) {
+                plength = Number(longlength)
+              } else {
+                plength = undefined
+              }
+            }
+            if (
+              typeof plength === 'undefined' ||
+              plength >
+                Math.max(
+                  16 * Number(this.session.flowController.receiveWindowSize),
+                  1000000
+                )
+            ) {
+              // too long abort, could be an attack vector
+              this.session.closeConnection({
+                code: 63, // QUIC_FLOW_CONTROL_SENT_TOO_MUCH_DATA, // probably the right one...
+                reason: plength
+                  ? 'Frame length too big :' + plength
+                  : 'Frame length overflow'
+              })
+              return
             }
             if (bufferstate.size < mlength + bufferstate.offset) {
               bufferstate.offset = framestart
@@ -312,13 +339,16 @@ export class WebSocketParser extends ParserBaseHttp2 {
               const length = plength
 
               if (
+                typeof length === 'undefined' ||
                 length >
-                4 * Number(this.session.flowController.receiveWindowSize)
+                  4 * Number(this.session.flowController.receiveWindowSize)
               ) {
                 // too long abort, could be an attack vector
                 this.session.closeConnection({
                   code: 63, // QUIC_FLOW_CONTROL_SENT_TOO_MUCH_DATA, // probably the right one...
-                  reason: 'Frame length too big :' + length
+                  reason: length
+                    ? 'Frame length too big :' + length
+                    : 'Frame length overflow'
                 })
                 return
               } else {
