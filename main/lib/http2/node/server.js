@@ -558,7 +558,7 @@ export class Http2WebTransportServer {
                     streamReceiveWindowSizeLimit:
                       this.streamFlowControlWindowSizeLimit
                   }))
-                  if (head && head.byteLength > 0) parse.parseData(head)
+                  if (head && head.byteLength > 0) parse.parseData([head])
                   return parse
                 },
                 initialBidirectionalSendStreams: 0,
