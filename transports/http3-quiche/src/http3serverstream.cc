@@ -59,12 +59,13 @@ namespace quic
   Http3ServerStream::~Http3ServerStream()
   {
     // http3_server_backend_->CloseBackendResponseStream(this);
-    for (auto prom : pending_proms_)
+    auto pending_proms_copy = pending_proms_;
+    for (auto prom : pending_proms_copy)
     {
       std::unique_ptr<Http3ServerBackend::WebTransportResponse> response =
           std::make_unique<Http3ServerBackend::WebTransportResponse>();
       response->response_headers[":status"] = "500"; // internal server error, probably implementation on js side
-      prom->resolve(std::move(response));
+      prom->resolve(std::move(response)); // this may mutate pending_proms_
     }
   }
 
