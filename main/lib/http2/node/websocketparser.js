@@ -576,7 +576,6 @@ export class WebSocketParser extends ParserBaseHttp2 {
                       const fin =
                         type === ParserBase.WT_STREAM_WFIN &&
                         bufferstate.size >= length + offsetbegin
-                      if (fin) object.onFin()
                       object.recvData({
                         data:
                           offsetend - bufferstate.offset > 0
@@ -587,6 +586,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
                             : undefined,
                         fin
                       })
+                      if (fin) object.onFin()
                     }
                   }
                   break

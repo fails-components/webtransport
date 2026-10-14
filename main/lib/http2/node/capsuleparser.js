@@ -175,7 +175,6 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                     const fin =
                       type === Http2CapsuleParser.WT_STREAM_WFIN &&
                       bufferstate.size >= length + offsetbegin
-                    if (fin) object.onFin()
                     object.recvData({
                       data:
                         offsetend - bufferstate.offset > 0
@@ -186,6 +185,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                           : undefined,
                       fin
                     })
+                    if (fin) object.onFin()
                   }
                 }
                 break
