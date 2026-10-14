@@ -231,6 +231,12 @@ export class WebSocketParser extends ParserBaseHttp2 {
 
     this.bidirectionalLimitsSet = false
     this.unidirectionalLimitsSet = false
+
+    /**
+     * @type {Uint8Array[]| undefined}
+     */
+    this.contframes = undefined
+    this.remainlength = 0
   }
 
   /**
@@ -329,6 +335,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
             }
             if (!fin && opcode !== WebSocketParser.WS_CONTINUE) {
               this.lastopcode = opcode
+              this.contframes = undefined // reset
             }
             if (fin) this.lastopcode = undefined
             if (
@@ -511,13 +518,10 @@ export class WebSocketParser extends ParserBaseHttp2 {
                       curBuf: 0,
                       curBufOffset: 0
                     }
+                    this.contframes = undefined // reset
                   }
                 } else {
-                  if (!this.contframes)
-                    /**
-                     * @type {Uint8Array[]}
-                     */
-                    this.contframes = []
+                  if (!this.contframes) this.contframes = []
                   const newframes = getUint8ArraysfromBuffer(
                     bufferstate,
                     offsetend - bufferstate.offset
