@@ -251,6 +251,8 @@ export class Http2WebTransportStream {
   onClose() {
     // ok, inform our session id manager
     this.streamIdManager.onStreamClosed(this.streamid)
+    // also remove from capsule parser
+    this.capsuleParser.removeStream(this.streamid)
   }
 
   /**
@@ -375,7 +377,7 @@ export class Http2WebTransportStream {
       }
     }
     if (finsend) {
-      this.capsuleParser.removeStream(this.streamid)
+      this.closeOutgoing()
       return
     }
 

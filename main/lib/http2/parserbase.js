@@ -310,7 +310,7 @@ export class ParserBase {
    */
   removeStream(streamid) {
     this.scheduler.Unregister(streamid)
-    //this.wtstreams.delete(streamid) // why does this create troubles
+    this.wtstreams.delete(streamid)
   }
 
   /**
