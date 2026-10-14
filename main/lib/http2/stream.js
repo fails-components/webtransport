@@ -259,7 +259,6 @@ export class Http2WebTransportStream {
    * @param {Number} code
    */
   stopSending(code) {
-    this.closeIncoming()
     this.capsuleParser.writeCapsule({
       type: ParserBase.WT_STOP_SENDING,
       headerVints: [this.streamid, code],
