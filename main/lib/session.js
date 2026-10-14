@@ -601,7 +601,7 @@ export class HttpWTSession {
   onClose(args) {
     delete this.objint // not valid any more
 
-    if (this.state !== 'connected') {
+    if (this.state !== 'connected' && this.state !== 'draining') {
       log.error(
         'session was closed before state was "connected" - it was "%s"',
         this.state
