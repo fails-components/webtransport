@@ -5,11 +5,7 @@ let streamiter
 try {
   streamiter = require("stream/iter");
 } catch (error) {
-  if (error.code === 'MODULE_NOT_FOUND') {
-    streamiter = undefined;
-  } else {
-    throw error;
-  }
+  streamiter = undefined;
 }
 
 /**
