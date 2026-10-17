@@ -50,6 +50,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
     }
     /** @type {Number|undefined} */
     this.rtype = undefined
+    this.remainlength = 0
   }
 
   /**
@@ -145,15 +146,9 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                       stream.onStreamSignal(
                         type === Http2CapsuleParser.WT_RESET_STREAM
                           ? 'resetStream'
-                          : 'stopSending'
+                          : 'stopSending',
+                        Number(code)
                       )
-                      stream.jsobj.onStreamRecvSignal({
-                        code: Number(code),
-                        nettask:
-                          type === Http2CapsuleParser.WT_RESET_STREAM
-                            ? 'resetStream'
-                            : 'stopSending'
-                      })
                     }
                   }
                 }
@@ -175,16 +170,17 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                     const fin =
                       type === Http2CapsuleParser.WT_STREAM_WFIN &&
                       bufferstate.size >= length + offsetbegin
-                    object.recvData({
-                      data:
-                        offsetend - bufferstate.offset > 0
-                          ? getUint8ArraysfromBuffer(
-                              bufferstate,
-                              offsetend - bufferstate.offset
-                            )
-                          : undefined,
-                      fin
-                    })
+                    if (fin || offsetend - bufferstate.offset > 0)
+                      object.recvData({
+                        data:
+                          offsetend - bufferstate.offset > 0
+                            ? getUint8ArraysfromBuffer(
+                                bufferstate,
+                                offsetend - bufferstate.offset
+                              )
+                            : undefined,
+                        fin
+                      })
                     if (fin) object.onFin()
                   }
                 }
@@ -306,13 +302,13 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
   }
 
   /**
-   * @param{{type: Number, headerVints: Array<Number>, payload: Uint8Array|undefined, end?: () => void}} bs
+   * @param{{type: Number, headerVints: Array<Number>, payload: Uint8Array[]|undefined, end?: () => void}} bs
    */
   writeCapsule({ type, headerVints, payload, end }) {
     let length = 0
     for (const ind in headerVints) length += lengthVarInt(headerVints[ind])
     let headlength = length
-    if (payload) length += payload.byteLength
+    if (payload) length += payload.reduce((val, ele) => val + ele.byteLength, 0)
     headlength += lengthVarInt(length) + lengthVarInt(type)
     const cdata = new Uint8Array(headlength)
     const bufferstate = {
@@ -329,14 +325,26 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
     // note it might be illegal to split the write
     if (!end) {
       let blocked = !this.stream.write(cdata)
-      if (payload) blocked = !this.stream.write(payload) || blocked
+      if (payload)
+        for (const plchunk of payload) {
+          blocked = !this.stream.write(plchunk) || blocked
+        }
       // do something if blocked
       if (blocked) this.blocked = true
       return blocked
     } else {
       if (!payload) this.stream.end(cdata, end)
-      else this.stream.write(cdata)
-      if (payload) this.stream.end(payload, end)
+      else {
+        this.stream.write(cdata)
+        for (let i = 0; i < payload.length; i++) {
+          const plchunk = payload[i]
+          if (i !== payload.length - 1) {
+            this.stream.write(plchunk)
+          } else {
+            this.stream.end(plchunk, end)
+          }
+        }
+      }
     }
   }
 

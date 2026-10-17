@@ -26,22 +26,19 @@ let quicheLoadedReady
 export const quicheLoaded = new Promise((resolve, reject) => {
   // @ts-ignore
   import('@fails-components/webtransport-transport-http3-quiche')
-    .then(
+    .then((/** @type {import("./types").TransportHttp3Quiche} */ http3lib) => {
       /**
        * @type {import("./types").TransportHttp3Quiche}
        */
-      (http3lib) => {
-        /**
-         * @type {import("./types").TransportHttp3Quiche}
-         */
-        ;({
-          checkQuicheInit,
-          Http3WebTransportClientSocket,
-          Http3WebTransportClient
-        } = http3lib)
-        resolve(undefined)
-      }
-    )
+      ;({
+        checkQuicheInit,
+        // @ts-ignore
+        Http3WebTransportClientSocket,
+        // @ts-ignore
+        Http3WebTransportClient
+      } = http3lib)
+      resolve(undefined)
+    })
     .finally(() => {
       quicheLoadedReady = true
     })
@@ -56,6 +53,7 @@ export const quicheLoaded = new Promise((resolve, reject) => {
 const nodeNativeAvailable =
   Boolean(process?.versions?.openssl) &&
   !process?.env?.NODE_SKIP_CRYPTO &&
+  // @ts-ignore
   !!process?.features?.quic &&
   parseInt(process?.versions?.node?.split?.('.')?.[0], 10) >= 27
 

@@ -24,6 +24,7 @@ export class Http3WebTransportServerSocket extends Http3WebTransportSocket {
     this.address = undefined
 
     this.socketOptions = args?.quicheNodeSocketOptions ?? {}
+    this.chlosSched = false
   }
 
   init() {

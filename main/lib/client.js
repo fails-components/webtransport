@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { WebTransportError } from './error.js'
 import { logger } from './utils.js'
 

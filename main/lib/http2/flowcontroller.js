@@ -78,18 +78,17 @@ export class FlowController {
 
     log(
       ' highest byte offset increased from ' + this.highestReceivedByteOffset,
-      ' to ',
-      this.highestReceivedByteOffset + BigInt(increaseOffset)
+      ' to ' + (this.highestReceivedByteOffset + BigInt(increaseOffset))
     )
     this.highestReceivedByteOffset += BigInt(increaseOffset)
     return true
   }
 
   /**
-   * @param {Number} nbytesSent
+   * @param {bigint} nbytesSent
    */
   addBytesSent(nbytesSent) {
-    const bytesSent = BigInt(nbytesSent)
+    const bytesSent = nbytesSent
     if (this.bytesSent + bytesSent > this.sendWindowOffset) {
       log(
         ' Trying to send an extra ' +
@@ -306,7 +305,7 @@ export class FlowController {
     }
 
     log(
-      'UpdateSendWindowOffset for ' +
+      'UpdateSendWindowOffset ' +
         ' with new offset ' +
         newSendWindowOffset +
         ' current offset: ' +

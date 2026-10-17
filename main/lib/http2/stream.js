@@ -2,6 +2,8 @@ import { FlowController } from './flowcontroller.js'
 import { ParserBase } from './parserbase.js'
 import { logger } from '../utils.js'
 import { WebTransportError } from '../error.js'
+// @ts-ignore
+import { getWriter } from './backports/writer.cjs'
 
 const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:http2webtransportstream(${pid})`)
@@ -11,9 +13,13 @@ const log = logger(`webtransport:http2webtransportstream(${pid})`)
  * @typedef {import('../types').StreamRecvSignalEvent} StreamRecvSignalEvent
  * @typedef {import('../types').StreamReadEvent} StreamReadEvent
  * @typedef {import('../types').StreamWriteEvent} StreamWriteEvent
+ * @typedef {import('../types').StreamWriter} StreamWriter
  * @typedef {import('../types').StreamNetworkFinishEvent} StreamNetworkFinishEvent
+ * @typedef {import('../types').OnStreamErrorCallback} OnStreamErrorCallback
+ * @typedef {import('./session').Http2WebTransportSession} Http2WebTransportSession
  *
  * @typedef {import('../types').ReadDataInt} ReadDataInt
+ * @typedef {import('../types').FlowControlable} FlowControlable
  * @typedef {import('./streamidmanager.js').StreamIdManager} StreamIdManager
  */
 
@@ -22,12 +28,67 @@ let processnextTick = (/** @type {{ (): void;  }} */ func) =>
 // @ts-ignore
 if (typeof process !== 'undefined') processnextTick = process.nextTick
 
+/**
+ * @param {{ readerWait: PromiseWithResolvers<void>|undefined; readerWaitTimeOut: boolean; }} inner
+ */
+function handleReaderWake(inner) {
+  const wait = inner.readerWait
+  inner.readerWait = undefined
+  inner.readerWaitTimeOut = false
+  wait?.resolve()
+}
+
 export class Http2WebTransportStream {
+  #inner = {
+    __proto__: null,
+    /** @type {bigint | undefined} */
+    streamid: undefined,
+    /** @type {ParserBase | undefined} */
+    capsuleParser: undefined,
+    /**  @type {FlowController | undefined} */
+    flowController: undefined,
+    /**  @type {StreamIdManager | undefined} */
+    streamIdManager: undefined,
+    /**  @type {FlowController | undefined} */
+    sessionFlowController: undefined,
+    /**  @type {Http2WebTransportSession | undefined} */
+    session: undefined,
+    /**  @type {FlowControlable| undefined} */
+    flowControlable: undefined,
+    /** @type {StreamWriter|undefined} */
+    writer: undefined,
+    /** @type {Array<ReadDataInt>} */
+    incomdata: [],
+    /** @type {Array<{buf?:Uint8Array,fin:boolean}>} */
+    outgochunks: [],
+    /** @type {PromiseWithResolvers<void>|undefined} */
+    readerWait: undefined,
+    /** @type {boolean} */
+    readerWaitTimeOut: false,
+    final: false,
+    finalmessagesend: false,
+    iteratorLocked: false,
+    stopReading: true,
+    drainReads: false,
+    recvBytes: 0,
+    outgoingClosed: false,
+    incomingClosed: false,
+    /* callbacks */
+    /** @type {OnStreamErrorCallback | undefined} */
+    onreset: undefined,
+    /** @type {OnStreamErrorCallback | undefined} */
+    onstopsending: undefined,
+    /** @type {((arg: {errorCode: Number} | undefined) => void)|undefined} */
+    writerOnStopSending: undefined,
+    /** @type {(() => void)|undefined} */
+    drainWrites: undefined
+  }
   /**
    * @param {{streamid: bigint,
    * unidirectional: boolean,
    * incoming: boolean,
    * capsuleParser: ParserBase
+   * session: Http2WebTransportSession
    * sendWindowOffset: Number,
    * receiveWindowOffset: Number,
    * shouldAutoTuneReceiveWindow: boolean
@@ -40,6 +101,7 @@ export class Http2WebTransportStream {
     unidirectional,
     incoming,
     capsuleParser,
+    session,
     sendWindowOffset,
     receiveWindowOffset,
     shouldAutoTuneReceiveWindow,
@@ -47,47 +109,34 @@ export class Http2WebTransportStream {
     sessionFlowController,
     streamIdManager
   }) {
-    /** @type {import('../stream').HttpWTStream} */
-    // @ts-ignore
-    this.jsobj = undefined // the creator will set this
-    this.streamid = streamid
-    /** @type {Array<ReadDataInt>} */
-    this.incomdata = []
+    const inner = this.#inner
+    inner.streamid = streamid
+    inner.capsuleParser = capsuleParser
+    inner.session = session
 
-    this.capsuleParser = capsuleParser
-    /** @type {Array<{buf?:Uint8Array,fin:boolean}>} */
-    this.outgochunks = []
-
-    this.flowController = new FlowController({
-      tocontrol: this,
+    inner.flowController = new FlowController({
+      tocontrol: this.#flowControlable,
       sendWindowOffset,
       receiveWindowOffset,
       shouldAutoTuneReceiveWindow,
       receiveWindowSizeLimit,
       sessionFlowController
     })
-    this.sessionFlowController = sessionFlowController
-    this.streamIdManager = streamIdManager
+    inner.sessionFlowController = sessionFlowController
+    inner.streamIdManager = streamIdManager
 
-    this.final = false
-    this.finalmessagesend = false
-    this.stopReading_ = true
-    this.drainReads_ = false
-    this.recvBytes = 0
-
-    this.outgoingClosed_ = false
-    this.incomingClosed_ = false
     if (unidirectional) {
       if (incoming) {
-        this.outgoingClosed_ = true
+        inner.outgoingClosed = true
       } else {
-        this.incomingClosed_ = true
+        inner.incomingClosed = true
       }
     }
   }
 
   sendInitialParameters() {
-    this.flowController.sendWindowUpdate()
+    const inner = this.#inner
+    inner.flowController?.sendWindowUpdate()
   }
 
   /**
@@ -96,6 +145,7 @@ export class Http2WebTransportStream {
    * @param {Boolean} obj.fin
    */
   recvData({ data, fin }) {
+    const inner = this.#inner
     let datasize = 0
     if (data) {
       const newincomdata = data.map((el, ind, array) => ({
@@ -103,24 +153,24 @@ export class Http2WebTransportStream {
         fin: fin && ind + 1 === array.length
       }))
       datasize = data.reduce((acc, curVal) => acc + curVal.byteLength, 0)
-      this.incomdata.push(...newincomdata)
+      inner.incomdata.push(...newincomdata)
     } else if (fin) {
-      this.incomdata.push({ data: undefined, fin })
+      inner.incomdata.push({ data: undefined, fin })
     }
     if (datasize > 0) {
       const checkstream =
-        this.flowController.updateHighestReceivedOffset(datasize)
+        inner.flowController?.updateHighestReceivedOffset(datasize)
       const checksession =
-        this.sessionFlowController.updateHighestReceivedOffset(datasize)
+        inner.sessionFlowController?.updateHighestReceivedOffset(datasize)
       if (checksession && checkstream) {
         // As the highest received offset has changed, check to see if this is a
         // violation of flow control.
 
         if (
-          this.flowController.flowControlViolation() ||
-          this.sessionFlowController.flowControlViolation()
+          inner.flowController?.flowControlViolation() ||
+          inner.sessionFlowController?.flowControlViolation()
         ) {
-          this.closeConnection({
+          this.#flowControlable.closeConnection({
             code: 63 /* QUIC_FLOW_CONTROL_SENT_TOO_MUCH_DATA */,
             reason: 'Flow control violation after increasing offset'
           })
@@ -129,37 +179,46 @@ export class Http2WebTransportStream {
         }
       }
     }
-    this.processRead()
-    if (this.incomdata.length > 0) {
-      if (!this.stopReading_) this.processRead()
+    if (inner.incomdata.length > 0) {
+      if (!inner.stopReading) this.processRead()
     }
   }
 
   processRead() {
-    if (!this.jsobj) return
+    const inner = this.#inner
+    if (inner.readerWait && !inner.readerWaitTimeOut) {
+      inner.readerWaitTimeOut = true
+      setTimeout(handleReaderWake, 0, inner)
+    }
+  }
+
+  // old drain reads
+  /*
+    const inner = this.#inner
+    if (!inner.jsobj) return
     let buffer
     let bufferoffset = 0
     while (
-      this.incomdata.length > 0 &&
-      (!this.stopReading_ || this.drainReads_)
+      inner.incomdata.length > 0 &&
+      (!inner.stopReading || inner.drainReads)
     ) {
       if (!buffer) {
-        const bytes = this.incomdata.reduce(
+        const bytes = inner.incomdata.reduce(
           (prevVal, val) => prevVal + ((val && val.data?.byteLength) || 0),
           0
         )
         if (bytes > 0) {
-          buffer = this.jsobj.getReadBuffer({
-            byteSize: this.incomdata.reduce(
+          buffer = inner.jsobj.getReadBuffer({
+            byteSize: inner.incomdata.reduce(
               (prevVal, val) => prevVal + ((val && val.data?.byteLength) || 0),
               0
             )
           })
-          buffer.readBytes = 0
+          if (buffer) buffer.readBytes = 0
           bufferoffset = 0
         }
       }
-      const cur = this.incomdata.shift()
+      const cur = inner.incomdata.shift()
       if (cur?.data && cur.data.byteLength > 0 && buffer && buffer.buffer) {
         const len = Math.min(
           buffer.buffer.byteLength - bufferoffset,
@@ -178,7 +237,7 @@ export class Http2WebTransportStream {
         buffer.drained = true
         if (cur.data.byteLength !== len) {
           buffer.drained = false
-          this.incomdata.unshift({
+          inner.incomdata.unshift({
             data: new Uint8Array(
               cur.data.buffer,
               cur.data.byteOffset + len,
@@ -190,133 +249,161 @@ export class Http2WebTransportStream {
         } else {
           buffer.fin ||= cur.fin
         }
-        if (this.incomdata.length > 0) buffer.drained = false
+        if (inner.incomdata.length > 0) buffer.drained = false
         if (
           bufferoffset === buffer.buffer.byteLength ||
-          this.incomdata.length === 0
+          inner.incomdata.length === 0
         ) {
-          this.flowController.addBytesConsumed(buffer.readBytes || 0)
-          this.sessionFlowController.addBytesConsumed(buffer.readBytes || 0)
-          const { stopReading } = this.jsobj.commitReadBuffer(buffer)
+          inner.flowController?.addBytesConsumed(buffer.readBytes || 0)
+          inner.sessionFlowController?.addBytesConsumed(buffer.readBytes || 0)
+          const { stopReading } = inner.jsobj.commitReadBuffer(buffer)
           if (stopReading) this.stopReading_ = true
           buffer = undefined
           bufferoffset = 0
         }
-        this.recvBytes += len
+        inner.recvBytes += len
       } else if (cur?.fin) {
-        this.jsobj.commitReadBuffer({ fin: true })
+        inner.jsobj.commitReadBuffer({ fin: true })
       }
     }
   }
-
-  startReading() {
-    this.stopReading_ = false
-    this.processRead()
-  }
+*/
 
   drainReads() {
-    this.drainReads_ = true
-    this.stopReading_ = false
+    const inner = this.#inner
+    inner.drainReads = true
+    inner.stopReading = false
     this.processRead()
-  }
-
-  stopReading() {
-    this.stopReading_ = true
   }
 
   /**
    * @param {'resetStream'|'stopSending'} type
+   * @param {number} code
    */
-  onStreamSignal(type) {
+  onStreamSignal(type, code) {
     switch (type) {
       case 'resetStream':
-        this.closeIncoming()
+        this.#closeIncoming(code)
         break
       case 'stopSending':
-        this.closeOutgoing()
+        this.#closeOutgoing(code)
         break
     }
   }
 
-  closeIncoming() {
-    this.incomingClosed_ = true
-    if (this.outgoingClosed_) this.onClose()
+  /**
+   * @param {number} [code]
+   */
+  #closeIncoming(code) {
+    const inner = this.#inner
+    inner.incomingClosed = true
+    if (inner.outgoingClosed) this.onClose()
+
+    const stream = this
+    if (typeof code !== 'undefined')
+      processnextTick(() => {
+        if (inner.writerOnStopSending)
+          inner.writerOnStopSending({ errorCode: code })
+        inner.onstopsending?.call(stream, code)
+      })
   }
 
-  closeOutgoing() {
-    this.outgoingClosed_ = true
-    if (this.incomingClosed_) this.onClose()
+  /**
+   * @param {number} [code]
+   */
+  #closeOutgoing(code) {
+    const inner = this.#inner
+    inner.outgoingClosed = true
+    if (inner.incomingClosed) this.onClose()
+
+    const stream = this
+    if (typeof code !== 'undefined')
+      processnextTick(() => {
+        // if ( inner.writerOnStopSending)
+        //  inner.readerOnReset({ errorCode: code })
+        inner.onreset?.call(stream, code)
+      })
   }
 
   onClose() {
+    const inner = this.#inner
     // ok, inform our session id manager
-    this.streamIdManager.onStreamClosed(this.streamid)
-    // also remove from capsule parser
-    this.capsuleParser.removeStream(this.streamid)
+    if (typeof inner.streamid !== 'undefined') {
+      inner.streamIdManager?.onStreamClosed(inner.streamid)
+      // also remove from capsule parser
+      inner.capsuleParser?.removeStream(inner.streamid)
+    }
   }
 
   /**
-   * @param {Number} code
+   * @param {number|bigint} code
    */
   stopSending(code) {
-    this.capsuleParser.writeCapsule({
-      type: ParserBase.WT_STOP_SENDING,
-      headerVints: [this.streamid, code],
-      payload: undefined
-    })
-    processnextTick(() =>
-      this.jsobj.onStreamNetworkFinish({
-        nettask: 'stopSending'
+    const inner = this.#inner
+    inner.stopReading = true
+    if (typeof inner.streamid !== 'undefined')
+      inner.capsuleParser?.writeCapsule({
+        type: ParserBase.WT_STOP_SENDING,
+        headerVints: [inner.streamid, Number(code)],
+        payload: undefined
       })
-    )
   }
 
   onFin() {
-    this.closeIncoming()
+    this.#closeIncoming()
   }
 
   /**
-   * @param {Number} code
+   * @param {number|bigint} code
    */
   resetStream(code) {
-    this.closeOutgoing()
-    this.capsuleParser.writeCapsule({
-      type: ParserBase.WT_RESET_STREAM,
-      headerVints: [this.streamid, code],
-      payload: undefined
-    })
-    processnextTick(() =>
-      this.jsobj.onStreamNetworkFinish({
-        nettask: 'resetStream'
+    const inner = this.#inner
+    this.#closeOutgoing()
+    if (typeof inner.streamid !== 'undefined')
+      inner.capsuleParser?.writeCapsule({
+        type: ParserBase.WT_RESET_STREAM,
+        headerVints: [inner.streamid, Number(code)],
+        payload: undefined
       })
-    )
-  }
-
-  /**
-   * @param {Uint8Array} buf
-   */
-  writeChunk(buf) {
-    this.outgochunks.push({ buf, fin: false })
-    this.capsuleParser.scheduler.Schedule(this.streamid)
-    this.capsuleParser.scheduleDrainWrites()
   }
 
   hasPendingData() {
-    return this.outgochunks.length > 0
+    const inner = this.#inner
+    return inner.outgochunks.length > 0
   }
 
   drainWrites() {
+    const inner = this.#inner
     let finsend = false
-    while (
-      this.outgochunks.length > 0 &&
-      (!this.capsuleParser.blocked ||
-        this.final ||
-        !this.capsuleParser.shouldYieldStream(this.streamid)) &&
-      this.flowController.sendWindowSize() > 0n &&
-      this.sessionFlowController.sendWindowSize() > 0n
+    if (
+      !inner.capsuleParser ||
+      !inner.flowController ||
+      !inner.sessionFlowController ||
+      typeof inner.streamid === 'undefined'
+    )
+      return
+
+    const capsuleChunks = []
+    let fin = false
+    let windowSize
+    let bytesToSend = 0n
+    if (
+      inner.flowController.sendWindowSize() <
+      inner.sessionFlowController.sendWindowSize()
     ) {
-      const cur = this.outgochunks.shift()
-      let outgoChunkSend = true
+      windowSize = inner.flowController.sendWindowSize()
+    } else {
+      windowSize = inner.sessionFlowController.sendWindowSize()
+    }
+    let outgoChunkSend = true
+    while (
+      inner.outgochunks.length > 0 &&
+      (!inner.capsuleParser?.blocked ||
+        inner.final ||
+        !inner.capsuleParser?.shouldYieldStream(inner.streamid)) &&
+      windowSize > 0n
+    ) {
+      const cur = inner.outgochunks.shift()
       if (cur) {
         let payload = cur.buf
         if (payload) {
@@ -325,16 +412,8 @@ export class Http2WebTransportStream {
               'Trying to send zero length capsule without a fin'
             )
           }
-          const sessWindow = this.sessionFlowController.sendWindowSize()
-          const streamWindow = this.flowController.sendWindowSize()
-          if (
-            payload?.byteLength > streamWindow ||
-            payload?.byteLength > sessWindow
-          ) {
-            const len =
-              sessWindow > streamWindow
-                ? Number(streamWindow)
-                : Number(sessWindow)
+          if (BigInt(payload?.byteLength) > windowSize) {
+            const len = Number(windowSize)
             // ok we have to split
             {
               const src = new Uint8Array(
@@ -344,7 +423,7 @@ export class Http2WebTransportStream {
               )
               const dest = new Uint8Array(payload.byteLength - len)
               dest.set(src)
-              this.outgochunks.unshift({ fin: cur.fin, buf: dest })
+              inner.outgochunks.unshift({ fin: cur.fin, buf: dest })
               outgoChunkSend = false // remaing part is send later
             }
             cur.fin = false
@@ -354,57 +433,64 @@ export class Http2WebTransportStream {
               len
             )
           }
+          const plength = BigInt(payload.byteLength)
+          windowSize -= plength
+          bytesToSend += plength
+          capsuleChunks.push(payload)
         }
-        this.capsuleParser.writeCapsule({
-          type: cur?.fin
-            ? ParserBase.WT_STREAM_WFIN
-            : ParserBase.WT_STREAM_WOFIN,
-          headerVints: [this.streamid],
-          payload
-        })
-        finsend ||= !!cur?.fin
-
-        if (payload) {
-          this.flowController.addBytesSent(payload?.byteLength)
-          this.sessionFlowController.addBytesSent(payload?.byteLength)
-        }
-      }
-      if (outgoChunkSend) {
-        this.jsobj.onStreamWrite({
-          success: true
-        })
+        fin ||= !!cur?.fin
       }
     }
+    inner.capsuleParser.writeCapsule({
+      type: fin ? ParserBase.WT_STREAM_WFIN : ParserBase.WT_STREAM_WOFIN,
+      headerVints: [inner.streamid],
+      payload: bytesToSend > 0n ? capsuleChunks : undefined
+    })
+    finsend ||= fin
+
+    if (bytesToSend > 0n) {
+      inner.flowController.addBytesSent(bytesToSend)
+      inner.sessionFlowController.addBytesSent(bytesToSend)
+    }
+    if (outgoChunkSend) {
+      inner.drainWrites?.()
+    }
+
     if (finsend) {
-      this.closeOutgoing()
+      this.#closeOutgoing()
       return
     }
 
     if (
-      !(
-        !this.capsuleParser.blocked ||
-        this.final ||
-        !this.capsuleParser.shouldYieldStream(this.streamid)
-      ) &&
-      this.outgochunks.length > 0
+      inner.capsuleParser.blocked &&
+      !inner.final &&
+      inner.capsuleParser.shouldYieldStream(inner.streamid) &&
+      inner.outgochunks.length > 0
     ) {
-      this.capsuleParser.scheduleDrainWriteStream(this.streamid)
+      inner.capsuleParser.scheduleDrainWriteStream(inner.streamid)
     }
-    if (this.final && this.outgochunks.length === 0 && !this.finalmessagesend) {
+    /*
+    if (
+      inner.final &&
+      inner.outgochunks.length === 0 &&
+      !inner.finalmessagesend
+    ) {
       processnextTick(() => {
-        this.jsobj.onStreamNetworkFinish({
+        inner.jsobj?.onStreamNetworkFinish({
           nettask: 'streamFinal'
         })
       })
       this.finalmessagesend = true
     }
+    */
   }
 
-  streamFinal() {
-    this.final = true
-    this.outgochunks.push({ fin: true })
-    this.capsuleParser.scheduleDrainWriteStream(this.streamid)
-    this.capsuleParser.scheduleDrainWrites()
+  /**
+   * @param {bigint} offset
+   */
+  updateSendWindowOffset(offset) {
+    const inner = this.#inner
+    return inner.flowController?.updateSendWindowOffset(offset)
   }
 
   /**
@@ -412,58 +498,249 @@ export class Http2WebTransportStream {
    * @param {{sendOrder: number, sendGroupId: bigint}} args
    */
   updateSendOrderAndGroup({ sendOrder, sendGroupId }) {
-    this.capsuleParser.streamUpdateSendOrderAndGroup(this.streamid, {
+    const inner = this.#inner
+    if (!inner.capsuleParser || typeof inner.streamid === 'undefined') return
+    inner.capsuleParser.streamUpdateSendOrderAndGroup(inner.streamid, {
       sendOrder,
       sendGroupId
     })
   }
 
+  get #flowControlable() {
+    const inner = this.#inner
+    if (inner.flowControlable !== undefined) return inner.flowControlable
+
+    /**
+     * @param {bigint} windowOffset
+     */
+    function sendWindowUpdate(windowOffset) {
+      if (!inner.capsuleParser || typeof inner.streamid === 'undefined') return
+      log('sendwindow offset stream:', windowOffset)
+      inner.capsuleParser.writeCapsule({
+        type: ParserBase.WT_MAX_STREAM_DATA,
+        headerVints: [inner.streamid, windowOffset],
+        payload: undefined
+      })
+    }
+
+    /**
+     * @param {bigint} windowOffset
+     */
+    function sendBlocked(windowOffset) {
+      if (!inner.capsuleParser || typeof inner.streamid === 'undefined') return
+      inner.capsuleParser.writeCapsule({
+        type: ParserBase.WT_STREAM_DATA_BLOCKED,
+        headerVints: [inner.streamid, windowOffset],
+        payload: undefined
+      })
+    }
+
+    function connected() {
+      return inner.session?.connected() || false
+    }
+
+    /**
+     * @param {{ code: number, reason: string }} arg
+     */
+    function closeConnection({ code, reason }) {
+      if (inner.session) inner.session.closeConnection({ code, reason })
+    }
+
+    function smoothedRtt() {
+      if (inner.session) return inner.session.smoothedRtt()
+      return 333
+    }
+
+    const flowControlable = {
+      __proto__: null,
+      sendWindowUpdate,
+      sendBlocked,
+      connected,
+      closeConnection,
+      smoothedRtt
+    }
+
+    return (inner.flowControlable = flowControlable)
+  }
+
+  // Copied from node.js and modified
   /**
-   * @param {bigint} windowOffset
+   * Returns a Writer for pushing data to this stream incrementally.
+   * Non-writable streams return an already-closed Writer.
+   * @type {StreamWriter}
    */
-  sendWindowUpdate(windowOffset) {
-    log('sendwindow offset stream:', windowOffset)
-    this.capsuleParser.writeCapsule({
-      type: ParserBase.WT_MAX_STREAM_DATA,
-      headerVints: [this.streamid, windowOffset],
-      payload: undefined
+  get writer() {
+    const inner = this.#inner
+    if (inner.writer !== undefined) return inner.writer
+
+    const stream = this
+
+    /**
+     * @param {(() => void)} fn
+     */
+    function setDrainCallback(fn) {
+      inner.drainWrites = fn
+    }
+    /**
+     * @param {((arg: { errorCode: number; } | undefined) => void) | undefined} fn
+     */
+    function setStopSendingCallback(fn) {
+      inner.writerOnStopSending = fn
+    }
+    function writeEnded() {
+      return inner.final
+    }
+    function writeDesiredSize() {
+      const ochunksize = inner.outgochunks.reduce(
+        (accu, el) => accu + BigInt(el?.buf?.byteLength || 0),
+        0n
+      )
+      const streamSize = inner.flowController?.sendWindowSize() || 0n
+      const sessSize = inner.sessionFlowController?.sendWindowSize() || 0n
+      if (streamSize < sessSize) {
+        return streamSize - ochunksize
+      }
+      return sessSize - ochunksize
+    }
+    /**
+     * @param {Uint8Array<ArrayBufferLike>[]} chunks
+     */
+    function writeChunks(chunks) {
+      const outgochunks = chunks.map((/** @type {Uint8Array} */ buf) => ({
+        buf,
+        fin: false
+      }))
+      inner.outgochunks.push(...outgochunks)
+      if (!inner.capsuleParser || typeof inner.streamid === 'undefined') return
+      inner.capsuleParser.scheduler.Schedule(inner.streamid)
+      inner.capsuleParser.scheduleDrainWrites()
+      return true
+    }
+
+    /**
+     * @param {{ errorCode: any; } | Error | undefined} error
+     */
+    function resetStream(error) {
+      const code = error && 'errorCode' in error ? error.errorCode : 0
+
+      stream.#closeOutgoing()
+      if (inner.streamid)
+        inner.capsuleParser?.writeCapsule({
+          type: ParserBase.WT_RESET_STREAM,
+          headerVints: [inner.streamid, code],
+          payload: undefined
+        })
+      processnextTick(() => inner.onreset?.call(stream, code))
+    }
+    function endWrite() {
+      inner.final = true
+      inner.outgochunks.push({ fin: true })
+      if (!inner.capsuleParser || typeof inner.streamid === 'undefined') return
+      inner.capsuleParser.scheduleDrainWriteStream(inner.streamid)
+      inner.capsuleParser.scheduleDrainWrites()
+    }
+
+    function nonWritableStream() {
+      return !inner.capsuleParser || inner.outgoingClosed
+    }
+    function initStreamingSource() {
+      // no init as far as I know...
+    }
+
+    const writer = getWriter({
+      setDrainCallback,
+      setStopSendingCallback,
+      writeDesiredSize,
+      writeEnded,
+      writeChunks,
+      resetStream,
+      endWrite,
+      nonWritableStream,
+      initStreamingSource
     })
+    return (inner.writer = /** @type {StreamWriter} */ (writer))
   }
 
+  // portions from node.js's QuicStream, see node.js license in backports dir
   /**
-   * @param {bigint} windowOffset
+   * Returns an AsyncIterator that yields Uint8Array[] batches of
+   * incoming data. Only one iterator can be obtained per stream.
+   * Non-readable streams return an immediately-finished iterator.
+   * @yields {Uint8Array[]}
    */
-  sendBlocked(windowOffset) {
-    this.capsuleParser.writeCapsule({
-      type: ParserBase.WT_STREAM_DATA_BLOCKED,
-      headerVints: [this.streamid, windowOffset],
-      payload: undefined
-    })
+  async *[Symbol.asyncIterator]() {
+    const inner = this.#inner
+    if (inner.iteratorLocked) {
+      throw new Error('Stream is already being read')
+    }
+    inner.stopReading = false
+    inner.iteratorLocked = true
+    if (inner.incomingClosed) return // probably unidirectional or already closed
+    while (!inner.stopReading || inner.drainReads) {
+      if (inner.incomdata.length > 0) {
+        const deliverData = inner.incomdata
+        inner.incomdata = []
+        let fin = false
+        const data = deliverData
+          .map((el) => {
+            fin ||= el.fin
+            return el.data
+          })
+          .filter((el) => typeof el !== 'undefined' && el.byteLength > 0)
+        const datalength = data.reduce(
+          (curval, chunk) => curval + (chunk?.byteLength || 0),
+          0
+        )
+        yield data
+        inner.flowController?.addBytesConsumed(datalength || 0)
+        inner.sessionFlowController?.addBytesConsumed(datalength || 0)
+        if (fin) return
+      }
+
+      if (inner.drainReads) return // to be verified
+
+      if (inner.incomdata.length === 0) {
+        const wait = (inner.readerWait = Promise.withResolvers())
+        // wait for promise to fulfill
+        await wait.promise
+      }
+    }
   }
 
-  /**
-   * @param {bigint} pos
-   */
-  reportBlocked(pos) {
-    log('Stream id: ', this.streamid, ' was blocked at:', pos)
+  // callbacks setter and getters
+  /** @type {OnStreamErrorCallback} */
+  get onreset() {
+    // @ts-ignore
+    return this.#inner.onreset
   }
 
-  connected() {
-    return this.jsobj.parentobj.state === 'connected'
-  }
-
-  /**
-   * @param {{ code: number, reason: string }} arg
-   */
-  closeConnection({ code, reason }) {
-    if (this.jsobj.parentobj?.objint)
+  set onreset(fn) {
+    const inner = this.#inner
+    if (fn === undefined) {
+      inner.onreset = undefined
+    } else {
+      // validateFunction(fn, 'onreset')
+      // inner.onreset = FunctionPrototypeBind(fn, this)
       // @ts-ignore
-      this.jsobj.parentobj.objint.closeConnection({ code, reason })
+      inner.onreset = fn.bind(this)
+    }
   }
 
-  smoothedRtt() {
-    if (this.jsobj.parentobj?.objint)
+  /** @type {OnStreamErrorCallback} */
+  get onstopsending() {
+    // @ts-ignore
+    return this.#inner.onstopsending
+  }
+
+  set onstopsending(fn) {
+    const inner = this.#inner
+    if (fn === undefined) {
+      inner.onstopsending = undefined
+    } else {
+      // validateFunction(fn, 'onstopsending')
+      // inner.onstopsending = FunctionPrototypeBind(fn, this);
       // @ts-ignore
-      return this.jsobj.parentobj.objint.smoothedRtt()
+      inner.onstopsending = fn.bind(this)
+    }
   }
 }

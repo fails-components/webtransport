@@ -41,6 +41,7 @@ export class Http2WebTransportClient {
     /** @type {import('../../session.js').HttpClient} */
     // @ts-ignore
     this.jsobj = undefined // the transport will set this
+    this.connected = false
   }
 
   createTransport() {
@@ -154,11 +155,11 @@ export class Http2WebTransportClient {
         }
       }
     })
-    let connected = false
+    this.connected = false
     // eslint-disable-next-line no-unused-vars
     this.clientInt.on('connect', (session, socket) => {
       if (!authfail) {
-        connected = true
+        this.connected = true
         this.jsobj.onClientConnected({
           success: true
         })
@@ -188,7 +189,7 @@ export class Http2WebTransportClient {
     })
     this.clientInt.on('error', (error) => {
       log('http2 client error:', error)
-      if (!connected && !authfail) {
+      if (!this.connected && !authfail) {
         this.jsobj.onClientConnected({
           success: false
         })
@@ -280,6 +281,9 @@ export class Http2WebTransportClient {
   }
 
   closeClient() {
-    if (this.clientInt) this.clientInt.close()
+    if (this.clientInt) {
+      if (this.connected) this.clientInt.close()
+      else this.clientInt.destroy()
+    }
   }
 }

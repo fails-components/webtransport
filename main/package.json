@@ -15,7 +15,7 @@
     }
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "type": "module",
   "types": "./dist/lib/index.types.d.ts",
@@ -53,7 +53,7 @@
     "@types/chai-as-promised": "^7.1.5",
     "@types/dirty-chai": "^2.0.2",
     "@types/mocha": "^10.0.0",
-    "@types/node": "^24.0.1",
+    "@types/node": "^24.1.0",
     "eslint": "^9.3.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.31.0",
@@ -63,7 +63,7 @@
     "prettier": "^3.5.3",
     "prettier-linter-helpers": "^1.0.0",
     "synckit": "^0.11.4",
-    "typescript": "^4.8.4",
+    "typescript": "^7.0.2",
     "uint8arrays": "^4.0.2"
   },
   "binary": {

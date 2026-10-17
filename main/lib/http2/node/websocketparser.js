@@ -545,15 +545,9 @@ export class WebSocketParser extends ParserBaseHttp2 {
                         stream.onStreamSignal(
                           type === ParserBase.WT_RESET_STREAM
                             ? 'resetStream'
-                            : 'stopSending'
+                            : 'stopSending',
+                          Number(code)
                         )
-                        stream.jsobj.onStreamRecvSignal({
-                          code: Number(code),
-                          nettask:
-                            type === ParserBase.WT_RESET_STREAM
-                              ? 'resetStream'
-                              : 'stopSending'
-                        })
                       }
                     }
                   }
@@ -755,7 +749,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
   }
 
   /**
-   * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array|undefined, end?: () => void}} bs
+   * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array[]|undefined, end?: () => void}} bs
    */
   writeCapsule({ type, headerVints, payload, end }) {
     let plength = 0
@@ -767,7 +761,8 @@ export class WebSocketParser extends ParserBaseHttp2 {
       headlength += 4
       mask = 1
     }
-    if (payload) plength += payload.byteLength
+    if (payload)
+      plength += payload.reduce((val, ele) => val + ele.byteLength, 0)
     if (plength > 0xffff) {
       headlength += 8
     } else if (plength > 125) {
@@ -795,12 +790,18 @@ export class WebSocketParser extends ParserBaseHttp2 {
     const endmask = bufferstate.offset
     if (maskstate) {
       applyMaskBuffer(maskstate, bufferstate, endmask - beginmask)
-      if (payload) applyMask(maskstate, payload, 0, payload.byteLength)
+      if (payload) {
+        for (const plchunk of payload) {
+          applyMask(maskstate, plchunk, 0, plchunk.byteLength)
+        }
+      }
     }
     let blocked = false
     if (payload) {
       blocked = !this.stream.write(cdata)
-      blocked = !this.stream.write(payload, end) || blocked
+      for (const plchunk of payload) {
+        blocked = !this.stream.write(plchunk, end) || blocked
+      }
     } else {
       blocked = !this.stream.write(cdata, end)
     }

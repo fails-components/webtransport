@@ -100,15 +100,9 @@ export class BrowserParser extends ParserBase {
               stream.onStreamSignal(
                 type === ParserBase.WT_RESET_STREAM
                   ? 'resetStream'
-                  : 'stopSending'
+                  : 'stopSending',
+                Number(code)
               )
-              stream.jsobj.onStreamRecvSignal({
-                code: Number(code),
-                nettask:
-                  type === ParserBase.WT_RESET_STREAM
-                    ? 'resetStream'
-                    : 'stopSending'
-              })
             }
           }
         }
@@ -213,14 +207,15 @@ export class BrowserParser extends ParserBase {
   }
 
   /**
-   * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array|undefined, end?: () => void}} bs
+   * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array[]|undefined, end?: () => void}} bs
    */
   writeCapsule({ type, headerVints, payload, end }) {
     let plength = 0
     for (const ind in headerVints) plength += lengthVarInt(headerVints[ind])
     plength += lengthVarInt(type)
     const hlength = plength
-    if (payload) plength += payload.byteLength
+    if (payload)
+      plength += payload.reduce((val, ele) => val + ele.byteLength, 0)
 
     const cdata = new Uint8Array(plength)
     const bufferstate = {
@@ -232,8 +227,17 @@ export class BrowserParser extends ParserBase {
     }
     writeVarInt(bufferstate, type)
     for (const ind in headerVints) writeVarInt(bufferstate, headerVints[ind])
-    const dest = new Uint8Array(cdata.buffer, cdata.byteOffset + hlength)
-    if (payload) dest.set(payload)
+    let curpos = hlength
+    if (payload)
+      for (const plchunk of payload) {
+        const dest = new Uint8Array(
+          cdata.buffer,
+          cdata.byteOffset + curpos,
+          plchunk.length
+        )
+        dest.set(plchunk)
+        curpos += plchunk.byteLength
+      }
     this.ws.send(cdata)
     if (end) end()
 

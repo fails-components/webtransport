@@ -1,3 +1,4 @@
+// @ts-nocheck not helpful as long as we have no type definitions
 import { connect } from 'node:quic'
 import { isIP } from 'node:net'
 import { logger } from '../utils.js'
@@ -48,7 +49,9 @@ export class Http3WebTransportClientNative {
 
   createTransport() {
     // same as on http2
-    const webTransportVerifier = (cert) => {
+    const webTransportVerifier = (
+      /** @type {{ fingerprint256: string; valid_from: string | number | Date; valid_to: string | number | Date; }} */ cert
+    ) => {
       if (
         this.serverCertificateHashes &&
         this.serverCertificateHashes.some((el) => {
@@ -110,7 +113,6 @@ export class Http3WebTransportClientNative {
 
     this.clientInt = connect(this.hostname + ':' + this.port, quicOptions)
     log('tried to connect to', this.hostname + ':' + this.port)
-    let connected = false
     this.clientInt
       .then(async (session) => {
         log('http3 client created')

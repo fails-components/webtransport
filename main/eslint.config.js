@@ -7,6 +7,9 @@ import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 import globals from 'globals'
 
 export default [
+  {
+    ignores: ['lib/http2/backports/**']
+  },
   js.configs.recommended,
   eslintPluginPrettierRecommended,
   {

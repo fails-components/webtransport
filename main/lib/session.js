@@ -622,7 +622,8 @@ export class HttpWTSession {
     }
 
     log('onClose')
-    this.streamObjs.forEach((ele) => ele.finalDrain())
+    // TODO similar mechanism for Streams
+    // this.streamObjs.forEach((ele) => ele.finalDrain())
 
     const error = new WebTransportError('Session closed')
 

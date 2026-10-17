@@ -114,7 +114,7 @@ describe('bidirectional streams', function () {
     const stream = await client.createBidirectionalStream()
     const [, output] = await Promise.all([
       writeStream(stream.writable, KNOWN_BYTES_LONG),
-      readStream(stream.readable, KNOWN_BYTES_LONG_LENGTH),
+      readStream(stream.readable, KNOWN_BYTES_LONG_LENGTH)
     ])
     const send = ui8.concat(KNOWN_BYTES_LONG)
     const received = ui8.concat(output)

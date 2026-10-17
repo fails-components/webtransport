@@ -5,6 +5,7 @@ export class WebTransportError extends Error {
   constructor(message) {
     super(message)
 
-    this.name = this[Symbol.toStringTag] = 'WebTransportError'
+    this.name = /** @type {any} */ (this)[Symbol.toStringTag] =
+      'WebTransportError'
   }
 }

@@ -3,6 +3,7 @@ import { logger } from './utils.js'
 import { rootCertificates } from 'node:tls'
 const log = logger(`webtransport:Http3WebTransportSocket(${process.pid})`)
 
+// @ts-ignore
 globalThis.FAILSsetTimeoutAlarm = (
   /** @type {{ fireJS: () => void; }} */ alarm,
   /** @type {number} */ delay
@@ -13,6 +14,7 @@ globalThis.FAILSsetTimeoutAlarm = (
   return { timeout: setTimeout(alarm.fireJS.bind(alarm), delay) }
 }
 
+// @ts-ignore
 globalThis.FAILSclearTimeoutAlarm = (
   /** @type {{ timeout: string | number | NodeJS.Timeout | undefined; immediate: NodeJS.Immediate | undefined; }} */ obj
 ) => {
@@ -28,6 +30,7 @@ function convertToPem(/** @type {ArrayBuffer} */ cert) {
   )
 }
 
+// @ts-ignore
 globalThis.FAILSVerifyProof = (
   /** @type {{ certs: ArrayBuffer[]; hostname: string; server_config?: string; signature?: string; }} */ obj
 ) => {

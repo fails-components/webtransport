@@ -1,3 +1,4 @@
+// @ts-nocheck not helpful as long as we have no type definitions
 import { logger } from '../utils.js'
 import { drainableProtocol } from 'stream/iter'
 /*
@@ -226,11 +227,6 @@ export class Http3WebTransportStream {
     } catch (error) {
       log('stream final:', error)
     }
-    process.nextTick(() => {
-      this.jsobj.onStreamNetworkFinish({
-        nettask: 'streamFinal'
-      })
-    })
   }
 
   /**
@@ -244,12 +240,6 @@ export class Http3WebTransportStream {
     } catch (error) {
       log('Problem in stopSending', error)
     }
-    process.nextTick(() => {
-      if (this.jsobj)
-        this.jsobj.onStreamNetworkFinish({
-          nettask: 'stopSending'
-        })
-    })
   }
 
   /**
@@ -263,12 +253,6 @@ export class Http3WebTransportStream {
     } catch (error) {
       log('Problem in resetStream', error)
     }
-    process.nextTick(() => {
-      if (this.jsobj)
-        this.jsobj.onStreamNetworkFinish({
-          nettask: 'resetStream'
-        })
-    })
   }
 
   onClose() {

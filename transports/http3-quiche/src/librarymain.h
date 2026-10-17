@@ -17,8 +17,6 @@ namespace quic
 {
   enum NetworkTask
   {
-    resetStream,
-    stopSending,
     streamFinal
   };
 

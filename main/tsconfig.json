@@ -5,6 +5,7 @@
   "extends": "../tsconfig.base.json",
   "include": [ "lib" ],
   "exclude": [
-    "test/testinone.js"
+    "test/testinone.js",
+    "lib/http2/backports/**"
   ]
 }

@@ -22,19 +22,14 @@ let Http3WebTransportServerSocket
 const quicheLoaded = new Promise((resolve, reject) => {
   // @ts-ignore
   import('@fails-components/webtransport-transport-http3-quiche')
-    .then(
-      /**
-       * @type {import("./types").TransportHttp3Quiche}
-       */
-      (http3lib) => {
-        ;({
-          checkQuicheInit,
-          Http3WebTransportServer,
-          Http3WebTransportServerSocket
-        } = http3lib)
-        resolve(undefined)
-      }
-    )
+    .then((/** @type {import("./types").TransportHttp3Quiche} */ http3lib) => {
+      ;({
+        checkQuicheInit,
+        Http3WebTransportServer,
+        Http3WebTransportServerSocket
+      } = http3lib)
+      resolve(undefined)
+    })
     .catch((error) => {
       console.error('Problem loading http3-quiche transport')
       console.error(
@@ -53,6 +48,7 @@ const quicheLoaded = new Promise((resolve, reject) => {
 const nodeNativeAvailable =
   Boolean(process?.versions?.openssl) &&
   !process?.env?.NODE_SKIP_CRYPTO &&
+  // @ts-ignore
   !!process?.features?.quic &&
   parseInt(process?.versions?.node?.split?.('.')?.[0], 10) >= 27
 

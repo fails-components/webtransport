@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import debug from 'debug'
 
 /**

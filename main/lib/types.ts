@@ -55,13 +55,46 @@ export interface NativeHttpWTStream {
   }) => void
 }
 
+
+export type OnStreamErrorCallback = (this: NativeWebTransportStream, error: any) => void;
+
+export interface StreamWriter {
+  writeSync(chunk: any): unknown
+  fail(arg0: { errorcode: number }): unknown
+  write(
+    chunk: Uint8Array | string,
+    options?: {
+      signal?: AbortSignal;
+    }
+  ): Promise<void>;
+
+  end(options?: {
+    signal?: AbortSignal;
+  }): Promise<number>;
+
+  endSync(): number;
+};
+
+/**
+ * Native NativeWebTransportStream 
+ * matches node.js QuicStream in properties
+ */
+export interface NativeWebTransportStream {
+  readonly writer: StreamWriter
+  stopSending: (code: number) => void
+  resetStream: (code: number) => void
+  drainReads: () => void
+  onreset: OnStreamErrorCallback 
+  onstopsending: OnStreamErrorCallback 
+};
+
 export interface NativeServerOptions {
-  port: number | 443
+  port: string | number | 443
   secret?: string
   host: string
-  cert: string
+  cert: string | string[]
   certhttp2?: string // if http2 has a different cert
-  privKey: string
+  privKey: string | string[]
   privKeyhttp2?: string // if http2 has a different cert
   initialBidirectionalSendStreams?: number
   initialBidirectionalReceiveStreams?: number
@@ -78,12 +111,12 @@ export interface NativeServerOptions {
 }
 
 export interface NativeClientOptions {
-  port: number
+  port: number|string
   host: string
-  serverCertificateHashes: WebTransportHash[]
-  localPort: number
-  allowPooling: boolean
-  forceIpv6: boolean
+  serverCertificateHashes?: WebTransportHash[]
+  localPort?: number
+  allowPooling?: boolean
+  forceIpv6?: boolean
   initialBidirectionalSendStreams?: number
   initialBidirectionalReceiveStreams?: number
   initialUnidirectionalSendStreams?: number
@@ -131,12 +164,6 @@ export interface NativeFinishSessionRequest {
   selectedProtocol?: string
 }
 
-export type Purpose =
-  | 'StreamRecvSignal'
-  | 'StreamRead'
-  | 'StreamWrite'
-  | 'StreamReset'
-  | 'StreamNetworkFinish'
 export type NetTask = 'stopSending' | 'resetStream' | 'streamFinal'
 
 export interface StreamRecvSignalEvent {
@@ -163,7 +190,6 @@ export interface StreamNetworkFinishEvent {
 export interface WebTransportStreamEventHandler {
   onStreamRecvSignal: (evt: StreamRecvSignalEvent) => void
   onStreamWrite: (evt: StreamWriteEvent) => void
-  onStreamNetworkFinish: (evt: StreamNetworkFinishEvent) => void
 }
 
 export interface SessionReadyEvent {

@@ -1,3 +1,4 @@
+// @ts-nocheck not helpful as long as we have no type definitions
 /**
  * @typedef {import('../dom.js').WebTransportSendGroup} WebTransportSendGroup
  * @typedef {import('../dom.js').WebTransportSendStreamOptions} WebTransportSendStreamOptions
@@ -76,7 +77,7 @@ export class Http3WebTransportSession {
       }
     }
     this.session.onstream = (stream) => {
-      stream.onheaders = (headers) => {
+      stream.onheaders = () => {
         if (isclient) {
           // well we do not support this kind of response
           // actually it should not happen on client side

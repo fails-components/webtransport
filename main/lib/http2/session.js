@@ -5,11 +5,7 @@
  */
 import { ParserBase } from './parserbase.js'
 import { FlowController } from './flowcontroller.js'
-import { logger } from '../utils.js'
 import { StreamIdManager } from './streamidmanager.js'
-
-const pid = typeof process !== 'undefined' ? process.pid : 0
-const log = logger(`webtransport:http2webtransportsession(${pid})`)
 
 let processnextTick = (/** @type {{ (args: any[]): any }} */ func) =>
   setTimeout(func, 0)
@@ -130,11 +126,12 @@ export class Http2WebTransportSession {
   drainWrites() {
     while (!this.capsParser.blocked && this.datagramsWaiting_.length > 0) {
       const outChunk = this.datagramsWaiting_.shift()
-      this.capsParser.writeCapsule({
-        type: ParserBase.DATAGRAM,
-        headerVints: [],
-        payload: outChunk
-      })
+      if (outChunk)
+        this.capsParser.writeCapsule({
+          type: ParserBase.DATAGRAM,
+          headerVints: [],
+          payload: [outChunk]
+        })
     }
     if (this.datagramsWaiting_.length > 0) {
       this.capsParser.scheduleDrainWrites()
@@ -155,7 +152,7 @@ export class Http2WebTransportSession {
     this.capsParser.writeCapsule({
       type: ParserBase.DATAGRAM,
       headerVints: [],
-      payload: chunk
+      payload: [chunk]
     })
     return { code: 'success' }
   }
@@ -264,7 +261,7 @@ export class Http2WebTransportSession {
   /*
    * @returns {void}
    */
-  notifySessionDraining() { }
+  notifySessionDraining() {}
   /**
    * @param {{ code: number, reason: string }} arg
    */

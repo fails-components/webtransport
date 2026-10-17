@@ -54,8 +54,10 @@ export class Http2WebTransportServer {
       key,
       cert,
       allowHTTP1: true /* Chromium uses http2 only, if there is already an existing http2 connection */,
-      settings: {
+      // @ts-ignore
+      settings: /** @type {any} */ {
         enableConnectProtocol: true,
+        // @ts-ignore
         customSettings: {
           0x2b61: this.initialSessionFlowControlWindow, // SETTINGS_WT_INITIAL_MAX_DATA
           0x2b62: this.initialStreamFlowControlWindow, // SETTINGS_WT_INITIAL_MAX_STREAM_DATA_UNI
@@ -64,6 +66,7 @@ export class Http2WebTransportServer {
           0x2b65: this.initialBidirectionalStreams // SETTINGS_WT_INITIAL_MAX_STREAMS_BIDI
         }
       },
+      // @ts-ignore
       remoteCustomSettings: [0x2b61, 0x2b62, 0x2b63, 0x2b64, 0x2b65]
     })
 

@@ -3,5 +3,9 @@
     "references": [
       { "path": "main" },
       { "path": "transports/http3-quiche" }
+    ],
+    "exclude": [
+      "main/test/testinone.js",
+      "main/lib/http2/backports/**"
     ]
-  }
+}

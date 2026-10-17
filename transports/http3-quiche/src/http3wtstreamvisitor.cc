@@ -169,7 +169,6 @@ namespace quic
         if (stream_)
         {
             stream_->SendStopSending(reason);
-            getJS()->processStreamNetworkFinish(NetworkTask::stopSending);
         }
     }
 
@@ -178,7 +177,6 @@ namespace quic
         if (stream_)
         {
             stream_->ResetWithUserCode(reason);
-            getJS()->processStreamNetworkFinish(NetworkTask::resetStream);
         }
     }
 
@@ -212,16 +210,6 @@ namespace quic
         std::string nettaskstr;
         switch (task)
         {
-        case NetworkTask::resetStream:
-        {
-            nettaskstr = "resetStream";
-        }
-        break;
-        case NetworkTask::stopSending:
-        {
-            nettaskstr = "stopSending";
-        }
-        break;
         case NetworkTask::streamFinal:
         {
             nettaskstr = "streamFinal";

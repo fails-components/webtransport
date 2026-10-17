@@ -63,7 +63,7 @@ export class ParserBase {
 
   /**
    * @abstract
-   * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array|undefined, end?: () => void}} bs
+   * @param{{type: Number, headerVints: Array<Number|bigint>, payload: Uint8Array[]|undefined, end?: () => void}} bs
    */
   // eslint-disable-next-line no-unused-vars
   writeCapsule({ type, headerVints, payload, end }) {
@@ -91,7 +91,7 @@ export class ParserBase {
     this.writeCapsule({
       type: ParserBase.WT_CLOSE_SESSION,
       headerVints: [],
-      payload,
+      payload: [payload],
       end: () => {
         this.closeHttp2Stream(code)
       }
@@ -108,7 +108,6 @@ export class ParserBase {
       streamid & 0x2n
         ? this.session.streamIdMngrUni
         : this.session.streamIdMngrBi
-
     if (incoming) {
       // only check incoming streams
       const res = streamIdManager.maybeIncreaseLargestPeerStreamId(streamid)
@@ -127,6 +126,7 @@ export class ParserBase {
       streamid,
       unidirectional,
       incoming,
+      session: this.session,
       capsuleParser: this,
       sendWindowOffset: unidirectional
         ? this.initialStreamSendWindowOffsetUnidi
@@ -195,7 +195,7 @@ export class ParserBase {
   onMaxStreamData(streamid, offset) {
     const object = this.wtstreams.get(streamid)
     if (object && offset) {
-      if (object.flowController.updateSendWindowOffset(offset)) {
+      if (object.updateSendWindowOffset(offset)) {
         this.scheduleDrainWriteStream(streamid)
         this.drainWrites()
       }

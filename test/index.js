@@ -81,6 +81,7 @@ async function runTests(certificate, serverAddress) {
       break
     case 'http3:native':
       if (env === 'node') nodenativeClient = true
+      // eslint-disable-next-line no-unused-vars
       nodenativeServer = true
       break
   }
