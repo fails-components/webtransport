@@ -132,11 +132,25 @@ export class Http2WebTransportStream {
         inner.incomingClosed = true
       }
     }
+
+    this.#maySendInitialParameters()
   }
 
-  sendInitialParameters() {
+  #maySendInitialParameters() {
     const inner = this.#inner
-    inner.flowController?.sendWindowUpdate()
+    // Note inside node.js this should be dropped
+    let skip = false //skips the initial parameters at environment with settings
+    if (typeof process !== 'undefined') {
+      if (process.version) {
+        const majorVersion = parseInt(
+          process.version.split('.')[0].substring(1)
+        )
+        if (majorVersion >= 20) skip = true
+      }
+    }
+    if (!skip || inner.capsuleParser?.initialParametersMandatory()) {
+      inner.flowController?.sendWindowUpdate()
+    }
   }
 
   /**
@@ -441,11 +455,14 @@ export class Http2WebTransportStream {
         fin ||= !!cur?.fin
       }
     }
-    inner.capsuleParser.writeCapsule({
-      type: fin ? ParserBase.WT_STREAM_WFIN : ParserBase.WT_STREAM_WOFIN,
-      headerVints: [inner.streamid],
-      payload: bytesToSend > 0n ? capsuleChunks : undefined
-    })
+
+    if (fin || bytesToSend > 0n) {
+      inner.capsuleParser.writeCapsule({
+        type: fin ? ParserBase.WT_STREAM_WFIN : ParserBase.WT_STREAM_WOFIN,
+        headerVints: [inner.streamid],
+        payload: bytesToSend > 0n ? capsuleChunks : undefined
+      })
+    }
     finsend ||= fin
 
     if (bytesToSend > 0n) {
