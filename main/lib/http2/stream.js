@@ -73,6 +73,7 @@ export class Http2WebTransportStream {
     recvBytes: 0,
     outgoingClosed: false,
     incomingClosed: false,
+    closed: false,
     /* callbacks */
     /** @type {OnStreamErrorCallback | undefined} */
     onreset: undefined,
@@ -341,12 +342,14 @@ export class Http2WebTransportStream {
 
   onClose() {
     const inner = this.#inner
+    if (inner.closed) return
     // ok, inform our session id manager
     if (typeof inner.streamid !== 'undefined') {
       inner.streamIdManager?.onStreamClosed(inner.streamid)
       // also remove from capsule parser
       inner.capsuleParser?.removeStream(inner.streamid)
     }
+    inner.closed = true
   }
 
   /**

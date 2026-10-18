@@ -284,9 +284,7 @@ export class Http2WebTransportSession {
   /**
    * @param {bigint} pos
    */
-  reportBlocked(pos) {
-    log('Session was blocked at:', pos)
-  }
+  reportBlocked(pos) {}
 
   /**
    * @param {bigint} windowOffset
