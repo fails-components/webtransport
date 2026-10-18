@@ -131,13 +131,14 @@ export class BrowserParser extends ParserBase {
             if (offsetend - bufferstate.offset >= 0) {
               const fin = type === ParserBase.WT_STREAM_WFIN
               if (fin) object.onFin()
-              object.recvData({
-                data: getUint8ArraysfromBuffer(
-                  bufferstate,
-                  offsetend - bufferstate.offset
-                ),
-                fin
-              })
+              if (fin || offsetend - bufferstate.offset > 0)
+                object.recvData({
+                  data: getUint8ArraysfromBuffer(
+                    bufferstate,
+                    offsetend - bufferstate.offset
+                  ),
+                  fin
+                })
             }
           }
         }
