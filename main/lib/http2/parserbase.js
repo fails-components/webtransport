@@ -176,7 +176,10 @@ export class ParserBase {
    * @param {bigint|undefined} val
    */
   onMaxData(val) {
-    if (val && this.session.flowController.updateSendWindowOffset(val)) {
+    if (
+      typeof val !== 'undefined' &&
+      this.session.flowController.updateSendWindowOffset(val)
+    ) {
       let pending = false
       this.wtstreams.forEach((stream, streamid) => {
         if (stream.hasPendingData()) {
@@ -194,7 +197,7 @@ export class ParserBase {
    */
   onMaxStreamData(streamid, offset) {
     const object = this.wtstreams.get(streamid)
-    if (object && offset) {
+    if (typeof object !== 'undefined' && offset) {
       if (object.flowController.updateSendWindowOffset(offset)) {
         this.scheduleDrainWriteStream(streamid)
         this.drainWrites()
