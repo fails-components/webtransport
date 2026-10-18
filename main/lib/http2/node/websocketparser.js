@@ -574,16 +574,17 @@ export class WebSocketParser extends ParserBaseHttp2 {
                       const fin =
                         type === ParserBase.WT_STREAM_WFIN &&
                         bufferstate.size >= length + offsetbegin
-                      object.recvData({
-                        data:
-                          offsetend - bufferstate.offset > 0
-                            ? getUint8ArraysfromBuffer(
-                                bufferstate,
-                                offsetend - bufferstate.offset
-                              )
-                            : undefined,
-                        fin
-                      })
+                      if (fin || offsetend - bufferstate.offset > 0)
+                        object.recvData({
+                          data:
+                            offsetend - bufferstate.offset > 0
+                              ? getUint8ArraysfromBuffer(
+                                  bufferstate,
+                                  offsetend - bufferstate.offset
+                                )
+                              : undefined,
+                          fin
+                        })
                       if (fin) object.onFin()
                     }
                   }
