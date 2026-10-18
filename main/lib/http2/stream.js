@@ -381,11 +381,6 @@ export class Http2WebTransportStream {
       })
   }
 
-  hasPendingData() {
-    const inner = this.#inner
-    return inner.outgochunks.length > 0
-  }
-
   drainWrites() {
     const inner = this.#inner
     let finsend = false
@@ -609,11 +604,13 @@ export class Http2WebTransportStream {
     }
     function writeDesiredSize() {
       const ochunksize = inner.outgochunks.reduce(
-        (accu, el) => accu + BigInt(el?.buf?.byteLength || 0),
-        0n
+        (accu, el) => accu + (el?.buf?.byteLength || 0),
+        0
       )
-      const streamSize = inner.flowController?.sendWindowSize() || 0n
-      const sessSize = inner.sessionFlowController?.sendWindowSize() || 0n
+      const streamSize = Number(inner.flowController?.sendWindowSize() ?? 0)
+      const sessSize = Number(
+        inner.sessionFlowController?.sendWindowSize() ?? 0
+      )
       if (streamSize < sessSize) {
         return streamSize - ochunksize
       }
@@ -708,10 +705,14 @@ export class Http2WebTransportStream {
           (curval, chunk) => curval + (chunk?.byteLength || 0),
           0
         )
-        yield data
-        inner.flowController?.addBytesConsumed(datalength || 0)
-        inner.sessionFlowController?.addBytesConsumed(datalength || 0)
-        if (fin) return
+        if (datalength > 0) {
+          yield data
+          inner.flowController?.addBytesConsumed(datalength || 0)
+          inner.sessionFlowController?.addBytesConsumed(datalength || 0)
+        }
+        if (fin) {
+          return
+        }
       }
 
       if (inner.drainReads) return // to be verified
