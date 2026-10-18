@@ -262,7 +262,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
               return
             }
             let curbyte = readByte(bufferstate)
-            const fin = (curbyte & 0x80) >>> 7
+            const wsfin = !!((curbyte & 0x80) >>> 7)
             const rsv = (curbyte & 0x30) >>> 4
             if (rsv !== 0) {
               log('Rsv bits set, should not happen!')
@@ -333,11 +333,12 @@ export class WebSocketParser extends ParserBaseHttp2 {
             } else {
               this.maskcontext = undefined
             }
-            if (!fin && opcode !== WebSocketParser.WS_CONTINUE) {
+            if (!wsfin && opcode !== WebSocketParser.WS_CONTINUE) {
               this.lastopcode = opcode
               this.contframes = undefined // reset
             }
-            if (fin) this.lastopcode = undefined
+            const lastopcode = this.lastopcode // local copy
+            if (wsfin) this.lastopcode = undefined
             if (
               opcode === WebSocketParser.WS_CLOSE ||
               opcode === WebSocketParser.WS_PING ||
@@ -417,7 +418,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
             } else if (
               opcode === WebSocketParser.WS_BINARY ||
               (opcode === WebSocketParser.WS_CONTINUE &&
-                this.lastopcode === WebSocketParser.WS_BINARY)
+                lastopcode === WebSocketParser.WS_BINARY)
             ) {
               let typelength
               let type
@@ -498,7 +499,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 type !== ParserBase.WT_STREAM_WOFIN ||
                 type !== ParserBase.WT_STREAM_WFIN
               ) {
-                if (fin) {
+                if (wsfin) {
                   wbufferstate = { ...bufferstate }
                   if (this.contframes) {
                     const newframes = getUint8ArraysfromBuffer(
@@ -578,6 +579,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
                     // TODO submit data
                     if (offsetend - bufferstate.offset >= 0) {
                       const fin =
+                        wsfin /* The WS packet might be broken into pieces */ &&
                         type === ParserBase.WT_STREAM_WFIN &&
                         bufferstate.size >= length + offsetbegin
                       if (fin || offsetend - bufferstate.offset > 0)
@@ -674,7 +676,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 this.mode = 'c'
                 if (typeof streamid !== 'undefined') {
                   this.rstreamid = streamid
-                  this.rfin = type === ParserBase.WT_STREAM_WFIN
+                  this.rfin = type === ParserBase.WT_STREAM_WFIN && wsfin
                 }
               }
               advanceBufferToOffset(bufferstate, offsetend)
@@ -703,6 +705,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
               // TODO submitData
               const object = this.wtstreams.get(this.rstreamid)
               const fin =
+                !!this.rfin &&
                 this.rtype === ParserBase.WT_STREAM_WFIN &&
                 this.remainlength === clength
               if (object) {
