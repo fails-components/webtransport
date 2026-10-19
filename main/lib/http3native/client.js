@@ -158,10 +158,8 @@ export class Http3WebTransportClientNative {
         log('http3 client connected')
 
         this.jsobj.onClientConnected({ success: true })
-        connected = true
       })
       .catch((error) => {
-        connected = false
         this.jsobj.onClientConnected({ success: false })
         log('http3 connection fail', error)
       })

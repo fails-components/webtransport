@@ -329,17 +329,20 @@ export class HttpWTStream {
               }
               this.parentobj.removeSendStream(this)
             },
-            abort: (/** @type {{ code: number; }} */ reason) => {
+            abort: (
+              /** @type {{ code: number|string; errorCode?: bigint }} */ reason
+            ) => {
               if (this.writableclosed) {
                 return Promise.resolve()
               }
               this.writableclosed = true
               let code = 0
-              if (reason && reason.code) {
-                if (reason.code < 0) code = 0
-                else if (reason.code > 255) code = 255
-                else code = reason.code
-              }
+              let rcode =
+                (typeof reason?.code === 'number' && reason?.code) ||
+                Number(reason.errorCode || 0n)
+              if (rcode < 0) code = 0
+              else if (rcode > 255) code = 255
+              else code = rcode
               this.parentobj.removeSendStream(this)
               strobj.resetStream(code)
               writer.fail({ errorcode: code })

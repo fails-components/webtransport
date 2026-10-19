@@ -3,7 +3,6 @@
  * @typedef {import('../dom.js').WebTransportSendGroup} WebTransportSendGroup
  * @typedef {import('../dom.js').WebTransportSendStreamOptions} WebTransportSendStreamOptions
  */
-import { Http3WebTransportStream } from './stream.js'
 import { logger } from '../utils.js'
 import { lengthVarInt, writeVarInt, readVarInt } from '../http2/bufferHelper.js'
 const pid = typeof process !== 'undefined' ? process.pid : 0
@@ -99,16 +98,11 @@ export class Http3WebTransportSession {
         stream.onsessionid = undefined
         if (sessionid === this.stream.id) {
           try {
-            const jsstream = new Http3WebTransportStream({
-              stream,
-              unidirectional: stream.direction === 'uni',
-              incoming: true
-            })
             setTimeout(() => {
               this.jsobj.onStream({
                 bidirectional: stream.direction !== 'uni',
                 incoming: true,
-                stream: jsstream,
+                stream: stream,
                 sendGroupId: 0n,
                 sendOrder: 0
               })
@@ -156,8 +150,10 @@ export class Http3WebTransportSession {
     this.session.ondatagram = (datagram) => {
       const buffer = {
         offset: 0,
-        buffer: Buffer.from(datagram.buffer),
-        size: datagram.byteLength
+        buffer: [datagram],
+        size: datagram.byteLength,
+        curBuf: 0,
+        curBufOffset: 0
       }
       const sessionId = readVarInt(buffer)
       if (sessionId !== this.stream.id / 4n) return
@@ -191,11 +187,7 @@ export class Http3WebTransportSession {
         await qstream.ready
       }
 
-      return new Http3WebTransportStream({
-        stream: qstream,
-        unidirectional: false,
-        incoming: false
-      })
+      return qstream
     } catch (error) {
       log('error creating bidirectional stream', error)
       throw error
@@ -217,11 +209,7 @@ export class Http3WebTransportSession {
       if (qstream.pending) {
         await qstream.ready
       }
-      return new Http3WebTransportStream({
-        stream: qstream,
-        unidirectional: true,
-        incoming: false
-      })
+      return qstream
     } catch (error) {
       log('error creating bidirectional stream', error)
       throw error
@@ -266,7 +254,13 @@ export class Http3WebTransportSession {
     // in case, node js changes handling of datagrams we can remove the varint stuff
     const toSend = new Uint8Array(chunk.byteLength + byteLengthSessId)
     writeVarInt(
-      { offset: 0, buffer: Buffer.from(toSend.buffer), size: byteLengthSessId },
+      {
+        offset: 0,
+        buffer: [toSend],
+        size: byteLengthSessId,
+        curBuf: 0,
+        curBufOffset: 0
+      },
       sessionId
     )
 
