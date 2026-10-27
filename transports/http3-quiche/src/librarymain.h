@@ -15,10 +15,6 @@
 
 namespace quic
 {
-  enum NetworkTask
-  {
-    streamFinal
-  };
 
   enum NetworkStatus
   {

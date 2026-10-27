@@ -9,12 +9,7 @@ const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:http2webtransportstream(${pid})`)
 /**
  * WebTransport stream events
- * @typedef {import('../types').WebTransportStreamEventHandler} WebTransportStreamEventHandler
- * @typedef {import('../types').StreamRecvSignalEvent} StreamRecvSignalEvent
- * @typedef {import('../types').StreamReadEvent} StreamReadEvent
- * @typedef {import('../types').StreamWriteEvent} StreamWriteEvent
  * @typedef {import('../types').StreamWriter} StreamWriter
- * @typedef {import('../types').StreamNetworkFinishEvent} StreamNetworkFinishEvent
  * @typedef {import('../types').OnStreamErrorCallback} OnStreamErrorCallback
  * @typedef {import('./session').Http2WebTransportSession} Http2WebTransportSession
  *
@@ -282,7 +277,7 @@ export class Http2WebTransportStream {
       }
     }
   }
-*/
+
 
   drainReads() {
     const inner = this.#inner
@@ -290,7 +285,7 @@ export class Http2WebTransportStream {
     inner.stopReading = false
     this.processRead()
   }
-
+*/
   /**
    * @param {'resetStream'|'stopSending'} type
    * @param {number} code

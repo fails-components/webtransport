@@ -27,3 +27,4 @@ export {
   WebTransportPonyfill,
   WebTransportPolyfill
 } from './webtransport.browser.js'
+export { drainableProtocol } from './http2/backports/types.cjs'

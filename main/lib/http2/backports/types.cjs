@@ -3,6 +3,7 @@
 // @ts-ignore
 let streamiter 
 try {
+  // @ts-ignore
   streamiter = require("stream/iter");
 } catch (error) {
   streamiter = undefined;

@@ -3,6 +3,7 @@ import { HttpWTStream } from './stream.js'
 import { WebTransportError } from './error.js'
 import { logger } from './utils.js'
 import { canByteStream } from './features.js'
+import { Http3QuicheStream } from './http3quiche/stream.js'
 
 const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:httpwtsession(${pid})`)
@@ -17,6 +18,7 @@ const log = logger(`webtransport:httpwtsession(${pid})`)
  * @typedef {import('./types').DatagramStatsEvent} DatagramStatsEvent
  * @typedef {import('./types').SessionStatsEvent} SessionStatsEvent
  * @typedef {import('./types').NewStreamEvent} NewStreamEvent
+ * @typedef {import('./types').NativeWebTransportStream} NativeWebTransportStream
  *
  * @typedef {import('./dom').WebTransportCloseInfo} WebTransportCloseInfo
  * @typedef {import('./dom').WebTransportBidirectionalStream} WebTransportBidirectionalStream
@@ -464,8 +466,17 @@ export class HttpWTSession {
         sendOrder,
         waitUntilAvailable: opts?.waitUntilAvailable || false
       })
+      /** @type {NativeWebTransportStream} */
+      let newstream
+      // for Quiche we need to add a js wrapper
+      // FIXME: this should go into a session class for the protocol
+      if ('pullData' in stream) {
+        newstream = new Http3QuicheStream({ quicheStream: stream })
+      } else {
+        newstream = stream
+      }
       const strobj = new HttpWTStream({
-        object: stream,
+        object: newstream,
         parentobj: this,
         transport: this.parentobj,
         bidirectional: true,
@@ -522,8 +533,17 @@ export class HttpWTSession {
         sendOrder,
         waitUntilAvailable: opts?.waitUntilAvailable || false
       })
+      /** @type {NativeWebTransportStream} */
+      let newstream
+      // for Quiche we need to add a js wrapper
+      // FIXME: this should go into a session class for the protocol
+      if ('pullData' in stream) {
+        newstream = new Http3QuicheStream({ quicheStream: stream })
+      } else {
+        newstream = stream
+      }
       const strobj = new HttpWTStream({
-        object: stream,
+        object: newstream,
         parentobj: this,
         transport: this.parentobj,
         bidirectional: false,
@@ -690,8 +710,18 @@ export class HttpWTSession {
       if (args.bidirectional || !args.incoming) args.stream.resetStream(0)
       return
     }
+    /** @type {NativeWebTransportStream} */
+    let newstream
+    // for Quiche we need to add a js wrapper
+    // FIXME: this should go into a session class for the protocol
+    if ('pullData' in args.stream) {
+      newstream = new Http3QuicheStream({ quicheStream: args.stream })
+    } else {
+      newstream = args.stream
+    }
+
     const strobj = new HttpWTStream({
-      object: args.stream,
+      object: newstream,
       parentobj: this,
       transport: this.parentobj,
       bidirectional: args.bidirectional,

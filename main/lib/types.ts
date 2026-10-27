@@ -10,6 +10,7 @@ import { ParserBase } from './http2/parserbase'
 import { Http2WebTransportSession } from './http2/session'
 import { HttpClient } from './client'
 import { SocketOptions } from 'dgram'
+import { MessageReceiver } from './http3quiche/stream.js'
 
 
 type NativeWriteDatagramResult = { 
@@ -39,30 +40,36 @@ export interface NativeHttpWTSession {
  * Native HttpWTStream counterpart
  */
 export interface NativeHttpWTStream {
-  jsobj: WebTransportStreamEventHandler
+  jsobj: MessageReceiver
   readbuffer: ArrayBuffer | undefined
-  sendInitialParameters?: () => void
-  startReading: () => void
-  drainReads: () => void
-  stopReading: () => void
+  pullData: () => {data: (Uint8Array | undefined), fin: boolean}
   stopSending: (code: number) => void
   resetStream: (code: number) => void
-  writeChunk: (buf: Uint8Array) => void
+  writeChunks: (buf: Uint8Array[]) => boolean
   streamFinal: () => void
   updateSendOrderAndGroup: (args :{
     sendOrder: number,
     sendGroupId: bigint
   }) => void
+  messageReceiver:  MessageReceiver
 }
 
 
 export type OnStreamErrorCallback = (this: NativeWebTransportStream, error: any) => void;
 
+export interface MinimalStreamWriter {
+  writeSync(chunk: any): boolean
+  fail(arg0: { errorcode: number }): unknown
+  endSync(): number;
+  end(): number; // to have it compatible, endSync never fails
+};
+
+
 export interface StreamWriter {
-  writeSync(chunk: any): unknown
+  writeSync(chunk: any): boolean
   fail(arg0: { errorcode: number }): unknown
   write(
-    chunk: Uint8Array | string,
+    chunk: Uint8Array[] | Uint8Array | string,
     options?: {
       signal?: AbortSignal;
     }
@@ -80,12 +87,15 @@ export interface StreamWriter {
  * matches node.js QuicStream in properties
  */
 export interface NativeWebTransportStream {
-  readonly writer: StreamWriter
+  readonly writer: StreamWriter | MinimalStreamWriter
+  updateSendOrderAndGroup: (args :{
+    sendOrder: number,
+    sendGroupId: bigint
+  }) => void
   stopSending: (code: number) => void
   resetStream: (code: number) => void
-  drainReads: () => void
   onreset: OnStreamErrorCallback 
-  onstopsending: OnStreamErrorCallback 
+  onstopsending: OnStreamErrorCallback
 };
 
 export interface NativeServerOptions {
@@ -164,33 +174,8 @@ export interface NativeFinishSessionRequest {
   selectedProtocol?: string
 }
 
-export type NetTask = 'stopSending' | 'resetStream' | 'streamFinal'
-
-export interface StreamRecvSignalEvent {
-  code: number
-  nettask: NetTask
-}
-
-export interface StreamReadEvent {
-  buffergrow?: number
-  fin?: boolean
-  success?: boolean
-}
-
-export interface StreamWriteEvent {
-  success?: boolean
-}
 
 export interface StreamResetEvent {}
-
-export interface StreamNetworkFinishEvent {
-  nettask: NetTask
-}
-
-export interface WebTransportStreamEventHandler {
-  onStreamRecvSignal: (evt: StreamRecvSignalEvent) => void
-  onStreamWrite: (evt: StreamWriteEvent) => void
-}
 
 export interface SessionReadyEvent {
   object: NativeHttpWTSession
@@ -227,7 +212,7 @@ export interface DatagramReceivedEvent {
 export interface GoawayReceivedEvent {}
 
 export interface NewStreamEvent {
-  stream: NativeHttpWTStream
+  stream: NativeHttpWTStream | NativeWebTransportStream
   bidirectional: boolean
   incoming: boolean
   sendGroupId?: bigint;

@@ -20,19 +20,19 @@ namespace quic
         {
             auto cur = stream_->chunks_.front();
 
-            // now we have to inform the server TODO
-            stream_->getJS()->processStreamWrite(cur.bufferhandle, false);
+            cur.bufferhandle->Unref(); // release the outgoing buffer
+            delete cur.bufferhandle;   // free the handle object
 
             stream_->chunks_.pop_front();
         }
 
         if (!stream_->stop_sending_received_)
         {
-            stream_->getJS()->processStreamRecvSignal(0, NetworkTask::stopSending);
+            stream_->getJS()->processStreamStopSending(0);
         }
         if (!stream_->stream_was_reset_)
         {
-            stream_->getJS()->processStreamRecvSignal(0, NetworkTask::resetStream);
+            stream_->getJS()->processStreamResetStream(0);
         }
         Http3WTStreamJS *strobj = stream_->getJS();
         if (strobj)
@@ -49,8 +49,10 @@ namespace quic
 
     void Http3WTStream::Visitor::OnWriteSideInDataRecvdState() // called if everything is written to the client and it is closed
     {
+        /*
         if (stream_->send_fin_)
             stream_->getJS()->processStreamNetworkFinish(NetworkTask::streamFinal);
+        */
     }
 
     void Http3WTStream::Visitor::OnResetStreamReceived(WebTransportStreamError error)
@@ -65,71 +67,70 @@ namespace quic
         OnCanWrite();*/
         stream_->stream_was_reset_ = true;
         lasterror = error;
-        stream_->getJS()->processStreamRecvSignal(error, NetworkTask::resetStream); // may be move below
+        stream_->getJS()->processStreamResetStream(error); // may be move below
     }
 
     void Http3WTStream::Visitor::OnStopSendingReceived(WebTransportStreamError error)
     {
         stream_->stop_sending_received_ = true;
-        stream_->getJS()->processStreamRecvSignal(error, NetworkTask::stopSending); // may be move below
+        stream_->getJS()->processStreamStopSending(error); // may be move below
         // we should also finallize the stream, so send a fin
         stream_->send_fin_ = true;
         OnCanWrite();
     }
 
-    void Http3WTStream::cancelWrite(Napi::ObjectReference *handle)
+    void Http3WTStream::Visitor::OnCanRead()
     {
-        getJS()->processStreamWrite(handle, false);
+        stream_->getJS()->processStreamOnCanRead();
     }
 
-    void Http3WTStream::doCanRead()
-    {
-        // if (pause_reading_) return ; // back pressure folks!
-        WebTransportStream::PeekResult pr;
+    std::tuple<bool, std::optional<Napi::ArrayBuffer>> Http3WTStream::pullData() {
+      if (!stream_) return {true, std::nullopt}; // everything is gone bail out
+      // if (pause_reading_) return ; // back pressure folks!
+      WebTransportStream::PeekResult pr;
+      pr = stream_->PeekNextReadableRegion();
+
+      if (pr.fin_next && pr.peeked_data.size() == 0) {
+        bool fin = stream_->SkipBytes(0);
+        if (fin) {
+          return {true, std::nullopt};
+        }
+      }
+
+      bool read = false;
+      size_t toread = stream_->ReadableBytes();
+
+      if (toread == 0) {
+        return {false, std::nullopt};
+      }
+
+      
+      Napi::ArrayBuffer bufferVal = Napi::ArrayBuffer::New(getJS()->Env(), toread);
+      char* bufferPtr = (char*) bufferVal.Data();
+
+      size_t remainSize = toread;
+      uint32_t writepos = 0;
+      bool fin = false;
+
+      while (!pr.peeked_data.empty() && remainSize > 0) {
+        size_t len = std::min(remainSize, pr.peeked_data.size());
+        if (len > 0) memcpy(bufferPtr + writepos, pr.peeked_data.data(), len);
+        fin = fin || stream_->SkipBytes(len);
+        QUIC_DVLOG(1) << "Attempted reading on WebTransport stream "
+                      << ", bytes read: " << len;
+        writepos += len;
+        remainSize -= len;
         pr = stream_->PeekNextReadableRegion();
-
-        if (pr.fin_next && pr.peeked_data.size() == 0) {
-            bool fin = stream_->SkipBytes(0);
-            if (fin) {
-                getJS()->signalFinOnly();
-                return;
-            }
+        if (fin) {
+          break;
         }
-
-        if (pause_reading_ && !drain_reads_)
-        {
-            can_read_pending_ = true;
-            return; // back pressure folks!
-        }
-        bool read = false;
-        while (!pr.peeked_data.empty())
-        {
-            Http3WTStreamJS::StreamReadBuffer rbuf(js_);
-            rbuf.getBuffer(stream_->ReadableBytes());
-
-            size_t remainSize = rbuf.bufferSize();
-            uint32_t writepos = 0;
-
-            while (!pr.peeked_data.empty() && remainSize > 0) {
-                size_t len = std::min(remainSize, pr.peeked_data.size());
-                if (len > 0) memcpy(((char *)rbuf.bufferData()) + writepos,pr.peeked_data.data(), len);
-                bool fin = stream_->SkipBytes(len);
-                QUIC_DVLOG(1) << "Attempted reading on WebTransport stream "
-                              << ", bytes read: " << len;       
-                writepos += len;
-                remainSize -= len;
-                pr =  stream_->PeekNextReadableRegion();
-                if (fin) {
-                    rbuf.setFin();
-                    break;
-                }
-            }
-            rbuf.commitBuffer(writepos, pr.has_data());
-        }
+      }
+      return {fin, bufferVal};
     }
 
     void Http3WTStream::doCanWrite()
     {
+        if (!stream_) return;
         /* if (/* stop_sending_received_ || * pause_reading_)
          {
              return;
@@ -148,9 +149,8 @@ namespace quic
             {
                 return;
             }
-            // now we have to inform the server TODO
-            getJS()->processStreamWrite(cur.bufferhandle, true);
-
+            cur.bufferhandle->Unref(); // release the outgoing buffer
+            delete cur.bufferhandle;   // free the handle object
             chunks_.pop_front();
         }
 
@@ -159,9 +159,13 @@ namespace quic
             absl::Status status = webtransport::SendFinOnStream(*stream_);
             if (status.ok()) {
                 fin_was_sent_ = true;
-                getJS()->processStreamNetworkFinish(NetworkTask::streamFinal);
             }
         }
+    }
+
+    void Http3WTStream::mayBeSendOnCanWrite() {
+        if (!stream_) return;
+        if (stream_->CanWrite()) getJS()->processStreamOnCanWrite();
     }
 
     void Http3WTStream::stopSendingInt(unsigned int reason)
@@ -188,125 +192,42 @@ namespace quic
             prio.send_order = sendOrder;
             stream_->SetPriority(prio);
         }
-    }
+    } 
 
-    
-    void  Http3WTStreamJS::signalFinOnly() {
+    void Http3WTStreamJS::processStreamOnCanRead()
+    {
         Napi::HandleScope scope(Env());
-        Napi::Object retObj = Napi::Object::New(Env());
         Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
-        retObj.Set("fin", true);
-        Napi::Value bufferVal = objVal.Get("commitReadBuffer").As<Napi::Function>().Call(objVal, {retObj});
+       
+        objVal.Get("onCanRead").As<Napi::Function>().Call(objVal, {});
     }
 
-    
+    void Http3WTStreamJS::processStreamOnCanWrite()
+    {
+        Napi::HandleScope scope(Env());
+        Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
+       
+        objVal.Get("onCanWrite").As<Napi::Function>().Call(objVal, {});
+    }
 
-    void Http3WTStreamJS::processStreamNetworkFinish(NetworkTask task)
+    void Http3WTStreamJS::processStreamStopSending(WebTransportStreamError error_code)
     {
         Napi::HandleScope scope(Env());
 
         Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
+        Napi::Value codeVal = Napi::Number::New(Env(), static_cast<uint32_t>(error_code));
 
-        std::string nettaskstr;
-        switch (task)
-        {
-        case NetworkTask::streamFinal:
-        {
-            nettaskstr = "streamFinal";
-        }
-        break;
-        default:
-            return;
-        };
-
-        Napi::Object retObj = Napi::Object::New(Env());
-        retObj.Set("nettask", nettaskstr);
-
-        objVal.Get("onStreamNetworkFinish").As<Napi::Function>().Call(objVal, {retObj});
+        objVal.Get("onStopSending").As<Napi::Function>().Call(objVal, {codeVal});
     }
 
-    void Http3WTStreamJS::processStreamRecvSignal(WebTransportStreamError error_code, NetworkTask task)
+    void Http3WTStreamJS::processStreamResetStream(WebTransportStreamError error_code)
     {
         Napi::HandleScope scope(Env());
 
         Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
+        Napi::Value codeVal = Napi::Number::New(Env(), static_cast<uint32_t>(error_code));
 
-        std::string nettaskstr;
-        switch (task)
-        {
-        case NetworkTask::resetStream:
-        {
-            nettaskstr = "resetStream";
-        }
-        break;
-        case NetworkTask::stopSending:
-        {
-            nettaskstr = "stopSending";
-        }
-        break;
-        case NetworkTask::streamFinal:
-        {
-            nettaskstr = "streamFinal";
-        }
-        break;
-        default:
-            return;
-        };
-
-        Napi::Object retObj = Napi::Object::New(Env());
-        retObj.Set("purpose", "StreamRecvSignal");
-        retObj.Set("code", error_code);
-        retObj.Set("nettask", nettaskstr);
-
-        objVal.Get("onStreamRecvSignal").As<Napi::Function>().Call(objVal, {retObj});
-    }
-
-    void Http3WTStreamJS::processStreamWrite(Napi::ObjectReference *bufferhandle, bool success)
-    {
-        Napi::HandleScope scope(Env());
-
-        Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
-        bufferhandle->Unref(); // release the outgoing buffer
-        delete bufferhandle;   // free the handle object
-
-        Napi::Object retObj = Napi::Object::New(Env());
-        retObj.Set("success", success);
-
-        objVal.Get("onStreamWrite").As<Napi::Function>().Call(objVal, {retObj});
-    }
-
-    void  Http3WTStreamJS::StreamReadBuffer::getBuffer(size_t reqsize) {
-        Napi::HandleScope scope(jsobj_->Env());
-        Napi::Object objVal = jsobj_->Value().Get("jsobj").As<Napi::Object>();
-
-        Napi::Object argObj = Napi::Object::New(jsobj_->Env());
-        argObj.Set("byteSize", reqsize);
-
-        Napi::Value bufferVal = objVal.Get("getReadBuffer").As<Napi::Function>().Call(objVal, {argObj});
-        bufferObj = Napi::Persistent(bufferVal.As<Napi::Object>());
-        Napi::Object locBuf = bufferVal.As<Napi::Object>();
-        fin = locBuf.Get("fin").As<Napi::Boolean>();
-        if (locBuf.Has("buffer")) {
-            Napi::Uint8Array buffer = locBuf.Get("buffer").As<Napi::Uint8Array>();
-            buffer_ = buffer.Data();
-            buffersize_ =buffer.ByteLength();
-        }
-        // buffer
-        // byob
-        // readBytes
-        // fin
-    }
-
-    void  Http3WTStreamJS::StreamReadBuffer::commitBuffer(uint32_t readbytes, bool drained) {
-        Napi::HandleScope scope(jsobj_->Env());
-        Napi::Object objVal = jsobj_->Value().Get("jsobj").As<Napi::Object>();
-
-        bufferObj.Set("fin", fin);
-        bufferObj.Set("readBytes", Napi::Value::From(jsobj_->Env(),readbytes));
-        bufferObj.Set("drained", drained);
-        Napi::Value bufferVal = objVal.Get("commitReadBuffer").As<Napi::Function>().Call(objVal, {bufferObj.Value()});
-
-
+        objVal.Get("onResetStream").As<Napi::Function>().Call(objVal, {codeVal});
     }
 
 }

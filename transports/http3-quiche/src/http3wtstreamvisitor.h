@@ -46,14 +46,12 @@ namespace quic
 
             ~Visitor();
 
-            void OnCanRead() override
-            {
-                stream_->doCanRead();
-            }
+            void OnCanRead() override;
 
             void OnCanWrite() override
             {
                 stream_->doCanWrite();
+                stream_->mayBeSendOnCanWrite();
             }
 
             void OnResetStreamReceived(WebTransportStreamError error) override;
@@ -67,37 +65,15 @@ namespace quic
             WebTransportStreamError lasterror;
         };
 
-        void doCanRead();
+        std::tuple<bool, std::optional<Napi::ArrayBuffer>> pullData();
 
         void doCanWrite();
 
-        void doStopReading()
-        {
-            pause_reading_ = true;
-        }
+        void mayBeSendOnCanWrite();
 
-        void doDrainReads()
-        {
-            pause_reading_ = false;
-            drain_reads_ = true;
-        }
-
-        void tryWrite()
-        {
-            if (stream_ && stream_->CanWrite())
-            {
-                doCanWrite();
-            }
-        }
-
-        void tryRead()
-        {
-            pause_reading_ = false;
-            if (stream_ && ((stream_->ReadableBytes() > 0) || can_read_pending_))
-            {
-                can_read_pending_ = false;
-                doCanRead();
-            }
+        bool canWrite() { 
+            if (!stream_) return false;
+            return stream_->CanWrite();
         }
 
         Http3WTStreamJS *getJS()
@@ -121,7 +97,13 @@ namespace quic
         void streamFinalInt()
         {
             send_fin_ = true;
-            tryWrite();
+            if (canWrite()) {
+               doCanWrite();
+            }
+        }
+
+        bool chunksEmpty() {
+            return chunks_.empty();
         }
 
         void stopSendingInt(unsigned int reason);
@@ -142,12 +124,14 @@ namespace quic
         {
             if (fin_was_sent_ || send_fin_)
             {
-                cancelWrite(bufferhandle);
+                bufferhandle->Unref(); // release the outgoing buffer
+                delete bufferhandle;   // free the handle object
                 return;
             }
             if (!stream_)
             {
-                cancelWrite(bufferhandle);
+                bufferhandle->Unref(); // release the outgoing buffer
+                delete bufferhandle;   // free the handle object
                 return;
             }
             WChunks cur;
@@ -155,7 +139,6 @@ namespace quic
             cur.len = len;
             cur.bufferhandle = bufferhandle;
             chunks_.push_back(cur);
-            tryWrite();
         }
 
         void cancelWrite(Napi::ObjectReference *handle);
@@ -167,9 +150,6 @@ namespace quic
         bool send_fin_ = false;
         bool fin_was_sent_ = false;
         bool stop_sending_received_ = false;
-        bool pause_reading_ = false;
-        bool drain_reads_ = false;
-        bool can_read_pending_ = false;
         bool stream_was_reset_ = false;
         std::deque<WChunks> chunks_;
     };
@@ -180,36 +160,6 @@ namespace quic
         friend Http3WTStream::Visitor;
 
     public:
-        class StreamReadBuffer
-        {
-        public:
-            StreamReadBuffer(Http3WTStreamJS *jsobj) : fin(false), jsobj_(jsobj),
-                                                       buffer_(nullptr), buffersize_(0)
-            {
-            }
-
-            void getBuffer(size_t reqsize);
-
-            unsigned char *bufferData() { return buffer_; };
-            size_t bufferSize() { return buffersize_; };
-
-            bool hasBuffer() { return buffer_ != nullptr; }
-
-            void commitBuffer(uint32_t readbytes, bool drained);
-
-            void setFin() { fin = true; }
-
-        protected:
-            Napi::ObjectReference bufferObj;
-            unsigned char *buffer_;
-            size_t buffersize_;
-            // buffer?: Uint8Array
-            // byob?
-            bool fin;
-            Http3WTStreamJS *jsobj_; // unowned
-        };
-
-    public:
         Http3WTStreamJS(const Napi::CallbackInfo &info) : Napi::ObjectWrap<Http3WTStreamJS>(info)
         {
         }
@@ -218,38 +168,50 @@ namespace quic
 
         // nan stuff
 
-        void startReading(const Napi::CallbackInfo &info)
+        Napi::Value writeChunks(const Napi::CallbackInfo &info)
         {
-            wtstream_->tryRead();
-        }
+            if (!wtstream_->canWrite()) {
+                return Napi::Boolean::New(Env(), false);
+            }
 
-        void stopReading(const Napi::CallbackInfo &info)
-        {
-            wtstream_->doStopReading();
-        }
+            Napi::Array bufferArray = info[0].As<Napi::Array>();
+            uint32_t length = bufferArray.Length();
 
-        void drainReads(const Napi::CallbackInfo &info)
-        {
-            wtstream_->doDrainReads();
-        }
+            for (uint32_t i = 0; i < length; ++i) {
+              Napi::Object bufferlocal = bufferArray.Get(i).As<Napi::Object>();
 
-        void writeChunk(const Napi::CallbackInfo &info)
-        {
-            // ok we have to get the buffer
+              Napi::ObjectReference* bufferhandle = new Napi::ObjectReference();
+              *bufferhandle = Napi::Persistent(bufferlocal);
 
-            const Napi::Object bufferlocal = info[0].ToObject();
-            Napi::ObjectReference *bufferhandle = new Napi::ObjectReference();
-            *bufferhandle = Napi::Persistent(bufferlocal);
+              char* buffer = bufferlocal.As<Napi::Buffer<char>>().Data();
+              size_t len = bufferlocal.As<Napi::Buffer<char>>().Length();
 
-            char *buffer = bufferlocal.As<Napi::Buffer<char>>().Data();
-            size_t len = bufferlocal.As<Napi::Buffer<char>>().Length();
+              wtstream_->writeChunkInt(buffer, len, bufferhandle);
+            }
+            if (!wtstream_->canWrite()) return Napi::Boolean::New(Env(), true);
+            
+            
+            wtstream_->doCanWrite();
 
-            wtstream_->writeChunkInt(buffer, len, bufferhandle);
+            return Napi::Boolean::New(Env(), true);
         }
 
         void streamFinal(const Napi::CallbackInfo &info)
         {
             wtstream_->streamFinalInt();
+        }
+
+        Napi::Value pullData(const Napi::CallbackInfo& info)
+        {
+            auto [fin, maybeBuffer] = wtstream_->pullData();
+            Napi::Object retObj = Napi::Object::New(Env());
+            retObj.Set("fin", fin);
+            if (maybeBuffer.has_value()) {
+                retObj.Set("data", Napi::Value(info.Env(), *maybeBuffer));
+            } else {
+                retObj.Set("buffer", info.Env().Undefined());
+            }
+            return retObj;
         }
 
         void stopSending(const Napi::CallbackInfo &info)
@@ -307,18 +269,14 @@ namespace quic
             Napi::Function tplwtsv =
                 DefineClass(env, "Http3WTStreamVisitor",
                             {
-                                InstanceMethod<&Http3WTStreamJS::writeChunk>("writeChunk",
+                                InstanceMethod<&Http3WTStreamJS::writeChunks>("writeChunks",
                                                                              static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                 InstanceMethod<&Http3WTStreamJS::resetStream>("resetStream",
                                                                               static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                 InstanceMethod<&Http3WTStreamJS::stopSending>("stopSending", static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                 InstanceMethod<&Http3WTStreamJS::streamFinal>("streamFinal", static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                                InstanceMethod<&Http3WTStreamJS::startReading>("startReading",
+                                InstanceMethod<&Http3WTStreamJS::pullData>("pullData",
                                                                                static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                                InstanceMethod<&Http3WTStreamJS::drainReads>("drainReads",
-                                                                             static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                                InstanceMethod<&Http3WTStreamJS::stopReading>("stopReading",
-                                                                              static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                 InstanceMethod<&Http3WTStreamJS::updateSendOrderAndGroup>("updateSendOrderAndGroup",
                                                                                           static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                             });
@@ -339,10 +297,10 @@ namespace quic
     protected:
         std::unique_ptr<Http3WTStream> wtstream_;
 
-        void processStreamWrite(Napi::ObjectReference *bufferhandle, bool success);
-        void processStreamNetworkFinish(NetworkTask task);
-        void processStreamRecvSignal(WebTransportStreamError error_code, NetworkTask task);
-        void signalFinOnly();
+        void processStreamOnCanRead();
+        void processStreamOnCanWrite();
+        void processStreamStopSending(WebTransportStreamError error_code);
+        void processStreamResetStream(WebTransportStreamError error_code);
     };
 }
 
