@@ -1,10 +1,10 @@
-import { Http2WebTransportStream } from './stream.js'
+import { CapsuleWebTransportStream } from './stream.js'
 import { logger } from '../utils.js'
 import { PriorityScheduler } from './priorityscheduler.js'
 
 /**
  *
- * @typedef {import('./stream.js').Http2StreamHandler} Http2StreamHandler
+ * @typedef {import('./stream.js').CapsuleStreamHandler} CapsuleStreamHandler
  */
 const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:parserbase(${pid})`)
@@ -50,7 +50,7 @@ export class ParserBase {
     this.streamShouldAutoTuneReceiveWindow = streamShouldAutoTuneReceiveWindow
     this.streamReceiveWindowSizeLimit = streamReceiveWindowSizeLimit
 
-    /** @type {Map<bigint,Http2StreamHandler>} */
+    /** @type {Map<bigint,CapsuleStreamHandler>} */
     this.wtstreams = new Map()
 
     this.scheduler = new PriorityScheduler()
@@ -126,7 +126,7 @@ export class ParserBase {
       }
     }
     const unidirectional = !!(streamid & 0x2n)
-    const stream = new Http2WebTransportStream({
+    const stream = new CapsuleWebTransportStream({
       streamid,
       unidirectional,
       incoming,
@@ -154,7 +154,7 @@ export class ParserBase {
 
   /**
    * @param {bigint} streamid
-   * @param {Http2StreamHandler} parserTarget
+   * @param {CapsuleStreamHandler} parserTarget
    */
   setParserTarget(streamid, parserTarget) {
     this.wtstreams.set(streamid, parserTarget)

@@ -6,7 +6,7 @@ import { WebTransportError } from '../error.js'
 import { getWriter } from './backports/writer.cjs'
 
 const pid = typeof process !== 'undefined' ? process.pid : 0
-const log = logger(`webtransport:http2webtransportstream(${pid})`)
+const log = logger(`webtransport:capsulewebtransportstream(${pid})`)
 /**
  * WebTransport stream events
  * @typedef {import('../types').StreamWriter} StreamWriter
@@ -20,7 +20,7 @@ const log = logger(`webtransport:http2webtransportstream(${pid})`)
 
 /**
  * @exports
- * @typedef {Object} Http2StreamHandler
+ * @typedef {Object} CapsuleStreamHandler
  * @property {() => void} drainWrites - Flushes pending writes.
  * @property {(params: { data: Uint8Array[] | undefined; fin: boolean }) => void} recvData - Receives incoming data chunk with a FIN flag.
  * @property {(offset: bigint) => boolean | undefined} updateSendWindowOffset - Updates the send window offset and returns status.
@@ -43,7 +43,7 @@ function handleReaderWake(inner) {
   wait?.resolve()
 }
 
-export class Http2WebTransportStream {
+export class CapsuleWebTransportStream {
   #inner = {
     __proto__: null,
     /** @type {bigint | undefined} */
@@ -62,7 +62,7 @@ export class Http2WebTransportStream {
     flowControlable: undefined,
     /** @type {StreamWriter|undefined} */
     writer: undefined,
-    /** @type {Http2StreamHandler|undefined} */
+    /** @type {CapsuleStreamHandler|undefined} */
     parserTarget: undefined,
     /** @type {Array<ReadDataInt>} */
     incomdata: [],
