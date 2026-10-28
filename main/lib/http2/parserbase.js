@@ -2,6 +2,10 @@ import { Http2WebTransportStream } from './stream.js'
 import { logger } from '../utils.js'
 import { PriorityScheduler } from './priorityscheduler.js'
 
+/**
+ *
+ * @typedef {import('./stream.js').Http2StreamHandler} Http2StreamHandler
+ */
 const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:parserbase(${pid})`)
 
@@ -46,7 +50,7 @@ export class ParserBase {
     this.streamShouldAutoTuneReceiveWindow = streamShouldAutoTuneReceiveWindow
     this.streamReceiveWindowSizeLimit = streamReceiveWindowSizeLimit
 
-    /** @type {Map<bigint,Http2WebTransportStream>} */
+    /** @type {Map<bigint,Http2StreamHandler>} */
     this.wtstreams = new Map()
 
     this.scheduler = new PriorityScheduler()
@@ -137,7 +141,6 @@ export class ParserBase {
       sessionFlowController: this.session.flowController,
       streamIdManager
     })
-    this.wtstreams.set(streamid, stream)
     this.scheduler.Register(streamid, priority)
     this.session.jsobj.onStream({
       bidirectional: !(streamid & 0x2n),
@@ -146,7 +149,15 @@ export class ParserBase {
       sendGroupId: priority.sendGroupId,
       sendOrder: priority.sendOrder
     })
-    return stream
+    return this.wtstreams.get(streamid)
+  }
+
+  /**
+   * @param {bigint} streamid
+   * @param {Http2StreamHandler} parserTarget
+   */
+  setParserTarget(streamid, parserTarget) {
+    this.wtstreams.set(streamid, parserTarget)
   }
 
   scheduleDrainWrites() {

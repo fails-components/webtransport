@@ -18,6 +18,16 @@ const log = logger(`webtransport:http2webtransportstream(${pid})`)
  * @typedef {import('./streamidmanager.js').StreamIdManager} StreamIdManager
  */
 
+/**
+ * @exports
+ * @typedef {Object} Http2StreamHandler
+ * @property {() => void} drainWrites - Flushes pending writes.
+ * @property {(params: { data: Uint8Array[] | undefined; fin: boolean }) => void} recvData - Receives incoming data chunk with a FIN flag.
+ * @property {(offset: bigint) => boolean | undefined} updateSendWindowOffset - Updates the send window offset and returns status.
+ * @property {() => void} onFin - Handles the FIN signal reception.
+ * @property {(type: "resetStream" | "stopSending", code: number) => void} onStreamSignal - Handles incoming stream signals like resets or stops.
+ */
+
 let processnextTick = (/** @type {{ (): void;  }} */ func) =>
   setTimeout(func, 0)
 // @ts-ignore
@@ -52,6 +62,8 @@ export class Http2WebTransportStream {
     flowControlable: undefined,
     /** @type {StreamWriter|undefined} */
     writer: undefined,
+    /** @type {Http2StreamHandler|undefined} */
+    parserTarget: undefined,
     /** @type {Array<ReadDataInt>} */
     incomdata: [],
     /** @type {Array<{buf?:Uint8Array,fin:boolean}>} */
@@ -108,6 +120,7 @@ export class Http2WebTransportStream {
     const inner = this.#inner
     inner.streamid = streamid
     inner.capsuleParser = capsuleParser
+    capsuleParser.setParserTarget(streamid, this.#parserTarget)
     inner.session = session
 
     inner.flowController = new FlowController({
@@ -149,57 +162,211 @@ export class Http2WebTransportStream {
     }
   }
 
-  /**
-   * @param {Object} obj
-   * @param {Uint8Array[]|undefined} obj.data
-   * @param {Boolean} obj.fin
-   */
-  recvData({ data, fin }) {
+  get #parserTarget() {
     const inner = this.#inner
-    let datasize = 0
-    if (data) {
-      const newincomdata = data.map((el, ind, array) => ({
-        data: el,
-        fin: fin && ind + 1 === array.length
-      }))
-      datasize = data.reduce((acc, curVal) => acc + curVal.byteLength, 0)
-      inner.incomdata.push(...newincomdata)
-    } else if (fin) {
-      inner.incomdata.push({ data: undefined, fin })
-    }
-    if (datasize > 0) {
-      const checkstream =
-        inner.flowController?.updateHighestReceivedOffset(datasize)
-      const checksession =
-        inner.sessionFlowController?.updateHighestReceivedOffset(datasize)
-      if (checksession && checkstream) {
-        // As the highest received offset has changed, check to see if this is a
-        // violation of flow control.
+    if (inner.parserTarget) return inner.parserTarget
 
-        if (
-          inner.flowController?.flowControlViolation() ||
-          inner.sessionFlowController?.flowControlViolation()
-        ) {
-          this.#flowControlable.closeConnection({
-            code: 63 /* QUIC_FLOW_CONTROL_SENT_TOO_MUCH_DATA */,
-            reason: 'Flow control violation after increasing offset'
-          })
+    const stream = this
 
-          return
-        }
+    const processRead = function () {
+      if (inner.readerWait && !inner.readerWaitTimeOut) {
+        inner.readerWaitTimeOut = true
+        setTimeout(handleReaderWake, 0, inner)
       }
     }
-    if (inner.incomdata.length > 0) {
-      if (!inner.stopReading) this.processRead()
-    }
-  }
 
-  processRead() {
-    const inner = this.#inner
-    if (inner.readerWait && !inner.readerWaitTimeOut) {
-      inner.readerWaitTimeOut = true
-      setTimeout(handleReaderWake, 0, inner)
+    /**
+     * @param {Object} obj
+     * @param {Uint8Array[]|undefined} obj.data
+     * @param {Boolean} obj.fin
+     */
+    const recvData = function ({ data, fin }) {
+      let datasize = 0
+      if (data) {
+        const newincomdata = data.map((el, ind, array) => ({
+          data: el,
+          fin: fin && ind + 1 === array.length
+        }))
+        datasize = data.reduce((acc, curVal) => acc + curVal.byteLength, 0)
+        inner.incomdata.push(...newincomdata)
+      } else if (fin) {
+        inner.incomdata.push({ data: undefined, fin })
+      }
+      if (datasize > 0) {
+        const checkstream =
+          inner.flowController?.updateHighestReceivedOffset(datasize)
+        const checksession =
+          inner.sessionFlowController?.updateHighestReceivedOffset(datasize)
+        if (checksession && checkstream) {
+          // As the highest received offset has changed, check to see if this is a
+          // violation of flow control.
+
+          if (
+            inner.flowController?.flowControlViolation() ||
+            inner.sessionFlowController?.flowControlViolation()
+          ) {
+            stream.#flowControlable.closeConnection({
+              code: 63 /* QUIC_FLOW_CONTROL_SENT_TOO_MUCH_DATA */,
+              reason: 'Flow control violation after increasing offset'
+            })
+
+            return
+          }
+        }
+      }
+      if (inner.incomdata.length > 0) {
+        if (!inner.stopReading) processRead()
+      }
     }
+
+    const drainWrites = function () {
+      let finsend = false
+      if (
+        !inner.capsuleParser ||
+        !inner.flowController ||
+        !inner.sessionFlowController ||
+        typeof inner.streamid === 'undefined'
+      )
+        return
+
+      const capsuleChunks = []
+      let fin = false
+      let windowSize
+      let bytesToSend = 0n
+      if (
+        inner.flowController.sendWindowSize() <
+        inner.sessionFlowController.sendWindowSize()
+      ) {
+        windowSize = inner.flowController.sendWindowSize()
+      } else {
+        windowSize = inner.sessionFlowController.sendWindowSize()
+      }
+      let outgoChunkSend = true
+      while (
+        inner.outgochunks.length > 0 &&
+        (!inner.capsuleParser?.blocked ||
+          inner.final ||
+          !inner.capsuleParser?.shouldYieldStream(inner.streamid)) &&
+        windowSize > 0n
+      ) {
+        const cur = inner.outgochunks.shift()
+        if (cur) {
+          let payload = cur.buf
+          if (payload) {
+            if (payload.byteLength === 0 && !cur.fin) {
+              throw new WebTransportError(
+                'Trying to send zero length capsule without a fin'
+              )
+            }
+            if (BigInt(payload?.byteLength) > windowSize) {
+              const len = Number(windowSize)
+              // ok we have to split
+              {
+                const src = new Uint8Array(
+                  payload.buffer,
+                  payload.byteOffset + len,
+                  payload.byteLength - len
+                )
+                const dest = new Uint8Array(payload.byteLength - len)
+                dest.set(src)
+                inner.outgochunks.unshift({ fin: cur.fin, buf: dest })
+                outgoChunkSend = false // remaing part is send later
+              }
+              cur.fin = false
+              payload = cur.buf = new Uint8Array(
+                payload.buffer,
+                payload.byteOffset,
+                len
+              )
+            }
+            const plength = BigInt(payload.byteLength)
+            windowSize -= plength
+            bytesToSend += plength
+            capsuleChunks.push(payload)
+          }
+          fin ||= !!cur?.fin
+        }
+      }
+
+      if (fin || bytesToSend > 0n) {
+        inner.capsuleParser.writeCapsule({
+          type: fin ? ParserBase.WT_STREAM_WFIN : ParserBase.WT_STREAM_WOFIN,
+          headerVints: [inner.streamid],
+          payload: bytesToSend > 0n ? capsuleChunks : undefined
+        })
+      }
+      finsend ||= fin
+
+      if (bytesToSend > 0n) {
+        inner.flowController.addBytesSent(bytesToSend)
+        inner.sessionFlowController.addBytesSent(bytesToSend)
+      }
+      if (outgoChunkSend) {
+        inner.drainWrites?.()
+      }
+
+      if (finsend) {
+        stream.#closeOutgoing()
+        return
+      }
+
+      if (
+        inner.capsuleParser.blocked &&
+        !inner.final &&
+        inner.capsuleParser.shouldYieldStream(inner.streamid) &&
+        inner.outgochunks.length > 0
+      ) {
+        inner.capsuleParser.scheduleDrainWriteStream(inner.streamid)
+      }
+      /*
+    if (
+      inner.final &&
+      inner.outgochunks.length === 0 &&
+      !inner.finalmessagesend
+    ) {
+      processnextTick(() => {
+        inner.jsobj?.onStreamNetworkFinish({
+          nettask: 'streamFinal'
+        })
+      })
+      this.finalmessagesend = true
+    }
+    */
+    }
+
+    /**
+     * @param {bigint} offset
+     */
+    const updateSendWindowOffset = function (offset) {
+      return inner.flowController?.updateSendWindowOffset(offset)
+    }
+
+    /**
+     * @param {'resetStream'|'stopSending'} type
+     * @param {number} code
+     */
+    const onStreamSignal = function (type, code) {
+      switch (type) {
+        case 'resetStream':
+          stream.#closeIncoming(code)
+          break
+        case 'stopSending':
+          stream.#closeOutgoing(code)
+          break
+      }
+    }
+
+    const onFin = function () {
+      stream.#closeIncoming()
+    }
+
+    return (inner.parserTarget = {
+      drainWrites,
+      recvData,
+      updateSendWindowOffset,
+      onFin,
+      onStreamSignal
+    })
   }
 
   // old drain reads
@@ -286,20 +453,6 @@ export class Http2WebTransportStream {
     this.processRead()
   }
 */
-  /**
-   * @param {'resetStream'|'stopSending'} type
-   * @param {number} code
-   */
-  onStreamSignal(type, code) {
-    switch (type) {
-      case 'resetStream':
-        this.#closeIncoming(code)
-        break
-      case 'stopSending':
-        this.#closeOutgoing(code)
-        break
-    }
-  }
 
   /**
    * @param {number} [code]
@@ -307,7 +460,7 @@ export class Http2WebTransportStream {
   #closeIncoming(code) {
     const inner = this.#inner
     inner.incomingClosed = true
-    if (inner.outgoingClosed) this.onClose()
+    if (inner.outgoingClosed) this.#onClose()
 
     const stream = this
     if (typeof code !== 'undefined')
@@ -324,7 +477,7 @@ export class Http2WebTransportStream {
   #closeOutgoing(code) {
     const inner = this.#inner
     inner.outgoingClosed = true
-    if (inner.incomingClosed) this.onClose()
+    if (inner.incomingClosed) this.#onClose()
 
     const stream = this
     if (typeof code !== 'undefined')
@@ -335,7 +488,7 @@ export class Http2WebTransportStream {
       })
   }
 
-  onClose() {
+  #onClose() {
     const inner = this.#inner
     if (inner.closed) return
     // ok, inform our session id manager
@@ -361,10 +514,6 @@ export class Http2WebTransportStream {
       })
   }
 
-  onFin() {
-    this.#closeIncoming()
-  }
-
   /**
    * @param {number|bigint} code
    */
@@ -377,130 +526,6 @@ export class Http2WebTransportStream {
         headerVints: [inner.streamid, Number(code)],
         payload: undefined
       })
-  }
-
-  drainWrites() {
-    const inner = this.#inner
-    let finsend = false
-    if (
-      !inner.capsuleParser ||
-      !inner.flowController ||
-      !inner.sessionFlowController ||
-      typeof inner.streamid === 'undefined'
-    )
-      return
-
-    const capsuleChunks = []
-    let fin = false
-    let windowSize
-    let bytesToSend = 0n
-    if (
-      inner.flowController.sendWindowSize() <
-      inner.sessionFlowController.sendWindowSize()
-    ) {
-      windowSize = inner.flowController.sendWindowSize()
-    } else {
-      windowSize = inner.sessionFlowController.sendWindowSize()
-    }
-    let outgoChunkSend = true
-    while (
-      inner.outgochunks.length > 0 &&
-      (!inner.capsuleParser?.blocked ||
-        inner.final ||
-        !inner.capsuleParser?.shouldYieldStream(inner.streamid)) &&
-      windowSize > 0n
-    ) {
-      const cur = inner.outgochunks.shift()
-      if (cur) {
-        let payload = cur.buf
-        if (payload) {
-          if (payload.byteLength === 0 && !cur.fin) {
-            throw new WebTransportError(
-              'Trying to send zero length capsule without a fin'
-            )
-          }
-          if (BigInt(payload?.byteLength) > windowSize) {
-            const len = Number(windowSize)
-            // ok we have to split
-            {
-              const src = new Uint8Array(
-                payload.buffer,
-                payload.byteOffset + len,
-                payload.byteLength - len
-              )
-              const dest = new Uint8Array(payload.byteLength - len)
-              dest.set(src)
-              inner.outgochunks.unshift({ fin: cur.fin, buf: dest })
-              outgoChunkSend = false // remaing part is send later
-            }
-            cur.fin = false
-            payload = cur.buf = new Uint8Array(
-              payload.buffer,
-              payload.byteOffset,
-              len
-            )
-          }
-          const plength = BigInt(payload.byteLength)
-          windowSize -= plength
-          bytesToSend += plength
-          capsuleChunks.push(payload)
-        }
-        fin ||= !!cur?.fin
-      }
-    }
-
-    if (fin || bytesToSend > 0n) {
-      inner.capsuleParser.writeCapsule({
-        type: fin ? ParserBase.WT_STREAM_WFIN : ParserBase.WT_STREAM_WOFIN,
-        headerVints: [inner.streamid],
-        payload: bytesToSend > 0n ? capsuleChunks : undefined
-      })
-    }
-    finsend ||= fin
-
-    if (bytesToSend > 0n) {
-      inner.flowController.addBytesSent(bytesToSend)
-      inner.sessionFlowController.addBytesSent(bytesToSend)
-    }
-    if (outgoChunkSend) {
-      inner.drainWrites?.()
-    }
-
-    if (finsend) {
-      this.#closeOutgoing()
-      return
-    }
-
-    if (
-      inner.capsuleParser.blocked &&
-      !inner.final &&
-      inner.capsuleParser.shouldYieldStream(inner.streamid) &&
-      inner.outgochunks.length > 0
-    ) {
-      inner.capsuleParser.scheduleDrainWriteStream(inner.streamid)
-    }
-    /*
-    if (
-      inner.final &&
-      inner.outgochunks.length === 0 &&
-      !inner.finalmessagesend
-    ) {
-      processnextTick(() => {
-        inner.jsobj?.onStreamNetworkFinish({
-          nettask: 'streamFinal'
-        })
-      })
-      this.finalmessagesend = true
-    }
-    */
-  }
-
-  /**
-   * @param {bigint} offset
-   */
-  updateSendWindowOffset(offset) {
-    const inner = this.#inner
-    return inner.flowController?.updateSendWindowOffset(offset)
   }
 
   /**
