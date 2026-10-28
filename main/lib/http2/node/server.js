@@ -1,5 +1,5 @@
 import { createSecureServer, constants } from 'node:http2'
-import { Http2WebTransportSession } from '../session.js'
+import { CapsuleWebTransportSession } from '../session.js'
 import { Http2CapsuleParser } from './capsuleparser.js'
 import { WebSocketParser } from './websocketparser.js'
 import { log } from 'node:console'
@@ -161,11 +161,11 @@ export class Http2WebTransportServer {
           this.sendHttp1Headers({ stream, header, protocol: websocketProt })
             .then(() => {
               const retObj = {
-                session: new Http2WebTransportSession({
+                session: new CapsuleWebTransportSession({
                   stream,
                   isclient: false,
                   createParser: (
-                    /** @type {Http2WebTransportSession} */ nativesession
+                    /** @type {CapsuleWebTransportSession} */ nativesession
                   ) => {
                     const parse = (this.capsParser = new WebSocketParser({
                       stream,
@@ -314,11 +314,11 @@ export class Http2WebTransportServer {
           // @ts-ignore
         } = stream?.session?.remoteSettings?.customSettings || {}
         const retObj = {
-          session: new Http2WebTransportSession({
+          session: new CapsuleWebTransportSession({
             stream,
             isclient: false,
             createParser: (
-              /** @type {Http2WebTransportSession} */ nativesession
+              /** @type {CapsuleWebTransportSession} */ nativesession
             ) => {
               if (!websocketProt) {
                 return new Http2CapsuleParser({
@@ -540,11 +540,11 @@ export class Http2WebTransportServer {
         })
           .then(() => {
             const retObj = {
-              session: new Http2WebTransportSession({
+              session: new CapsuleWebTransportSession({
                 stream,
                 isclient: false,
                 createParser: (
-                  /** @type {Http2WebTransportSession} */ nativesession
+                  /** @type {CapsuleWebTransportSession} */ nativesession
                 ) => {
                   const parse = (this.capsParser = new WebSocketParser({
                     stream,
@@ -609,11 +609,11 @@ export class Http2WebTransportServer {
           // @ts-ignore
         } = stream?.session?.remoteSettings?.customSettings || {}
         const retObj = {
-          session: new Http2WebTransportSession({
+          session: new CapsuleWebTransportSession({
             stream,
             isclient: false,
             createParser: (
-              /** @type {Http2WebTransportSession} */ nativesession
+              /** @type {CapsuleWebTransportSession} */ nativesession
             ) => {
               if (protocol !== 'websocket') {
                 return new Http2CapsuleParser({

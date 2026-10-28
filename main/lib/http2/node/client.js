@@ -1,5 +1,5 @@
 import { connect, constants as http2constants } from 'node:http2'
-import { Http2WebTransportSession } from '../session.js'
+import { CapsuleWebTransportSession } from '../session.js'
 import { Http2CapsuleParser } from './capsuleparser.js'
 import { logger } from '../../utils.js'
 
@@ -242,10 +242,12 @@ export class Http2WebTransportClient {
 
     const retObj = {
       header: stream.sentHeaders,
-      session: new Http2WebTransportSession({
+      session: new CapsuleWebTransportSession({
         stream,
         isclient: true,
-        createParser: (/** @type {Http2WebTransportSession} */ nativesession) =>
+        createParser: (
+          /** @type {CapsuleWebTransportSession} */ nativesession
+        ) =>
           new Http2CapsuleParser({
             stream,
             nativesession,

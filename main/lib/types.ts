@@ -7,7 +7,7 @@ import type {
 } from './dom'
 import type { IncomingHttpHeaders, Http2Stream, ServerHttp2Stream } from 'http2'
 import { ParserBase } from './http2/parserbase'
-import { Http2WebTransportSession } from './http2/session'
+import { CapsuleWebTransportSession } from './http2/session'
 import { HttpClient } from './client'
 import { SocketOptions } from 'dgram'
 import { MessageReceiver } from './http3quiche/stream.js'
@@ -375,7 +375,7 @@ export interface Logger {
 }
 
 export type CreateParserFunction = (
-  nativesession: Http2WebTransportSession
+  nativesession: CapsuleWebTransportSession
 ) => ParserBase
 
 export interface ParserInit {

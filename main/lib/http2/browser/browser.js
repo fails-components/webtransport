@@ -1,4 +1,4 @@
-import { Http2WebTransportSession } from '../session.js'
+import { CapsuleWebTransportSession } from '../session.js'
 import { BrowserParser } from './browserparser.js'
 import { supportedVersions } from '../websocketcommon.js'
 import { logger } from '../../utils.js'
@@ -133,11 +133,11 @@ export class Http2WebTransportBrowser {
     let sessobj
 
     const retObj = {
-      session: new Http2WebTransportSession({
+      session: new CapsuleWebTransportSession({
         ws: this.clientInt,
         isclient: true,
         createParser: (
-          /** @type {Http2WebTransportSession} */ nativesession
+          /** @type {CapsuleWebTransportSession} */ nativesession
         ) => {
           sessobj = nativesession
           const session = new BrowserParser({

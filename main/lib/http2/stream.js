@@ -11,7 +11,7 @@ const log = logger(`webtransport:capsulewebtransportstream(${pid})`)
  * WebTransport stream events
  * @typedef {import('../types').StreamWriter} StreamWriter
  * @typedef {import('../types').OnStreamErrorCallback} OnStreamErrorCallback
- * @typedef {import('./session').Http2WebTransportSession} Http2WebTransportSession
+ * @typedef {import('./session').CapsuleWebTransportSession} CapsuleWebTransportSession
  *
  * @typedef {import('../types').ReadDataInt} ReadDataInt
  * @typedef {import('../types').FlowControlable} FlowControlable
@@ -56,7 +56,7 @@ export class CapsuleWebTransportStream {
     streamIdManager: undefined,
     /**  @type {FlowController | undefined} */
     sessionFlowController: undefined,
-    /**  @type {Http2WebTransportSession | undefined} */
+    /**  @type {CapsuleWebTransportSession | undefined} */
     session: undefined,
     /**  @type {FlowControlable| undefined} */
     flowControlable: undefined,
@@ -96,7 +96,7 @@ export class CapsuleWebTransportStream {
    * unidirectional: boolean,
    * incoming: boolean,
    * capsuleParser: ParserBase
-   * session: Http2WebTransportSession
+   * session: CapsuleWebTransportSession
    * sendWindowOffset: Number,
    * receiveWindowOffset: Number,
    * shouldAutoTuneReceiveWindow: boolean

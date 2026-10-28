@@ -12,7 +12,7 @@ let processnextTick = (/** @type {{ (args: any[]): any }} */ func) =>
 // @ts-ignore
 if (typeof process !== 'undefined') processnextTick = process.nextTick
 
-export class Http2WebTransportSession {
+export class CapsuleWebTransportSession {
   /**
    * @param {{stream?: Http2Stream, ws?: WebSocket, isclient:boolean,
    * createParser:import('../types.js').CreateParserFunction
