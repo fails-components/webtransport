@@ -1,5 +1,5 @@
 // @ts-ignore
-import { drainableProtocol } from '../index.node.js'
+import { drainableProtocol } from '../http2/backports/types.cjs'
 /**
  * @typedef {import('../types').OnStreamErrorCallback} OnStreamErrorCallback
  * @typedef {import('../types').NativeHttpWTStream} NativeHttpWTStream
