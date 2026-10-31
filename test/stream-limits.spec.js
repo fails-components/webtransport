@@ -109,7 +109,7 @@ describe('streamlimits', function () {
     }
   })
 
-  it('should detect stream limit bidi outgoing with waitUntilAvailable = true', async () => {
+  it('should detect stream limit bidi outgoing with waitUntilAvailable = true', async function () {
     if (!dowaitUntilAvailable || skipall) {
       this.skip()
     }
@@ -211,7 +211,7 @@ describe('streamlimits', function () {
     })
   }
 
-  it('should detect stream limit unidi outgoing with waitUntilAvailable = true', async () => {
+  it('should detect stream limit unidi outgoing with waitUntilAvailable = true', async function () {
     if (!dowaitUntilAvailable || skipall) {
       this.skip()
     }
