@@ -173,7 +173,7 @@ export class Http3WebTransportClientNative {
     if (!this.sessionInt) throw new Error('sessionInt not present')
 
     let headersReceivedResolve
-    const headersReceivedProm = new Promise((resolve, reject) => {
+    const headersReceivedProm = new Promise((resolve) => {
       headersReceivedResolve = resolve
     })
 
@@ -189,7 +189,7 @@ export class Http3WebTransportClientNative {
         (stream) =>
           new Promise((resolve) => setTimeout(() => resolve(stream), 100))
       )*/
-      .then((stream) => {
+      .then(async (stream) => {
         const sendHeadersOpts = {
           ':method': 'CONNECT',
           ':scheme': 'https',
@@ -209,13 +209,19 @@ export class Http3WebTransportClientNative {
         }
         if (!stream.sendHeaders(sendHeadersOpts, { webtransport: true }))
           throw new Error('Sending headers failed')
+        const responseHeader = await headersReceivedProm
+        if (Number(responseHeader[':status']) !== 200) {
+          this.jsobj.onHttpWTSessionVisitor({})
+          return // this is an error
+        }
+
         const retObj = {
-          headers: {}, // TODO?
+          header: sendHeadersOpts,
+          responseHeader,
           session: new Http3WebTransportSession({
             stream,
             session: this.sessionInt,
             isclient: true,
-            headersReceivedProm,
             initialStreamSendWindowOffset: this.initialStreamFlowControlWindow
           }),
           reliable: false

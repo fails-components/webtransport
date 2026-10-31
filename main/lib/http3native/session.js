@@ -13,16 +13,10 @@ let processnextTick = (/** @type {{ (args: any[]): any }} */ func) =>
 
 export class Http3WebTransportSession {
   /**
-   * @param {{stream: QuicStream, session: QuicSession, isclient:boolean, headersReceivedProm?: Promise<void>,
-   *  initialStreamSendWindowOffset: number}} args
+   * @param {{stream: QuicStream, session: QuicSession, isclient:boolean,
+   * initialStreamSendWindowOffset: number}} args
    * */
-  constructor({
-    stream,
-    session,
-    isclient,
-    headersReceivedProm,
-    initialStreamSendWindowOffset
-  }) {
+  constructor({ stream, session, isclient, initialStreamSendWindowOffset }) {
     /** @type {import('../session').HttpWTSession} */
     // @ts-ignore
     this.jsobj = undefined // the creator will set this
@@ -30,38 +24,11 @@ export class Http3WebTransportSession {
     this.session = session
     this.isclient = isclient
     this.initialStreamSendWindowOffset = initialStreamSendWindowOffset
-    if (isclient) {
-      headersReceivedProm
-        .then((headers) => {
-          if (Number(headers[':status']) === 200) {
-            const beReady = {}
-            if (stream && headers['wt-protocol']) {
-              const match = headers['wt-protocol'].match(/\s*"([^"]+)"\s*/)
-              if (match) {
-                // @ts-ignore
-                beReady.protocol = match[1]
-              }
-            }
-            // on ready
-            this.jsobj.onReady(beReady)
-          } else {
-            this.jsobj.onClose({
-              errorcode: headers[':status'],
-              error: 'Session stream errored'
-            })
-          }
-        })
-        .catch((error) => {
-          this.jsobj.onClose({
-            errorcode: 500, // fix the number
-            error: 'Session stream errored:' + error
-          })
-        })
-    } else {
-      processnextTick(() => {
-        this.jsobj.onReady({})
-      })
-    }
+
+    processnextTick(() => {
+      // TODO move somewhere else
+      this.jsobj.onReady({})
+    })
     this.session.onerror = () => {
       // @ts-ignore
       if (session.jsobj?.state === 'connecting') {

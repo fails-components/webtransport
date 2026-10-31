@@ -241,6 +241,11 @@ export interface HttpWTSessionVisitorEvent {
   reliable?: boolean
 }
 
+export interface HttpWTClientSessionVisitorEvent
+  extends HttpWTSessionVisitorEvent { 
+    responseHeader: Object
+  }
+
 export interface HttpClientEventHandler {
   onClientConnected: (evt: ClientConnectedEvent) => void
   onClientWebTransportSupport: (evt: ClientWebtransportSupportEvent) => void

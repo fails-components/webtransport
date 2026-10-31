@@ -13,7 +13,7 @@ const log = logger(`webtransport:httpclient(${pid})`)
  * @typedef {import('./types').HttpClientEventHandler} HttpClientEventHandler
  * @typedef {import('./types').ClientConnectedEvent} ClientConnectedEvent
  * @typedef {import('./types').ClientWebtransportSupportEvent} ClientWebtransportSupportEvent
- * @typedef {import('./types').HttpWTSessionVisitorEvent} HttpWTSessionVisitorEvent
+ * @typedef {import('./types').HttpWTClientSessionVisitorEvent} HttpWTClientSessionVisitorEvent
  */
 
 /**
@@ -154,20 +154,31 @@ export class HttpClient {
   }
 
   /**
-   * @param {HttpWTSessionVisitorEvent} args
+   * @param {HttpWTClientSessionVisitorEvent|{}} args
    */
   onHttpWTSessionVisitor(args) {
     // create Http Visitor
-    if (args.session && this.sessionProm && this.sessionobjint) {
-      this.sessionobjint.setSessionObj(args.session, !!args.reliable)
+    if (
+      'session' in args &&
+      args.session &&
+      this.sessionProm &&
+      this.sessionobjint
+    ) {
+      this.sessionobjint.setSessionObj(
+        args.session,
+        !!args.reliable,
+        args.responseHeader
+      )
       args.session.jsobj.closeHook = this.closeHookSession
       delete this.sessionobjint
       this.sessionProm.resolve(args.session)
       delete this.sessionProm
     } else {
-      throw new WebTransportError(
-        'Http3WTSessionVisitor no object session or nor sessionprom'
-      )
+      if (this.sessionobjint)
+        this.sessionobjint.onClose({
+          errorcode: 0,
+          error: 'Session stream errored'
+        })
     }
   }
 

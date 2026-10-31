@@ -239,47 +239,61 @@ export class Http2WebTransportClient {
       0x2b61: remoteSessionFlowControlWindow = undefined
       // @ts-ignore
     } = this.clientInt.remoteSettings?.customSettings || {}
+    // @ts-ignore
+    stream.on('response', (headers) => {
+      if (headers[':status'] !== 200) {
+        this.jsobj.onHttpWTSessionVisitor({})
+        return // this is an error
+      }
 
-    const retObj = {
-      header: stream.sentHeaders,
-      session: new CapsuleWebTransportSession({
-        stream,
-        isclient: true,
-        createParser: (
-          /** @type {CapsuleWebTransportSession} */ nativesession
-        ) =>
-          new Http2CapsuleParser({
-            stream,
-            nativesession,
-            isclient: true,
-            initialStreamSendWindowOffsetBidi:
-              remoteBidirectionalStreamFlowControlWindow ||
-              this.initialStreamFlowControlWindow,
-            initialStreamSendWindowOffsetUnidi:
-              remoteUnidirectionalStreamFlowControlWindow ||
-              this.initialStreamFlowControlWindow,
-            initialStreamReceiveWindowOffset:
-              this.initialStreamFlowControlWindow,
-            streamShouldAutoTuneReceiveWindow:
-              this.streamShouldAutoTuneReceiveWindow,
-            streamReceiveWindowSizeLimit: this.streamFlowControlWindowSizeLimit
-          }),
-        initialBidirectionalSendStreams:
-          remoteBidirectionalStreams || this.initialBidirectionalStreams,
-        initialBidirectionalReceiveStreams: this.initialBidirectionalStreams,
-        initialUnidirectionalSendStreams:
-          remoteUnidirectionalStreams || this.initialUnidirectionalStreams,
-        initialUnidirectionalReceiveStreams: this.initialUnidirectionalStreams,
-        sendWindowOffset:
-          remoteSessionFlowControlWindow ||
-          this.sessionFlowControlWindowSizeLimit,
-        receiveWindowOffset: this.initialSessionFlowControlWindow,
-        shouldAutoTuneReceiveWindow: this.sessionShouldAutoTuneReceiveWindow,
-        receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
-      }),
-      reliable: true
-    }
-    this.jsobj.onHttpWTSessionVisitor(retObj)
+      const retObj = {
+        header: stream.sentHeaders,
+        responseHeader: headers,
+        session: new CapsuleWebTransportSession({
+          stream,
+          isclient: true,
+          createParser: (
+            /** @type {CapsuleWebTransportSession} */ nativesession
+          ) =>
+            new Http2CapsuleParser({
+              stream,
+              nativesession,
+              isclient: true,
+              initialStreamSendWindowOffsetBidi:
+                remoteBidirectionalStreamFlowControlWindow ||
+                this.initialStreamFlowControlWindow,
+              initialStreamSendWindowOffsetUnidi:
+                remoteUnidirectionalStreamFlowControlWindow ||
+                this.initialStreamFlowControlWindow,
+              initialStreamReceiveWindowOffset:
+                this.initialStreamFlowControlWindow,
+              streamShouldAutoTuneReceiveWindow:
+                this.streamShouldAutoTuneReceiveWindow,
+              streamReceiveWindowSizeLimit:
+                this.streamFlowControlWindowSizeLimit
+            }),
+          initialBidirectionalSendStreams:
+            remoteBidirectionalStreams || this.initialBidirectionalStreams,
+          initialBidirectionalReceiveStreams: this.initialBidirectionalStreams,
+          initialUnidirectionalSendStreams:
+            remoteUnidirectionalStreams || this.initialUnidirectionalStreams,
+          initialUnidirectionalReceiveStreams:
+            this.initialUnidirectionalStreams,
+          sendWindowOffset:
+            remoteSessionFlowControlWindow ||
+            this.sessionFlowControlWindowSizeLimit,
+          receiveWindowOffset: this.initialSessionFlowControlWindow,
+          shouldAutoTuneReceiveWindow: this.sessionShouldAutoTuneReceiveWindow,
+          receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
+        }),
+        reliable: true
+      }
+      this.jsobj.onHttpWTSessionVisitor(retObj)
+    })
+    stream.on('error', () => {
+      this.jsobj.onHttpWTSessionVisitor({})
+      this.closeClient()
+    })
   }
 
   closeClient() {

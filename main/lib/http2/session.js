@@ -76,33 +76,9 @@ export class CapsuleWebTransportSession {
     /** @type {Array<{sendOrder: number, sendGroupId: bigint}>} */
     this.orderBiStreams = []
     if (stream) {
-      if (isclient) {
-        stream.on('response', (headers) => {
-          processnextTick(() => {
-            if (headers[':status'] === 200) {
-              const beReady = {}
-              if (stream && headers['wt-protocol']) {
-                const match = headers['wt-protocol'].match(/\s*"([^"]+)"\s*/)
-                if (match) {
-                  // @ts-ignore
-                  beReady.protocol = match[1]
-                }
-              }
-              // on ready
-              this.jsobj.onReady(beReady)
-            } else {
-              this.jsobj.onClose({
-                errorcode: headers[':status'],
-                error: 'Session stream errored'
-              })
-            }
-          })
-        })
-      } else {
-        processnextTick(() => {
-          this.jsobj.onReady({})
-        })
-      }
+      processnextTick(() => {
+        this.jsobj.onReady({})
+      })
     }
   }
 
@@ -284,6 +260,7 @@ export class CapsuleWebTransportSession {
   /**
    * @param {bigint} pos
    */
+  // @ts-ignore
   reportBlocked(pos) {}
 
   /**

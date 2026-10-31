@@ -80,6 +80,8 @@ export class HttpWTSession {
     this.header = args.header
     /** @type {(Object | null | undefined)} */
     this.userData = args.userData
+    /** @type {(Object | null | undefined)} */
+    this._responseHeader = undefined
 
     /** @type {(string | undefined)} */
     this.peerAddress_ = args.peerAddress
@@ -280,19 +282,21 @@ export class HttpWTSession {
     /** @type {Map<bigint,WebTransportSendGroup>} */
     this._sendGroupIndex = new Map()
 
-    /** @type {string} */
-    this._selectedProtocol = ''
+    /** @type {string|undefined} */
+    this._selectedProtocol = undefined
   }
 
   /**
    * @param {NativeHttpWTSession} object
    * @param {boolean} reliable
+   * @param {object} responseHeader
    */
-  setSessionObj(object, reliable) {
+  setSessionObj(object, reliable, responseHeader) {
     if (object) {
       this.objint = object
       this.objint.jsobj = this
       this.reliable = !!reliable
+      this._responseHeader = responseHeader
       if (this.objint.sendInitialParameters) {
         this.objint.sendInitialParameters()
       }
@@ -300,6 +304,20 @@ export class HttpWTSession {
   }
 
   get protocol() {
+    if (typeof this._selectedProtocol === 'undefined') {
+      // @ts-ignore
+      if (this._responseHeader?.['wt-protocol']) {
+        const match =
+          // @ts-ignore
+          this._responseHeader['wt-protocol'].match(/\s*"([^"]+)"\s*/)
+        if (match) {
+          this._selectedProtocol = match[1]
+        } else {
+          this._selectedProtocol = ''
+        }
+      }
+    }
+    if (typeof this._selectedProtocol === 'undefined') return ''
     return this._selectedProtocol
   }
 
