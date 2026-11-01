@@ -2,7 +2,6 @@
 import { connect } from 'node:quic'
 import { isIP } from 'node:net'
 import { logger } from '../utils.js'
-import { Http3WebTransportSession } from './session.js'
 
 const log = logger(`webtransport:http3:native:client(${process?.pid})`)
 
@@ -218,13 +217,10 @@ export class Http3WebTransportClientNative {
         const retObj = {
           header: sendHeadersOpts,
           responseHeader,
-          session: new Http3WebTransportSession({
-            stream,
-            session: this.sessionInt,
-            isclient: true,
-            initialStreamSendWindowOffset: this.initialStreamFlowControlWindow
-          }),
-          reliable: false
+          control: stream,
+          creator: this.sessionInt,
+          reliable: false,
+          sendBudget: this.initialStreamFlowControlWindow
         }
         this.jsobj.onHttpWTSessionVisitor(retObj)
       })

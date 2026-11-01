@@ -4,6 +4,7 @@ import { WebTransportError } from './error.js'
 import { logger } from './utils.js'
 import { canByteStream } from './features.js'
 import { Http3QuicheStream } from './http3quiche/stream.js'
+import { readVarInt, writeVarInt, lengthVarInt } from './http2/bufferHelper.js'
 
 const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:httpwtsession(${pid})`)
@@ -19,6 +20,8 @@ const log = logger(`webtransport:httpwtsession(${pid})`)
  * @typedef {import('./types').SessionStatsEvent} SessionStatsEvent
  * @typedef {import('./types').NewStreamEvent} NewStreamEvent
  * @typedef {import('./types').NativeWebTransportStream} NativeWebTransportStream
+ * @typedef {import('./types').NativeWebTransportSessionStreamCreator} NativeWebTransportSessionStreamCreator
+ * @typedef {import('./types').NativeWebTransportSessionControl} NativeWebTransportSessionControl
  *
  * @typedef {import('./dom').WebTransportCloseInfo} WebTransportCloseInfo
  * @typedef {import('./dom').WebTransportBidirectionalStream} WebTransportBidirectionalStream
@@ -29,7 +32,7 @@ const log = logger(`webtransport:httpwtsession(${pid})`)
  * @typedef {import('./dom').WebTransportReliabilityMode} WebTransportReliabilityMode
  * @typedef {import('./dom').WebTransportCongestionControl} WebTransportCongestionControl
  * @typedef {import('./dom').WebTransportSendGroup} WebTransportSendGroup
- * @typedef {import('./dom').WebTransportStats} WebTransportStats
+ * @typedef {import('./dom').WebTransportConnectionStats} WebTransportConnectionStats
  * @typedef {import('./dom').WebTransportDatagramStats} WebTransportDatagramStats
  * @typedef {import('./dom').WebTransportSendOptions} WebTransportSendOptions
  * @typedef {import('./dom').WebTransportDatagramsWritable} WebTransportDatagramsWritable
@@ -54,19 +57,35 @@ export class HttpWTSession {
   /**
    * @param {object} args
    * @param {import('./types').NativeHttpWTSession} [args.object]
+   * @param {NativeWebTransportSessionStreamCreator} [args.creator]
+   * @param {NativeWebTransportSessionControl} [args.control]
    * @param {HttpServer | HttpClient} args.parentobj
    * @param {Object | undefined} [args.header= undefined]
    * @param {Object | undefined} [args.userData= undefined]
    * @param {string | undefined} [args.peerAddress= undefined]
    * @param {DatagramsReadableMode} [args.datagramsReadableMode]
+   * @param {number} args.sendBudget
    */
   constructor(args) {
-    if (args.object) {
-      this.objint = args.object
-      this.objint.jsobj = this
-      if (this.objint.sendInitialParameters) {
-        this.objint.sendInitialParameters()
-      }
+    /** @type {boolean|undefined} */
+    this.legacyMode = undefined
+    /** @type {NativeWebTransportSessionStreamCreator|undefined} */
+    this.streamCreator = undefined
+    /** @type {NativeWebTransportSessionControl|undefined} */
+    this.sessionControl = undefined
+
+    this.isclient = false
+
+    /** @type {number|undefined} */
+    this.sendBudget = undefined
+    if (args.object || (args.control && args.creator)) {
+      this.setSessionObj({
+        object: args.object,
+        control: args.control,
+        creator: args.creator,
+        isclient: false,
+        sendBudget: args.sendBudget || 16 * 1024 // 16 KB
+      })
     }
     this.parentobj = args.parentobj
     /** @type {import('./types').WebTransportSessionState} */
@@ -157,6 +176,20 @@ export class HttpWTSession {
       delete readableopts.type
     }
     this._lastGetMaxDatagramSize = 0
+    const session = this
+    const getMaxDatagramSize = function () {
+      if (session.legacyMode === false) {
+        session._lastGetMaxDatagramSize = Number(
+          session.streamCreator?.remoteTransportParams?.maxDatagramFrameSize ||
+            session._lastGetMaxDatagramSize
+        )
+      } else if (session.legacyMode === true) {
+        if (session.objint) {
+          session._lastGetMaxDatagramSize = session.objint.getMaxDatagramSize()
+        }
+      }
+      return session._lastGetMaxDatagramSize
+    }
     /** @type {WebTransportDatagramDuplexStream} */
     this.datagrams = {
       /** @type {ReadableStream<Uint8Array>} */
@@ -179,17 +212,52 @@ export class HttpWTSession {
           write: async (chunk, controller) => {
             if (this.state === 'closed') throw new Error('Session is closed')
             if (chunk instanceof Uint8Array) {
-              /** @type {Promise<void>} */
-              if (this.objint == null) {
-                throw new Error('this.objint is not set')
-              }
-              const { code, message } = await this.objint.writeDatagram(chunk)
-              if (
-                code !== 'success' &&
-                code !== 'blocked' &&
-                code !== 'tooBig'
-              ) {
-                throw new WebTransportError(code + ':' + message)
+              if (this.legacyMode === true) {
+                /** @type {Promise<void>} */
+                if (this.objint == null) {
+                  throw new Error('this.objint is not set')
+                }
+                const { code, message } = await this.objint.writeDatagram(chunk)
+                if (
+                  code !== 'success' &&
+                  code !== 'blocked' &&
+                  code !== 'tooBig'
+                ) {
+                  throw new WebTransportError(code + ':' + message)
+                }
+              } else if (this.legacyMode === false) {
+                if (
+                  this.streamCreator &&
+                  'applicationOptions' in this.streamCreator
+                ) {
+                  // workaround to be removed
+                  if (chunk.byteLength > getMaxDatagramSize())
+                    throw new WebTransportError('DatagramSize is too big')
+                  const sessionId = (this.sessionControl?.id ?? 0n) / 4n // quarter stream id
+                  const byteLengthSessId = lengthVarInt(sessionId)
+                  // in case, node js changes handling of datagrams we can remove the varint stuff
+                  const toSend = new Uint8Array(
+                    chunk.byteLength + byteLengthSessId
+                  )
+                  writeVarInt(
+                    {
+                      offset: 0,
+                      buffer: [toSend],
+                      size: byteLengthSessId,
+                      curBuf: 0,
+                      curBufOffset: 0
+                    },
+                    sessionId
+                  )
+
+                  const dest = new Uint8Array(toSend.buffer, byteLengthSessId)
+                  dest.set(chunk) // copy over
+                  this.streamCreator.sendDatagram(toSend)
+                  return
+                }
+                this.sessionControl?.sendDatagram(chunk)
+              } else {
+                throw new Error('No legacyMode or nonLegacyMode set')
               }
             } else throw new Error('chunk is not of type Uint8Array')
           },
@@ -236,14 +304,7 @@ export class HttpWTSession {
       },
       get maxDatagramSize() {
         // @ts-ignore
-        return this._getMaxDatagramSize()
-      },
-      // @ts-ignore
-      _getMaxDatagramSize: () => {
-        if (this.objint) {
-          this._lastGetMaxDatagramSize = this.objint.getMaxDatagramSize()
-        }
-        return this._lastGetMaxDatagramSize
+        return getMaxDatagramSize()
       }
     }
 
@@ -256,7 +317,7 @@ export class HttpWTSession {
     /** @type {Array<(err?: Error) => void>} */
     this.rejectUniDi = []
 
-    /** @type {Array<(stats: WebTransportStats) => void>} */
+    /** @type {Array<(stats: WebTransportConnectionStats) => void>} */
     this.resolveSessionStats = []
     /** @type {Array<(err?: Error) => void>} */
     this.rejectSessionStats = []
@@ -287,19 +348,195 @@ export class HttpWTSession {
   }
 
   /**
-   * @param {NativeHttpWTSession} object
-   * @param {boolean} reliable
-   * @param {object} responseHeader
+   * @param {{ code: number, reason: string }} arg
    */
-  setSessionObj(object, reliable, responseHeader) {
+  closeInt({ code, reason }) {
+    if (!this.sessionControl || !this.streamCreator)
+      throw new Error('Should not be called in legacy mode')
+    const creator = this.streamCreator
+    // FIXME should be inner
+    this.sessionControl.closeWebtransportSessionStream(code, reason)
+    this.sessionControl.closed
+      .then(() => {
+        // a server can have multiple wt sessions
+        if (this.isclient) creator.close({ code, reason })
+      })
+      .catch(() => {
+        // a server can have multiple wt sessions
+        if (this.isclient) creator.close({ code, reason })
+      })
+  }
+
+  /**
+   * @param {object} args
+   * @param {NativeHttpWTSession} [args.object]
+   * @param {NativeWebTransportSessionControl} [args.control]
+   * @param {NativeWebTransportSessionStreamCreator} [args.creator]
+   * @param {boolean} [args.reliable]
+   * @param {object} [args.responseHeader]
+   * @param {boolean} args.isclient
+   * @param {number} args.sendBudget
+   */
+  setSessionObj({
+    object,
+    reliable,
+    responseHeader,
+    control,
+    creator,
+    isclient,
+    sendBudget
+  }) {
+    this.isclient = isclient
     if (object) {
+      this.legacyMode = true
       this.objint = object
       this.objint.jsobj = this
-      this.reliable = !!reliable
-      this._responseHeader = responseHeader
+      if (typeof reliable !== 'undefined') this.reliable = !!reliable
+      if (typeof responseHeader !== 'undefined')
+        this._responseHeader = responseHeader
       if (this.objint.sendInitialParameters) {
         this.objint.sendInitialParameters()
       }
+    } else if (creator && control) {
+      this.legacyMode = false
+      this.streamCreator = creator
+      this.sessionControl = control
+      this.sendBudget = sendBudget
+      if (typeof reliable !== 'undefined') this.reliable = !!reliable
+      if (typeof responseHeader !== 'undefined')
+        this._responseHeader = responseHeader
+      // FIX ME
+      /* if (this.objint.sendInitialParameters) {
+        this.objint.sendInitialParameters()
+      } */
+      // install various handlers
+      const session = this
+
+
+      creator.onerror = () => {
+        if (session.state === 'connecting') {
+          // TODO
+          if ('onClientConnected' in session.parentobj)
+            // only for clients
+            session.parentobj.onClientConnected({
+              success: false
+            })
+        }
+      }
+      creator.ongoaway = (lastStreamId) => {
+        session.onGoAwayReceived({ lastStreamId })
+      }
+      creator.onstream = (stream) => {
+        stream.onheaders = () => {
+          // well we do not support this kind of response
+          // actually it should not happen on client side
+          // currently it is not supported the other way round either, if we have already a session
+          stream.destroy({
+            reason:
+              'Additional non wt streams, either initiated by server are unsupported, or for a second session client side are unsupported'
+          })
+        }
+        stream.onsessionid = (sessionid) => {
+          // deinstall handlers
+          stream.onheaders = undefined
+          stream.onsessionid = undefined
+          if (sessionid === control.id) {
+            try {
+              setTimeout(() => {
+                session.onStream({
+                  bidirectional: stream.direction !== 'uni',
+                  incoming: true,
+                  stream: stream,
+                  sendGroupId: 0n,
+                  sendOrder: 0
+                })
+              })
+            } catch (error) {
+              log('Error receiving wt stream:', error)
+            }
+          } else {
+            stream.destroy({
+              reason: 'Only one session is supported'
+            })
+          }
+        }
+      }
+
+      /**
+       * @param {number} code
+       * @param {string|undefined} reason
+       *
+       * */
+      control.onwtsessionclose = (code, reason) => {
+        session.onClose({
+          errorcode: code,
+          error: reason ?? ''
+        })
+      }
+      // @ts-ignore
+      if (control !== creator)
+        control.onerror = () => {
+          // @ts-ignore
+          if (
+            session.state === 'connecting' &&
+            'onClientConnected' in session.parentobj
+          ) {
+            session.parentobj.onClientConnected({
+              success: false
+            })
+          } else {
+            session.closeInt?.({
+              code: 0,
+              reason: 'Session stream error'
+            })
+          }
+        }
+
+      if ('applicationOptions' in creator) {
+        /**
+         * @param {Uint8Array} datagram
+         *
+         * */
+        creator.ondatagram = (datagram) => {
+          if ('applicationOptions' in creator) {
+            // detect a QuicSession for the workaround
+            // This is a workaround and will be soon removed
+            const buffer = {
+              offset: 0,
+              buffer: [datagram],
+              size: datagram.byteLength,
+              curBuf: 0,
+              curBufOffset: 0
+            }
+            const sessionId = readVarInt(buffer)
+            if (control.id === null || sessionId !== control.id / 4n) return
+            session.onDatagramReceived({
+              datagram: new Uint8Array(
+                datagram.buffer,
+                buffer.offset + datagram.byteOffset,
+                datagram.byteLength - buffer.offset
+              )
+            })
+            return
+          }
+          // This is the code, that should be kept, or onDatagramReceived should be copied to here
+          session.onDatagramReceived({
+            datagram: new Uint8Array(datagram)
+          })
+        }
+      } else {
+        /**
+         * @param {Uint8Array} datagram
+         *
+         * */
+        control.ondatagram = (datagram) => {
+          session.onDatagramReceived({
+            datagram: new Uint8Array(datagram)
+          })
+        }
+      }
+    } else {
+      throw new Error('Insufficient paramaeters to setSessionObj')
     }
   }
 
@@ -321,7 +558,29 @@ export class HttpWTSession {
     return this._selectedProtocol
   }
 
+  /**
+   * @return {Promise<WebTransportConnectionStats>}
+   */
   getStats() {
+    if (this.legacyMode === false) {
+      const stats = this.streamCreator?.stats
+      return Promise.resolve({
+        datagrams: {
+          expiredIncoming: 0n,
+          expiredOutgoing: 0n,
+          droppedIncoming: 0n,
+          lostOutgoing: stats?.datagramsLost || 0n
+        },
+        // non Datagram
+        minRtt: Number(stats?.minRtt || 0),
+        smoothedRtt: Number(stats?.smoothedRtt || 0),
+        rttVariation: Number(stats?.rttVar || 0),
+        estimatedSendRateBps: 0n,
+        bytesSent: stats?.bytesSent || 0n,
+        bytesReceived: stats?.bytesReceived || 0n,
+        atSendCapacity: false
+      })
+    }
     if (this.objint == null) {
       throw new Error('this.objint not set')
     }
@@ -337,7 +596,6 @@ export class HttpWTSession {
    * @param {SessionStatsEvent} evt
    */
   onSessionStats({
-    timestamp,
     expiredOutgoing = 0,
     lostOutgoing = 0,
     // non Datagram
@@ -346,43 +604,43 @@ export class HttpWTSession {
     rttVariation = 0,
     estimatedSendRateBps
   }) {
+    // TO BE removed
     const res = this.resolveSessionStats.pop()
     this.rejectSessionStats.pop()
     if (res)
       res({
-        timestamp,
-        bytesSent: 0,
-        packetsSent: 0,
-        packetsLost: 0,
-        numOutgoingStreamsCreated: 0,
-        numIncomingStreamsCreated: 0,
-        bytesReceived: 0,
-        packetsReceived: 0,
+        bytesSent: 0n,
+        packetsSent: 0n,
+        packetsLost: 0n,
+        bytesReceived: 0n,
+        packetsReceived: 0n,
         smoothedRtt,
         rttVariation,
         minRtt,
-        estimatedSendRate: estimatedSendRateBps,
+        estimatedSendRate: BigInt(estimatedSendRateBps),
         datagrams: {
-          timestamp,
-          expiredOutgoing,
-          droppedIncoming: 0,
-          lostOutgoing
-        }
+          expiredIncoming: 0n,
+          expiredOutgoing: BigInt(expiredOutgoing),
+          droppedIncoming: 0n,
+          lostOutgoing: BigInt(lostOutgoing)
+        },
+        atSendCapacity: false
       })
   }
 
   /**
    * @param {DatagramStatsEvent} evt
    */
-  onDatagramStats({ timestamp, expiredOutgoing = 0, lostOutgoing = 0 }) {
+  onDatagramStats({ expiredOutgoing = 0, lostOutgoing = 0 }) {
+    // TO BE removed
     const res = this.resolveDatagramStats.pop()
     this.rejectDatagramStats.pop()
     if (res)
       res({
-        timestamp,
-        expiredOutgoing,
-        droppedIncoming: 0,
-        lostOutgoing
+        expiredIncoming: 0n,
+        expiredOutgoing: BigInt(expiredOutgoing),
+        droppedIncoming: 0n,
+        lostOutgoing: BigInt(lostOutgoing)
       })
   }
 
@@ -455,6 +713,54 @@ export class HttpWTSession {
         'Session is failed or closed and can not open streams',
         'InvalidStateError'
       )
+    if (this.legacyMode === false) {
+      const sendGroup = opts?.sendGroup || null // maybe replace, when implemented
+      const sendOrder = opts?.sendOrder || 0
+
+      if (!this.sessionControl || !this.streamCreator)
+        throw new Error('Neither control or creator is set')
+
+      const stream = await this.streamCreator.createBidirectionalStream({
+        incremental: true,
+        waitUntilAvailable: opts?.waitUntilAvailable || false,
+        budget: this.sendBudget || 0,
+        // @ts-ignore
+        sendGroupId: sendGroup?._sendGroupId || 0n,
+        sendOrder: sendOrder ?? 0,
+        webtransportSession: this.sessionControl /* that is the session stream */
+      })
+      if (stream.pending) {
+        await stream.ready
+      }
+
+      /** @type {NativeWebTransportStream} */
+      let newstream
+      // for Quiche we need to add a js wrapper
+      // FIXME: this should go into a session class for the protocol
+      if ('pullData' in stream) {
+        // @ts-ignore REMOVE ignore one Http3QuicheStream is converted to non legacy
+        newstream = new Http3QuicheStream({
+          // @ts-ignore REMOVE ignore one Http3QuicheStream is converted to non legacy
+          quicheStream: stream,
+          unidirectional: false
+        })
+      } else {
+        newstream = stream
+      }
+      const strobj = new HttpWTStream({
+        object: newstream,
+        parentobj: this,
+        transport: this.parentobj,
+        bidirectional: true,
+        incoming: false,
+        // @ts-ignore
+        sendGroup: this._sendGroupIndex.get(sendGroup?._sendGroupId || 0n),
+        sendOrder: sendOrder
+      })
+      this.addStreamObj(strobj)
+      return strobj
+    }
+
     if (this.objint == null) {
       throw new Error('this.objint not set')
     }
@@ -489,7 +795,10 @@ export class HttpWTSession {
       // for Quiche we need to add a js wrapper
       // FIXME: this should go into a session class for the protocol
       if ('pullData' in stream) {
-        newstream = new Http3QuicheStream({ quicheStream: stream })
+        newstream = new Http3QuicheStream({
+          quicheStream: stream,
+          unidirectional: false
+        })
       } else {
         newstream = stream
       }
@@ -522,6 +831,53 @@ export class HttpWTSession {
         'Session is failed or closed and can not open streams',
         'InvalidStateError'
       )
+    if (this.legacyMode === false) {
+      const sendGroup = opts?.sendGroup || null // maybe replace, when implemented
+      const sendOrder = opts?.sendOrder || 0
+
+      if (!this.sessionControl || !this.streamCreator)
+        throw new Error('Neither control or creator is set')
+
+      const stream = await this.streamCreator.createUnidirectionalStream({
+        incremental: true,
+        waitUntilAvailable: opts?.waitUntilAvailable || false,
+        budget: this.sendBudget || 0,
+        // @ts-ignore
+        sendGroupId: sendGroup?._sendGroupId || 0n,
+        sendOrder: sendOrder ?? 0,
+        webtransportSession: this.sessionControl /* that is the session stream */
+      })
+      if (stream.pending) {
+        await stream.ready
+      }
+
+      /** @type {NativeWebTransportStream} */
+      let newstream
+      // for Quiche we need to add a js wrapper
+      // FIXME: this should go into a session class for the protocol
+      if ('pullData' in stream) {
+        // @ts-ignore REMOVE ignore one Http3QuicheStream is converted to non legacy
+        newstream = new Http3QuicheStream({
+          // @ts-ignore REMOVE ignore one Http3QuicheStream is converted to non legacy
+          quicheStream: stream,
+          unidirectional: true
+        })
+      } else {
+        newstream = stream
+      }
+      const strobj = new HttpWTStream({
+        object: newstream,
+        parentobj: this,
+        transport: this.parentobj,
+        bidirectional: false,
+        incoming: false,
+        // @ts-ignore
+        sendGroup: this._sendGroupIndex.get(sendGroup?._sendGroupId || 0n),
+        sendOrder: sendOrder
+      })
+      this.addStreamObj(strobj)
+      return strobj.writable
+    }
     if (this.objint == null) {
       throw new Error('this.objint not set')
     }
@@ -556,7 +912,10 @@ export class HttpWTSession {
       // for Quiche we need to add a js wrapper
       // FIXME: this should go into a session class for the protocol
       if ('pullData' in stream) {
-        newstream = new Http3QuicheStream({ quicheStream: stream })
+        newstream = new Http3QuicheStream({
+          quicheStream: stream,
+          unidirectional: true
+        })
       } else {
         newstream = stream
       }
@@ -588,8 +947,16 @@ export class HttpWTSession {
   close(closeInfo) {
     log('closeinfo', closeInfo)
     if (this.state === 'closed' || this.state === 'failed') return
-    if (this.objint) {
-      this.objint.close({
+    if (this.legacyMode === true) {
+      if (this.objint) {
+        this.objint.close({
+          code: closeInfo?.closeCode ?? 0,
+          reason: (closeInfo?.reason ?? '').substring(0, 1023)
+        })
+      }
+    } else if (this.legacyMode === false) {
+      // TODO move to inner
+      this.closeInt?.({
         code: closeInfo?.closeCode ?? 0,
         reason: (closeInfo?.reason ?? '').substring(0, 1023)
       })
@@ -637,7 +1004,9 @@ export class HttpWTSession {
    * @param {SessionCloseEvent} args
    */
   onClose(args) {
-    delete this.objint // not valid any more
+    if (this.objint) delete this.objint // not valid any more
+    if (this.sessionControl) delete this.sessionControl
+    if (this.streamCreator) delete this.streamCreator
 
     if (this.state !== 'connected' && this.state !== 'draining') {
       log.error(
@@ -733,7 +1102,10 @@ export class HttpWTSession {
     // for Quiche we need to add a js wrapper
     // FIXME: this should go into a session class for the protocol
     if ('pullData' in args.stream) {
-      newstream = new Http3QuicheStream({ quicheStream: args.stream })
+      newstream = new Http3QuicheStream({
+        quicheStream: args.stream,
+        unidirectional: !args.bidirectional
+      })
     } else {
       newstream = args.stream
     }
@@ -834,6 +1206,7 @@ export class HttpWTSession {
    */
   // eslint-disable-next-line no-unused-vars
   onGoAwayReceived(args) {
+    if (this.state === 'closed' || this.state === 'failed') return // no sense to drain with no connection
     if (this.drainingResolve) this.drainingResolve(undefined)
     this.state = 'draining'
   }

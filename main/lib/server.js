@@ -73,6 +73,8 @@ const loadNodeNative = async () => {
 /**
  * @typedef {import('./types').WebTransportSessionImpl} WebTransportSession
  * @typedef {import('./types').NativeHttpWTSession} NativeHttpWTSession
+ * @typedef {import('./types').NativeWebTransportSessionControl} NativeWebTransportSessionControl
+ * @typedef {import('./types').NativeWebTransportSessionStreamCreator} NativeWebTransportSessionStreamCreator
  * @typedef {import('./types').HttpServerEventHandler} HttpServerEventHandler
  * @typedef {import('./types').HttpWTServerSessionVisitorEvent} HttpWTServerSessionVisitorEvent
  * @typedef {import('./types').HttpServerListeningEvent} HttpServerListeningEvent
@@ -307,15 +309,33 @@ export class HttpServer {
    */
   onHttpWTSessionVisitor(args) {
     // create Http3 Visitor
-    const sesobj = new HttpWTSession({
-      object: args.session,
+    const sessOpts = {
+      /** @type {NativeHttpWTSession|undefined} */
+      object: undefined,
+      /** @type {NativeWebTransportSessionControl|undefined} */
+      control: undefined,
+      /** @type {NativeWebTransportSessionStreamCreator|undefined} */
+      creator: undefined,
       header: args.header,
       peerAddress: args.peerAddress,
       userData: args.userData ?? {},
       datagramsReadableMode: this.defaultDatagramsReadableMode_,
-      parentobj: this
-    })
-    args.session.jsobj = sesobj
+      parentobj: this,
+      sendBudget: args.sendBudget
+    }
+    if ('session' in args) {
+      sessOpts.object = args.session
+    }
+    if ('control' in args && 'creator' in args) {
+      sessOpts.control = args.control
+      sessOpts.creator = args.creator
+    }
+    const sesobj = new HttpWTSession(sessOpts)
+    if (sesobj.legacyMode === false)
+      process.nextTick(() => {
+        sesobj.onReady({})
+      })
+    if ('session' in args) args.session.jsobj = sesobj
     if (this.sessionController[args.path])
       this.sessionController[args.path].enqueue(sesobj)
   }

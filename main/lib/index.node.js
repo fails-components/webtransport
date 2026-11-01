@@ -5,7 +5,7 @@
 /**
  * // Spec
  * @typedef {import('./dom').WebTransportDatagramStats} WebTransportDatagramStats
- * @typedef {import('./dom').WebTransportStats} WebTransportStats
+ * @typedef {import('./dom').WebTransportConnectionStats} WebTransportConnectionStats
  * @typedef {import('./dom').WebTransportCloseInfo} WebTransportCloseInfo
  * @typedef {import('./dom').WebTransportDatagramDuplexStream} WebTransportDatagramDuplexStream
  * @typedef {import('./dom').WebTransportBidirectionalStream} WebTransportBidirectionalStream

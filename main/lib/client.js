@@ -164,14 +164,42 @@ export class HttpClient {
       this.sessionProm &&
       this.sessionobjint
     ) {
-      this.sessionobjint.setSessionObj(
-        args.session,
-        !!args.reliable,
-        args.responseHeader
-      )
+      // legacy mode
+      this.sessionobjint.setSessionObj({
+        object: args.session,
+        reliable: !!args.reliable,
+        responseHeader: args.responseHeader,
+        isclient: true,
+        sendBudget: args.sendBudget
+      })
       args.session.jsobj.closeHook = this.closeHookSession
       delete this.sessionobjint
       this.sessionProm.resolve(args.session)
+      delete this.sessionProm
+    } else if (
+      'control' in args &&
+      'creator' in args &&
+      args.control &&
+      args.creator &&
+      this.sessionProm &&
+      this.sessionobjint
+    ) {
+      // non legacy mode
+      this.sessionobjint.setSessionObj({
+        control: args.control,
+        creator: args.creator,
+        reliable: !!args.reliable,
+        responseHeader: args.responseHeader,
+        isclient: true,
+        sendBudget: args.sendBudget
+      })
+      const sessobj = this.sessionobjint
+      process.nextTick(() => {
+        sessobj.onReady({})
+      })
+      this.sessionobjint.closeHook = this.closeHookSession
+      delete this.sessionobjint
+      this.sessionProm.resolve(this.sessionobjint)
       delete this.sessionProm
     } else {
       if (this.sessionobjint)

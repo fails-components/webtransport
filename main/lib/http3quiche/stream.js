@@ -42,11 +42,9 @@ export class Http3QuicheStream {
     messageReceiver: undefined,
     /** @type {NativeHttpWTStream | undefined} */
     quicheStream: undefined,
-
     iteratorLocked: false,
-
     canread: false,
-
+    unidirectional: false,
     /** @type {PromiseWithResolvers<void>|undefined} */
     readerWait: undefined,
     /** @type {boolean} */
@@ -67,12 +65,14 @@ export class Http3QuicheStream {
   /**
    * @param {Object} options
    * @param {NativeHttpWTStream} options.quicheStream
+   * @param {boolean} options.unidirectional
    */
 
-  constructor({ quicheStream }) {
+  constructor({ quicheStream, unidirectional }) {
     const inner = this.#inner
 
     inner.quicheStream = quicheStream
+    inner.unidirectional = unidirectional
     quicheStream.jsobj = this.messageReceiver // FIXME the jsobj mechanism, may not be the fastest
   }
 
@@ -90,6 +90,19 @@ export class Http3QuicheStream {
   resetStream(code) {
     const inner = this.#inner
     inner.quicheStream?.resetStream(Number(code))
+  }
+
+  /**
+   *
+   * @param {object} [args]
+   * @param {number} [args.code]
+   * @param {string} [args.reason]
+   */
+  // eslint-disable-next-line no-unused-vars
+  destroy({ reason, code } = {}) {
+    const inner = this.#inner
+    inner.quicheStream?.resetStream(code || 0)
+    inner.quicheStream?.stopSending(code || 0)
   }
 
   // portions from node.js's QuicStream, see node.js license in backports dir
@@ -256,6 +269,18 @@ export class Http3QuicheStream {
       onStopSending,
       onResetStream
     })
+  }
+
+  get direction() {
+    return this.#inner.unidirectional ? 'uni' : 'bidi'
+  }
+
+  get pending() {
+    return false // we are never pending, by construction
+  }
+
+  get ready() {
+    return Promise.resolve() // we are always ready
   }
 
   /**

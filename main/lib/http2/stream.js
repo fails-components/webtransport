@@ -81,6 +81,7 @@ export class CapsuleWebTransportStream {
     outgoingClosed: false,
     incomingClosed: false,
     closed: false,
+    unidirectional: false,
     /* callbacks */
     /** @type {OnStreamErrorCallback | undefined} */
     onreset: undefined,
@@ -122,6 +123,7 @@ export class CapsuleWebTransportStream {
     inner.capsuleParser = capsuleParser
     capsuleParser.setParserTarget(streamid, this.#parserTarget)
     inner.session = session
+    inner.unidirectional = unidirectional
 
     inner.flowController = new FlowController({
       tocontrol: this.#flowControlable,
@@ -501,6 +503,18 @@ export class CapsuleWebTransportStream {
   }
 
   /**
+   *
+   * @param {object} [args]
+   * @param {number} [args.code]
+   * @param {string} [args.reason]
+   */
+  // eslint-disable-next-line no-unused-vars
+  destroy({ reason, code } = {}) {
+    this.#closeIncoming(code)
+    this.#closeOutgoing(code)
+  }
+
+  /**
    * @param {number|bigint} code
    */
   stopSending(code) {
@@ -783,5 +797,17 @@ export class CapsuleWebTransportStream {
       // @ts-ignore
       inner.onstopsending = fn.bind(this)
     }
+  }
+
+  get direction() {
+    return this.#inner.unidirectional ? 'uni' : 'bidi'
+  }
+
+  get pending() {
+    return false // we are never pending, by construction
+  }
+
+  get ready() {
+    return Promise.resolve() // we are always ready
   }
 }

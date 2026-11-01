@@ -88,6 +88,9 @@ export interface StreamWriter {
  */
 export interface NativeWebTransportStream {
   readonly writer: StreamWriter | MinimalStreamWriter
+  readonly direction: 'bidi' | 'uni'
+  readonly pending: boolean
+  readonly ready: Promise<void>
   updateSendOrderAndGroup: (args :{
     sendOrder: number,
     sendGroupId: bigint
@@ -96,7 +99,87 @@ export interface NativeWebTransportStream {
   resetStream: (code: number) => void
   onreset: OnStreamErrorCallback 
   onstopsending: OnStreamErrorCallback
+  onsessionid?: (this: NativeWebTransportStream, sessionid: bigint) => void
+  onheaders?: (this: NativeWebTransportStream, headers: object) => void
+  destroy(option?:{reason?: string, code?: number} ) : void
 };
+
+export type OnSessionIdCallback = (this: NativeWebTransportStream, error: any) => void;
+
+
+
+/**
+ * This interfaces matches a subset of QuicSession properties
+ */
+export interface NativeWebTransportSessionStreamCreator {
+  readonly stats: {
+  createdAt: bigint;
+  closingAt: bigint;
+  handshakeCompletedAt: bigint;
+  handshakeConfirmedAt: bigint;
+  bytesReceived: bigint;
+  bytesSent: bigint;
+  bidiInStreamCount: bigint;
+  bidiOutStreamCount: bigint;
+  uniInStreamCount: bigint;
+  uniOutStreamCount: bigint;
+  maxBytesInFlight: bigint;
+  bytesInFlight: bigint;
+  blockCount: bigint;
+  cwnd: bigint;
+  latestRtt: bigint;
+  minRtt: bigint;
+  rttVar: bigint;
+  smoothedRtt: bigint;
+  ssthresh: bigint;
+  datagramsReceived: bigint;
+  datagramsSent: bigint;
+  datagramsAcknowledged: bigint;
+  datagramsLost: bigint;
+  streamsIdleTimedOut: bigint;
+};
+  readonly remoteTransportParams: {maxDatagramFrameSize: bigint}
+  onerror:  (this: NativeWebTransportSessionStreamCreator, error: any) => void;
+  ongoaway: (this: NativeWebTransportSessionStreamCreator, lastStreamId: bigint) => void;
+  onstream: (this: NativeWebTransportSessionStreamCreator, stream: NativeWebTransportStream ) => void
+  ondatagram: (this: NativeWebTransportSessionStreamCreator, datagram: Uint8Array) => void
+  createBidirectionalStream(option: {incremental: boolean,
+    waitUntilAvailable: boolean,
+    budget: number,
+    sendGroupId: bigint,
+    sendOrder: number
+    webtransportSession: NativeWebTransportSessionControl
+  }) : NativeWebTransportStream
+  createUnidirectionalStream(option: {incremental: boolean,
+    waitUntilAvailable: boolean,
+    budget: number,
+    sendGroupId: bigint,
+    sendOrder: number
+    webtransportSession: NativeWebTransportSessionControl
+  }) : NativeWebTransportStream
+  sendDatagram(datagram: Uint8Array) : Promise<bigint>
+  close(option?: {
+    code?: bigint | number
+    type?: 'transport' | 'application'
+    reason?: string
+  }): void
+};
+
+/**
+ * This interfaces matches a subset of QuicStream properties
+ * related to the WebTransport control stream
+ */
+export interface NativeWebTransportSessionControl {
+  onerror: (this: NativeWebTransportSessionControl, error: any) => void
+  ondatagram: (this: NativeWebTransportSessionStreamCreator, datagram: Uint8Array) => void
+  onwtsessionclose: (this: NativeWebTransportSessionControl, code: number, reason: string|undefined) => void
+  readonly id: bigint|null
+  closed: Promise<void>
+
+  closeWebtransportSessionStream(code: number, reason: string|undefined): void
+  sendDatagram(datagram: Uint8Array) : Promise<bigint>
+};
+
 
 export interface NativeServerOptions {
   port: string | number | 443
@@ -236,15 +319,33 @@ export interface ClientConnectedEvent {
 
 export interface ClientWebtransportSupportEvent {}
 
-export interface HttpWTSessionVisitorEvent {
-  session: NativeHttpWTSession
+export interface HttpWTSessionVisitorEventBase {
   reliable?: boolean
+  sendBudget: number
 }
 
-export interface HttpWTClientSessionVisitorEvent
-  extends HttpWTSessionVisitorEvent { 
+export interface HttpWTSessionVisitorEventLegacy extends HttpWTSessionVisitorEventBase {
+  session: NativeHttpWTSession
+}
+
+export interface HttpWTSessionVisitorEventCurrent extends HttpWTSessionVisitorEventBase {
+  control: NativeWebTransportSessionControl
+  creator: NativeWebTransportSessionStreamCreator
+}
+
+export type HttpWTSessionVisitorEvent = HttpWTSessionVisitorEventLegacy | HttpWTSessionVisitorEventCurrent
+
+export interface HttpWTClientSessionVisitorEventLegacy
+  extends HttpWTSessionVisitorEventLegacy { 
     responseHeader: Object
   }
+
+export interface HttpWTClientSessionVisitorEventCurrent
+  extends HttpWTSessionVisitorEventCurrent { 
+    responseHeader: Object
+  }
+
+export type HttpWTClientSessionVisitorEvent = HttpWTClientSessionVisitorEventLegacy | HttpWTClientSessionVisitorEventCurrent
 
 export interface HttpClientEventHandler {
   onClientConnected: (evt: ClientConnectedEvent) => void
@@ -252,13 +353,23 @@ export interface HttpClientEventHandler {
   onHttpWTSessionVisitor: (evt: HttpWTSessionVisitorEvent) => void
 }
 
-export interface HttpWTServerSessionVisitorEvent
-  extends HttpWTSessionVisitorEvent {
+export interface HttpWTServerSessionVisitorEventLegacy
+  extends HttpWTSessionVisitorEventLegacy {
   path: string
   header: Object
   peerAddress: string
   userData?: Object | undefined
 }
+
+export interface HttpWTServerSessionVisitorEventCurrent
+  extends HttpWTSessionVisitorEventCurrent {
+  path: string
+  header: Object
+  peerAddress: string
+  userData?: Object | undefined
+}
+
+export type HttpWTServerSessionVisitorEvent = HttpWTServerSessionVisitorEventLegacy | HttpWTServerSessionVisitorEventCurrent
 
 export interface ServerSessionRequestEvent {
   header: Object
@@ -321,6 +432,7 @@ export interface HttpWebTransportInit extends WebTransportOptions {
   forceIpv6?: boolean
   localPort?: number
   nodenativequic?: boolean
+  sendBudget?: number
 }
 
 export interface Http3QuicheServerWebTransportInit extends HttpWebTransportInit {

@@ -199,6 +199,7 @@ export class Http2WebTransportServer {
                 header,
                 peerAddress: stream.remoteAddress + ':' + stream.remotePort,
                 reliable: true,
+                sendBudget: this.streamFlowControlWindowSizeLimit,
                 object: this // My server
               }
               this.jsobj.onHttpWTSessionVisitor(retObj)
@@ -378,6 +379,7 @@ export class Http2WebTransportServer {
           header,
           peerAddress: socket?.remoteAddress + ':' + socket?.remotePort,
           reliable: true,
+          sendBudget: this.streamFlowControlWindowSizeLimit,
           object: this // My server
         }
         const resp = {
@@ -577,6 +579,7 @@ export class Http2WebTransportServer {
               path,
               header,
               peerAddress,
+              sendBudget: this.streamFlowControlWindowSizeLimit,
               userData
             }
             this.jsobj.onHttpWTSessionVisitor(retObj)
@@ -674,6 +677,7 @@ export class Http2WebTransportServer {
           }),
           path,
           header,
+          sendBudget: this.streamFlowControlWindowSizeLimit,
           peerAddress,
           userData
         }

@@ -2,26 +2,27 @@
 // These can be removed when they are added to the default typescript types
 
 export interface WebTransportDatagramStats {
-  timestamp: number
-  expiredOutgoing: number
-  droppedIncoming: number
-  lostOutgoing: number
+  expiredIncoming: bigint
+  expiredOutgoing: bigint
+  droppedIncoming: bigint
+  lostOutgoing: bigint
 }
 
-export interface WebTransportStats {
-  timestamp: number
-  bytesSent: number
-  packetsSent: number
-  packetsLost: number
-  numOutgoingStreamsCreated: number
-  numIncomingStreamsCreated: number
-  bytesReceived: number
-  packetsReceived: number
+export interface WebTransportConnectionStats {
+  bytesSent: bigint
+  bytesSentOverhead?: bigint
+  bytesAcknowledged?: bigint
+  packetsSent?: bigint
+  bytesLost?: bigint
+  packetsLost?: bigint
+  bytesReceived: bigint
+  packetsReceived?: bigint
   smoothedRtt: number
   rttVariation: number
   minRtt: number
-  estimatedSendRate: number
   datagrams: WebTransportDatagramStats
+  estimatedSendRate?: bigint 
+  atSendCapacity: boolean
 }
 
 export interface  WebTransportSendStreamStats {
@@ -113,7 +114,7 @@ export interface WebTransportSendStreamOptions {
 }
 
 export interface WebTransportSession {
-  getStats: () => Promise<WebTransportStats>
+  getStats: () => Promise<WebTransportConnectionStats>
   readonly ready: Promise<void>
   readonly reliability: WebTransportReliabilityMode
   readonly congestionControl: WebTransportCongestionControl

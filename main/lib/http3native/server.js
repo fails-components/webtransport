@@ -4,7 +4,6 @@ import { logger } from '../utils.js'
 import dns from 'node:dns/promises'
 import { isIP } from 'node:net'
 import { createPrivateKey } from 'node:crypto'
-import { Http3WebTransportSession } from './session.js'
 
 const log = logger(`webtransport:http3:native:server(${process?.pid})`)
 
@@ -78,6 +77,7 @@ export class Http3WebTransportServerNative {
     }
 
     getHostaddress()
+      // eslint-disable-next-line no-unused-vars
       .then(async ({ ip, family }) => {
         this.endpoint = new QuicEndpoint({
           address: { address: ip, port: this.port }
@@ -99,6 +99,7 @@ export class Http3WebTransportServerNative {
                 })
               }
             }
+            // eslint-disable-next-line no-unused-vars
             serverSession.onhandshake = function (info) {
               if (
                 !this?.remoteTransportParams?.maxDatagramFrameSize ||
@@ -111,6 +112,7 @@ export class Http3WebTransportServerNative {
                 })
               }
             }
+            // eslint-disable-next-line no-unused-vars
             serverSession.onstream = function (stream) {
               // console.log('onstream', stream)
             }
@@ -201,13 +203,8 @@ export class Http3WebTransportServerNative {
                 servernative.jsobj.onSessionRequest(retObj)
               } else if (servernative.paths[path]) {
                 const retObj = {
-                  session: new Http3WebTransportSession({
-                    stream: this,
-                    session,
-                    isclient: false,
-                    initialStreamSendWindowOffset:
-                      servernative.initialStreamFlowControlWindow
-                  }),
+                  control: this,
+                  creator: session,
                   path,
                   header: headers,
                   peerAddress:
@@ -225,6 +222,7 @@ export class Http3WebTransportServerNative {
                 this.sendHeaders({ ':status': '404' })
                 this.writer.writeSync('Path does not exist')
                 this.writer.endSync()
+                // eslint-disable-next-line no-useless-return
                 return
               }
             }
@@ -318,12 +316,8 @@ export class Http3WebTransportServerNative {
       // @ts-ignore
       resp['wt-protocol'] = '"' + selectedProtocol + '"'
     const retObj = {
-      session: new Http3WebTransportSession({
-        stream,
-        session: stream.session,
-        isclient: false,
-        initialStreamSendWindowOffset: this.initialStreamFlowControlWindow
-      }),
+      control: stream,
+      creator: stream.session,
       path,
       header,
       peerAddress,
