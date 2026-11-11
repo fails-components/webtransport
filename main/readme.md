@@ -17,11 +17,17 @@ A web-based lecture system developed out of university lectures.
 While FAILS as a whole is licensed via GNU Affero GPL version 3.0, this package is licensed under a BSD-style license that can be found in the LICENSE file, while code taken from other projects is still under their respective license (see LICENSE file for details).
 This package is licensed more permissive since it can be useful outside of the FAILS environment.
 
-This module started as a C++ node binding to libquiche [https://github.com/google/quiche](https://github.com/google/quiche) (note there is a second library with a similar purpose and the same name), which provides besides other network protocols HTTP/3 support. Now it can also handle Webtransport over HTTP/2 and a WebSocket mapping of the HTTP/2 protocol together with a polyfill and ponyfill for the browsers without reliable WebTransport support or no WebTRansport support at all.
+This module started as a C++ node binding to libquiche [https://github.com/google/quiche](https://github.com/google/quiche) (note there is a second library with a similar purpose and the same name), which provides besides other network protocols HTTP/3 support. Now it can also handle Webtransport over HTTP/2 and a WebSocket mapping of the HTTP/2 protocol together with a polyfill and ponyfill for the browsers without reliable WebTransport support or no WebTransport support at all.
 This package currently provides support for WebTransport with an interface similar to the browser side (but not all features implemented), for the server as well as for the client, see `old_test/test.js`, `old_test/testsuite.js`, `old_test/echoclient.js`, `old_test/echoserver.js`  for examples.
 Note, that the client implementation only supports certificate checking via `certificateHashes`, however experimental support for rootCA-based checking is introduced with version 1.0.0.
 It may be possible in the future to also support normal HTTP/3 with not so much effort, however, there is no intention from the author to implement this since it will not be needed by FAILS. However, PR requests are welcome and will be supported by advice from the author.
 The package for the HTTP/3 should be considered as a duct tape-style solution until a bulletproof native support of HTTP/3 and WebTransport is provided by node itself.
+
+## Changes for Version 2.x.x
+
+The interface did not change it all.
+However input from a Firefox developer uncovered a non standard complaint implementation of the http/2 protocols, that includes the Webtransport over WebSocket polyfill.
+Therefore, the protocol of the non http/3 flavors is not compatible to the 1.x.x versions.
 
 ## Changes for Version 1.x.x
 
