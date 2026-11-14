@@ -226,8 +226,8 @@ export class WebSocketParser extends ParserBaseHttp2 {
       /** @type {number} */
       curBufOffset: 0
     }
-    /** @type {Number|undefined} */
-    this.rtype = undefined
+    /** @type {boolean|undefined} */
+    this.rfin = undefined
 
     this.bidirectionalLimitsSet = false
     this.unidirectionalLimitsSet = false
@@ -253,11 +253,13 @@ export class WebSocketParser extends ParserBaseHttp2 {
             const framestart = bufferstate.offset
             const frameCurBuf = bufferstate.curBuf
             const frameCurBufOffset = bufferstate.curBufOffset
+            const frameSize = bufferstate.size
             // we are at frame start
             if (bufferstate.size < 2 + bufferstate.offset) {
               bufferstate.offset = framestart
               bufferstate.curBuf = frameCurBuf
               bufferstate.curBufOffset = frameCurBufOffset
+              bufferstate.size = frameSize
               detachReadBuffers(bufferstate)
               return
             }
@@ -278,6 +280,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 bufferstate.offset = framestart
                 bufferstate.curBuf = frameCurBuf
                 bufferstate.curBufOffset = frameCurBufOffset
+                bufferstate.size = frameSize
                 detachReadBuffers(bufferstate)
                 return
               }
@@ -287,6 +290,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 bufferstate.offset = framestart
                 bufferstate.curBuf = frameCurBuf
                 bufferstate.curBufOffset = frameCurBufOffset
+                bufferstate.size = frameSize
                 detachReadBuffers(bufferstate)
                 return
               }
@@ -322,6 +326,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
               bufferstate.offset = framestart
               bufferstate.curBuf = frameCurBuf
               bufferstate.curBufOffset = frameCurBufOffset
+              bufferstate.size = frameSize
               detachReadBuffers(bufferstate)
               return
             }
@@ -364,6 +369,8 @@ export class WebSocketParser extends ParserBaseHttp2 {
                   bufferstate.offset = framestart
                   bufferstate.curBuf = frameCurBuf
                   bufferstate.curBufOffset = frameCurBufOffset
+                  bufferstate.size = frameSize
+                  this.lastopcode = lastopcode
                   detachReadBuffers(bufferstate)
                   return
                 }
@@ -436,6 +443,8 @@ export class WebSocketParser extends ParserBaseHttp2 {
                   bufferstate.offset = framestart
                   bufferstate.curBuf = frameCurBuf
                   bufferstate.curBufOffset = frameCurBufOffset
+                  bufferstate.size = frameSize
+                  this.lastopcode = lastopcode
                   detachReadBuffers(bufferstate)
                   return
                 }
@@ -453,6 +462,8 @@ export class WebSocketParser extends ParserBaseHttp2 {
                   bufferstate.offset = framestart
                   bufferstate.curBuf = frameCurBuf
                   bufferstate.curBufOffset = frameCurBufOffset
+                  bufferstate.size = frameSize
+                  this.lastopcode = lastopcode
                   detachReadBuffers(bufferstate)
                   return
                 }
@@ -483,6 +494,8 @@ export class WebSocketParser extends ParserBaseHttp2 {
                 bufferstate.offset = framestart
                 bufferstate.curBuf = frameCurBuf
                 bufferstate.curBufOffset = frameCurBufOffset
+                bufferstate.size = frameSize
+                this.lastopcode = lastopcode
                 detachReadBuffers(bufferstate)
                 return
               }
@@ -704,12 +717,8 @@ export class WebSocketParser extends ParserBaseHttp2 {
               // not in j mode
               // TODO submitData
               const object = this.wtstreams.get(this.rstreamid)
-              const fin =
-                !!this.rfin &&
-                this.rtype === ParserBase.WT_STREAM_WFIN &&
-                this.remainlength === clength
+              const fin = !!this.rfin && this.remainlength === clength
               if (object) {
-                if (fin) object.onFin()
                 if (this.maskcontext)
                   applyMaskBuffer(this.maskcontext, bufferstate, clength)
                 // TODO submit data
@@ -717,6 +726,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
                   data: getUint8ArraysfromBuffer(bufferstate, clength),
                   fin
                 })
+                if (fin) object.onFin()
               }
             }
 
