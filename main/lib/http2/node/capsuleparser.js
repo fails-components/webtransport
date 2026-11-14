@@ -50,8 +50,8 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
       /** @type {number} */
       curBufOffset: 0
     }
-    /** @type {Number|undefined} */
-    this.rtype = undefined
+    /** @type {boolean|undefined} */
+    this.rfin = undefined
     this.remainlength = 0
   }
 
@@ -70,11 +70,13 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
             const capsulestart = bufferstate.offset
             const capsuleCurBuf = bufferstate.curBuf
             const capsuleCurBufOffset = bufferstate.curBufOffset
+            const capsuleSize = bufferstate.size
             // we are at capsule start
             if (bufferstate.size < 2 + bufferstate.offset) {
               bufferstate.offset = capsulestart
               bufferstate.curBuf = capsuleCurBuf
               bufferstate.curBufOffset = capsuleCurBufOffset
+              bufferstate.size = capsuleSize
               detachReadBuffers(bufferstate)
               return
             }
@@ -86,6 +88,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               bufferstate.offset = capsulestart
               bufferstate.curBuf = capsuleCurBuf
               bufferstate.curBufOffset = capsuleCurBufOffset
+              bufferstate.size = capsuleSize
               detachReadBuffers(bufferstate)
               return
             }
@@ -95,6 +98,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               bufferstate.offset = capsulestart
               bufferstate.curBuf = capsuleCurBuf
               bufferstate.curBufOffset = capsuleCurBufOffset
+              bufferstate.size = capsuleSize
               detachReadBuffers(bufferstate)
               return
             }
@@ -129,6 +133,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
               bufferstate.offset = capsulestart
               bufferstate.curBuf = capsuleCurBuf
               bufferstate.curBufOffset = capsuleCurBufOffset
+              bufferstate.size = capsuleSize
               detachReadBuffers(bufferstate)
               return
             }
@@ -275,16 +280,14 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
             if (typeof this.rstreamid !== 'undefined') {
               // TODO submitData
               const object = this.wtstreams.get(this.rstreamid)
-              const fin =
-                this.rtype === Http2CapsuleParser.WT_STREAM_WFIN &&
-                this.remainlength === clength
+              const fin = !!this.rfin && this.remainlength === clength
               // TODO submit data
               if (object) {
-                if (fin) object.onFin()
                 object.recvData({
                   data: getUint8ArraysfromBuffer(bufferstate, clength),
                   fin
                 })
+                if (fin) object.onFin()
               }
             }
 
