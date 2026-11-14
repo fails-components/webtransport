@@ -139,7 +139,7 @@ describe('session', function () {
       .with.property('message', handshakemess)
   })
 
-  it('should select the last protocol while connecting', async () => {
+  it('should select the last protocol while connecting', async function () {
     if (browser === 'firefox') this.skip()
     client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
       protocols: ['protA', 'protB', 'prot_C'],
@@ -157,7 +157,7 @@ describe('session', function () {
     await client.closed
   })
 
-  it('should select the no protocol while connecting', async () => {
+  it('should select the no protocol while connecting', async function () {
     if (browser === 'firefox') this.skip()
     client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
       protocols: ['protA', 'protB', 'noprot'],
