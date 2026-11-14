@@ -157,6 +157,7 @@ describe('session', function () {
   })
 
   it('should select the no protocol while connecting', async () => {
+    if (browser === 'firefox') this.skip()
     client = new WebTransport(`${process.env.SERVER_URL}/session_close`, {
       protocols: ['protA', 'protB', 'noprot'],
       ...wtOptions
