@@ -5,6 +5,8 @@ import { WebTransportError } from '../error.js'
 // @ts-ignore
 import { getWriter } from './backports/writer.cjs'
 
+export const kSetStreamId = Symbol('setStreamId')
+
 const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:capsulewebtransportstream(${pid})`)
 /**
@@ -12,20 +14,31 @@ const log = logger(`webtransport:capsulewebtransportstream(${pid})`)
  * @typedef {import('../types').StreamWriter} StreamWriter
  * @typedef {import('../types').OnStreamErrorCallback} OnStreamErrorCallback
  * @typedef {import('./session').CapsuleWebTransportSession} CapsuleWebTransportSession
+ * @typedef {import('./session.js').StreamControlable} StreamControlable
  *
  * @typedef {import('../types').ReadDataInt} ReadDataInt
  * @typedef {import('../types').FlowControlable} FlowControlable
+ * @typedef {import('../types').NativeWebTransportStream} NativeWebTransportStream
  * @typedef {import('./streamidmanager.js').StreamIdManager} StreamIdManager
  */
 
 /**
- * @exports
  * @typedef {Object} CapsuleStreamHandler
  * @property {() => void} drainWrites - Flushes pending writes.
  * @property {(params: { data: Uint8Array[] | undefined; fin: boolean }) => void} recvData - Receives incoming data chunk with a FIN flag.
  * @property {(offset: bigint) => boolean | undefined} updateSendWindowOffset - Updates the send window offset and returns status.
  * @property {() => void} onFin - Handles the FIN signal reception.
  * @property {(type: "resetStream" | "stopSending", code: number) => void} onStreamSignal - Handles incoming stream signals like resets or stops.
+ * @property {(sessionid: bigint|null) => void} receiveSessionId
+ */
+
+/**
+ * Called when session id (e.g. for Webtransport streams) is determined
+ * @callback OnSessionIdCallback
+ * @this {NativeWebTransportStream}
+ * @param {bigint|null|undefined} sessionid Id of the session stream or undefined
+ *   if no session stream is determined.
+ * @returns {void}
  */
 
 let processnextTick = (/** @type {{ (): void;  }} */ func) =>
@@ -56,8 +69,8 @@ export class CapsuleWebTransportStream {
     streamIdManager: undefined,
     /**  @type {FlowController | undefined} */
     sessionFlowController: undefined,
-    /**  @type {CapsuleWebTransportSession | undefined} */
-    session: undefined,
+    /**  @type {StreamControlable | undefined} */
+    sessionControl: undefined,
     /**  @type {FlowControlable| undefined} */
     flowControlable: undefined,
     /** @type {StreamWriter|undefined} */
@@ -72,6 +85,8 @@ export class CapsuleWebTransportStream {
     readerWait: undefined,
     /** @type {boolean} */
     readerWaitTimeOut: false,
+    /** @type {PromiseWithResolvers<void>} */
+    readyProm: Promise.withResolvers(),
     final: false,
     finalmessagesend: false,
     iteratorLocked: false,
@@ -82,9 +97,16 @@ export class CapsuleWebTransportStream {
     incomingClosed: false,
     closed: false,
     unidirectional: false,
+    incoming: false,
+    /**@type {bigint|undefined} */
+    sendGroupId: undefined,
+    /**@type {number|undefined} */
+    sendOrder: undefined,
     /* callbacks */
     /** @type {OnStreamErrorCallback | undefined} */
     onreset: undefined,
+    /** @type {OnSessionIdCallback | undefined} */
+    onsessionid: undefined,
     /** @type {OnStreamErrorCallback | undefined} */
     onstopsending: undefined,
     /** @type {((arg: {errorCode: Number} | undefined) => void)|undefined} */
@@ -93,48 +115,60 @@ export class CapsuleWebTransportStream {
     drainWrites: undefined
   }
   /**
-   * @param {{streamid: bigint,
+   * @param {{streamid?: bigint,
    * unidirectional: boolean,
    * incoming: boolean,
+   * budget: number | undefined,
    * capsuleParser: ParserBase
-   * session: CapsuleWebTransportSession
-   * sendWindowOffset: Number,
-   * receiveWindowOffset: Number,
-   * shouldAutoTuneReceiveWindow: boolean
-   * receiveWindowSizeLimit: Number,
+   * sessionControl: StreamControlable
    * sessionFlowController: FlowController,
-   * streamIdManager: StreamIdManager}} args
+   * streamIdManager: StreamIdManager,
+   * sendGroupId: bigint,
+   * sendOrder: number,
+   * }} args
    * */
   constructor({
     streamid,
     unidirectional,
+    // eslint-disable-next-line no-unused-vars
+    budget,
     incoming,
     capsuleParser,
-    session,
-    sendWindowOffset,
-    receiveWindowOffset,
-    shouldAutoTuneReceiveWindow,
-    receiveWindowSizeLimit,
+    sessionControl,
     sessionFlowController,
-    streamIdManager
+    streamIdManager,
+    sendGroupId,
+    sendOrder
   }) {
     const inner = this.#inner
     inner.streamid = streamid
     inner.capsuleParser = capsuleParser
-    capsuleParser.setParserTarget(streamid, this.#parserTarget)
-    inner.session = session
+    if (typeof streamid !== 'undefined') {
+      capsuleParser.setParserTarget(streamid, this.#parserTarget)
+    }
+    inner.sessionControl = sessionControl
+    if (typeof sessionControl === 'undefined') {
+      throw new Error('No sessionControl, you crazy person')
+    }
     inner.unidirectional = unidirectional
+    inner.incoming = incoming
 
     inner.flowController = new FlowController({
       tocontrol: this.#flowControlable,
-      sendWindowOffset,
-      receiveWindowOffset,
-      shouldAutoTuneReceiveWindow,
-      receiveWindowSizeLimit,
+      sendWindowOffset: unidirectional
+        ? capsuleParser.initialStreamSendWindowOffsetUnidi
+        : capsuleParser.initialStreamSendWindowOffsetBidi,
+      receiveWindowOffset: capsuleParser.initialStreamReceiveWindowOffset,
+      shouldAutoTuneReceiveWindow:
+        capsuleParser.streamShouldAutoTuneReceiveWindow,
+      receiveWindowSizeLimit: capsuleParser.streamReceiveWindowSizeLimit,
       sessionFlowController
     })
+    // inner.budget = budget
     inner.sessionFlowController = sessionFlowController
     inner.streamIdManager = streamIdManager
+    inner.sendGroupId = sendGroupId
+    inner.sendOrder = sendOrder
 
     if (unidirectional) {
       if (incoming) {
@@ -144,7 +178,23 @@ export class CapsuleWebTransportStream {
       }
     }
 
+    if (typeof streamid !== 'undefined') {
+      this.#maySendInitialParameters()
+      inner.readyProm.resolve()
+    }
+  }
+  /**
+   *
+   * @param {bigint} streamid
+   */
+  [kSetStreamId](streamid) {
+    const inner = this.#inner
+    if (typeof inner.streamid !== 'undefined')
+      throw new Error('Streamid is already set')
+    inner.streamid = streamid
+    inner.capsuleParser?.setParserTarget(streamid, this.#parserTarget)
     this.#maySendInitialParameters()
+    inner.readyProm.resolve()
   }
 
   #maySendInitialParameters() {
@@ -175,6 +225,14 @@ export class CapsuleWebTransportStream {
         inner.readerWaitTimeOut = true
         setTimeout(handleReaderWake, 0, inner)
       }
+    }
+
+    /**
+     *
+     * @param {bigint|null} sessionid
+     */
+    const receiveSessionId = function (sessionid) {
+      inner.onsessionid?.call(stream, sessionid)
     }
 
     /**
@@ -365,6 +423,7 @@ export class CapsuleWebTransportStream {
     return (inner.parserTarget = {
       drainWrites,
       recvData,
+      receiveSessionId,
       updateSendWindowOffset,
       onFin,
       onStreamSignal
@@ -585,18 +644,19 @@ export class CapsuleWebTransportStream {
     }
 
     function connected() {
-      return inner.session?.connected() || false
+      return inner.sessionControl?.connected ?? false
     }
 
     /**
      * @param {{ code: number, reason: string }} arg
      */
     function closeConnection({ code, reason }) {
-      if (inner.session) inner.session.closeConnection({ code, reason })
+      if (inner.sessionControl)
+        inner.sessionControl.closeConnection({ code, reason })
     }
 
     function smoothedRtt() {
-      if (inner.session) return inner.session.smoothedRtt()
+      if (inner.sessionControl) return Number(inner.sessionControl.smoothedRtt)
       return 333
     }
 
@@ -726,8 +786,17 @@ export class CapsuleWebTransportStream {
     }
     inner.stopReading = false
     inner.iteratorLocked = true
-    if (inner.incomingClosed) return // probably unidirectional or already closed
-    while (!inner.stopReading || inner.drainReads) {
+    if (
+      inner.incomingClosed &&
+      ((inner.unidirectional && !inner.incoming) ||
+        inner.incomdata.length === 0)
+    )
+      return // probably unidirectional or already closed
+    while (
+      !inner.stopReading ||
+      inner.drainReads ||
+      inner.incomdata.length > 0
+    ) {
       if (inner.incomdata.length > 0) {
         const deliverData = inner.incomdata
         inner.incomdata = []
@@ -781,6 +850,24 @@ export class CapsuleWebTransportStream {
     }
   }
 
+  /** @type {OnSessionIdCallback} */
+  get onsessionid() {
+    // @ts-ignore
+    return this.#inner.onsessionid
+  }
+
+  set onsessionid(fn) {
+    const inner = this.#inner
+    if (fn === undefined) {
+      inner.onsessionid = undefined
+    } else {
+      // validateFunction(fn, 'onsessionid')
+      // inner.onsessionid = FunctionPrototypeBind(fn, this);
+      // @ts-ignore
+      inner.onsessionid = fn.bind(this)
+    }
+  }
+
   /** @type {OnStreamErrorCallback} */
   get onstopsending() {
     // @ts-ignore
@@ -804,10 +891,22 @@ export class CapsuleWebTransportStream {
   }
 
   get pending() {
-    return false // we are never pending, by construction
+    return typeof this.#inner.streamid === 'undefined'
+  }
+
+  get id() {
+    return this.#inner.streamid
   }
 
   get ready() {
-    return Promise.resolve() // we are always ready
+    return this.#inner.readyProm.promise
+  }
+
+  get sendGroupId() {
+    return this.#inner.sendGroupId
+  }
+
+  get sendOrder() {
+    return this.#inner.sendOrder
   }
 }

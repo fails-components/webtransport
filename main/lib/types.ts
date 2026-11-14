@@ -5,9 +5,7 @@ import type {
   WebTransportSendStreamOptions,
   DatagramsReadableMode
 } from './dom'
-import type { IncomingHttpHeaders, Http2Stream, ServerHttp2Stream } from 'http2'
-import { ParserBase } from './http2/parserbase'
-import { CapsuleWebTransportSession } from './http2/session'
+import type { IncomingHttpHeaders, ServerHttp2Stream } from 'http2'
 import { HttpClient } from './client'
 import { SocketOptions } from 'dgram'
 import { MessageReceiver } from './http3quiche/stream.js'
@@ -91,6 +89,9 @@ export interface NativeWebTransportStream {
   readonly direction: 'bidi' | 'uni'
   readonly pending: boolean
   readonly ready: Promise<void>
+  readonly sendGroupId?: bigint
+  readonly sendOrder?: number
+  readonly id?: bigint | undefined
   updateSendOrderAndGroup: (args :{
     sendOrder: number,
     sendGroupId: bigint
@@ -99,7 +100,7 @@ export interface NativeWebTransportStream {
   resetStream: (code: number) => void
   onreset: OnStreamErrorCallback 
   onstopsending: OnStreamErrorCallback
-  onsessionid?: (this: NativeWebTransportStream, sessionid: bigint) => void
+  onsessionid?: (this: NativeWebTransportStream, sessionid: bigint|null) => void
   onheaders?: (this: NativeWebTransportStream, headers: object) => void
   destroy(option?:{reason?: string, code?: number} ) : void
 };
@@ -113,34 +114,34 @@ export type OnSessionIdCallback = (this: NativeWebTransportStream, error: any) =
  */
 export interface NativeWebTransportSessionStreamCreator {
   readonly stats: {
-  createdAt: bigint;
-  closingAt: bigint;
-  handshakeCompletedAt: bigint;
-  handshakeConfirmedAt: bigint;
-  bytesReceived: bigint;
-  bytesSent: bigint;
-  bidiInStreamCount: bigint;
-  bidiOutStreamCount: bigint;
-  uniInStreamCount: bigint;
-  uniOutStreamCount: bigint;
-  maxBytesInFlight: bigint;
-  bytesInFlight: bigint;
-  blockCount: bigint;
-  cwnd: bigint;
-  latestRtt: bigint;
-  minRtt: bigint;
-  rttVar: bigint;
-  smoothedRtt: bigint;
-  ssthresh: bigint;
-  datagramsReceived: bigint;
-  datagramsSent: bigint;
-  datagramsAcknowledged: bigint;
-  datagramsLost: bigint;
-  streamsIdleTimedOut: bigint;
+  // readonly createdAt: bigint;
+  // readonly closingAt: bigint;
+  // readonly handshakeCompletedAt: bigint;
+  // readonly handshakeConfirmedAt: bigint;
+  readonly bytesReceived: bigint;
+  readonly bytesSent: bigint;
+  // readonly bidiInStreamCount: bigint;
+  // readonly bidiOutStreamCount: bigint;
+  // readonly uniInStreamCount: bigint;
+  // readonly uniOutStreamCount: bigint;
+  // readonly maxBytesInFlight: bigint;
+  // readonly bytesInFlight: bigint;
+  // readonly blockCount: bigint;
+  // readonly cwnd: bigint;
+  // readonly latestRtt: bigint;
+  readonly minRtt: bigint;
+  readonly rttVar: bigint;
+  readonly smoothedRtt: bigint;
+  // readonly ssthresh: bigint;
+  // readonly datagramsReceived: bigint;
+  // readonly datagramsSent: bigint;
+  //readonly datagramsAcknowledged: bigint;
+  readonly datagramsLost: bigint;
+  // readonly streamsIdleTimedOut: bigint;
 };
-  readonly remoteTransportParams: {maxDatagramFrameSize: bigint}
+  readonly remoteTransportParams: {readonly maxDatagramFrameSize: bigint}
   onerror:  (this: NativeWebTransportSessionStreamCreator, error: any) => void;
-  ongoaway: (this: NativeWebTransportSessionStreamCreator, lastStreamId: bigint) => void;
+  ongoaway: (this: NativeWebTransportSessionStreamCreator) => void;
   onstream: (this: NativeWebTransportSessionStreamCreator, stream: NativeWebTransportStream ) => void
   ondatagram: (this: NativeWebTransportSessionStreamCreator, datagram: Uint8Array) => void
   createBidirectionalStream(option: {incremental: boolean,
@@ -149,14 +150,14 @@ export interface NativeWebTransportSessionStreamCreator {
     sendGroupId: bigint,
     sendOrder: number
     webtransportSession: NativeWebTransportSessionControl
-  }) : NativeWebTransportStream
+  }) : Promise<NativeWebTransportStream>
   createUnidirectionalStream(option: {incremental: boolean,
     waitUntilAvailable: boolean,
     budget: number,
     sendGroupId: bigint,
     sendOrder: number
     webtransportSession: NativeWebTransportSessionControl
-  }) : NativeWebTransportStream
+  }) : Promise<NativeWebTransportStream>
   sendDatagram(datagram: Uint8Array) : Promise<bigint>
   close(option?: {
     code?: bigint | number
@@ -350,7 +351,7 @@ export type HttpWTClientSessionVisitorEvent = HttpWTClientSessionVisitorEventLeg
 export interface HttpClientEventHandler {
   onClientConnected: (evt: ClientConnectedEvent) => void
   onClientWebTransportSupport: (evt: ClientWebtransportSupportEvent) => void
-  onHttpWTSessionVisitor: (evt: HttpWTSessionVisitorEvent) => void
+  onHttpWTSessionVisitor: (evt: HttpWTClientSessionVisitorEvent|undefined) => void
 }
 
 export interface HttpWTServerSessionVisitorEventLegacy
@@ -489,28 +490,6 @@ export interface Logger {
   (formatter: any, ...args: any[]): void
   error: (formatter: any, ...args: any[]) => void
   trace: (formatter: any, ...args: any[]) => void
-}
-
-export type CreateParserFunction = (
-  nativesession: CapsuleWebTransportSession
-) => ParserBase
-
-export interface ParserInit {
-  isclient: boolean
-  nativesession: any
-  initialStreamSendWindowOffsetBidi: number
-  initialStreamSendWindowOffsetUnidi: number
-  initialStreamReceiveWindowOffset: number
-  streamShouldAutoTuneReceiveWindow: boolean
-  streamReceiveWindowSizeLimit: number
-}
-
-export interface ParserHttp2Init extends ParserInit {
-  stream: Http2Stream
-}
-
-export interface ParserWebsocketInit extends ParserInit {
-  ws: WebSocket
 }
 
 export interface ReadDataInt {

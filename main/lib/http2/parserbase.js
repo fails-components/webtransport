@@ -5,9 +5,23 @@ import { PriorityScheduler } from './priorityscheduler.js'
 /**
  *
  * @typedef {import('./stream.js').CapsuleStreamHandler} CapsuleStreamHandler
+ * @typedef {import('./session.js').CapsParserControlable} CapsParserControlable
+ * @typedef {import('./session.js').CapsuleWebTransportSession} CapsuleWebTransportSession
  */
 const pid = typeof process !== 'undefined' ? process.pid : 0
 const log = logger(`webtransport:parserbase(${pid})`)
+
+/**
+ * @typedef {Object} ParserInit
+ * @property {boolean} isclient
+ * @property {CapsuleWebTransportSession} nativesession
+ * @property {CapsParserControlable} sessionControlable
+ * @property {number} initialStreamSendWindowOffsetBidi
+ * @property {number} initialStreamSendWindowOffsetUnidi
+ * @property {number} initialStreamReceiveWindowOffset
+ * @property {boolean} streamShouldAutoTuneReceiveWindow
+ * @property {number} streamReceiveWindowSizeLimit
+ */
 
 export class ParserBase {
   static PADDING = 0x190b4d38
@@ -28,10 +42,11 @@ export class ParserBase {
   static DATAGRAM = 0x00
 
   /**
-   * @param {import('../types').ParserInit} arg
+   * @param {ParserInit} arg
    */
   constructor({
     nativesession,
+    sessionControlable,
     isclient,
     initialStreamSendWindowOffsetBidi,
     initialStreamSendWindowOffsetUnidi,
@@ -40,6 +55,7 @@ export class ParserBase {
     streamReceiveWindowSizeLimit
   }) {
     this.session = nativesession
+    this.sessionControlable = sessionControlable
     this.isclient = isclient
     /** @type {boolean} */
     this.blocked = false
@@ -110,14 +126,14 @@ export class ParserBase {
     const incoming = this.isclient ? !!(streamid & 0x1n) : !(streamid & 0x1n)
     const streamIdManager =
       streamid & 0x2n
-        ? this.session.streamIdMngrUni
-        : this.session.streamIdMngrBi
+        ? this.sessionControlable.streamIdMngrUni
+        : this.sessionControlable.streamIdMngrBi
     if (incoming) {
       // only check incoming streams
       const res = streamIdManager.maybeIncreaseLargestPeerStreamId(streamid)
-      if (res.error) {
+      if (typeof res === 'object' && 'error' in res) {
         // ok someone overstayed its welcome
-        this.session.closeConnection({
+        this.sessionControlable.closeConnection({
           code: 20, // QUIC_STREAM_STREAM_CREATION_ERROR , // probably the right one...
           reason: res.error
         })
@@ -130,26 +146,31 @@ export class ParserBase {
       streamid,
       unidirectional,
       incoming,
-      session: this.session,
+      sessionControl: this.sessionControlable.streamSessionControl,
       capsuleParser: this,
-      sendWindowOffset: unidirectional
+      budget: unidirectional
         ? this.initialStreamSendWindowOffsetUnidi
         : this.initialStreamSendWindowOffsetBidi,
-      receiveWindowOffset: this.initialStreamReceiveWindowOffset,
-      shouldAutoTuneReceiveWindow: this.streamShouldAutoTuneReceiveWindow,
-      receiveWindowSizeLimit: this.streamReceiveWindowSizeLimit,
-      sessionFlowController: this.session.flowController,
-      streamIdManager
-    })
-    this.scheduler.Register(streamid, priority)
-    this.session.jsobj.onStream({
-      bidirectional: !(streamid & 0x2n),
-      incoming,
-      stream,
+      sessionFlowController: this.sessionControlable.flowController,
+      streamIdManager,
       sendGroupId: priority.sendGroupId,
       sendOrder: priority.sendOrder
     })
-    return this.wtstreams.get(streamid)
+    return this.registerNewStream(stream, streamid, priority, incoming)
+  }
+
+  /**
+   * @param {CapsuleWebTransportStream} stream
+   * @param {bigint} streamid
+   * @param {{sendOrder: number,sendGroupId: bigint}} priority
+   * @param {boolean} incoming
+   */
+  registerNewStream(stream, streamid, priority, incoming) {
+    this.scheduler.Register(streamid, priority)
+    this.sessionControlable.receiveNewStream(stream)
+    const parsertarget = this.wtstreams.get(streamid)
+    if (incoming) parsertarget?.receiveSessionId(null)
+    return parsertarget
   }
 
   /**
@@ -189,7 +210,7 @@ export class ParserBase {
   onMaxData(val) {
     if (
       typeof val !== 'undefined' &&
-      this.session.flowController.updateSendWindowOffset(val)
+      this.sessionControlable.flowController.updateSendWindowOffset(val)
     ) {
       let pending = false
       this.wtstreams.forEach((stream, streamid) => {
@@ -219,8 +240,10 @@ export class ParserBase {
    */
   onMaxStreamUniDi(maxOpenStreams) {
     if (typeof maxOpenStreams === 'undefined') return
-    this.session.streamIdMngrUni.maybeAllowNewOutgoingStreams(maxOpenStreams)
-    this.session.trySendingUnidirectionalStreams()
+    this.sessionControlable.streamIdMngrUni.maybeAllowNewOutgoingStreams(
+      maxOpenStreams
+    )
+    this.sessionControlable.trySendingUnidirectionalStreams()
   }
 
   /**
@@ -228,8 +251,10 @@ export class ParserBase {
    */
   onMaxStreamBiDi(maxOpenStreams) {
     if (typeof maxOpenStreams === 'undefined') return
-    this.session.streamIdMngrBi.maybeAllowNewOutgoingStreams(maxOpenStreams)
-    this.session.trySendingBidirectionalStreams()
+    this.sessionControlable.streamIdMngrBi.maybeAllowNewOutgoingStreams(
+      maxOpenStreams
+    )
+    this.sessionControlable.trySendingBidirectionalStreams()
   }
 
   /**
@@ -255,9 +280,10 @@ export class ParserBase {
    */
   onStreamsBlockedBidi(maxstreams) {
     if (typeof maxstreams === 'undefined') return
-    const ret = this.session.streamIdMngrBi.onStreamsBlockedFrame(maxstreams)
+    const ret =
+      this.sessionControlable.streamIdMngrBi.onStreamsBlockedFrame(maxstreams)
     if (ret.error) {
-      this.session.closeConnection({
+      this.sessionControlable.closeConnection({
         code: 105, // QUIC_STREAMS_BLOCKED_DATA , // probably the right one...
         reason: ret.error
       })
@@ -269,9 +295,10 @@ export class ParserBase {
    */
   onStreamsBlockedUnidi(maxstreams) {
     if (typeof maxstreams === 'undefined') return
-    const ret = this.session.streamIdMngrUni.onStreamsBlockedFrame(maxstreams)
+    const ret =
+      this.sessionControlable.streamIdMngrUni.onStreamsBlockedFrame(maxstreams)
     if (ret.error) {
-      this.session.closeConnection({
+      this.sessionControlable.closeConnection({
         code: 105, // QUIC_STREAMS_BLOCKED_DATA , // probably the right one...
         reason: ret.error
       })
@@ -282,22 +309,15 @@ export class ParserBase {
    * @param {{code:  number, reason: string}} opts
    */
   onCloseWebTransportSession({ code, reason }) {
-    if (
-      !(
-        this.session.jsobj.state === 'failed' ||
-        this.session.jsobj.state === 'closed'
-      )
-    ) {
-      this.session.jsobj.onClose({
-        errorcode: code,
-        error: reason
-      })
-    }
+    this.sessionControlable.receiveClose({
+      code,
+      reason
+    })
     this.closeHttp2Stream(code) // is this necessary
   }
 
   onDrain() {
-    this.session.jsobj.onGoAwayReceived()
+    this.sessionControlable.receivedGoaway()
   }
 
   /**

@@ -43,8 +43,8 @@ export class HttpClient {
     /** @type {{ resolve: (value?: any) => void, reject: (err?: Error) => void} | null | undefined} */
     this.quicconnectedProm = null
 
-    this._quicConnectTimeout = args.quicConnectTimeout ?? 8000
-    this._webTransportConnectTimeout = args.webTransportConnectTimeout ?? 2000
+    this._quicConnectTimeout = args.quicConnectTimeout ?? 3000
+    this._webTransportConnectTimeout = args.webTransportConnectTimeout ?? 1000
   }
 
   /**
@@ -154,11 +154,12 @@ export class HttpClient {
   }
 
   /**
-   * @param {HttpWTClientSessionVisitorEvent|{}} args
+   * @param {HttpWTClientSessionVisitorEvent|undefined} args
    */
   onHttpWTSessionVisitor(args) {
     // create Http Visitor
     if (
+      args &&
       'session' in args &&
       args.session &&
       this.sessionProm &&
@@ -177,6 +178,7 @@ export class HttpClient {
       this.sessionProm.resolve(args.session)
       delete this.sessionProm
     } else if (
+      args &&
       'control' in args &&
       'creator' in args &&
       args.control &&
@@ -195,7 +197,7 @@ export class HttpClient {
       })
       const sessobj = this.sessionobjint
       process.nextTick(() => {
-        sessobj.onReady({})
+        sessobj.onReady()
       })
       this.sessionobjint.closeHook = this.closeHookSession
       delete this.sessionobjint
@@ -208,6 +210,7 @@ export class HttpClient {
           error: 'Session stream errored'
         })
     }
+    return this.sessionobjint
   }
 
   /**

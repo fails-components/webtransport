@@ -13,6 +13,11 @@ import { logger } from '../../utils.js'
 
 const log = logger(`webtransport:http2:browserparser`)
 
+/** @typedef {import('../parserbase.js').ParserInit} ParserInit */
+/**
+ * @typedef {ParserInit & { ws: WebSocket }} ParserWebsocketInit
+ */
+
 export class BrowserParser extends ParserBase {
   static WS_CONTINUE = 0x0
   static WS_TEXT = 0x1
@@ -21,11 +26,12 @@ export class BrowserParser extends ParserBase {
   static WS_PING = 0x9
   static WS_PONG = 0xa
   /**
-   * @param {import('../../types.js').ParserWebsocketInit} stream
+   * @param {ParserWebsocketInit} opts
    */
   constructor({
     ws,
     nativesession,
+    sessionControlable,
     isclient,
     initialStreamSendWindowOffsetUnidi,
     initialStreamSendWindowOffsetBidi,
@@ -35,6 +41,7 @@ export class BrowserParser extends ParserBase {
   }) {
     super({
       nativesession,
+      sessionControlable,
       isclient,
       initialStreamSendWindowOffsetUnidi,
       initialStreamSendWindowOffsetBidi,
@@ -191,14 +198,12 @@ export class BrowserParser extends ParserBase {
         this.onDrain()
         break
       case ParserBase.DATAGRAM:
-        this.session.jsobj.onDatagramReceived({
-          datagram:
-            getUint8ArrayfromBuffer(
-              bufferstate,
-              offsetend - bufferstate.offset
-            ) || new Uint8Array(0)
-        })
-
+        this.sessionControlable.receiveDatagram(
+          getUint8ArrayfromBuffer(
+            bufferstate,
+            offsetend - bufferstate.offset
+          ) || new Uint8Array(0)
+        )
         break
       default:
       // do nothing

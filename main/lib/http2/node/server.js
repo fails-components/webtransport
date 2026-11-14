@@ -7,6 +7,10 @@ import { webcrypto as crypto } from 'crypto'
 import { supportedVersions } from '../websocketcommon.js'
 import { clearInterval } from 'node:timers'
 
+/**
+ * @typedef {import('../session.js').CapsParserControlable} CapsParserControlable
+ */
+
 export class Http2WebTransportServer {
   /**
    * @param {import('../../types.js').NativeServerOptions} args
@@ -160,41 +164,45 @@ export class Http2WebTransportServer {
         } else if (this.paths[path]) {
           this.sendHttp1Headers({ stream, header, protocol: websocketProt })
             .then(() => {
+              const capsuleSession = new CapsuleWebTransportSession({
+                stream,
+                isclient: false,
+                createParser: (
+                  /** @type {CapsuleWebTransportSession} */ nativesession,
+                  /** @type  {CapsParserControlable} */ sessionControlable
+                ) => {
+                  const parse = (this.capsParser = new WebSocketParser({
+                    stream,
+                    nativesession,
+                    sessionControlable,
+                    isclient: false,
+                    initialStreamSendWindowOffsetBidi: 0,
+                    initialStreamSendWindowOffsetUnidi: 0,
+                    initialStreamReceiveWindowOffset:
+                      this.initialStreamFlowControlWindow,
+                    streamShouldAutoTuneReceiveWindow:
+                      this.streamShouldAutoTuneReceiveWindow,
+                    streamReceiveWindowSizeLimit:
+                      this.streamFlowControlWindowSizeLimit
+                  }))
+                  if (head.byteLength > 0) parse.parseData(head)
+                  return parse
+                },
+                initialBidirectionalSendStreams: 0,
+                initialBidirectionalReceiveStreams:
+                  this.initialBidirectionalStreams,
+                initialUnidirectionalSendStreams: 0,
+                initialUnidirectionalReceiveStreams:
+                  this.initialUnidirectionalStreams,
+                sendWindowOffset: 0,
+                receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
+                shouldAutoTuneReceiveWindow:
+                  this.sessionShouldAutoTuneReceiveWindow,
+                receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
+              })
               const retObj = {
-                session: new CapsuleWebTransportSession({
-                  stream,
-                  isclient: false,
-                  createParser: (
-                    /** @type {CapsuleWebTransportSession} */ nativesession
-                  ) => {
-                    const parse = (this.capsParser = new WebSocketParser({
-                      stream,
-                      nativesession,
-                      isclient: false,
-                      initialStreamSendWindowOffsetBidi: 0,
-                      initialStreamSendWindowOffsetUnidi: 0,
-                      initialStreamReceiveWindowOffset:
-                        this.initialStreamFlowControlWindow,
-                      streamShouldAutoTuneReceiveWindow:
-                        this.streamShouldAutoTuneReceiveWindow,
-                      streamReceiveWindowSizeLimit:
-                        this.streamFlowControlWindowSizeLimit
-                    }))
-                    if (head.byteLength > 0) parse.parseData(head)
-                    return parse
-                  },
-                  initialBidirectionalSendStreams: 0,
-                  initialBidirectionalReceiveStreams:
-                    this.initialBidirectionalStreams,
-                  initialUnidirectionalSendStreams: 0,
-                  initialUnidirectionalReceiveStreams:
-                    this.initialUnidirectionalStreams,
-                  sendWindowOffset: 0,
-                  receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
-                  shouldAutoTuneReceiveWindow:
-                    this.sessionShouldAutoTuneReceiveWindow,
-                  receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
-                }),
+                control: capsuleSession,
+                creator: capsuleSession,
                 path,
                 header,
                 peerAddress: stream.remoteAddress + ':' + stream.remotePort,
@@ -314,67 +322,69 @@ export class Http2WebTransportServer {
           0x2b61: remoteSessionFlowControlWindow = undefined
           // @ts-ignore
         } = stream?.session?.remoteSettings?.customSettings || {}
+        const capsuleSession = new CapsuleWebTransportSession({
+          stream,
+          isclient: false,
+          createParser: (
+            /** @type {CapsuleWebTransportSession} */ nativesession,
+            /** @type  {CapsParserControlable} */ sessionControlable
+          ) => {
+            if (!websocketProt) {
+              return new Http2CapsuleParser({
+                stream,
+                nativesession,
+                sessionControlable,
+                isclient: false,
+                initialStreamSendWindowOffsetBidi:
+                  remoteBidirectionalStreamFlowControlWindow ||
+                  this.initialStreamFlowControlWindow,
+                initialStreamSendWindowOffsetUnidi:
+                  remoteUnidirectionalStreamFlowControlWindow ||
+                  this.initialStreamFlowControlWindow,
+                initialStreamReceiveWindowOffset:
+                  this.initialStreamFlowControlWindow,
+                streamShouldAutoTuneReceiveWindow:
+                  this.streamShouldAutoTuneReceiveWindow,
+                streamReceiveWindowSizeLimit:
+                  this.streamFlowControlWindowSizeLimit
+              })
+            } else {
+              return (this.capsParser = new WebSocketParser({
+                stream,
+                nativesession,
+                sessionControlable,
+                isclient: false,
+                initialStreamSendWindowOffsetBidi: 0,
+                initialStreamSendWindowOffsetUnidi: 0,
+                initialStreamReceiveWindowOffset:
+                  this.initialStreamFlowControlWindow,
+                streamShouldAutoTuneReceiveWindow:
+                  this.streamShouldAutoTuneReceiveWindow,
+                streamReceiveWindowSizeLimit:
+                  this.streamFlowControlWindowSizeLimit
+              }))
+            }
+          },
+          initialBidirectionalSendStreams: websocketProt
+            ? 0
+            : remoteBidirectionalStreams || this.initialBidirectionalStreams,
+          initialBidirectionalReceiveStreams: this.initialBidirectionalStreams,
+          initialUnidirectionalSendStreams: websocketProt
+            ? 0
+            : remoteUnidirectionalStreams || this.initialUnidirectionalStreams,
+          initialUnidirectionalReceiveStreams:
+            this.initialUnidirectionalStreams,
+          sendWindowOffset: !websocketProt
+            ? remoteSessionFlowControlWindow ||
+              this.sessionFlowControlWindowSizeLimit
+            : 0, // TODO, once supported by node, use initial settings
+          receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
+          shouldAutoTuneReceiveWindow: this.sessionShouldAutoTuneReceiveWindow,
+          receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
+        })
         const retObj = {
-          session: new CapsuleWebTransportSession({
-            stream,
-            isclient: false,
-            createParser: (
-              /** @type {CapsuleWebTransportSession} */ nativesession
-            ) => {
-              if (!websocketProt) {
-                return new Http2CapsuleParser({
-                  stream,
-                  nativesession,
-                  isclient: false,
-                  initialStreamSendWindowOffsetBidi:
-                    remoteBidirectionalStreamFlowControlWindow ||
-                    this.initialStreamFlowControlWindow,
-                  initialStreamSendWindowOffsetUnidi:
-                    remoteUnidirectionalStreamFlowControlWindow ||
-                    this.initialStreamFlowControlWindow,
-                  initialStreamReceiveWindowOffset:
-                    this.initialStreamFlowControlWindow,
-                  streamShouldAutoTuneReceiveWindow:
-                    this.streamShouldAutoTuneReceiveWindow,
-                  streamReceiveWindowSizeLimit:
-                    this.streamFlowControlWindowSizeLimit
-                })
-              } else {
-                return (this.capsParser = new WebSocketParser({
-                  stream,
-                  nativesession,
-                  isclient: false,
-                  initialStreamSendWindowOffsetBidi: 0,
-                  initialStreamSendWindowOffsetUnidi: 0,
-                  initialStreamReceiveWindowOffset:
-                    this.initialStreamFlowControlWindow,
-                  streamShouldAutoTuneReceiveWindow:
-                    this.streamShouldAutoTuneReceiveWindow,
-                  streamReceiveWindowSizeLimit:
-                    this.streamFlowControlWindowSizeLimit
-                }))
-              }
-            },
-            initialBidirectionalSendStreams: websocketProt
-              ? 0
-              : remoteBidirectionalStreams || this.initialBidirectionalStreams,
-            initialBidirectionalReceiveStreams:
-              this.initialBidirectionalStreams,
-            initialUnidirectionalSendStreams: websocketProt
-              ? 0
-              : remoteUnidirectionalStreams ||
-                this.initialUnidirectionalStreams,
-            initialUnidirectionalReceiveStreams:
-              this.initialUnidirectionalStreams,
-            sendWindowOffset: !websocketProt
-              ? remoteSessionFlowControlWindow ||
-                this.sessionFlowControlWindowSizeLimit
-              : 0, // TODO, once supported by node, use initial settings
-            receiveWindowOffset: this.sessionFlowControlWindowSizeLimit,
-            shouldAutoTuneReceiveWindow:
-              this.sessionShouldAutoTuneReceiveWindow,
-            receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
-          }),
+          creator: capsuleSession,
+          control: capsuleSession,
           path,
           header,
           peerAddress: socket?.remoteAddress + ':' + socket?.remotePort,
@@ -541,41 +551,45 @@ export class Http2WebTransportServer {
               transportPrivate.websocketProt
         })
           .then(() => {
+            const capsuleSession = new CapsuleWebTransportSession({
+              stream,
+              isclient: false,
+              createParser: (
+                /** @type {CapsuleWebTransportSession} */ nativesession,
+                /** @type  {CapsParserControlable} */ sessionControlable
+              ) => {
+                const parse = (this.capsParser = new WebSocketParser({
+                  stream,
+                  nativesession,
+                  sessionControlable,
+                  isclient: false,
+                  initialStreamSendWindowOffsetBidi: 0,
+                  initialStreamSendWindowOffsetUnidi: 0,
+                  initialStreamReceiveWindowOffset:
+                    this.initialStreamFlowControlWindow,
+                  streamShouldAutoTuneReceiveWindow:
+                    this.streamShouldAutoTuneReceiveWindow,
+                  streamReceiveWindowSizeLimit:
+                    this.streamFlowControlWindowSizeLimit
+                }))
+                if (head && head.byteLength > 0) parse.parseData([head])
+                return parse
+              },
+              initialBidirectionalSendStreams: 0,
+              initialBidirectionalReceiveStreams:
+                this.initialBidirectionalStreams,
+              initialUnidirectionalSendStreams: 0,
+              initialUnidirectionalReceiveStreams:
+                this.initialUnidirectionalStreams,
+              sendWindowOffset: 0,
+              receiveWindowOffset: this.initialSessionFlowControlWindow,
+              shouldAutoTuneReceiveWindow:
+                this.sessionShouldAutoTuneReceiveWindow,
+              receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
+            })
             const retObj = {
-              session: new CapsuleWebTransportSession({
-                stream,
-                isclient: false,
-                createParser: (
-                  /** @type {CapsuleWebTransportSession} */ nativesession
-                ) => {
-                  const parse = (this.capsParser = new WebSocketParser({
-                    stream,
-                    nativesession,
-                    isclient: false,
-                    initialStreamSendWindowOffsetBidi: 0,
-                    initialStreamSendWindowOffsetUnidi: 0,
-                    initialStreamReceiveWindowOffset:
-                      this.initialStreamFlowControlWindow,
-                    streamShouldAutoTuneReceiveWindow:
-                      this.streamShouldAutoTuneReceiveWindow,
-                    streamReceiveWindowSizeLimit:
-                      this.streamFlowControlWindowSizeLimit
-                  }))
-                  if (head && head.byteLength > 0) parse.parseData([head])
-                  return parse
-                },
-                initialBidirectionalSendStreams: 0,
-                initialBidirectionalReceiveStreams:
-                  this.initialBidirectionalStreams,
-                initialUnidirectionalSendStreams: 0,
-                initialUnidirectionalReceiveStreams:
-                  this.initialUnidirectionalStreams,
-                sendWindowOffset: 0,
-                receiveWindowOffset: this.initialSessionFlowControlWindow,
-                shouldAutoTuneReceiveWindow:
-                  this.sessionShouldAutoTuneReceiveWindow,
-                receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
-              }),
+              creator: capsuleSession,
+              control: capsuleSession,
               path,
               header,
               peerAddress,
@@ -611,70 +625,72 @@ export class Http2WebTransportServer {
           0x2b61: remoteSessionFlowControlWindow = undefined
           // @ts-ignore
         } = stream?.session?.remoteSettings?.customSettings || {}
+        const capsuleSession = new CapsuleWebTransportSession({
+          stream,
+          isclient: false,
+          createParser: (
+            /** @type {CapsuleWebTransportSession} */ nativesession,
+            /** @type  {CapsParserControlable} */ sessionControlable
+          ) => {
+            if (protocol !== 'websocket') {
+              return new Http2CapsuleParser({
+                stream,
+                nativesession,
+                sessionControlable,
+                isclient: false,
+                initialStreamSendWindowOffsetBidi:
+                  remoteBidirectionalStreamFlowControlWindow ||
+                  this.initialStreamFlowControlWindow,
+                initialStreamSendWindowOffsetUnidi:
+                  remoteUnidirectionalStreamFlowControlWindow ||
+                  this.initialStreamFlowControlWindow,
+                initialStreamReceiveWindowOffset:
+                  this.initialStreamFlowControlWindow,
+                streamShouldAutoTuneReceiveWindow:
+                  this.streamShouldAutoTuneReceiveWindow,
+                streamReceiveWindowSizeLimit:
+                  this.streamFlowControlWindowSizeLimit
+              })
+            } else {
+              return (this.capsParser = new WebSocketParser({
+                stream,
+                nativesession,
+                sessionControlable,
+                isclient: false,
+                initialStreamSendWindowOffsetBidi: 0,
+                initialStreamSendWindowOffsetUnidi: 0,
+                initialStreamReceiveWindowOffset:
+                  this.initialStreamFlowControlWindow,
+                streamShouldAutoTuneReceiveWindow:
+                  this.streamShouldAutoTuneReceiveWindow,
+                streamReceiveWindowSizeLimit:
+                  this.streamFlowControlWindowSizeLimit
+              }))
+            }
+          },
+          initialBidirectionalSendStreams:
+            protocol !== 'websocket'
+              ? remoteBidirectionalStreams || this.initialBidirectionalStreams
+              : 0, // TODO, once supported by node, use initial settings
+          initialBidirectionalReceiveStreams: this.initialBidirectionalStreams,
+          initialUnidirectionalSendStreams:
+            protocol !== 'websocket'
+              ? remoteUnidirectionalStreams || this.initialUnidirectionalStreams
+              : 0, // TODO, once supported by node, use initial settings
+          initialUnidirectionalReceiveStreams:
+            this.initialUnidirectionalStreams,
+          sendWindowOffset:
+            protocol !== 'websocket'
+              ? remoteSessionFlowControlWindow ||
+                this.sessionFlowControlWindowSizeLimit
+              : 0, // TODO, once supported by node, use initial settings
+          receiveWindowOffset: this.initialSessionFlowControlWindow,
+          shouldAutoTuneReceiveWindow: this.sessionShouldAutoTuneReceiveWindow,
+          receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
+        })
         const retObj = {
-          session: new CapsuleWebTransportSession({
-            stream,
-            isclient: false,
-            createParser: (
-              /** @type {CapsuleWebTransportSession} */ nativesession
-            ) => {
-              if (protocol !== 'websocket') {
-                return new Http2CapsuleParser({
-                  stream,
-                  nativesession,
-                  isclient: false,
-                  initialStreamSendWindowOffsetBidi:
-                    remoteBidirectionalStreamFlowControlWindow ||
-                    this.initialStreamFlowControlWindow,
-                  initialStreamSendWindowOffsetUnidi:
-                    remoteUnidirectionalStreamFlowControlWindow ||
-                    this.initialStreamFlowControlWindow,
-                  initialStreamReceiveWindowOffset:
-                    this.initialStreamFlowControlWindow,
-                  streamShouldAutoTuneReceiveWindow:
-                    this.streamShouldAutoTuneReceiveWindow,
-                  streamReceiveWindowSizeLimit:
-                    this.streamFlowControlWindowSizeLimit
-                })
-              } else {
-                return (this.capsParser = new WebSocketParser({
-                  stream,
-                  nativesession,
-                  isclient: false,
-                  initialStreamSendWindowOffsetBidi: 0,
-                  initialStreamSendWindowOffsetUnidi: 0,
-                  initialStreamReceiveWindowOffset:
-                    this.initialStreamFlowControlWindow,
-                  streamShouldAutoTuneReceiveWindow:
-                    this.streamShouldAutoTuneReceiveWindow,
-                  streamReceiveWindowSizeLimit:
-                    this.streamFlowControlWindowSizeLimit
-                }))
-              }
-            },
-            initialBidirectionalSendStreams:
-              protocol !== 'websocket'
-                ? remoteBidirectionalStreams || this.initialBidirectionalStreams
-                : 0, // TODO, once supported by node, use initial settings
-            initialBidirectionalReceiveStreams:
-              this.initialBidirectionalStreams,
-            initialUnidirectionalSendStreams:
-              protocol !== 'websocket'
-                ? remoteUnidirectionalStreams ||
-                  this.initialUnidirectionalStreams
-                : 0, // TODO, once supported by node, use initial settings
-            initialUnidirectionalReceiveStreams:
-              this.initialUnidirectionalStreams,
-            sendWindowOffset:
-              protocol !== 'websocket'
-                ? remoteSessionFlowControlWindow ||
-                  this.sessionFlowControlWindowSizeLimit
-                : 0, // TODO, once supported by node, use initial settings
-            receiveWindowOffset: this.initialSessionFlowControlWindow,
-            shouldAutoTuneReceiveWindow:
-              this.sessionShouldAutoTuneReceiveWindow,
-            receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit
-          }),
+          control: capsuleSession,
+          creator: capsuleSession,
           path,
           header,
           sendBudget: this.streamFlowControlWindowSizeLimit,

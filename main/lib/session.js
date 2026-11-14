@@ -412,7 +412,6 @@ export class HttpWTSession {
       // install various handlers
       const session = this
 
-
       creator.onerror = () => {
         if (session.state === 'connecting') {
           // TODO
@@ -423,8 +422,8 @@ export class HttpWTSession {
             })
         }
       }
-      creator.ongoaway = (lastStreamId) => {
-        session.onGoAwayReceived({ lastStreamId })
+      creator.ongoaway = () => {
+        session.onGoAwayReceived()
       }
       creator.onstream = (stream) => {
         stream.onheaders = () => {
@@ -447,8 +446,8 @@ export class HttpWTSession {
                   bidirectional: stream.direction !== 'uni',
                   incoming: true,
                   stream: stream,
-                  sendGroupId: 0n,
-                  sendOrder: 0
+                  sendGroupId: stream.sendGroupId ?? 0n,
+                  sendOrder: stream.sendOrder ?? 0
                 })
               })
             } catch (error) {
@@ -468,10 +467,12 @@ export class HttpWTSession {
        *
        * */
       control.onwtsessionclose = (code, reason) => {
-        session.onClose({
-          errorcode: code,
-          error: reason ?? ''
-        })
+        if (!(this.state === 'failed' || this.state === 'closed')) {
+          session.onClose({
+            errorcode: code,
+            error: reason ?? ''
+          })
+        }
       }
       // @ts-ignore
       if (control !== creator)
@@ -727,7 +728,8 @@ export class HttpWTSession {
         // @ts-ignore
         sendGroupId: sendGroup?._sendGroupId || 0n,
         sendOrder: sendOrder ?? 0,
-        webtransportSession: this.sessionControl /* that is the session stream */
+        webtransportSession:
+          this.sessionControl /* that is the session stream */
       })
       if (stream.pending) {
         await stream.ready
@@ -845,7 +847,8 @@ export class HttpWTSession {
         // @ts-ignore
         sendGroupId: sendGroup?._sendGroupId || 0n,
         sendOrder: sendOrder ?? 0,
-        webtransportSession: this.sessionControl /* that is the session stream */
+        webtransportSession:
+          this.sessionControl /* that is the session stream */
       })
       if (stream.pending) {
         await stream.ready
@@ -984,11 +987,8 @@ export class HttpWTSession {
     this._sendGroupIndex.set(_sendGroupId, sendGroup)
     return sendGroup
   }
-  /**
-   * @param {{protocol?: string}} arg
-   **/
-  onReady({ protocol }) {
-    if (protocol) this._selectedProtocol = protocol
+
+  onReady() {
     this.state = 'connected'
     if (!this.reliable) this.reliability = 'supports-unreliable'
     else this.reliability = 'reliable-only'
@@ -1201,11 +1201,8 @@ export class HttpWTSession {
     }
   }
 
-  /**
-   * @param {GoawayReceivedEvent} args
-   */
   // eslint-disable-next-line no-unused-vars
-  onGoAwayReceived(args) {
+  onGoAwayReceived() {
     if (this.state === 'closed' || this.state === 'failed') return // no sense to drain with no connection
     if (this.drainingResolve) this.drainingResolve(undefined)
     this.state = 'draining'

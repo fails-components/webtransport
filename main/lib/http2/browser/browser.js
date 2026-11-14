@@ -5,6 +5,10 @@ import { logger } from '../../utils.js'
 
 const log = logger(`webtransport:http2:browser`)
 
+/**
+ * @typedef {import('../session.js').CapsParserControlable} CapsParserControlable
+ */
+
 export class Http2WebTransportBrowser {
   /**
    * @param {import('../../types.js').NativeClientOptions} args
@@ -130,115 +134,123 @@ export class Http2WebTransportBrowser {
   // eslint-disable-next-line no-unused-vars
   openWTSession(path) {
     if (!this.clientInt) throw new Error('clientInt not present')
-    let sessobj
+
+    const capsuleSession = new CapsuleWebTransportSession({
+      ws: this.clientInt,
+      isclient: true,
+      createParser: (
+        /** @type {CapsuleWebTransportSession} */ nativesession,
+        /** @type  {CapsParserControlable} */ sessionControlable
+      ) => {
+        const session = new BrowserParser({
+          ws: this.clientInt,
+          nativesession,
+          sessionControlable,
+          isclient: true,
+          initialStreamSendWindowOffsetBidi: 0,
+          initialStreamSendWindowOffsetUnidi: 0,
+          initialStreamReceiveWindowOffset: this.initialStreamFlowControlWindow,
+          streamShouldAutoTuneReceiveWindow:
+            this.streamShouldAutoTuneReceiveWindow,
+          streamReceiveWindowSizeLimit: this.streamFlowControlWindowSizeLimit
+        })
+        if (this.clientInt)
+          this.clientInt.addEventListener('close', (event) => {
+            let code = event.code
+            let error = 'Session WebSocket closed'
+            if (event.reason) {
+              let tokens = event.reason.split(':')
+              if (tokens.length > 1) {
+                code = parseInt(tokens[0])
+                tokens = tokens.slice(1)
+              }
+              error = tokens.join(':')
+            } else {
+              switch (code) {
+                case 1001:
+                  error = 'Going Away'
+                  break
+                case 1002:
+                  error = 'Protocol error'
+                  break
+                case 1003:
+                  error = 'Unsupported data'
+                  break
+                case 1004:
+                  error = 'Reserved'
+                  break
+                case 1005:
+                  error = 'No Status Rcvd'
+                  break
+                case 1006:
+                  error = 'Abnormal Closure'
+                  break
+                case 1007:
+                  error = 'Invalid frame payload data'
+                  break
+                case 1008:
+                  error = 'Policy Violation'
+                  break
+                case 1009:
+                  error = 'Message Too Big'
+                  break
+                case 1010:
+                  error = 'Mandatory Ext.'
+                  break
+                case 1011:
+                  error = 'Internal error'
+                  break
+                case 1012:
+                  error = 'Service Restart'
+                  break
+                case 1013:
+                  error = 'Try Again Later'
+                  break
+                case 1014:
+                  error = 'Bad Gateway'
+                  break
+                case 1015:
+                  error = 'TLS handshake'
+                  break
+                case 1000:
+                default:
+                  error = ''
+                  break
+              }
+            }
+            sessionControlable.receiveClose({
+              code,
+              reason: error
+            })
+          })
+        return session
+      },
+      sendWindowOffset: 0,
+      receiveWindowOffset: this.initialSessionFlowControlWindow,
+      shouldAutoTuneReceiveWindow: this.sessionShouldAutoTuneReceiveWindow,
+      receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit,
+      initialBidirectionalSendStreams: this.initialBidirectionalStreams, // TODO, once supported by node, use initial settings
+      initialBidirectionalReceiveStreams: this.initialBidirectionalStreams,
+      initialUnidirectionalSendStreams: this.initialUnidirectionalStreams, // TODO, once supported by node, use initial settings
+      initialUnidirectionalReceiveStreams: this.initialUnidirectionalStreams
+    })
+
+    const responseHeader = {}
+
+    if (this._webtransportProtocol) {
+      responseHeader['wt-protocol'] = '"' + this._webtransportProtocol + '"'
+    }
 
     const retObj = {
-      session: new CapsuleWebTransportSession({
-        ws: this.clientInt,
-        isclient: true,
-        createParser: (
-          /** @type {CapsuleWebTransportSession} */ nativesession
-        ) => {
-          sessobj = nativesession
-          const session = new BrowserParser({
-            ws: this.clientInt,
-            nativesession,
-            isclient: true,
-            initialStreamSendWindowOffsetBidi: 0,
-            initialStreamSendWindowOffsetUnidi: 0,
-            initialStreamReceiveWindowOffset:
-              this.initialStreamFlowControlWindow,
-            streamShouldAutoTuneReceiveWindow:
-              this.streamShouldAutoTuneReceiveWindow,
-            streamReceiveWindowSizeLimit: this.streamFlowControlWindowSizeLimit
-          })
-          if (this.clientInt)
-            this.clientInt.addEventListener('close', (event) => {
-              let code = event.code
-              let error = 'Session WebSocket closed'
-              if (event.reason) {
-                let tokens = event.reason.split(':')
-                if (tokens.length > 1) {
-                  code = parseInt(tokens[0])
-                  tokens = tokens.slice(1)
-                }
-                error = tokens.join(':')
-              } else {
-                switch (code) {
-                  case 1001:
-                    error = 'Going Away'
-                    break
-                  case 1002:
-                    error = 'Protocol error'
-                    break
-                  case 1003:
-                    error = 'Unsupported data'
-                    break
-                  case 1004:
-                    error = 'Reserved'
-                    break
-                  case 1005:
-                    error = 'No Status Rcvd'
-                    break
-                  case 1006:
-                    error = 'Abnormal Closure'
-                    break
-                  case 1007:
-                    error = 'Invalid frame payload data'
-                    break
-                  case 1008:
-                    error = 'Policy Violation'
-                    break
-                  case 1009:
-                    error = 'Message Too Big'
-                    break
-                  case 1010:
-                    error = 'Mandatory Ext.'
-                    break
-                  case 1011:
-                    error = 'Internal error'
-                    break
-                  case 1012:
-                    error = 'Service Restart'
-                    break
-                  case 1013:
-                    error = 'Try Again Later'
-                    break
-                  case 1014:
-                    error = 'Bad Gateway'
-                    break
-                  case 1015:
-                    error = 'TLS handshake'
-                    break
-                  case 1000:
-                  default:
-                    error = ''
-                    break
-                }
-              }
-              nativesession.jsobj.onClose({
-                errorcode: code,
-                error
-              })
-            })
-          return session
-        },
-        sendWindowOffset: 0,
-        receiveWindowOffset: this.initialSessionFlowControlWindow,
-        shouldAutoTuneReceiveWindow: this.sessionShouldAutoTuneReceiveWindow,
-        receiveWindowSizeLimit: this.sessionFlowControlWindowSizeLimit,
-        initialBidirectionalSendStreams: this.initialBidirectionalStreams, // TODO, once supported by node, use initial settings
-        initialBidirectionalReceiveStreams: this.initialBidirectionalStreams,
-        initialUnidirectionalSendStreams: this.initialUnidirectionalStreams, // TODO, once supported by node, use initial settings
-        initialUnidirectionalReceiveStreams: this.initialUnidirectionalStreams
-      }),
-      reliable: true
+      control: capsuleSession,
+      creator: capsuleSession,
+      reliable: true,
+      sendBudget: this.streamFlowControlWindowSizeLimit,
+      responseHeader
     }
-    this.jsobj.onHttpWTSessionVisitor(retObj)
-    // @ts-ignore
-    sessobj.jsobj.onReady(
-      this._webtransportProtocol ? { protocol: this._webtransportProtocol } : {}
-    )
+    const jsSession = this.jsobj.onHttpWTSessionVisitor(retObj)
+
+    jsSession?.onReady()
   }
 
   closeClient() {

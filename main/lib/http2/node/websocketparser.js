@@ -191,11 +191,12 @@ export class WebSocketParser extends ParserBaseHttp2 {
   static WS_PING = 0x9
   static WS_PONG = 0xa
   /**
-   * @param {import('../../types.js').ParserHttp2Init} stream
+   * @param {import('../parserbasehttp2.js').ParserHttp2Init} stream
    */
   constructor({
     stream,
     nativesession,
+    sessionControlable,
     isclient,
     initialStreamSendWindowOffsetUnidi,
     initialStreamSendWindowOffsetBidi,
@@ -206,6 +207,7 @@ export class WebSocketParser extends ParserBaseHttp2 {
     super({
       stream,
       nativesession,
+      sessionControlable,
       isclient,
       initialStreamSendWindowOffsetUnidi,
       initialStreamSendWindowOffsetBidi,
@@ -305,12 +307,12 @@ export class WebSocketParser extends ParserBaseHttp2 {
               typeof plength === 'undefined' ||
               plength >
                 Math.max(
-                  16 * Number(this.session.flowController.receiveWindowSize),
+                  16 * Number(this.sessionControlable.receiveWindowSize),
                   1000000
                 )
             ) {
               // too long abort, could be an attack vector
-              this.session.closeConnection({
+              this.sessionControlable.closeConnection({
                 code: 63, // QUIC_FLOW_CONTROL_SENT_TOO_MUCH_DATA, // probably the right one...
                 reason: plength
                   ? 'Frame length too big :' + plength
@@ -348,11 +350,10 @@ export class WebSocketParser extends ParserBaseHttp2 {
 
               if (
                 typeof length === 'undefined' ||
-                length >
-                  4 * Number(this.session.flowController.receiveWindowSize)
+                length > 4 * Number(this.sessionControlable.receiveWindowSize)
               ) {
                 // too long abort, could be an attack vector
-                this.session.closeConnection({
+                this.sessionControlable.closeConnection({
                   code: 63, // QUIC_FLOW_CONTROL_SENT_TOO_MUCH_DATA, // probably the right one...
                   reason: length
                     ? 'Frame length too big :' + length
@@ -389,17 +390,10 @@ export class WebSocketParser extends ParserBaseHttp2 {
                       }
                       error = tokens.join(':')
                     }
-                    if (
-                      !(
-                        this.session.jsobj.state === 'failed' ||
-                        this.session.jsobj.state === 'closed'
-                      )
-                    ) {
-                      this.session.jsobj.onClose({
-                        errorcode: code,
-                        error
-                      })
-                    }
+                    this.sessionControlable.receiveClose({
+                      code,
+                      reason: error
+                    })
                   } else {
                     // just the answer
                   }
@@ -652,13 +646,12 @@ export class WebSocketParser extends ParserBaseHttp2 {
                   break
                 case ParserBase.DATAGRAM:
                   if (wbufferstate) {
-                    this.session.jsobj.onDatagramReceived({
-                      datagram:
-                        getUint8ArrayfromBuffer(
-                          wbufferstate,
-                          offsetend - wbufferstate.offset
-                        ) || new Uint8Array(0)
-                    })
+                    this.sessionControlable.receiveDatagram(
+                      getUint8ArrayfromBuffer(
+                        wbufferstate,
+                        offsetend - wbufferstate.offset
+                      ) || new Uint8Array(0)
+                    )
                   }
                   break
                 default:

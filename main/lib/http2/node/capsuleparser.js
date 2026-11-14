@@ -13,11 +13,12 @@ import {
 
 export class Http2CapsuleParser extends ParserBaseHttp2 {
   /**
-   * @param {import('../../types.js').ParserHttp2Init} stream
+   * @param {import('../parserbasehttp2.js').ParserHttp2Init} stream
    */
   constructor({
     stream,
     nativesession,
+    sessionControlable,
     isclient,
     initialStreamSendWindowOffsetBidi,
     initialStreamSendWindowOffsetUnidi,
@@ -28,6 +29,7 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
     super({
       stream,
       nativesession,
+      sessionControlable,
       isclient,
       initialStreamSendWindowOffsetBidi,
       initialStreamSendWindowOffsetUnidi,
@@ -113,11 +115,11 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
             }
             if (
               checklength >
-                4 * Number(this.session.flowController.receiveWindowSize) ||
-              length > 8 * Number(this.session.flowController.receiveWindowSize)
+                4 * Number(this.sessionControlable.receiveWindowSize) ||
+              length > 8 * Number(this.sessionControlable.receiveWindowSize)
             ) {
               // too long abort, could be an attack vector
-              this.session.closeConnection({
+              this.sessionControlable.closeConnection({
                 code: 63, // QUIC_FLOW_CONTROL_SENT_TOO_MUCH_DATA, // probably the right one...
                 reason: 'Frame length too big :' + length
               })
@@ -242,13 +244,12 @@ export class Http2CapsuleParser extends ParserBaseHttp2 {
                 this.onDrain()
                 break
               case Http2CapsuleParser.DATAGRAM:
-                this.session.jsobj.onDatagramReceived({
-                  datagram:
-                    getUint8ArrayfromBuffer(
-                      bufferstate,
-                      offsetend - bufferstate.offset
-                    ) || new Uint8Array(0)
-                })
+                this.sessionControlable.receiveDatagram(
+                  getUint8ArrayfromBuffer(
+                    bufferstate,
+                    offsetend - bufferstate.offset
+                  ) || new Uint8Array(0)
+                )
                 break
               default:
               // do nothing

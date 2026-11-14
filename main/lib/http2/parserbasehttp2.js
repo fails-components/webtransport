@@ -4,13 +4,19 @@ import { ParserBase } from './parserbase.js'
  * @typedef {import('node:http2').Http2Stream} Http2Stream
  */
 
+/** @typedef {import('./parserbase.js').ParserInit} ParserInit */
+/**
+ * @typedef {ParserInit & { stream: Http2Stream }} ParserHttp2Init
+ */
+
 export class ParserBaseHttp2 extends ParserBase {
   /**
-   * @param {import('../types').ParserHttp2Init} stream
+   * @param {ParserHttp2Init} stream
    */
   constructor({
     stream,
     nativesession,
+    sessionControlable,
     isclient,
     initialStreamSendWindowOffsetBidi,
     initialStreamSendWindowOffsetUnidi,
@@ -20,6 +26,7 @@ export class ParserBaseHttp2 extends ParserBase {
   }) {
     super({
       nativesession,
+      sessionControlable,
       isclient,
       initialStreamSendWindowOffsetBidi,
       initialStreamSendWindowOffsetUnidi,
@@ -48,17 +55,10 @@ export class ParserBaseHttp2 extends ParserBase {
        * @param {Error} error
        */ (error) => {
         // readable error
-        if (
-          !(
-            this.session.jsobj.state === 'failed' ||
-            this.session.jsobj.state === 'closed'
-          )
-        ) {
-          this.session.jsobj.onClose({
-            errorcode: this.stream.rstCode,
-            error: error.toString()
-          })
-        }
+        this.sessionControlable.receiveClose({
+          code: this.stream.rstCode,
+          reason: error.toString()
+        })
       }
     )
 
@@ -69,18 +69,11 @@ export class ParserBaseHttp2 extends ParserBase {
     })
 
     this.stream.on('close', () => {
-      if (
-        !(
-          this.session.jsobj.state === 'failed' ||
-          this.session.jsobj.state === 'closed'
-        )
-      ) {
-        // writable close
-        this.session.jsobj.onClose({
-          errorcode: this.stream.rstCode || 0,
-          error: ''
-        })
-      }
+      // writable close
+      this.sessionControlable.receiveClose({
+        code: this.stream.rstCode || 0,
+        reason: ''
+      })
     })
   }
 }
