@@ -239,6 +239,9 @@ export class WebSocketParser extends ParserBaseHttp2 {
      */
     this.contframes = undefined
     this.remainlength = 0
+
+    /** @type {number|undefined} */
+    this.lastopcode = undefined
   }
 
   /**
