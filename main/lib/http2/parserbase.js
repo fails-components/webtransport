@@ -194,7 +194,7 @@ export class ParserBase {
   }
 
   drainWrites() {
-    if (!this.blocked) this.session.drainWrites()
+    if (!this.blocked) this.sessionControlable.drainWrites()
     while (!this.blocked) {
       const frontId = this.scheduler.PopFront()
       if (typeof frontId === 'undefined') break

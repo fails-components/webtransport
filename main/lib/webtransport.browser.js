@@ -1,5 +1,5 @@
 import { WebTransportBase } from './webtransportbase.js'
-import { HttpWTSession } from './session.js'
+import { HttpWTSession, konInitialError } from './session.js'
 import { HttpClient } from './client.js'
 import { Http2WebTransportBrowser } from './http2/browser/browser.js'
 import { logger } from './utils.js'
@@ -69,8 +69,7 @@ export class WebTransportPonyfill extends WebTransportBase {
       .then(() => client.createWTSession(sessionint, path))
       .catch((error) => {
         client.closeHookSession()
-        sessionint.readyReject(error)
-        sessionint.closedReject(error)
+        sessionint[konInitialError](error)
       })
   }
 

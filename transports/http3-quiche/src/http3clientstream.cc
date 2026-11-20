@@ -57,7 +57,6 @@ void Http3ClientStream::OnInitialHeadersComplete(
   QuicSpdyClientStream::OnInitialHeadersComplete(fin, frame_len, header_list);
   if (web_transport() != nullptr) {
     if (!web_transport()->ready()) {
-      printf("Oninitial headers close\n");
       static_cast<Http3ClientSession*>(spdy_session())->OnWebTransportRejected(id());
     }
   }

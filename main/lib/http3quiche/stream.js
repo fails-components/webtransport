@@ -1,14 +1,24 @@
 // @ts-ignore
 import { drainableProtocol } from '../http2/backports/types.cjs'
+
 /**
  * @typedef {import('../types').OnStreamErrorCallback} OnStreamErrorCallback
  * @typedef {import('../types').NativeHttpWTStream} NativeHttpWTStream
+ * @typedef {import('../types').NativeWebTransportStream} NativeWebTransportStream
  * @typedef {import('../types').MinimalStreamWriter} MinimalStreamWriter
  */
 
 /**
- * @export
- * @typedef {Object} MessageReceiver
+ * Called when session id (e.g. for Webtransport streams) is determined
+ * @callback OnSessionIdCallback
+ * @this {NativeWebTransportStream}
+ * @param {bigint|null|undefined} sessionid Id of the session stream or undefined
+ *   if no session stream is determined.
+ * @returns {void}
+ */
+
+/**
+ * @typedef {Object} MessageReceiverStream
  * @property {() => void} onCanRead
  * @property {() => void} onCanWrite
  * @property {(code: number) => void} onStopSending
@@ -35,10 +45,12 @@ function handleWriterWake(inner) {
   wait?.resolve()
 }
 
+export const kOnSessionId = Symbol('OnkSessionId')
+
 export class Http3QuicheStream {
   #inner = {
     __proto__: null,
-    /** @type {MessageReceiver | undefined} */
+    /** @type {MessageReceiverStream | undefined} */
     messageReceiver: undefined,
     /** @type {NativeHttpWTStream | undefined} */
     quicheStream: undefined,
@@ -59,7 +71,9 @@ export class Http3QuicheStream {
     /** @type {OnStreamErrorCallback | undefined} */
     onreset: undefined,
     /** @type {OnStreamErrorCallback | undefined} */
-    onstopsending: undefined
+    onstopsending: undefined,
+    /** @type {OnSessionIdCallback | undefined} */
+    onsessionid: undefined
   }
 
   /**
@@ -139,6 +153,11 @@ export class Http3QuicheStream {
     }
   }
 
+  /** @param {bigint|null|undefined} id */
+  [kOnSessionId](id) {
+    this.#inner.onsessionid?.call(this, id)
+  }
+
   // callbacks setter and getters
   /** @type {OnStreamErrorCallback} */
   get onreset() {
@@ -155,6 +174,24 @@ export class Http3QuicheStream {
       // inner.onreset = FunctionPrototypeBind(fn, this)
       // @ts-ignore
       inner.onreset = fn.bind(this)
+    }
+  }
+
+  /** @type {OnSessionIdCallback} */
+  get onsessionid() {
+    // @ts-ignore
+    return this.#inner.onsessionid
+  }
+
+  set onsessionid(fn) {
+    const inner = this.#inner
+    if (fn === undefined) {
+      inner.onsessionid = undefined
+    } else {
+      // validateFunction(fn, 'onsessionid')
+      // inner.onsessionid = FunctionPrototypeBind(fn, this);
+      // @ts-ignore
+      inner.onsessionid = fn.bind(this)
     }
   }
 
@@ -237,15 +274,15 @@ export class Http3QuicheStream {
     if (inner.messageReceiver) return inner.messageReceiver
 
     const onStopSending = function (/** @type {number} */ code) {
-      process.nextTick(() => {
+      setTimeout(() => {
         inner.onstopsending?.call(stream, code)
-      })
+      }, 0)
     }
 
     const onResetStream = function (/** @type {number} */ code) {
-      process.nextTick(() => {
+      setTimeout(() => {
         inner.onreset?.call(stream, code)
-      })
+      }, 0)
     }
 
     const onCanRead = function () {

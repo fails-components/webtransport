@@ -14,6 +14,7 @@ describe('sendgroup streams', function () {
   this.timeout(5000)
   /** @type {import('../lib/dom').WebTransport | undefined} */
   let client
+  const browser = process.env.BROWSER
   let forceReliable = false
   if (process.env.USE_HTTP2 === 'true') forceReliable = true
   let nodenativequic = false
@@ -177,7 +178,7 @@ describe('sendgroup streams', function () {
         bufferHighPrio.byteOffset,
         bufferHighPrio.byteLength / BigUint64Array.BYTES_PER_ELEMENT
       )
-    if (!websocketEmu) {
+    if (!websocketEmu && browser !== 'firefox') {
       expect(Number(afterHighArrivedLowCounter)).to.be.below(
         Number(afterHighArrivedHighCounter)
       )

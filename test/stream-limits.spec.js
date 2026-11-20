@@ -35,7 +35,10 @@ describe('streamlimits', function () {
       ? 'Opening handshake failed.'
       : 'WebTransport connection rejected' */
 
-  const skipall = browser === 'firefox'
+  const skipall =
+    browser === 'firefox' &&
+    process.env.USE_POLYFILL === 'true' &&
+    process.env.USE_PONYFILL === 'true'
 
   if (skipall) {
     console.log(
@@ -65,7 +68,7 @@ describe('streamlimits', function () {
   let dowaitUntilAvailable =
     process.env.USE_POLYFILL === 'true' || process.env.USE_PONYFILL === 'true' // remove after implementation
 
-  before(async () => {
+  before(async function () {
     // detect support for waituntilavailable
     let supported = false
     try {

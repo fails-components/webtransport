@@ -4,6 +4,7 @@ import { WebTransportError } from './error.js'
 import { Http2WebTransportServer } from './http2/node/index.js'
 import { isIPv4 } from 'net'
 import { defer, logger } from './utils.js'
+import { Http3QuicheSession } from './http3quiche/session.js'
 
 const log = logger(`webtransport:httpserver(${process?.pid})`)
 
@@ -71,7 +72,7 @@ const loadNodeNative = async () => {
 }
 
 /**
- * @typedef {import('./types').WebTransportSessionImpl} WebTransportSession
+ * @typedef {import('./dom').WebTransportSession} WebTransportSession
  * @typedef {import('./types').NativeHttpWTSession} NativeHttpWTSession
  * @typedef {import('./types').NativeWebTransportSessionControl} NativeWebTransportSessionControl
  * @typedef {import('./types').NativeWebTransportSessionStreamCreator} NativeWebTransportSessionStreamCreator
@@ -310,8 +311,6 @@ export class HttpServer {
   onHttpWTSessionVisitor(args) {
     // create Http3 Visitor
     const sessOpts = {
-      /** @type {NativeHttpWTSession|undefined} */
-      object: undefined,
       /** @type {NativeWebTransportSessionControl|undefined} */
       control: undefined,
       /** @type {NativeWebTransportSessionStreamCreator|undefined} */
@@ -324,18 +323,26 @@ export class HttpServer {
       sendBudget: args.sendBudget
     }
     if ('session' in args) {
-      sessOpts.object = args.session
+      const wrappedQuiche = new Http3QuicheSession(
+        args.session,
+        /** @type {((protocol: string) => void)}  */
+        // eslint-disable-next-line no-unused-vars
+        (protocol) => {
+          // no protocol handling for server?
+          sesobj.onReady()
+        }
+      )
+      sessOpts.control = wrappedQuiche
+      sessOpts.creator = wrappedQuiche
     }
     if ('control' in args && 'creator' in args) {
       sessOpts.control = args.control
       sessOpts.creator = args.creator
+      process.nextTick(() => {
+        sesobj.onReady()
+      })
     }
     const sesobj = new HttpWTSession(sessOpts)
-    if (sesobj.legacyMode === false)
-      process.nextTick(() => {
-        sesobj.onReady({})
-      })
-    if ('session' in args) args.session.jsobj = sesobj
     if (this.sessionController[args.path])
       this.sessionController[args.path].enqueue(sesobj)
   }

@@ -210,7 +210,7 @@ export class Http3WebTransportClientNative {
           throw new Error('Sending headers failed')
         const responseHeader = await headersReceivedProm
         if (Number(responseHeader[':status']) !== 200) {
-          this.jsobj.onHttpWTSessionVisitor({})
+          this.jsobj.onHttpWTSessionVisitor(undefined)
           return // this is an error
         }
 

@@ -119,7 +119,7 @@ export interface WebTransportSession {
   readonly reliability: WebTransportReliabilityMode
   readonly congestionControl: WebTransportCongestionControl
   readonly closed: Promise<WebTransportCloseInfo>
-  readonly draining: Promise<undefined>
+  readonly draining: Promise<void>
   close: (closeInfo?: WebTransportCloseInfo) => void
   readonly datagrams: WebTransportDatagramDuplexStream
 

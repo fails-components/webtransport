@@ -153,7 +153,7 @@ namespace quic
                 session_->NotifySessionDraining();
         }
 
-        void orderSessionStatsInt();
+        std::optional<webtransport::SessionStats> Http3WTSession::getSessionStatsInt();
 
         void orderDatagramStatsInt();
 
@@ -208,9 +208,9 @@ namespace quic
                         Napi::Value waitUntilAvailableValue = (lobj).Get("waitUntilAvailable");
                         waitUntilAvailable = waitUntilAvailableValue.As<Napi::Boolean>().Value();
                     }
-                    if (lobj.Has("sendGroup") && !(lobj).Get("sendGroup").IsEmpty()
-                        && !(lobj).Get("sendGroup").IsNull()) {
-                        Napi::Value  sendGroupIdValue = (lobj).Get("sendGroup").ToObject().Get("_sendGroupId");
+                    if (lobj.Has("sendGroupId") && !(lobj).Get("sendGroupId").IsEmpty()
+                        && !(lobj).Get("sendGroupId").IsUndefined()) {
+                        Napi::Value  sendGroupIdValue = (lobj).Get("sendGroupId");
                         bool lossless;
                         sendGroupId = sendGroupIdValue.As<Napi::BigInt>().Uint64Value(&lossless);
                     }
@@ -245,9 +245,9 @@ namespace quic
                         Napi::Value waitUntilAvailableValue = (lobj).Get("waitUntilAvailable");
                         waitUntilAvailable = waitUntilAvailableValue.As<Napi::Boolean>().Value();
                     }
-                    if (lobj.Has("sendGroup") && !(lobj).Get("sendGroup").IsEmpty() 
-                        && !(lobj).Get("sendGroup").IsNull()) {
-                        Napi::Value  sendGroupIdValue = (lobj).Get("sendGroup").ToObject().Get("_sendGroupId");
+                    if (lobj.Has("sendGroupId") && !(lobj).Get("sendGroupId").IsEmpty() 
+                        && !(lobj).Get("sendGroupId").IsUndefined()) {
+                        Napi::Value  sendGroupIdValue = (lobj).Get("sendGroupId");
                         bool lossless;
                         sendGroupId = sendGroupIdValue.As<Napi::BigInt>().Uint64Value(&lossless);
                     }
@@ -304,9 +304,33 @@ namespace quic
             wtsession_->notifySessionDrainingInt();
         }
 
-        void orderSessionStats(const Napi::CallbackInfo &info)
+        Napi::Value getSessionStats(const Napi::CallbackInfo &info)
         {
-            wtsession_->orderSessionStatsInt();
+            auto maybeStats = wtsession_->getSessionStatsInt();
+            if (!maybeStats.has_value()) return Env().Undefined();
+            auto stats = maybeStats.value();
+            Napi::Object retObj = Napi::Object::New(Env());
+            //  expiredOutgoing: number
+            // lostOutgoing: number
+
+            // non Datagram
+            //  minRtt: number
+            //  smoothedRtt: number
+            //  rttVariation: number
+            // estimatedSendRateBps: number
+            retObj.Set("timestamp", absl::ToDoubleMilliseconds(absl::Duration())); // absl::Duration
+            // datagram
+            retObj.Set("expiredOutgoing", stats.datagram_stats.expired_outgoing); // uint64_t
+            retObj.Set("lostOutgoing", stats.datagram_stats.lost_outgoing);       // uint64_t
+
+            // non Datagram
+            retObj.Set("minRtt", absl::ToDoubleMilliseconds(stats.min_rtt));             // absl::Duration
+            retObj.Set("smoothedRtt", absl::ToDoubleMilliseconds(stats.smoothed_rtt));   // absl::Duration
+            retObj.Set("rttVariation", absl::ToDoubleMilliseconds(stats.rtt_variation)); // absl::Duration
+            retObj.Set("estimatedSendRateBps", stats.estimated_send_rate_bps);
+            retObj.Set("applicationBytesAcknowledged", stats.application_bytes_acknowledged);           // absl::Duration
+
+            return retObj;
         }
 
         void orderDatagramStats(const Napi::CallbackInfo &info)
@@ -357,10 +381,8 @@ namespace quic
                                                                                                             static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                                            InstanceMethod<&Http3WTSessionJS::notifySessionDraining>("notifySessionDraining",
                                                                                                                     static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                                                           InstanceMethod<&Http3WTSessionJS::orderSessionStats>("orderSessionStats",
+                                                           InstanceMethod<&Http3WTSessionJS::getSessionStats>("getSessionStats",
                                                                                                                 static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
-                                                           InstanceMethod<&Http3WTSessionJS::orderDatagramStats>("orderDatagramStats",
-                                                                                                                 static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                                            InstanceMethod<&Http3WTSessionJS::getMaxDatagramSize>("getMaxDatagramSize",
                                                                                                                     static_cast<napi_property_attributes>(napi_writable | napi_configurable)),
                                                            InstanceMethod<&Http3WTSessionJS::close>("close",
@@ -375,8 +397,6 @@ namespace quic
         static void freeData(Napi::Env env, void *data, std::string *hint);
 
         void processStream(bool incom, bool bidi, uint64_t sendOrder, uint64_t sendGroupId, Http3WTStream *stream);
-        void processSessionStats(webtransport::SessionStats sessstats);
-        void processDatagramStats(webtransport::DatagramStats datastats);
         void processGoawayReceived();
         void processDatagramSend(Napi::ObjectReference *bufferhandle);
         void processDatagramReceived(std::string *datagram);

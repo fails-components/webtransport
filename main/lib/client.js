@@ -1,5 +1,7 @@
 /// <reference types="node" />
 import { WebTransportError } from './error.js'
+import { Http3QuicheSession } from './http3quiche/session.js'
+import { konClose, kSetCloseHook } from './session.js'
 import { logger } from './utils.js'
 
 const pid = typeof process !== 'undefined' ? process.pid : 0
@@ -14,6 +16,8 @@ const log = logger(`webtransport:httpclient(${pid})`)
  * @typedef {import('./types').ClientConnectedEvent} ClientConnectedEvent
  * @typedef {import('./types').ClientWebtransportSupportEvent} ClientWebtransportSupportEvent
  * @typedef {import('./types').HttpWTClientSessionVisitorEvent} HttpWTClientSessionVisitorEvent
+ * @typedef {import('./types').NativeWebTransportSessionControl} NativeWebTransportSessionControl
+ * @typedef {import('./types').NativeWebTransportSessionStreamCreator} NativeWebTransportSessionStreamCreator
  */
 
 /**
@@ -64,9 +68,12 @@ export class HttpClient {
 
     const timeout = setTimeout(() => {
       if (this.quicconnectedProm) {
-        log.error('quic connection timeout')
+        log.error('quic connection timeout for path:', path)
         this.quicconnectedProm.reject(
-          new WebTransportError('Opening handshake failed.')
+          new WebTransportError(
+            'Opening handshake failed.' +
+              ((path !== '/' && path !== '/non_existant') ? path : '')
+          )
         )
         delete this.quicconnectedProm
       }
@@ -122,7 +129,7 @@ export class HttpClient {
    */
   onClientError(args) {
     if (this.sessionobjint != null) {
-      this.sessionobjint.onClose(args)
+      this.sessionobjint[konClose](args)
     }
   }
 
@@ -157,58 +164,74 @@ export class HttpClient {
    * @param {HttpWTClientSessionVisitorEvent|undefined} args
    */
   onHttpWTSessionVisitor(args) {
-    // create Http Visitor
+    if (typeof args === 'undefined') {
+      if (this.sessionobjint)
+        this.sessionobjint[konClose]({
+          errorcode: 0,
+          error: 'Session stream errored'
+        })
+      return
+    }
+    /** @type {NativeWebTransportSessionControl|undefined} */
+    let control
+    /** @type {NativeWebTransportSessionStreamCreator|undefined} */
+    let creator
+    let callonReady = true
     if (
-      args &&
-      'session' in args &&
-      args.session &&
-      this.sessionProm &&
-      this.sessionobjint
-    ) {
-      // legacy mode
-      this.sessionobjint.setSessionObj({
-        object: args.session,
-        reliable: !!args.reliable,
-        responseHeader: args.responseHeader,
-        isclient: true,
-        sendBudget: args.sendBudget
-      })
-      args.session.jsobj.closeHook = this.closeHookSession
-      delete this.sessionobjint
-      this.sessionProm.resolve(args.session)
-      delete this.sessionProm
-    } else if (
       args &&
       'control' in args &&
       'creator' in args &&
       args.control &&
-      args.creator &&
-      this.sessionProm &&
-      this.sessionobjint
+      args.creator
     ) {
+      control = args.control
+      creator = args.creator
+    } else if (args && 'session' in args && args.session) {
+      /** @type {string} */
+      let selprotocol
+      callonReady = false
+      let intsessobj = this.sessionobjint
+      control = creator = new Http3QuicheSession(
+        args.session,
+        /** @type {((protocol: string) => void)}  */
+        (protocol) => {
+          selprotocol = protocol
+          intsessobj?.onReady()
+          intsessobj = undefined
+        }
+      )
+      args.responseHeader = args.responseHeader || {}
+      Object.defineProperties(args.responseHeader, {
+        ['wt-protocol']: {
+          get: () => {
+            return selprotocol && '"' + selprotocol + '"'
+          }
+        }
+      })
+    } else {
+      return
+    }
+
+    if (this.sessionProm && this.sessionobjint) {
       // non legacy mode
       this.sessionobjint.setSessionObj({
-        control: args.control,
-        creator: args.creator,
+        control: control,
+        creator: creator,
         reliable: !!args.reliable,
         responseHeader: args.responseHeader,
         isclient: true,
         sendBudget: args.sendBudget
       })
       const sessobj = this.sessionobjint
-      process.nextTick(() => {
-        sessobj.onReady()
-      })
-      this.sessionobjint.closeHook = this.closeHookSession
+      if (callonReady) {
+        process.nextTick(() => {
+          sessobj.onReady()
+        })
+      }
+      this.sessionobjint[kSetCloseHook](this.closeHookSession)
       delete this.sessionobjint
       this.sessionProm.resolve(this.sessionobjint)
       delete this.sessionProm
-    } else {
-      if (this.sessionobjint)
-        this.sessionobjint.onClose({
-          errorcode: 0,
-          error: 'Session stream errored'
-        })
     }
     return this.sessionobjint
   }

@@ -1,14 +1,12 @@
 import type {
-  WebTransportSession,
   WebTransportHash,
   WebTransportOptions,
-  WebTransportSendStreamOptions,
   DatagramsReadableMode
 } from './dom'
 import type { IncomingHttpHeaders, ServerHttp2Stream } from 'http2'
 import { HttpClient } from './client'
 import { SocketOptions } from 'dgram'
-import { MessageReceiver } from './http3quiche/stream.js'
+import { MessageReceiverStream } from './http3quiche/stream.js'
 
 
 type NativeWriteDatagramResult = { 
@@ -16,19 +14,23 @@ type NativeWriteDatagramResult = {
   message?: string;
 };
 
+export interface OrderStreamOptions {
+  sendGroupId:  bigint|undefined
+  sendOrder?: number
+  waitUntilAvailable?: boolean
+}
+
 /**
  * Native HttpWTSession counterpart
  */
 export interface NativeHttpWTSession {
-  jsobj: WebTransportSessionEventHandler
   sendInitialParameters?: () => void
   writeDatagram: (chunk: Uint8Array) => NativeWriteDatagramResult | Promise<NativeWriteDatagramResult>
-  orderUnidiStream?: (opts: WebTransportSendStreamOptions) => boolean
-  orderUnidiStreamAsync?: (opts: WebTransportSendStreamOptions) => Promise<NativeHttpWTStream>
-  orderBidiStream?: (opts: WebTransportSendStreamOptions)  => boolean
-  orderBidiStreamAsync?: (opts: WebTransportSendStreamOptions)  => Promise<NativeHttpWTStream>
-  orderSessionStats: () => void
-  orderDatagramStats: () => void
+  orderUnidiStream?: (opts: OrderStreamOptions) => boolean
+  orderUnidiStreamAsync?: (opts: OrderStreamOptions) => Promise<NativeHttpWTStream>
+  orderBidiStream?: (opts: OrderStreamOptions)  => boolean
+  orderBidiStreamAsync?: (opts: OrderStreamOptions)  => Promise<NativeHttpWTStream>
+  getSessionStats: () =>  SessionStats
   notifySessionDraining: () => void
   getMaxDatagramSize: () => number
   close: (arg: { code: number; reason: string }) => void
@@ -38,7 +40,7 @@ export interface NativeHttpWTSession {
  * Native HttpWTStream counterpart
  */
 export interface NativeHttpWTStream {
-  jsobj: MessageReceiver
+  jsobj: MessageReceiverStream
   readbuffer: ArrayBuffer | undefined
   pullData: () => {data: (Uint8Array | undefined), fin: boolean}
   stopSending: (code: number) => void
@@ -49,7 +51,7 @@ export interface NativeHttpWTStream {
     sendOrder: number,
     sendGroupId: bigint
   }) => void
-  messageReceiver:  MessageReceiver
+  messageReceiver:  MessageReceiverStream
 }
 
 
@@ -271,7 +273,7 @@ export interface SessionCloseEvent {
   error: string
 }
 
-export interface SessionStatsEvent {
+export interface SessionStats {
   timestamp: number
   expiredOutgoing: number
   lostOutgoing: number
@@ -281,12 +283,7 @@ export interface SessionStatsEvent {
   smoothedRtt: number
   rttVariation: number
   estimatedSendRateBps: number
-}
-
-export interface DatagramStatsEvent {
-  timestamp: number
-  expiredOutgoing: number
-  lostOutgoing: number
+  applicationBytesAcknowledge: number
 }
 
 export interface DatagramReceivedEvent {
@@ -294,25 +291,6 @@ export interface DatagramReceivedEvent {
 }
 
 export interface GoawayReceivedEvent {}
-
-export interface NewStreamEvent {
-  stream: NativeHttpWTStream | NativeWebTransportStream
-  bidirectional: boolean
-  incoming: boolean
-  sendGroupId?: bigint;
-  sendOrder: number;
-}
-
-export interface WebTransportSessionEventHandler {
-  onReady: (evt: SessionReadyEvent) => void
-  onClose: (evt: SessionCloseEvent) => void
-  onDatagramReceived: (evt: DatagramReceivedEvent) => void
-  onGoAwayReceived: (evt: GoawayReceivedEvent) => void
-  onSessionStats: (evt: SessionStatsEvent) => void
-  onDatagramStats: (evt: DatagramStatsEvent) => void
-  onStream: (evt: NewStreamEvent) => void
-  closeHook?: (() => void) | null
-}
 
 export interface ClientConnectedEvent {
   success: boolean
@@ -414,10 +392,6 @@ export type WebTransportSessionState =
   | 'draining'
   | 'closed'
   | 'failed'
-
-export interface WebTransportSessionImpl extends WebTransportSession {
-  state: WebTransportSessionState
-}
 
 export type QUICHE_LOG_OFF = -1
 export type QUICHE_LOG_INFO = 0

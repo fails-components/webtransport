@@ -16,9 +16,9 @@
  * @typedef {import('./dom').WebTransportHash} WebTransportHash
  * @typedef {import('./dom').WebTransportOptions} WebTransportOptions
  * @typedef {import('./dom').WebTransportReliabilityMode} WebTransportReliabilityMode
+ * @typedef {import('./dom').WebTransportSession} WebTransportSession
  *
  * Public API
- * @typedef {import('./types').WebTransportSessionImpl} WebTransportSession
  * @typedef {import('./types').HttpServerInit} HttpServerInit
  */
 

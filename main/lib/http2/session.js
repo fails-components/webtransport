@@ -15,7 +15,7 @@ import { CapsuleWebTransportStream, kSetStreamId } from './stream.js'
  * @typedef {import('./flowcontroller.js').FlowControlable} FlowControlable
  */
 
-// copied from node.js, c.f. the applicable license in backports LICENSE.nodejs
+// next partially copied from node.js, c.f. the applicable license in backports LICENSE.nodejs
 
 /**
  * Called when the peer sends a GOAWAY frame.
@@ -57,6 +57,7 @@ import { CapsuleWebTransportStream, kSetStreamId } from './stream.js'
 
 /**
  * @typedef {Object} CapsParserControlable
+ * @property {() => void} drainWrites
  * @property {(arg: { code: number, reason: string }) => void} closeConnection
  * @property {(arg: { code: number, reason: string }) => void} receiveClose
  * @property {(datagram: Uint8Array) => void} receiveDatagram
@@ -77,6 +78,12 @@ import { CapsuleWebTransportStream, kSetStreamId } from './stream.js'
  * @property {boolean} connected
  * @property {(arg: { code: number, reason: string }) => void} closeConnection
  * @property {bigint} smoothedRtt
+ */
+
+/**
+ * @typedef {Object} StreamIdClient
+ * @property {() => boolean} canSendMaxStreams
+ * @property {(maxStreams: bigint, unidirectional: boolean) => void} sendMaxStreams
  */
 
 /**
@@ -107,6 +114,8 @@ export class CapsuleWebTransportSession {
     streamIdMngrUni: undefined,
     /** @type {StreamIdManager| undefined} */
     streamIdMngrBi: undefined,
+    /** @type {StreamIdClient| undefined} */
+    streamIdClient: undefined,
     /** @type {StreamControlable|undefined} */
     streamControlable: undefined,
 
@@ -182,14 +191,14 @@ export class CapsuleWebTransportSession {
       receiveWindowSizeLimit
     })
     inner.streamIdMngrUni = new StreamIdManager({
-      delegate: this,
+      delegate: this.#streamIdClient,
       unidirectional: true,
       isclient,
       maxAllowedIncomingStreams: initialUnidirectionalReceiveStreams,
       maxAllowedOutgoingStreams: initialUnidirectionalSendStreams
     })
     inner.streamIdMngrBi = new StreamIdManager({
-      delegate: this,
+      delegate: this.#streamIdClient,
       unidirectional: false,
       isclient,
       maxAllowedIncomingStreams: initialBidirectionalReceiveStreams,
@@ -229,28 +238,6 @@ export class CapsuleWebTransportSession {
       inner.flowController.sendWindowUpdate()
       inner.streamIdMngrBi.sendMaxStreamsFrameInitial()
       inner.streamIdMngrUni.sendMaxStreamsFrameInitial()
-    }
-  }
-
-  drainWrites() {
-    const inner = this.#inner
-    if (!inner.capsParser) return
-    while (!inner.capsParser.blocked && inner.datagramsWaiting.length > 0) {
-      const outChunk = inner.datagramsWaiting.shift()
-      if (outChunk?.datagram) {
-        inner.capsParser.writeCapsule({
-          type: ParserBase.DATAGRAM,
-          headerVints: [],
-          payload: [outChunk.datagram]
-        })
-        outChunk.promise.resolve(outChunk.id)
-      } else {
-        // should never happen
-        outChunk?.promise.reject(new Error('internal error'))
-      }
-    }
-    if (inner.datagramsWaiting.length > 0) {
-      inner.capsParser.scheduleDrainWrites()
     }
   }
 
@@ -481,17 +468,9 @@ export class CapsuleWebTransportSession {
   close({ code, type, reason } = {}) {
     const inner = this.#inner
     if (inner.closed) return
-    console.log('before closeWebtransport SessionStream')
     this.closeWebtransportSessionStream(Number(code ?? 0), reason)
-    console.log('after closeWebtransport SessionStream')
     inner.closed = true
   }
-
-  /**
-   * @param {bigint} pos
-   */
-  // eslint-disable-next-line no-unused-vars
-  reportBlocked(pos) {}
 
   /**
    * @type {FlowControlable}
@@ -605,8 +584,30 @@ export class CapsuleWebTransportSession {
       session.#trySendingUnidirectionalStreams()
     }
 
+    const drainWrites = function () {
+      if (!inner.capsParser) return
+      while (!inner.capsParser.blocked && inner.datagramsWaiting.length > 0) {
+        const outChunk = inner.datagramsWaiting.shift()
+        if (outChunk?.datagram) {
+          inner.capsParser.writeCapsule({
+            type: ParserBase.DATAGRAM,
+            headerVints: [],
+            payload: [outChunk.datagram]
+          })
+          outChunk.promise.resolve(outChunk.id)
+        } else {
+          // should never happen
+          outChunk?.promise.reject(new Error('internal error'))
+        }
+      }
+      if (inner.datagramsWaiting.length > 0) {
+        inner.capsParser.scheduleDrainWrites()
+      }
+    }
+
     const controlable = (inner.capsParserControlable = {
       closeConnection,
+      drainWrites,
       receiveClose,
       receiveDatagram,
       receiveError,
@@ -683,11 +684,6 @@ export class CapsuleWebTransportSession {
     this.closeWebtransportSessionStream(code, reason)
   }
 
-  // TODO encapsule in flowcontrollable
-  smoothedRtt() {
-    return this.#smoothedRtt()
-  }
-
   #smoothedRtt() {
     const inner = this.#inner
     let toret
@@ -705,27 +701,39 @@ export class CapsuleWebTransportSession {
     return toret
   }
 
-  /**
-   * @returns {boolean}
-   */
-  canSendMaxStreams() {
-    return true
-  }
-
-  /**
-   * @param {bigint} maxStreams
-   * @param {boolean} unidirectional
-   */
-  sendMaxStreams(maxStreams, unidirectional) {
+  get #streamIdClient() {
     const inner = this.#inner
-    if (!inner.capsParser) return
-    inner.capsParser.writeCapsule({
-      type: unidirectional
-        ? ParserBase.WT_MAX_STREAMS_UNIDI
-        : ParserBase.WT_MAX_STREAMS_BIDI,
-      headerVints: [maxStreams],
-      payload: undefined
+    if (inner.streamIdClient) return inner.streamIdClient
+
+    //const session = this
+
+    /**
+     * @returns {boolean}
+     */
+    const canSendMaxStreams = function () {
+      return true
+    }
+
+    /**
+     * @param {bigint} maxStreams
+     * @param {boolean} unidirectional
+     */
+    const sendMaxStreams = function (maxStreams, unidirectional) {
+      if (!inner.capsParser) return
+      inner.capsParser.writeCapsule({
+        type: unidirectional
+          ? ParserBase.WT_MAX_STREAMS_UNIDI
+          : ParserBase.WT_MAX_STREAMS_BIDI,
+        headerVints: [maxStreams],
+        payload: undefined
+      })
+    }
+
+    const streamIdClient = (inner.streamIdClient = {
+      sendMaxStreams,
+      canSendMaxStreams
     })
+    return streamIdClient
   }
 
   /** @type {OnDatagramCallback} */

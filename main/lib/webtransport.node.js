@@ -1,4 +1,4 @@
-import { HttpWTSession } from './session.js'
+import { HttpWTSession, konInitialError } from './session.js'
 import { WebTransportBase } from './webtransportbase.js'
 import { HttpClient } from './client.js'
 import { Http2WebTransportClient } from './http2/node/index.js'
@@ -113,13 +113,11 @@ export class WebTransport extends WebTransportBase {
             .then(() => client.createWTSession(sessionint, path))
             .catch((error) => {
               client.closeHookSession()
-              sessionint.readyReject(error)
-              sessionint.closedReject(error)
+              sessionint[konInitialError](error)
             })
         } else {
           client.closeHookSession()
-          sessionint.readyReject(error)
-          sessionint.closedReject(error)
+          sessionint[konInitialError](error)
         }
       })
   }

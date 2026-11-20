@@ -95,16 +95,10 @@ namespace quic
         }
     }
 
-    void Http3WTSession::orderSessionStatsInt()
+    std::optional<webtransport::SessionStats> Http3WTSession::getSessionStatsInt()
     {
-        if (session_)
-            getJS()->processSessionStats(session_->GetSessionStats());
-    }
-
-    void Http3WTSession::orderDatagramStatsInt()
-    {
-        if (session_)
-            getJS()->processDatagramStats(session_->GetDatagramStats());
+        if (!session_) return {};
+        return session_->GetSessionStats();
     }
 
     size_t Http3WTSession::getMaxDatagramSizeInt()
@@ -212,7 +206,13 @@ namespace quic
         retObj.Set("sendOrder", sendOrder);
         retObj.Set("sendGroupId", sendGroupId);
 
-        objVal.Get("onStream").As<Napi::Function>().Call(objVal, {retObj});
+        objVal.Get("onStream").As<Napi::Function>().Call(objVal, {
+            strobj,
+            Napi::Boolean::New(Env(), bidi),
+            Napi::Boolean::New(Env(), incom),
+            Napi::BigInt::New(Env(), static_cast<uint64_t>(sendGroupId)),
+            Napi::Number::New(Env(), static_cast<uint32_t>(sendOrder))
+        });
     }
 
     void Http3WTSessionJS::processGoawayReceived()
@@ -223,50 +223,6 @@ namespace quic
 
         Napi::Object retObj = Napi::Object::New(Env());
         objVal.Get("onGoAwayReceived").As<Napi::Function>().Call(objVal, {retObj});
-    }
-
-    void Http3WTSessionJS::processSessionStats(webtransport::SessionStats sessstats)
-    {
-        Napi::HandleScope scope(Env());
-
-        Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
-
-        Napi::Object retObj = Napi::Object::New(Env());
-        //  expiredOutgoing: number
-        // lostOutgoing: number
-
-        // non Datagram
-        //  minRtt: number
-        //  smoothedRtt: number
-        //  rttVariation: number
-        // estimatedSendRateBps: number
-        retObj.Set("timestamp", absl::ToDoubleMilliseconds(absl::Duration())); // absl::Duration
-        // datagram
-        retObj.Set("expiredOutgoing", sessstats.datagram_stats.expired_outgoing); // uint64_t
-        retObj.Set("lostOutgoing", sessstats.datagram_stats.lost_outgoing);       // uint64_t
-
-        // non Datagram
-        retObj.Set("minRtt", absl::ToDoubleMilliseconds(sessstats.min_rtt));             // absl::Duration
-        retObj.Set("smoothedRtt", absl::ToDoubleMilliseconds(sessstats.smoothed_rtt));   // absl::Duration
-        retObj.Set("rttVariation", absl::ToDoubleMilliseconds(sessstats.rtt_variation)); // absl::Duration
-        retObj.Set("estimatedSendRateBps", sessstats.estimated_send_rate_bps);           // absl::Duration
-
-        objVal.Get("onSessionStats").As<Napi::Function>().Call(objVal, {retObj});
-    }
-
-    void Http3WTSessionJS::processDatagramStats(webtransport::DatagramStats datastats)
-    {
-        Napi::HandleScope scope(Env());
-
-        Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
-
-        Napi::Object retObj = Napi::Object::New(Env());
-        retObj.Set("timestamp", absl::ToDoubleMilliseconds(absl::Duration())); // absl::Duration
-        // datagram
-        retObj.Set("expiredOutgoing", datastats.expired_outgoing); // uint64_t
-        retObj.Set("lostOutgoing", datastats.lost_outgoing);       // uint64_t
-
-        objVal.Get("onDatagramStats").As<Napi::Function>().Call(objVal, {retObj});
     }
 
     void Http3WTSessionJS::processDatagramSend(Napi::ObjectReference *bufferhandle)
@@ -304,8 +260,9 @@ namespace quic
         Napi::Object retObj = Napi::Object::New(Env());
         retObj.Set("error", error);
         retObj.Set("errorcode", errorcode);
-
-        objVal.Get("onClose").As<Napi::Function>().Call(objVal, {retObj});
+        objVal.Get("onClose").As<Napi::Function>().Call(objVal, {
+            Napi::Number::New(Env(), static_cast<uint32_t>(errorcode)), 
+            Napi::String::New(Env(), error)});
     }
 
     void Http3WTSessionJS::processDatagramReceived(std::string *datagram)
@@ -320,10 +277,7 @@ namespace quic
 
         Napi::Object objVal = Value().Get("jsobj").As<Napi::Object>();
 
-        Napi::Object retObj = Napi::Object::New(Env());
-        retObj.Set("datagram", datagramVal);
-
-        objVal.Get("onDatagramReceived").As<Napi::Function>().Call(objVal, {retObj});
+        objVal.Get("onDatagramReceived").As<Napi::Function>().Call(objVal, {datagramVal});
     }
 
     void Http3WTSessionJS::freeData(Napi::Env env, void *data, std::string *hint)

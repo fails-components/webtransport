@@ -2,6 +2,7 @@ import { CapsuleWebTransportSession } from '../session.js'
 import { BrowserParser } from './browserparser.js'
 import { supportedVersions } from '../websocketcommon.js'
 import { logger } from '../../utils.js'
+import { kState } from '../../session.js'
 
 const log = logger(`webtransport:http2:browser`)
 
@@ -113,17 +114,16 @@ export class Http2WebTransportBrowser {
       log('Failed on WebTransport/Websocket:', error)
       if (
         !this.jsobj?.sessionobjint ||
-        this.jsobj?.sessionobjint?.state === 'connecting'
+        this.jsobj?.sessionobjint[kState] === 'connecting'
       )
         this.jsobj.onClientConnected({
           success: false
         })
       else {
-        if (this?.jsobj?.sessionobjint?.objint)
-          this.jsobj.sessionobjint.close({
-            closeCode: 0,
-            reason: error.toString()
-          })
+        this.jsobj.sessionobjint.close({
+          closeCode: 0,
+          reason: error.toString()
+        })
       }
     })
   }
